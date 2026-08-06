@@ -8,6 +8,7 @@ import { Navbar } from "@/components/shared/navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
   Check,
@@ -15,7 +16,7 @@ import {
   Star,
   Zap,
   Loader2,
-  Settings,
+  CreditCard,
 } from "lucide-react";
 
 interface SubStatus {
@@ -38,7 +39,6 @@ const PLANS: Record<
     iconBg: string;
     iconColor: string;
     borderColor: string;
-    accentBorder: string;
     features: string[];
     limitations: string[];
   }
@@ -51,7 +51,6 @@ const PLANS: Record<
     iconBg: "bg-slate-100",
     iconColor: "text-slate-500",
     borderColor: "border-slate-200",
-    accentBorder: "border-slate-200",
     features: ["3 borrows per month", "Unlimited swaps & gifts"],
     limitations: ["5% service fee on rentals"],
   },
@@ -63,7 +62,6 @@ const PLANS: Record<
     iconBg: "bg-teal-50",
     iconColor: "text-teal-600",
     borderColor: "border-teal-400",
-    accentBorder: "border-teal-400",
     features: ["Unlimited borrows", "Unlimited swaps & gifts", "5% service fee on rentals"],
     limitations: [],
   },
@@ -75,7 +73,6 @@ const PLANS: Record<
     iconBg: "bg-amber-50",
     iconColor: "text-amber-500",
     borderColor: "border-amber-400",
-    accentBorder: "border-amber-400",
     features: [
       "Unlimited borrows",
       "Unlimited swaps & gifts",
@@ -152,12 +149,21 @@ export default function SubscriptionPage() {
     }
   }, []);
 
-  const anyPending = checkoutMutation.isPending || portalMutation.isPending;
+  const billingDate = subStatus?.monthlyBorrowResetAt
+    ? new Date(subStatus.monthlyBorrowResetAt).toLocaleDateString(undefined, {
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+
+  const otherTiers = (["free", "member", "pro"] as Tier[]).filter(
+    (t) => t !== currentTier
+  );
 
   return (
     <>
       <Navbar />
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-lg mx-auto px-4 py-8">
         {/* Back */}
         <button
           onClick={() => navigate("/profile")}
@@ -167,284 +173,219 @@ export default function SubscriptionPage() {
           Back to profile
         </button>
 
-        {/* ── Compact summary ── */}
+        <h1 className="text-2xl font-bold text-slate-900 mb-1">Subscription</h1>
+        <p className="text-sm text-slate-500 mb-6">Manage your plan and billing</p>
+
+        {/* ── Current plan card ── */}
         {isLoading ? (
-          <Card className="mb-8">
+          <Card>
             <CardContent className="p-6 flex justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
             </CardContent>
           </Card>
         ) : (
-          <Card className={`border-2 ${plan.accentBorder} mb-8`}>
-            <CardContent className="p-5">
-              <p className="text-[11px] text-slate-400 uppercase tracking-wide font-medium mb-2">
-                Subscription
-              </p>
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`p-1.5 rounded-lg ${plan.iconBg}`}>
-                  <PlanIcon className={`h-4 w-4 ${plan.iconColor}`} />
+          <Card className={`border-2 ${plan.borderColor} mb-6`}>
+            <CardContent className="p-6">
+              {/* Header row */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${plan.iconBg}`}>
+                    <PlanIcon className={`h-5 w-5 ${plan.iconColor}`} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400 uppercase tracking-wide font-medium">
+                      Current plan
+                    </p>
+                    <p className="text-xl font-bold text-slate-900">{plan.name}</p>
+                  </div>
                 </div>
-                <p className="text-xl font-bold text-slate-900">{plan.name}</p>
-                {hasActivePaidSub && (
-                  <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
-                    Active
-                  </Badge>
+                <div className="flex flex-col items-end gap-1.5">
+                  {hasActivePaidSub ? (
+                    <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
+                      Active
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">
+                      Free
+                    </Badge>
+                  )}
+                  <span className="text-sm font-semibold text-slate-700">{plan.price}</span>
+                </div>
+              </div>
+
+              <Separator className="mb-4" />
+
+              {/* Billing & usage */}
+              <div className="space-y-3 mb-4">
+                {billingDate && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500">
+                      {hasActivePaidSub ? "Next billing" : "Usage resets"}
+                    </span>
+                    <span className="font-medium text-slate-700">{billingDate}</span>
+                  </div>
+                )}
+                {currentTier === "free" ? (
+                  <div>
+                    <div className="flex items-center justify-between text-sm mb-1.5">
+                      <span className="text-slate-500">Borrows this month</span>
+                      <span className="font-medium text-slate-700">
+                        {subStatus?.monthlyBorrowCount ?? 0} / 3
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-teal-500 rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(
+                            ((subStatus?.monthlyBorrowCount ?? 0) / 3) * 100,
+                            100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500">Borrows this month</span>
+                    <span className="font-medium text-teal-600">Unlimited</span>
+                  </div>
                 )}
               </div>
 
-              {/* Borrow usage */}
-              {currentTier === "free" ? (
-                <>
-                  <p className="text-sm text-slate-500 mb-0.5">
-                    {subStatus?.monthlyBorrowCount ?? 0} / 3 borrows used
-                  </p>
-                  <p className="text-sm text-slate-400 mb-4">
-                    Upgrade for unlimited borrows
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-teal-600 mb-4">Unlimited borrows</p>
-              )}
+              <Separator className="mb-4" />
 
-              {/* Manage Subscription */}
+              {/* Features */}
+              <ul className="space-y-2 mb-5">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-slate-600">
+                    <Check className="h-3.5 w-3.5 text-teal-500 shrink-0" />
+                    {f}
+                  </li>
+                ))}
+                {plan.limitations.map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-slate-400">
+                    <div className="h-3.5 w-3.5 flex items-center justify-center shrink-0">
+                      <div className="w-1 h-1 rounded-full bg-slate-300" />
+                    </div>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              {/* Primary action */}
               {hasActivePaidSub ? (
                 <Button
                   variant="outline"
                   className="w-full gap-2"
                   onClick={() => portalMutation.mutate()}
-                  disabled={anyPending}
+                  disabled={portalMutation.isPending}
                 >
                   {portalMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Settings className="h-4 w-4" />
+                    <CreditCard className="h-4 w-4" />
                   )}
-                  Manage Subscription
+                  Manage billing
                 </Button>
               ) : (
                 <Button
-                  variant="outline"
-                  className="w-full gap-2 text-slate-500"
-                  disabled
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2"
+                  onClick={() => checkoutMutation.mutate("member")}
+                  disabled={checkoutMutation.isPending}
                 >
-                  <Settings className="h-4 w-4" />
-                  Manage Subscription
+                  {checkoutMutation.isPending &&
+                  (checkoutMutation.variables as string) === "member" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Star className="h-4 w-4" />
+                  )}
+                  Upgrade to Member — $4.99/mo
                 </Button>
               )}
             </CardContent>
           </Card>
         )}
 
-        {/* ── Plans & Pricing ── */}
+        {/* ── Other plans ── */}
         {!isLoading && (
           <>
-            <div className="text-center mb-4">
-              <h2 className="flex flex-wrap items-center justify-center gap-2 text-xl font-bold">
-                <Crown className="h-5 w-5 text-teal-600" />
-                Plans &amp; Pricing
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Share more, own less. Upgrade to Member for unlimited borrows.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-              {/* Free */}
-              <div className={`relative bg-white rounded-xl border-2 border-slate-200 p-4 flex flex-col shadow-sm ${currentTier === "free" ? "ring-2 ring-teal-400 ring-offset-1" : ""}`}>
-                {currentTier === "free" && (
-                  <div className="mb-3 pb-3 border-b border-slate-100">
-                    <p className="text-[10px] text-slate-400 mb-0.5">Current Plan</p>
-                    <p className="text-xs text-slate-500">
-                      {subStatus?.monthlyBorrowCount ?? 0} / 3 borrows used this month
-                    </p>
-                  </div>
-                )}
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="p-1.5 rounded-lg bg-slate-100">
-                    <Zap className="w-4 h-4 text-slate-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-sm leading-tight">Free</h3>
-                    <p className="text-xs text-slate-400">Free forever</p>
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <span className="text-2xl font-bold text-slate-600">$0</span>
-                </div>
-                <ul className="space-y-2 mb-4 flex-1 text-xs">
-                  <li className="flex items-start gap-1.5 text-slate-600">
-                    <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />3 borrows per month
-                  </li>
-                  <li className="flex items-start gap-1.5 text-slate-600">
-                    <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited swaps &amp; gifts
-                  </li>
-                  <li className="flex items-start gap-1.5 text-slate-400">
-                    <div className="w-3.5 h-3.5 shrink-0 mt-1 flex items-center justify-center">
-                      <div className="w-1 h-1 rounded-full bg-slate-300" />
-                    </div>
-                    5% service fee on rentals
-                  </li>
-                </ul>
-                {currentTier === "free" ? (
-                  <Button variant="outline" className="w-full rounded-lg text-slate-400 text-xs h-8" disabled>
-                    Your Current Plan
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => portalMutation.mutate()}
-                    disabled={anyPending}
-                    className="w-full rounded-lg text-slate-400 text-xs h-8"
-                  >
-                    {portalMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Downgrade"}
-                  </Button>
-                )}
-              </div>
-
-              {/* Member */}
-              <div className={`relative bg-white rounded-xl border-2 border-teal-400 p-4 flex flex-col shadow-sm shadow-teal-100 ${currentTier === "member" ? "ring-2 ring-teal-500 ring-offset-1" : ""}`}>
-                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-teal-600 text-white text-[10px] px-2.5">Most Popular</Badge>
-                </div>
-                {currentTier === "member" && (
-                  <div className="mb-3 pb-3 border-b border-teal-100 pt-1">
-                    <p className="text-[10px] text-slate-400 mb-0.5">Current Plan</p>
-                    <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px]">Active</Badge>
-                  </div>
-                )}
-                <div className="flex items-center gap-2.5 mb-3 pt-1">
-                  <div className="p-1.5 rounded-lg bg-teal-50">
-                    <Star className="w-4 h-4 text-teal-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-sm leading-tight">Member</h3>
-                    <p className="text-xs text-slate-400">$4.99 / month</p>
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <span className="text-2xl font-bold text-slate-800">$4.99<span className="text-xs font-normal text-slate-400"> /mo</span></span>
-                </div>
-                <ul className="space-y-2 mb-4 flex-1 text-xs">
-                  <li className="flex items-start gap-1.5 text-slate-600">
-                    <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited borrows
-                  </li>
-                  <li className="flex items-start gap-1.5 text-slate-600">
-                    <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited swaps &amp; gifts
-                  </li>
-                  <li className="flex items-start gap-1.5 text-slate-400">
-                    <div className="w-3.5 h-3.5 shrink-0 mt-1 flex items-center justify-center">
-                      <div className="w-1 h-1 rounded-full bg-slate-300" />
-                    </div>
-                    5% service fee on rentals
-                  </li>
-                </ul>
-                {currentTier === "member" ? (
-                  <div className="flex flex-col gap-2">
-                    <Button variant="outline" className="w-full rounded-lg border-teal-200 text-teal-600 text-xs h-8" disabled>
-                      ✓ Current Plan
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => portalMutation.mutate()}
-                      disabled={anyPending}
-                      className="w-full flex items-center justify-center gap-1.5 text-slate-500 text-xs h-7"
-                    >
-                      {portalMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Settings className="w-3 h-3" />}
-                      Manage Subscription
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={() => checkoutMutation.mutate("member")}
-                    disabled={anyPending}
-                    className="w-full rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs h-8 font-semibold"
-                  >
-                    {checkoutMutation.isPending && (checkoutMutation.variables as string) === "member"
-                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      : hasActivePaidSub ? "Switch" : "Subscribe — $4.99/mo"}
-                  </Button>
-                )}
-              </div>
-
-              {/* Pro */}
-              <div className={`relative bg-white rounded-xl border-2 border-amber-400 p-4 flex flex-col shadow-sm ${currentTier === "pro" ? "ring-2 ring-amber-400 ring-offset-1" : ""}`}>
-                {currentTier === "pro" && (
-                  <div className="mb-3 pb-3 border-b border-amber-100">
-                    <p className="text-[10px] text-slate-400 mb-0.5">Current Plan</p>
-                    <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px]">Active</Badge>
-                  </div>
-                )}
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="p-1.5 rounded-lg bg-amber-50">
-                    <Crown className="w-4 h-4 text-amber-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-sm leading-tight">Pro</h3>
-                    <p className="text-xs text-slate-400">$9.99 / month</p>
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <span className="text-2xl font-bold text-slate-800">$9.99<span className="text-xs font-normal text-slate-400"> /mo</span></span>
-                </div>
-                <ul className="space-y-2 mb-4 flex-1 text-xs">
-                  <li className="flex items-start gap-1.5 text-slate-600">
-                    <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited borrows
-                  </li>
-                  <li className="flex items-start gap-1.5 text-slate-600">
-                    <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited swaps &amp; gifts
-                  </li>
-                  <li className="flex items-start gap-1.5 text-slate-600">
-                    <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Reduced 4% service fee on rentals
-                  </li>
-                  <li className="flex items-start gap-1.5 text-slate-600">
-                    <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Activity &amp; Insights dashboard
-                  </li>
-                  <li className="flex items-start gap-1.5 text-slate-600">
-                    <div className="flex flex-col">
-                      <span className="flex items-center gap-1.5">
-                        <Check className="w-3.5 h-3.5 text-teal-500 shrink-0" />$1.50 courier convenience fee waived (5/mo)
-                      </span>
-                      <span className="text-[10px] text-slate-400 ml-5">Neither party sees the other's address</span>
-                    </div>
-                  </li>
-                </ul>
-                {currentTier === "pro" ? (
-                  <div className="flex flex-col gap-2">
-                    <Button variant="outline" className="w-full rounded-lg border-amber-200 text-amber-600 text-xs h-8" disabled>
-                      ✓ Current Plan
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => portalMutation.mutate()}
-                      disabled={anyPending}
-                      className="w-full flex items-center justify-center gap-1.5 text-slate-500 text-xs h-7"
-                    >
-                      {portalMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Settings className="w-3 h-3" />}
-                      Manage Subscription
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={() => checkoutMutation.mutate("pro")}
-                    disabled={anyPending}
-                    className="w-full rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs h-8 font-semibold"
-                  >
-                    {checkoutMutation.isPending && (checkoutMutation.variables as string) === "pro"
-                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      : hasActivePaidSub ? "Upgrade" : "Subscribe — $9.99/mo"}
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <p className="text-[10px] md:text-xs text-center text-gray-400 mt-4">
-              Subscriptions renew monthly · Cancel anytime via Manage Subscription · Service fee includes Stripe payment processing
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">
+              {hasActivePaidSub ? "Switch plan" : "Available plans"}
             </p>
+            <div className="space-y-2">
+              {otherTiers.map((tier) => {
+                const p = PLANS[tier];
+                const { Icon: TierIcon } = p;
+                const isLoading =
+                  checkoutMutation.isPending &&
+                  (checkoutMutation.variables as string) === tier;
+
+                return (
+                  <Card key={tier} className={`border ${p.borderColor}`}>
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <div className={`p-1.5 rounded-lg ${p.iconBg} shrink-0`}>
+                        <TierIcon className={`h-4 w-4 ${p.iconColor}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">{p.name}</p>
+                        <p className="text-xs text-slate-400">{p.price}</p>
+                      </div>
+                      {/* Action */}
+                      {tier === "free" ? (
+                        /* Downgrade: open portal so user can cancel */
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-slate-500"
+                          onClick={() => portalMutation.mutate()}
+                          disabled={portalMutation.isPending}
+                        >
+                          {portalMutation.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            "Downgrade"
+                          )}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant={tier === "pro" ? "default" : "outline"}
+                          className={
+                            tier === "pro"
+                              ? "bg-amber-500 hover:bg-amber-600 text-white text-xs"
+                              : "text-xs"
+                          }
+                          onClick={() =>
+                            hasActivePaidSub
+                              ? portalMutation.mutate()
+                              : checkoutMutation.mutate(tier)
+                          }
+                          disabled={
+                            checkoutMutation.isPending || portalMutation.isPending
+                          }
+                        >
+                          {isLoading ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : hasActivePaidSub ? (
+                            tier === "pro" ? "Upgrade" : "Switch"
+                          ) : (
+                            "Subscribe"
+                          )}
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </>
         )}
+
+        <p className="text-xs text-center text-slate-400 mt-8">
+          Subscriptions renew monthly · Cancel anytime via Manage billing · Service fee includes
+          Stripe payment processing
+        </p>
       </div>
     </>
   );

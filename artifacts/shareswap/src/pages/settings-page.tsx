@@ -189,7 +189,7 @@ export default function SettingsPage() {
           className="mb-4"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Profile
+          Back
         </Button>
 
         <div className="flex items-center gap-3 mb-6">

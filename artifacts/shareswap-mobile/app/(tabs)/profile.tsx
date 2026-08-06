@@ -288,21 +288,6 @@ export default function ProfileScreen() {
 
           <Pressable
             style={styles.menuRow}
-            onPress={() => router.push("/subscription" as any)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: "#D4F7F1" }]}>
-              <Feather name="award" size={18} color="#0d9488" />
-            </View>
-            <View style={styles.menuTextGroup}>
-              <Text style={[styles.menuLabel, { color: colors.foreground }]}>Subscription</Text>
-            </View>
-            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-          </Pressable>
-
-          <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
-
-          <Pressable
-            style={styles.menuRow}
             onPress={() => router.push("/settings")}
           >
             <View style={[styles.menuIcon, { backgroundColor: colors.muted }]}>

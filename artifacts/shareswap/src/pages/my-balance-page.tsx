@@ -169,7 +169,7 @@ export default function MyBalancePage() {
       <main className="container mx-auto px-4 py-6 max-w-2xl">
         <Button variant="ghost" onClick={() => navigate("/profile")} className="mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Profile
+          Profile
         </Button>
 
         <div className="flex items-center gap-3 mb-6">

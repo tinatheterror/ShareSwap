@@ -206,6 +206,98 @@ export default function SubscriptionScreen() {
           </View>
         </View>
 
+        {/* ── Current plan status ── */}
+        {isLoading ? (
+          <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, alignItems: "center", paddingVertical: 32, marginBottom: 16 }]}>
+            <ActivityIndicator color={colors.mutedForeground} />
+          </View>
+        ) : (
+          <View style={[s.card, { backgroundColor: colors.card, borderColor: plan.borderColor, borderWidth: 2, marginBottom: 16 }]}>
+            {/* Plan name + badge */}
+            <View style={s.planHeaderRow}>
+              <View style={s.planHeaderLeft}>
+                <View style={[s.planIconWrap, { backgroundColor: plan.iconBg }]}>
+                  <Feather name={plan.icon as any} size={20} color={plan.iconColor} />
+                </View>
+                <View>
+                  <Text style={[s.planCurrentLabel, { color: colors.mutedForeground }]}>Current plan</Text>
+                  <Text style={[s.planName, { color: colors.foreground }]}>{plan.name}</Text>
+                </View>
+              </View>
+              <View style={s.planHeaderRight}>
+                {hasActivePaidSub ? (
+                  <View style={s.activePill}>
+                    <Text style={s.activePillText}>Active</Text>
+                  </View>
+                ) : (
+                  <View style={[s.activePill, { backgroundColor: "#f1f5f9", borderColor: "#e2e8f0" }]}>
+                    <Text style={[s.activePillText, { color: "#64748b" }]}>Free</Text>
+                  </View>
+                )}
+                <Text style={[s.planPrice, { color: colors.foreground }]}>{plan.price}</Text>
+              </View>
+            </View>
+
+            <View style={[s.divider, { backgroundColor: colors.border }]} />
+
+            {/* Billing + usage */}
+            <View style={s.infoSection}>
+              {billingDate && (
+                <View style={s.infoRow}>
+                  <Text style={[s.infoLabel, { color: colors.mutedForeground }]}>
+                    {hasActivePaidSub ? "Next billing" : "Usage resets"}
+                  </Text>
+                  <Text style={[s.infoValue, { color: colors.foreground }]}>{billingDate}</Text>
+                </View>
+              )}
+              {hasActivePaidSub && (
+                <View style={s.infoRow}>
+                  <Text style={[s.infoLabel, { color: colors.mutedForeground }]}>Amount</Text>
+                  <Text style={[s.infoValue, { color: colors.foreground }]}>{plan.price}</Text>
+                </View>
+              )}
+              {currentTier === "free" ? (
+                <View>
+                  <View style={[s.infoRow, { marginBottom: 6 }]}>
+                    <Text style={[s.infoLabel, { color: colors.mutedForeground }]}>Borrows this month</Text>
+                    <Text style={[s.infoValue, { color: colors.foreground }]}>{borrowUsed} / 3</Text>
+                  </View>
+                  <View style={[s.progressBg, { backgroundColor: colors.muted }]}>
+                    <View style={[s.progressFill, { width: `${borrowPct}%` as any, backgroundColor: "#14b8a6" }]} />
+                  </View>
+                </View>
+              ) : (
+                <View style={s.infoRow}>
+                  <Text style={[s.infoLabel, { color: colors.mutedForeground }]}>Borrows this month</Text>
+                  <Text style={[s.infoValue, { color: "#0d9488", fontFamily: "Inter_600SemiBold" }]}>Unlimited</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Manage billing — paid users only */}
+            {hasActivePaidSub && (
+              <>
+                <View style={[s.divider, { backgroundColor: colors.border }]} />
+                <Pressable
+                  style={({ pressed }) => [
+                    s.manageBillingBtn,
+                    { borderColor: colors.border, opacity: pressed || anyMutating ? 0.7 : 1 },
+                  ]}
+                  onPress={() => portalMutation.mutate()}
+                  disabled={anyMutating}
+                >
+                  {portalMutation.isPending
+                    ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                    : <Feather name="credit-card" size={16} color={colors.mutedForeground} />}
+                  <Text style={[s.manageBillingBtnText, { color: colors.foreground }]}>
+                    {portalMutation.isPending ? "Opening…" : "Manage billing"}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        )}
+
         {/* ── Plans & Pricing ── */}
         {!isLoading && (
           <View style={s.pricingSection}>

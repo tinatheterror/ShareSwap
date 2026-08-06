@@ -156,6 +156,8 @@ export default function SubscriptionPage() {
         day: "numeric",
       })
     : null;
+  const borrowUsed = subStatus?.monthlyBorrowCount ?? 0;
+  const borrowPct = Math.min((borrowUsed / 3) * 100, 100);
 
   return (
     <>
@@ -172,6 +174,95 @@ export default function SubscriptionPage() {
 
         <h1 className="text-2xl font-bold text-slate-900 mb-1">Subscription</h1>
         <p className="text-sm text-slate-500 mb-6">Manage your plan and billing</p>
+
+        {/* ── Current plan status ── */}
+        {isLoading ? (
+          <Card className="mb-6">
+            <CardContent className="p-6 flex justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className={`border-2 ${plan.borderColor} mb-6`}>
+            <CardContent className="p-5">
+              {/* Plan name + badge */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${plan.iconBg}`}>
+                    <PlanIcon className={`h-5 w-5 ${plan.iconColor}`} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-400 uppercase tracking-wide font-medium">Current plan</p>
+                    <p className="text-xl font-bold text-slate-900">{plan.name}</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1.5">
+                  {hasActivePaidSub ? (
+                    <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">Active</Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">Free</Badge>
+                  )}
+                  <span className="text-sm font-semibold text-slate-700">{plan.price}</span>
+                </div>
+              </div>
+
+              <Separator className="mb-4" />
+
+              {/* Billing + usage */}
+              <div className="space-y-3 mb-4">
+                {billingDate && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500">{hasActivePaidSub ? "Next billing" : "Usage resets"}</span>
+                    <span className="font-medium text-slate-700">{billingDate}</span>
+                  </div>
+                )}
+                {hasActivePaidSub && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500">Amount</span>
+                    <span className="font-medium text-slate-700">{plan.price}</span>
+                  </div>
+                )}
+                {currentTier === "free" ? (
+                  <div>
+                    <div className="flex items-center justify-between text-sm mb-1.5">
+                      <span className="text-slate-500">Borrows this month</span>
+                      <span className="font-medium text-slate-700">{borrowUsed} / 3</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-teal-500 rounded-full transition-all"
+                        style={{ width: `${borrowPct}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500">Borrows this month</span>
+                    <span className="font-medium text-teal-600">Unlimited</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Manage billing — paid users only */}
+              {hasActivePaidSub && (
+                <>
+                  <Separator className="mb-4" />
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => portalMutation.mutate()}
+                    disabled={portalMutation.isPending}
+                  >
+                    {portalMutation.isPending
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <CreditCard className="h-4 w-4" />}
+                    Manage billing
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* ── Plans & Pricing ── */}
         {!isLoading && (

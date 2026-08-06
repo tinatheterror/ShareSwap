@@ -352,10 +352,10 @@ export default function WishlistScreen() {
         <View style={styles.headerTop}>
           <Text style={[styles.title, { color: colors.foreground, flex: 1 }]}>Wishlist</Text>
           <Pressable
-            style={[styles.addBtn, { backgroundColor: "rgba(255,255,255,0.25)" }]}
+            style={[styles.addBtn, { backgroundColor: "#fff" }]}
             onPress={() => setShowAdd(true)}
           >
-            <Feather name="plus" size={20} color="#fff" />
+            <Feather name="plus" size={20} color={colors.primary} />
           </Pressable>
           <NotificationBell />
         </View>

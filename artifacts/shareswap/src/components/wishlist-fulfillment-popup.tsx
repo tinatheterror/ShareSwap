@@ -256,15 +256,14 @@ export function WishlistFulfillmentPopup({
           )}
 
           <div className="grid md:grid-cols-2 gap-4">
-            <Link href="/community-wishlists" className="block">
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full h-14 border-2 border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold"
-              >
-                Explore All Wishlists
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full h-14 border-2 border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold"
+              onClick={() => navigate("/community-wishlists")}
+            >
+              Explore All Wishlists
+            </Button>
           </div>
         </div>
       </DialogContent>

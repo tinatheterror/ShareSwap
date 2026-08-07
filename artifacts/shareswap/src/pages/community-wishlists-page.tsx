@@ -110,11 +110,13 @@ export default function CommunityWishlistsPage() {
               Your community hasn't added any wishlist items yet. Check back
               soon!
             </p>
-            <Link href="/wishlists">
-              <Button className="" style={{ backgroundColor: "#0DCEA1" }}>
-                Create Your Own Wishlist
-              </Button>
-            </Link>
+            <Button
+              className=""
+              style={{ backgroundColor: "#0DCEA1" }}
+              onClick={() => navigate("/wishlists")}
+            >
+              Create Your Own Wishlist
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">

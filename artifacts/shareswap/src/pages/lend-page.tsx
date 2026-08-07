@@ -232,6 +232,202 @@ interface LendPageProps {
   onClose?: () => void;
 }
 
+function MatchModal({
+  match,
+  listedItemData,
+  onDone,
+}: {
+  match: any;
+  listedItemData: any;
+  onDone: () => void;
+}) {
+  const { toast } = useToast();
+  const requesterName =
+    formatDisplayName(match.username) || match.firstName || "your neighbour";
+
+  // Auto-notify the wishlist owner as soon as the modal appears
+  useEffect(() => {
+    if (!listedItemData?.id) return;
+    apiRequest("POST", "/api/wishlist-match-notification", {
+      itemId: listedItemData.id,
+      wishlistId: match.id,
+      wishlistOwnerId: match.userId,
+    }).catch(() => {
+      // Notification failed silently — listing still succeeded
+    });
+  }, []);
+
+  const coins = (() => {
+    if (match.neededDate && match.returnDate) {
+      const days =
+        Math.ceil(
+          (new Date(match.returnDate).getTime() -
+            new Date(match.neededDate).getTime()) /
+            (1000 * 60 * 60 * 24),
+        ) + 1;
+      return 10 + Math.min(days, 10);
+    }
+    return 10;
+  })();
+
+  return (
+    <motion.div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      {/* Floating Hearts */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(12)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute text-pink-400"
+            initial={{
+              x: Math.random() * window.innerWidth,
+              y: window.innerHeight + 50,
+              rotate: Math.random() * 360,
+              scale: 0.5 + Math.random() * 0.5,
+            }}
+            animate={{ y: -100, rotate: Math.random() * 360 }}
+            transition={{
+              duration: 3 + Math.random() * 2,
+              repeat: Infinity,
+              delay: Math.random() * 2,
+              ease: "linear",
+            }}
+          >
+            <Heart className="h-6 w-6 fill-current" />
+          </motion.div>
+        ))}
+      </div>
+
+      <motion.div
+        className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden"
+        initial={{ scale: 0.8, opacity: 0, y: 50 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.8, opacity: 0, y: 50 }}
+        transition={{ type: "spring", damping: 20, stiffness: 300 }}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-teal-500 to-teal-600 p-6 text-white text-center relative">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", delay: 0.2, damping: 10 }}
+            className="mb-3"
+          >
+            <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto">
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              >
+                <CheckCircle className="h-8 w-8 text-white fill-white/20" />
+              </motion.div>
+            </div>
+          </motion.div>
+          <motion.h2
+            className="text-2xl font-bold"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            Nice!
+          </motion.h2>
+          <motion.p
+            className="text-white/90 mt-1"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.35 }}
+          >
+            You matched with {requesterName}
+          </motion.p>
+        </div>
+
+        {/* Match details */}
+        <div className="p-6">
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="border-2 border-teal-400 bg-gradient-to-br from-teal-50 to-white rounded-xl p-4 shadow-lg mb-5"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="font-bold text-lg text-gray-900">{match.itemName}</h3>
+              <CheckCircle className="h-5 w-5 text-teal-500 shrink-0" />
+            </div>
+
+            {match.description && (
+              <p className="text-gray-600 text-sm mb-4">{match.description}</p>
+            )}
+
+            <div className="flex items-center flex-wrap gap-3 text-sm text-gray-600 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-teal-400 to-teal-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">
+                    {requesterName.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <span className="font-medium">{requesterName}</span>
+              </div>
+              {match.distance && (
+                <span className="flex items-center gap-1 text-gray-500">
+                  <MapPin className="h-4 w-4" />
+                  {match.distance}
+                </span>
+              )}
+              {match.neededDate && (
+                <span className="flex items-center gap-1 text-teal-600">
+                  <Calendar className="h-4 w-4" />
+                  <span className="font-medium">
+                    {new Date(match.neededDate).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                    {match.returnDate &&
+                      ` – ${new Date(match.returnDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+                  </span>
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🪙</span>
+              <span style={{ color: "#0D9488" }} className="font-semibold">
+                Earn {coins} ShareCoins for helping!
+              </span>
+            </div>
+          </motion.div>
+
+          {/* Confirmation copy */}
+          <motion.p
+            className="text-gray-600 text-center text-sm mb-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.65 }}
+          >
+            We've let them know your item matches what they're looking for. If
+            they want it, they'll send you a request.
+          </motion.p>
+
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.7 }}
+          >
+            <Button
+              onClick={onDone}
+              className="w-full h-12 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold shadow-lg"
+            >
+              Got it
+            </Button>
+          </motion.div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -494,8 +690,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   };
   const [showWishlistFulfillmentPopup, setShowWishlistFulfillmentPopup] =
     useState(false);
-  const [showMatchConfirmation, setShowMatchConfirmation] = useState(false);
-  const [matchedRequesterName, setMatchedRequesterName] = useState("");
   const [availabilityOption, setAvailabilityOption] = useState<
     "indefinitely" | "1month" | "3months" | "6months" | "1year" | "custom"
   >("indefinitely");
@@ -2769,257 +2963,15 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
 
         {/* Wishlist Matching Modal - Dating App Style */}
         <AnimatePresence>
-          {showMatchingModal && matchedWishlists.length > 0 && (
-            <motion.div
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              {/* Floating Hearts Animation */}
-              <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                {[...Array(12)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    className="absolute text-pink-400"
-                    initial={{
-                      x: Math.random() * window.innerWidth,
-                      y: window.innerHeight + 50,
-                      rotate: Math.random() * 360,
-                      scale: 0.5 + Math.random() * 0.5,
-                    }}
-                    animate={{
-                      y: -100,
-                      rotate: Math.random() * 360,
-                    }}
-                    transition={{
-                      duration: 3 + Math.random() * 2,
-                      repeat: Infinity,
-                      delay: Math.random() * 2,
-                      ease: "linear",
-                    }}
-                  >
-                    <Heart className="h-6 w-6 fill-current" />
-                  </motion.div>
-                ))}
-              </div>
-
-              <motion.div
-                className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden"
-                initial={{ scale: 0.8, opacity: 0, y: 50 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.8, opacity: 0, y: 50 }}
-                transition={{ type: "spring", damping: 20, stiffness: 300 }}
-              >
-                {/* Header with gradient */}
-                <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 p-6 text-white text-center relative overflow-hidden">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-2 right-2 text-white hover:bg-white/20"
-                    onClick={() => {
-                      setShowMatchingModal(false);
-                      toast({
-                        title: "Successfully Listed!",
-                        description: `Your item has been added to ShareChest.`,
-                      });
-                      navigate("/borrow");
-                    }}
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
-
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", delay: 0.2, damping: 10 }}
-                    className="mb-3"
-                  >
-                    <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto">
-                      <motion.div
-                        animate={{ scale: [1, 1.2, 1] }}
-                        transition={{ duration: 1, repeat: Infinity }}
-                      >
-                        <Heart className="h-8 w-8 text-white fill-white" />
-                      </motion.div>
-                    </div>
-                  </motion.div>
-
-                  <motion.h2
-                    className="text-2xl font-bold"
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    It's a Match!
-                  </motion.h2>
-                </div>
-
-                {/* Match Card */}
-                <div className="p-6">
-                  {selectedWishlistMatch && (
-                    <motion.div
-                      initial={{ y: 30, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.5 }}
-                      className="border-2 border-teal-400 bg-gradient-to-br from-teal-50 to-white rounded-xl p-4 shadow-lg"
-                    >
-                      <div className="flex items-center gap-2 mb-3">
-                        <h3 className="font-bold text-lg text-gray-900">
-                          {selectedWishlistMatch.itemName}
-                        </h3>
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ duration: 0.5, repeat: 2 }}
-                        >
-                          <CheckCircle className="h-5 w-5 text-teal-500" />
-                        </motion.div>
-                      </div>
-
-                      <p className="text-gray-600 text-sm mb-4">
-                        {selectedWishlistMatch.description}
-                      </p>
-
-                      {/* Name, location, and date on same row */}
-                      <div className="flex items-center flex-wrap gap-3 text-sm text-gray-600 mb-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-gradient-to-r from-teal-400 to-teal-500 rounded-full flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">
-                              {formatDisplayName(selectedWishlistMatch.username)
-                                ?.charAt(0)
-                                .toUpperCase()}
-                            </span>
-                          </div>
-                          <span className="font-medium">
-                            {formatDisplayName(selectedWishlistMatch.username)}
-                          </span>
-                        </div>
-                        <span className="flex items-center gap-1 text-gray-500">
-                          <MapPin className="h-4 w-4" />
-                          {selectedWishlistMatch.distance}
-                        </span>
-                        {selectedWishlistMatch.neededDate && (
-                          <span className="flex items-center gap-1 text-teal-600">
-                            <Calendar className="h-4 w-4" />
-                            <span className="font-medium">
-                              {new Date(
-                                selectedWishlistMatch.neededDate,
-                              ).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              })}
-                              {selectedWishlistMatch.returnDate &&
-                                ` - ${new Date(selectedWishlistMatch.returnDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
-                            </span>
-                          </span>
-                        )}
-                      </div>
-
-                      {/* ShareCoins reward */}
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🪙</span>
-                        <span
-                          style={{ color: "#0D9488" }}
-                          className="font-semibold"
-                        >
-                          Earn{" "}
-                          {(() => {
-                            if (
-                              selectedWishlistMatch.neededDate &&
-                              selectedWishlistMatch.returnDate
-                            ) {
-                              const startDate = new Date(
-                                selectedWishlistMatch.neededDate,
-                              );
-                              const endDate = new Date(
-                                selectedWishlistMatch.returnDate,
-                              );
-                              const days =
-                                Math.ceil(
-                                  (endDate.getTime() - startDate.getTime()) /
-                                    (1000 * 60 * 60 * 24),
-                                ) + 1;
-                              return 10 + Math.min(days, 10);
-                            }
-                            return 10;
-                          })()}{" "}
-                          ShareCoins for helping!
-                        </span>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <motion.div
-                    className="flex gap-3 mt-6"
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.6 }}
-                  >
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedWishlistMatch(null);
-                        setShowMatchingModal(false);
-                        toast({
-                          title: "Successfully Listed!",
-                          description: `Your item has been added to ShareChest.`,
-                        });
-                        navigate("/borrow");
-                      }}
-                      className="flex-1 h-12 text-gray-600 border-gray-300 hover:bg-gray-50"
-                    >
-                      Skip Matching
-                    </Button>
-                    <motion.div
-                      className="flex-1"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Button
-                        onClick={async () => {
-                          // Send notification to wishlist owner
-                          if (listedItemData && selectedWishlistMatch) {
-                            try {
-                              await apiRequest(
-                                "POST",
-                                "/api/wishlist-match-notification",
-                                {
-                                  itemId: listedItemData.id,
-                                  wishlistId: selectedWishlistMatch.id,
-                                  wishlistOwnerId: selectedWishlistMatch.userId,
-                                },
-                              );
-                              // Show confirmation modal
-                              setMatchedRequesterName(
-                                formatDisplayName(
-                                  selectedWishlistMatch.username,
-                                ) ||
-                                  selectedWishlistMatch.firstName ||
-                                  "this neighbour",
-                              );
-                              setShowMatchingModal(false);
-                              setShowMatchConfirmation(true);
-                            } catch (error) {
-                              toast({
-                                title: "Successfully Listed!",
-                                description: `Your item has been added to ShareChest.`,
-                              });
-                              setShowMatchingModal(false);
-                              navigate("/borrow");
-                            }
-                          }
-                        }}
-                        className="w-full h-12 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold shadow-lg"
-                      >
-                        Match with{" "}
-                        {formatDisplayName(selectedWishlistMatch?.username)}
-                      </Button>
-                    </motion.div>
-                  </motion.div>
-                </div>
-              </motion.div>
-            </motion.div>
+          {showMatchingModal && matchedWishlists.length > 0 && selectedWishlistMatch && (
+            <MatchModal
+              match={selectedWishlistMatch}
+              listedItemData={listedItemData}
+              onDone={() => {
+                setShowMatchingModal(false);
+                navigate("/borrow");
+              }}
+            />
           )}
         </AnimatePresence>
 
@@ -3104,58 +3056,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
           </DialogContent>
         </Dialog>
 
-        {/* Match Confirmation Modal */}
-        <AnimatePresence>
-          {showMatchConfirmation && (
-            <motion.div
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <motion.div
-                className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden"
-                initial={{ scale: 0.8, opacity: 0, y: 50 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.8, opacity: 0, y: 50 }}
-                transition={{ type: "spring", damping: 20, stiffness: 300 }}
-              >
-                <div className="bg-gradient-to-r from-teal-500 to-teal-600 p-6 text-white text-center">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", delay: 0.2, damping: 10 }}
-                    className="mb-3"
-                  >
-                    <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto">
-                      <CheckCircle className="h-8 w-8 text-white" />
-                    </div>
-                  </motion.div>
-                  <h2 className="text-xl font-bold">Nice!</h2>
-                  <p className="text-white/90 mt-1">
-                    You matched with {matchedRequesterName}
-                  </p>
-                </div>
-
-                <div className="p-6 text-center">
-                  <p className="text-gray-600 mb-6">
-                    We've let them know your item matches what they're looking
-                    for. If they want it, they'll send you a request.
-                  </p>
-                  <Button
-                    onClick={() => {
-                      setShowMatchConfirmation(false);
-                      navigate("/borrow");
-                    }}
-                    className="w-full h-12 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold"
-                  >
-                    Got it
-                  </Button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </main>
 
       {/* Wishlist Fulfillment Popup - shown after successful listing */}

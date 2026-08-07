@@ -45,6 +45,7 @@ interface Wishlist {
   returnDate?: string;
   isActive: boolean;
   isExpired?: boolean;
+  isPrivate?: boolean;
   expirationReason?: string;
   createdAt: string;
 }
@@ -59,6 +60,7 @@ export default function WishlistsPage() {
   );
   const [wishlistToEdit, setWishlistToEdit] = useState<Wishlist | null>(null);
   const [editNeedTypes, setEditNeedTypes] = useState<string[]>([]);
+  const [editIsPrivate, setEditIsPrivate] = useState(false);
   const [addWhenever, setAddWhenever] = useState(false);
   const [editWhenever, setEditWhenever] = useState(false);
   const [formData, setFormData] = useState({
@@ -99,6 +101,7 @@ export default function WishlistsPage() {
     const types = wishlist.needType ? wishlist.needType.split(",") : ["borrow"];
     setEditNeedTypes(types);
     setEditWhenever(!wishlist.neededDate);
+    setEditIsPrivate(wishlist.isPrivate ?? false);
   };
 
   const isUrgent = (neededDate?: string) => {
@@ -317,6 +320,12 @@ export default function WishlistsPage() {
                     )}
                     {item.isExpired && (
                       <Badge variant="secondary">Expired</Badge>
+                    )}
+                    {item.isPrivate && (
+                      <Badge className="bg-violet-100 text-violet-700 border-violet-200">
+                        <EyeOff className="h-3 w-3 mr-1" />
+                        Private
+                      </Badge>
                     )}
                   </div>
                 </div>
@@ -695,6 +704,7 @@ export default function WishlistsPage() {
                     preferredLocation: formData.get("preferredLocation"),
                     neededDate: editWhenever ? null : (formData.get("neededDate") || null),
                     returnDate: editWhenever ? null : (formData.get("returnDate") || null),
+                    isPrivate: editIsPrivate,
                   },
                 });
               }}
@@ -818,6 +828,17 @@ export default function WishlistsPage() {
                     className="pl-10"
                   />
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium">Private request</p>
+                  <p className="text-xs text-muted-foreground">Hide your identity until you send a request</p>
+                </div>
+                <Switch
+                  checked={editIsPrivate}
+                  onCheckedChange={setEditIsPrivate}
+                />
               </div>
 
               <div className="flex gap-3 pt-2">

@@ -121,6 +121,7 @@ export default function WishlistScreen() {
   const [editNeededFromDate, setEditNeededFromDate] = useState("");
   const [editNeededToDate, setEditNeededToDate] = useState("");
   const [editPreferredLocation, setEditPreferredLocation] = useState("");
+  const [editIsPrivate, setEditIsPrivate] = useState(false);
 
   function isUrgent(neededDate?: string) {
     if (!neededDate) return false;
@@ -217,6 +218,7 @@ export default function WishlistScreen() {
     setEditNeededFromDate(item.neededDate || "");
     setEditNeededToDate(item.returnDate || "");
     setEditPreferredLocation(item.preferredLocation || "");
+    setEditIsPrivate(item.isPrivate ?? false);
   }
 
   const { data: myWishlists, isLoading: loadingMine } = useQuery<WishlistItem[]>({
@@ -282,6 +284,7 @@ export default function WishlistScreen() {
         description: editDescription.trim() || undefined,
         needType: editNeedTypes.join(","),
         urgency: editUrgency,
+        isPrivate: editIsPrivate,
         neededDate: editNeededFromDate || undefined,
         returnDate: editNeededToDate || undefined,
         preferredLocation: editPreferredLocation.trim() || undefined,
@@ -618,6 +621,12 @@ export default function WishlistScreen() {
                       </View>
                     );
                   })}
+                  {item.isPrivate ? (
+                    <View style={[styles.needPill, { backgroundColor: "#ede9fe" }]}>
+                      <Feather name="eye-off" size={9} color="#6d28d9" />
+                      <Text style={[styles.needText, { color: "#6d28d9" }]}>Private</Text>
+                    </View>
+                  ) : null}
                 </View>
                 <View style={{ gap: 3 }}>
                   <View style={styles.commInfoRow}>
@@ -982,6 +991,18 @@ export default function WishlistScreen() {
                 value={editPreferredLocation}
                 onChangeText={setEditPreferredLocation}
               />
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.label, { color: colors.foreground, marginBottom: 2 }]}>Private request</Text>
+                  <Text style={[styles.helperNote, { color: colors.mutedForeground }]}>Hide your identity until you send a request</Text>
+                </View>
+                <Switch
+                  value={editIsPrivate}
+                  onValueChange={setEditIsPrivate}
+                  trackColor={{ false: colors.muted, true: colors.primary }}
+                  thumbColor="#fff"
+                />
+              </View>
               <Pressable
                 style={[styles.submitBtn, { backgroundColor: colors.primary, opacity: updateMutation.isPending ? 0.7 : 1 }]}
                 onPress={() => updateMutation.mutate()}

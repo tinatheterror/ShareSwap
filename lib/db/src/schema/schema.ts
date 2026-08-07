@@ -489,6 +489,20 @@ export const userAchievements = pgTable("user_achievements", {
   isCompleted: boolean("is_completed").default(false),
 });
 
+// Wishlist Offers — tracks which users have tapped "I Have This Item!" on a community wishlist card
+export const wishlistOffers = pgTable("wishlist_offers", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  wishlistId: integer("wishlist_id").references(() => wishlists.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userWishlistUniq: uniqueIndex("wishlist_offers_user_wishlist_uniq").on(table.userId, table.wishlistId),
+  userIdx: index("wishlist_offers_user_idx").on(table.userId),
+}));
+
+export type InsertWishlistOffer = typeof wishlistOffers.$inferInsert;
+export type SelectWishlistOffer = typeof wishlistOffers.$inferSelect;
+
 // Item Wishlists
 export const wishlists = pgTable("wishlists", {
   id: serial("id").primaryKey(),

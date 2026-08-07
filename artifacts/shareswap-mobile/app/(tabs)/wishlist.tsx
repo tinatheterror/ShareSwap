@@ -238,22 +238,39 @@ export default function WishlistScreen() {
     enabled: !!user && tab === "community",
   });
 
-  // Track which wishlist items this user has offered to help with
+  // Track which wishlist items this user has offered to help with (server-authoritative)
   const HELPING_KEY = "shareswap-helping-wishlists";
-  const [helpingIds, setHelpingIds] = useState<Set<number>>(new Set());
+
+  // Seed from AsyncStorage so the button is grey instantly (no flash before server responds)
+  const [localSeedIds, setLocalSeedIds] = useState<number[]>([]);
   useEffect(() => {
     AsyncStorage.getItem(HELPING_KEY).then((val) => {
-      if (val) {
-        try { setHelpingIds(new Set(JSON.parse(val))); } catch {}
-      }
+      if (val) { try { setLocalSeedIds(JSON.parse(val)); } catch {} }
     });
   }, []);
 
+  const { data: serverHelpingIds = [] } = useQuery<number[]>({
+    queryKey: ["/api/wishlist-offers/mine"],
+    queryFn: () => apiGet<number[]>("/api/wishlist-offers/mine"),
+    enabled: !!user,
+    placeholderData: localSeedIds,
+    staleTime: 30_000,
+  });
+
+  // Local optimistic additions
+  const [optimisticIds, setOptimisticIds] = useState<number[]>([]);
+  const helpingSet = new Set([...serverHelpingIds, ...optimisticIds]);
+
   async function markHelping(wishlistId: number, itemName: string) {
-    const next = new Set(helpingIds);
-    next.add(wishlistId);
-    setHelpingIds(next);
-    try { await AsyncStorage.setItem(HELPING_KEY, JSON.stringify([...next])); } catch {}
+    if (helpingSet.has(wishlistId)) return;
+    // Optimistic update
+    const next = [...optimisticIds, wishlistId];
+    setOptimisticIds(next);
+    const allIds = [...Array.from(helpingSet), wishlistId];
+    try { await AsyncStorage.setItem(HELPING_KEY, JSON.stringify(allIds)); } catch {}
+    // Persist to server (fire-and-forget)
+    apiPost("/api/wishlist-offers", { wishlistId }).catch(() => {});
+    queryClient.invalidateQueries({ queryKey: ["/api/wishlist-offers/mine"] });
     router.push({ pathname: "/(tabs)/share", params: { prefill: itemName } } as never);
   }
 

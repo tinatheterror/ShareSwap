@@ -27,7 +27,7 @@ import { sponsoredGames, gameSessions } from "@workspace/db";
 import { communityChallenges, challengeParticipants } from "@workspace/db";
 import { itemRequests, deliveryArrangements, extensionRequests } from "@workspace/db";
 import { reputationActivities, userReviews } from "@workspace/db";
-import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals, rentalPayouts, achievements, userAchievements, itemAvailabilitySubscribers, userNotificationPrefs, userPushTokens } from "@workspace/db";
+import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, wishlistOffers, referrals, rentalPayouts, achievements, userAchievements, itemAvailabilitySubscribers, userNotificationPrefs, userPushTokens } from "@workspace/db";
 import session from "express-session";
 import { sessionSettings, store } from "../auth";
 import { computeActiveStatus, computeActiveStatusFromDb, computeResponseTime } from "../user-stats";
@@ -3611,6 +3611,39 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Error sending wishlist match notification:", error);
       res.status(500).json({ error: "Failed to send notification" });
+    }
+  });
+
+  // Wishlist Offers — record that a user has offered to help with a community wishlist item
+  app.post("/api/wishlist-offers", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { wishlistId } = req.body;
+    if (!wishlistId || isNaN(parseInt(wishlistId))) {
+      return res.status(400).json({ error: "wishlistId required" });
+    }
+    try {
+      await db.insert(wishlistOffers)
+        .values({ userId: req.user.id, wishlistId: parseInt(wishlistId) })
+        .onConflictDoNothing();
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Error creating wishlist offer:", error);
+      res.status(500).json({ error: "Failed to record offer" });
+    }
+  });
+
+  // Return all wishlist IDs the current user has offered to help with
+  app.get("/api/wishlist-offers/mine", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const rows = await db
+        .select({ wishlistId: wishlistOffers.wishlistId })
+        .from(wishlistOffers)
+        .where(eq(wishlistOffers.userId, req.user.id));
+      res.json(rows.map((r) => r.wishlistId));
+    } catch (error) {
+      console.error("Error fetching wishlist offers:", error);
+      res.status(500).json({ error: "Failed to fetch offers" });
     }
   });
 

@@ -609,10 +609,10 @@ export default function WishlistScreen() {
                   <Pressable
                     style={[
                       styles.commBtn,
-                      { marginTop: 16, backgroundColor: helpingIds.has(item.id) ? "#9CA3AF" : colors.primary },
+                      { marginTop: 16, backgroundColor: helpingSet.has(item.id) ? "#9CA3AF" : colors.primary },
                     ]}
-                    disabled={helpingIds.has(item.id)}
-                    onPress={() => !helpingIds.has(item.id) && markHelping(item.id, item.itemName)}
+                    disabled={helpingSet.has(item.id)}
+                    onPress={() => !helpingSet.has(item.id) && markHelping(item.id, item.itemName)}
                   >
                     {helpingIds.has(item.id) ? (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

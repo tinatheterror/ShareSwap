@@ -27,7 +27,7 @@ function getImageFilename(asset: import("expo-image-picker").ImagePickerAsset, i
   return `${prefix}-${index}.${ext}`;
 }
 import * as ImagePicker from "expo-image-picker";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useState } from "react";
 import {
@@ -124,16 +124,24 @@ export default function ShareScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
+  const params = useLocalSearchParams<{ prefill?: string }>();
+
   const [choiceVisible, setChoiceVisible] = useState(true);
   const [importVisible, setImportVisible] = useState(false);
   const [importPhotos, setImportPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
 
   useFocusEffect(
     useCallback(() => {
-      setChoiceVisible(true);
-      setImportVisible(false);
-      setImportPhotos([]);
-    }, [])
+      // When arriving from "I Have This Item!", skip choice screen
+      if (params.prefill) {
+        setChoiceVisible(false);
+        setImportVisible(false);
+      } else {
+        setChoiceVisible(true);
+        setImportVisible(false);
+        setImportPhotos([]);
+      }
+    }, [params.prefill])
   );
 
   const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
@@ -148,6 +156,14 @@ export default function ShareScreen() {
     isRentable: false,
     isGift: false,
   });
+
+  // Pre-fill name when arriving from wishlist "I Have This Item!"
+  React.useEffect(() => {
+    if (params.prefill) {
+      setName(params.prefill);
+      setChoiceVisible(false);
+    }
+  }, [params.prefill]);
 
   function resetForm() {
     setPhotos([]);

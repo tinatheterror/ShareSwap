@@ -569,7 +569,7 @@ export default function WishlistScreen() {
 
                   <Pressable
                     style={[styles.commBtn, { backgroundColor: colors.primary }]}
-                    onPress={() => router.push("/(tabs)/share")}
+                    onPress={() => router.push({ pathname: "/(tabs)/share", params: { prefill: item.itemName } } as never)}
                   >
                     <Text style={[styles.commBtnText, { color: colors.primaryForeground }]}>
                       I Have This Item!

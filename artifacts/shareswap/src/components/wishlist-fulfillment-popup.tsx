@@ -20,7 +20,7 @@ import {
   Calendar,
   EyeOff,
 } from "lucide-react";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 
 interface Wishlist {
   id: number;
@@ -50,6 +50,7 @@ export function WishlistFulfillmentPopup({
   isOpen,
   onClose,
 }: WishlistFulfillmentPopupProps) {
+  const [, navigate] = useLocation();
   const { data: allWishlists } = useQuery<Wishlist[]>({
     queryKey: ["/api/all-wishlists"],
     enabled: isOpen,
@@ -224,18 +225,17 @@ export function WishlistFulfillmentPopup({
                     </div>
 
                     {/* CTA */}
-                    <Link
-                      href={`/lend?prefill=${encodeURIComponent(wishlist.itemName)}`}
+                    <Button
+                      size="sm"
+                      className="w-full text-black font-semibold shadow-lg hover:shadow-xl transition-all duration-200 text-xs md:text-sm md:py-3"
+                      style={{ backgroundColor: "#0DCEA1" }}
+                      onClick={() => {
+                        onClose();
+                        navigate(`/lend?prefill=${encodeURIComponent(wishlist.itemName)}`);
+                      }}
                     >
-                      <Button
-                        size="sm"
-                        className="w-full text-black font-semibold shadow-lg hover:shadow-xl transition-all duration-200 text-xs md:text-sm md:py-3"
-                        style={{ backgroundColor: "#0DCEA1" }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        I Have This Item!
-                      </Button>
-                    </Link>
+                      I Have This Item!
+                    </Button>
                   </CardContent>
                 </Card>
               ))}

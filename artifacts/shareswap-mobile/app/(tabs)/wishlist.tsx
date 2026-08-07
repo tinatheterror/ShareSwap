@@ -113,6 +113,8 @@ export default function WishlistScreen() {
 
   const [myFilter, setMyFilter] = useState<"all" | "active" | "expired">("active");
 
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+
   const [editItem, setEditItem] = useState<WishlistItem | null>(null);
   const [editItemName, setEditItemName] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -270,10 +272,12 @@ export default function WishlistScreen() {
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => apiDelete(`/api/wishlists/${id}`),
     onSuccess: () => {
+      setDeleteConfirmId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/my-wishlists"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
     },
     onError: (error: Error) => {
+      setDeleteConfirmId(null);
       Alert.alert("Couldn't remove item", error.message || "Something went wrong. Please try again.");
     },
   });
@@ -304,14 +308,7 @@ export default function WishlistScreen() {
   });
 
   function confirmDelete(item: WishlistItem) {
-    Alert.alert("Remove from wishlist?", `"${item.itemName}" will be removed.`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: () => deleteMutation.mutate(item.id),
-      },
-    ]);
+    setDeleteConfirmId(item.id);
   }
 
   // Augment my wishlists with client-side expiry (server doesn't compute it for /api/my-wishlists)
@@ -649,22 +646,43 @@ export default function WishlistScreen() {
                     </View>
                   ) : null}
                 </View>
-                <View style={[styles.cardMeta, { marginTop: 2 }]}>
-                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                    {timeAgo(item.createdAt)}
-                  </Text>
-                  <View style={{ flexDirection: "row", gap: 14 }}>
-                    <Pressable onPress={() => openEdit(item)}>
-                      <Feather name="edit-2" size={15} color={colors.primary} />
+                {deleteConfirmId === item.id ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+                    <Text style={[styles.metaText, { color: colors.mutedForeground, flex: 1 }]}>Remove this item?</Text>
+                    <Pressable
+                      onPress={() => setDeleteConfirmId(null)}
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}
+                    >
+                      <Text style={[styles.metaText, { color: colors.foreground }]}>Cancel</Text>
                     </Pressable>
                     <Pressable
-                      onPress={() => confirmDelete(item)}
-                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      onPress={() => deleteMutation.mutate(item.id)}
+                      disabled={deleteMutation.isPending}
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: "#ef4444" }}
                     >
-                      <Feather name="trash-2" size={15} color={colors.mutedForeground} />
+                      <Text style={[styles.metaText, { color: "#fff" }]}>
+                        {deleteMutation.isPending ? "Removing…" : "Remove"}
+                      </Text>
                     </Pressable>
                   </View>
-                </View>
+                ) : (
+                  <View style={[styles.cardMeta, { marginTop: 2 }]}>
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                      {timeAgo(item.createdAt)}
+                    </Text>
+                    <View style={{ flexDirection: "row", gap: 14 }}>
+                      <Pressable onPress={() => openEdit(item)}>
+                        <Feather name="edit-2" size={15} color={colors.primary} />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setDeleteConfirmId(item.id)}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      >
+                        <Feather name="trash-2" size={15} color={colors.mutedForeground} />
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
               </View>
             ),
           )}

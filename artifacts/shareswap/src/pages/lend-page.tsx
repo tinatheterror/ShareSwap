@@ -52,7 +52,6 @@ import {
   Upload,
   MapPin,
   X,
-  Heart,
   CheckCircle,
   Download,
   HandHeart,
@@ -232,6 +231,45 @@ interface LendPageProps {
   onClose?: () => void;
 }
 
+// ─── Confetti data (deterministic, no Math.random) ───────────────────────────
+const CONFETTI_PALETTE = [
+  "#FF6B6B", "#FFD93D", "#6BCB77", "#4D96FF",
+  "#FF6B9D", "#A78BFA", "#0DCEA1", "#FB923C",
+];
+const CONFETTI_PIECES = Array.from({ length: 24 }, (_, i) => ({
+  left: 5 + ((i * 37 + 11) % 90),
+  delay: ((i * 60) % 550) / 1000,
+  w: 7 + (i % 4) * 2,
+  h: 5 + (i % 3) * 2,
+  color: CONFETTI_PALETTE[i % CONFETTI_PALETTE.length],
+  rotate: i % 2 === 0 ? 720 : -720,
+  duration: 1.8 + (i % 5) * 0.2,
+}));
+
+// ─── Inline puzzle-people SVG (same geometry as mobile) ──────────────────────
+function PuzzlePeopleIcon() {
+  return (
+    <svg width="88" height="55" viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+      {/* Left piece – slate blue */}
+      <path d="M1,1 L40,1 L40,17 C40,17 50,17 50,25 C50,33 40,33 40,33 L40,49 L1,49 Z" fill="#6E82C8" />
+      {/* Right piece – yellow */}
+      <path d="M40,1 L79,1 L79,49 L40,49 L40,33 C40,33 50,33 50,25 C50,17 40,17 40,17 Z" fill="#F5C542" />
+      {/* Left person – head */}
+      <circle cx="20" cy="13" r="6" fill="#FAB87F" />
+      {/* Left person – body */}
+      <path d="M10,38 Q10,26 20,26 Q30,26 30,38 L30,46 L10,46 Z" fill="#2B5FD9" />
+      {/* Right person – head */}
+      <circle cx="59" cy="13" r="6" fill="#FAB87F" />
+      {/* Right person – body */}
+      <path d="M50,38 Q50,26 59,26 Q68,26 68,38 L68,46 L50,46 Z" fill="#1F2937" />
+      {/* Outer border */}
+      <rect x="1" y="1" width="78" height="48" rx="3" fill="none" stroke="#1F2937" strokeWidth="2" />
+      {/* Connector outline */}
+      <path d="M40,1 L40,17 C40,17 50,17 50,25 C50,33 40,33 40,33 L40,49" fill="none" stroke="#1F2937" strokeWidth="2" />
+    </svg>
+  );
+}
+
 function MatchModal({
   match,
   listedItemData,
@@ -277,28 +315,23 @@ function MatchModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      {/* Floating Hearts */}
+      {/* Confetti burst */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(12)].map((_, i) => (
+        {CONFETTI_PIECES.map((piece, i) => (
           <motion.div
             key={i}
-            className="absolute text-pink-400"
-            initial={{
-              x: Math.random() * window.innerWidth,
-              y: window.innerHeight + 50,
-              rotate: Math.random() * 360,
-              scale: 0.5 + Math.random() * 0.5,
+            className="absolute rounded-sm"
+            style={{
+              left: `${piece.left}%`,
+              top: 0,
+              width: piece.w,
+              height: piece.h,
+              backgroundColor: piece.color,
             }}
-            animate={{ y: -100, rotate: Math.random() * 360 }}
-            transition={{
-              duration: 3 + Math.random() * 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-              ease: "linear",
-            }}
-          >
-            <Heart className="h-6 w-6 fill-current" />
-          </motion.div>
+            initial={{ y: -50, opacity: 0, rotate: 0 }}
+            animate={{ y: 520, opacity: [0, 1, 1, 0], rotate: piece.rotate }}
+            transition={{ duration: piece.duration, delay: piece.delay, ease: "easeIn" }}
+          />
         ))}
       </div>
 
@@ -315,16 +348,9 @@ function MatchModal({
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", delay: 0.2, damping: 10 }}
-            className="mb-3"
+            className="mb-3 flex justify-center"
           >
-            <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto">
-              <motion.div
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 1, repeat: Infinity }}
-              >
-                <CheckCircle className="h-8 w-8 text-white fill-white/20" />
-              </motion.div>
-            </div>
+            <PuzzlePeopleIcon />
           </motion.div>
           <motion.h2
             className="text-2xl font-bold"
@@ -332,7 +358,7 @@ function MatchModal({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            Nice!
+            It's a Match!
           </motion.h2>
           <motion.p
             className="text-white/90 mt-1"

@@ -34,6 +34,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Dimensions,
   Image,
   Modal,
   Platform,
@@ -50,6 +51,7 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { HeartPeopleIcon } from "@/components/HeartPeopleIcon";
 import { NotificationBell } from "@/components/NotificationBell";
+import Svg, { Path, Circle, Rect } from "react-native-svg";
 
 const ITEM_TYPES = [
   "Baby & Kids",
@@ -162,6 +164,121 @@ const TIER_NAMES: Record<number, string> = {
   4: "Tier 4 – High Value Item",
 };
 
+// ─── Puzzle-people SVG icon ───────────────────────────────────────────────────
+
+function PuzzlePeopleIcon({ size = 88 }: { size?: number }) {
+  const h = Math.round(size * 0.625); // maintain 80:50 aspect ratio
+  return (
+    <Svg width={size} height={h} viewBox="0 0 80 50">
+      {/* Left piece – slate blue */}
+      <Path
+        d="M1,1 L38,1 L38,18 C38,18 49,18 49,25 C49,32 38,32 38,32 L38,49 L1,49 Z"
+        fill="#6E82C8"
+      />
+      {/* Right piece – yellow */}
+      <Path
+        d="M38,1 L79,1 L79,49 L38,49 L38,32 C38,32 27,32 27,25 C27,18 38,18 38,18 Z"
+        fill="#F5C542"
+      />
+      {/* Left person – head */}
+      <Circle cx="19" cy="13" r="6" fill="#FAB87F" />
+      {/* Left person – body */}
+      <Path d="M10,38 Q10,26 19,26 Q28,26 28,38 L28,46 L10,46 Z" fill="#2B5FD9" />
+      {/* Right person – head */}
+      <Circle cx="59" cy="13" r="6" fill="#FAB87F" />
+      {/* Right person – body */}
+      <Path d="M50,38 Q50,26 59,26 Q68,26 68,38 L68,46 L50,46 Z" fill="#1F2937" />
+      {/* Outer border */}
+      <Rect x="1" y="1" width="78" height="48" rx="3" fill="none" stroke="#1F2937" strokeWidth="2" />
+      {/* Connector outline */}
+      <Path
+        d="M38,1 L38,18 C38,18 49,18 49,25 C49,32 38,32 38,32 L38,49"
+        fill="none"
+        stroke="#1F2937"
+        strokeWidth="2"
+      />
+    </Svg>
+  );
+}
+
+// ─── Confetti burst ───────────────────────────────────────────────────────────
+
+const CONFETTI_PALETTE = [
+  "#FF6B6B", "#FFD93D", "#6BCB77", "#4D96FF",
+  "#FF6B9D", "#A78BFA", "#0DCEA1", "#FB923C",
+];
+
+// Pre-generate deterministic-looking confetti pieces (seeded spread, no Math.random at render time)
+const CONFETTI_PIECES = Array.from({ length: 24 }, (_, i) => ({
+  left: 5 + ((i * 37 + 11) % 90),      // spread 5–95% of screen width
+  delay: (i * 60) % 550,               // stagger 0–550 ms
+  w: 7 + (i % 4) * 2,                  // 7–13 px wide
+  h: 5 + (i % 3) * 2,                  // 5–9 px tall
+  color: CONFETTI_PALETTE[i % CONFETTI_PALETTE.length],
+  spinDir: i % 2 === 0 ? 1 : -1,
+}));
+
+function Confetti({ visible, screenWidth }: { visible: boolean; screenWidth: number }) {
+  const anims = React.useRef(
+    CONFETTI_PIECES.map(() => ({
+      y: new Animated.Value(-50),
+      opacity: new Animated.Value(0),
+      spin: new Animated.Value(0),
+    }))
+  ).current;
+
+  React.useEffect(() => {
+    if (!visible) {
+      anims.forEach((a) => { a.y.setValue(-50); a.opacity.setValue(0); a.spin.setValue(0); });
+      return;
+    }
+    anims.forEach((a, i) => {
+      const piece = CONFETTI_PIECES[i];
+      a.y.setValue(-50);
+      a.opacity.setValue(0);
+      a.spin.setValue(0);
+      Animated.sequence([
+        Animated.delay(piece.delay),
+        Animated.parallel([
+          Animated.timing(a.opacity, { toValue: 1, duration: 100, useNativeDriver: true }),
+          Animated.timing(a.y, { toValue: 480, duration: 1800 + (i % 5) * 200, useNativeDriver: true }),
+          Animated.timing(a.spin, { toValue: piece.spinDir * 6, duration: 1800, useNativeDriver: true }),
+        ]),
+        Animated.timing(a.opacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+      ]).start();
+    });
+  }, [visible]);
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {CONFETTI_PIECES.map((piece, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            position: "absolute",
+            left: (piece.left / 100) * screenWidth,
+            top: 0,
+            width: piece.w,
+            height: piece.h,
+            backgroundColor: piece.color,
+            borderRadius: 2,
+            opacity: anims[i].opacity,
+            transform: [
+              { translateY: anims[i].y },
+              {
+                rotate: anims[i].spin.interpolate({
+                  inputRange: [-6, 6],
+                  outputRange: ["-1080deg", "1080deg"],
+                }),
+              },
+            ],
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
 interface MatchWishlist {
   id: number;
   userId: number;
@@ -227,16 +344,21 @@ function MatchModal({
     return 10;
   })();
 
+  const screenWidth = Dimensions.get("window").width;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDone}>
       <View style={mm.overlay}>
+        {/* Confetti falls over the whole overlay */}
+        <Confetti visible={visible} screenWidth={screenWidth} />
+
         <Animated.View style={[mm.card, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}>
           {/* Teal header */}
           <View style={mm.header}>
-            <View style={mm.checkCircle}>
-              <Feather name="check-circle" size={32} color="#fff" />
+            <View style={mm.iconWrap}>
+              <PuzzlePeopleIcon size={88} />
             </View>
-            <Text style={mm.niceText}>Nice!</Text>
+            <Text style={mm.niceText}>It's a Match!</Text>
             <Text style={mm.matchedWith}>You matched with {requesterName}</Text>
           </View>
 
@@ -1418,19 +1540,16 @@ const mm = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  checkCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(255,255,255,0.2)",
+  iconWrap: {
+    marginBottom: 10,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
   },
   niceText: {
-    fontSize: 24,
+    fontSize: 22,
     fontFamily: "Inter_700Bold",
     color: "#fff",
+    textAlign: "center",
   },
   matchedWith: {
     fontSize: 14,

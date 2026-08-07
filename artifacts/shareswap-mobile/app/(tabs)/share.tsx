@@ -170,14 +170,14 @@ function PuzzlePeopleIcon({ size = 88 }: { size?: number }) {
   const h = Math.round(size * 0.625); // maintain 80:50 aspect ratio
   return (
     <Svg width={size} height={h} viewBox="0 0 80 50">
-      {/* Left piece – slate blue */}
+      {/* Left piece – slate blue; tab extends RIGHT to x=50 */}
       <Path
-        d="M1,1 L38,1 L38,18 C38,18 49,18 49,25 C49,32 38,32 38,32 L38,49 L1,49 Z"
+        d="M1,1 L40,1 L40,17 C40,17 50,17 50,25 C50,33 40,33 40,33 L40,49 L1,49 Z"
         fill="#6E82C8"
       />
-      {/* Right piece – yellow */}
+      {/* Right piece – yellow; slot cut matching tab (also curves to x=50) */}
       <Path
-        d="M38,1 L79,1 L79,49 L38,49 L38,32 C38,32 27,32 27,25 C27,18 38,18 38,18 Z"
+        d="M40,1 L79,1 L79,49 L40,49 L40,33 C40,33 50,33 50,25 C50,17 40,17 40,17 Z"
         fill="#F5C542"
       />
       {/* Left person – head */}
@@ -190,9 +190,9 @@ function PuzzlePeopleIcon({ size = 88 }: { size?: number }) {
       <Path d="M50,38 Q50,26 59,26 Q68,26 68,38 L68,46 L50,46 Z" fill="#1F2937" />
       {/* Outer border */}
       <Rect x="1" y="1" width="78" height="48" rx="3" fill="none" stroke="#1F2937" strokeWidth="2" />
-      {/* Connector outline */}
+      {/* Connector outline – follows the tab edge */}
       <Path
-        d="M38,1 L38,18 C38,18 49,18 49,25 C49,32 38,32 38,32 L38,49"
+        d="M40,1 L40,17 C40,17 50,17 50,25 C50,33 40,33 40,33 L40,49"
         fill="none"
         stroke="#1F2937"
         strokeWidth="2"

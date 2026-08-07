@@ -5118,7 +5118,7 @@ Respond with ONLY the category name, nothing else.`
       sendPushToUser(item.ownerId, {
         title: `New ${requestTypeLabel} Request`,
         body: `${requesterName} wants to ${requestType === "GIFT" ? "claim gift" : requestType.toLowerCase()} "${item.name.length > 22 ? item.name.slice(0, 22) + "…" : item.name}"`,
-        data: { screen: "notifications", requestId: request.id, itemId: item.id },
+        data: { screen: "chat", chatUserId: req.user.id, requestId: request.id, itemId: item.id },
       }, "requests").catch(() => {});
     }
 
@@ -5588,7 +5588,7 @@ Respond with ONLY the category name, nothing else.`
         sendPushToUser(request.item_requests.requesterId, {
           title: notifTitle,
           body: notifMessage,
-          data: { screen: "notifications", requestId, itemId: request.items.id },
+          data: { screen: "chat", chatUserId: request.items.ownerId, requestId, itemId: request.items.id },
         }, "requests").catch(() => {});
       } catch (_) {}
     }
@@ -5982,7 +5982,7 @@ Respond with ONLY the category name, nothing else.`
       sendPushToUser(otherUserId, {
         title: termsTitle,
         body: termsBody,
-        data: { screen: "notifications", requestId, itemId: request.items.id },
+        data: { screen: "chat", chatUserId: req.user.id, requestId, itemId: request.items.id },
       }, "requests").catch(() => {});
 
       // For BORROW with in-person deposit, skip the in-app deposit step entirely

@@ -446,7 +446,7 @@ export default function ItemDetailScreen() {
           {renderPricingRows(true)}
           <Pressable
             style={[styles.editBtn, { borderColor: colors.border }]}
-            onPress={() => router.push(`/(tabs)/lend?edit=${item.id}` as never)}
+            onPress={() => router.push(`/edit-item/${item.id}` as never)}
           >
             <Feather name="edit-2" size={14} color={colors.foreground} />
             <Text style={[styles.editBtnText, { color: colors.foreground }]}>Edit your listing</Text>

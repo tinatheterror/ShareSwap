@@ -33,7 +33,9 @@ import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Image,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -115,6 +117,179 @@ interface SmartScanAnalysis {
   suggestedValueRange: string | null;
 }
 
+// ─── Matching + tier helpers ──────────────────────────────────────────────────
+
+function isGoodMatch(listingName: string, wishlistName: string): boolean {
+  const normalize = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter((w) => w.length > 2);
+  const lw = normalize(listingName);
+  const ww = normalize(wishlistName);
+  return lw.some((w) => ww.includes(w)) || ww.some((w) => lw.includes(w));
+}
+
+function autoDetectCategory(name: string): (typeof ITEM_TYPES)[number] | "" {
+  const n = name.toLowerCase();
+  if (/baby|stroller|crib|diaper|toddler|kid|child|toy|pram|highchair|nursery|onesie|nappy/i.test(n))
+    return "Baby & Kids";
+  if (/clothing|dress|shirt|pants|jacket|coat|shoes|boots|hat|scarf|bag|purse|jewelry|watch|jeans|sneaker|hoodie|leggings|swimsuit/i.test(n))
+    return "Clothing & Accessories";
+  if (/phone|tablet|laptop|computer|camera|tv|speaker|headphone|console|monitor|drone|smartwatch|earbuds|router|printer/i.test(n))
+    return "Electronics";
+  if (/camping|tent|bike|bicycle|golf|guitar|fishing|kayak|ski|snowboard|yoga|dumbbell|board game|puzzle|lego|instrument/i.test(n))
+    return "Hobbies & Collectibles";
+  if (/kitchen|blender|mixer|pot|pan|vacuum|oven|microwave|fridge|coffee|couch|sofa|mattress|bed|lamp|furniture|curtain|rug/i.test(n))
+    return "Home & Kitchen";
+  if (/drill|saw|hammer|wrench|mower|lawn|garden|ladder|pressure washer|generator|chainsaw|sander|shovel|rake|hose/i.test(n))
+    return "Tools & Equipment";
+  return "";
+}
+
+function calculateTier(originalValue: string, condition: string): number {
+  let tier = 1;
+  if (originalValue === "Under $50") tier = 1;
+  else if (originalValue === "$50–$199") tier = 2;
+  else if (originalValue === "$200–$499") tier = 3;
+  else if (originalValue === "$500–$2,000") tier = 4;
+  if (condition === "Fair" || condition === "Well Loved") tier = Math.max(1, tier - 1);
+  return tier;
+}
+
+const TIER_WEEKLY_COINS: Record<number, number> = { 1: 5, 2: 10, 3: 20, 4: 40 };
+const TIER_NAMES: Record<number, string> = {
+  1: "Tier 1 – Budget Friendly",
+  2: "Tier 2 – Everyday Household Item",
+  3: "Tier 3 – Premium Item",
+  4: "Tier 4 – High Value Item",
+};
+
+interface MatchWishlist {
+  id: number;
+  userId: number;
+  itemName: string;
+  description?: string;
+  neededDate?: string;
+  returnDate?: string;
+  username?: string;
+  displayName?: string;
+}
+
+function MatchModal({
+  visible,
+  match,
+  listedItem,
+  colors,
+  onDone,
+}: {
+  visible: boolean;
+  match: MatchWishlist | null;
+  listedItem: any;
+  colors: any;
+  onDone: () => void;
+}) {
+  const scaleAnim = React.useRef(new Animated.Value(0.85)).current;
+  const opacityAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, { toValue: 1, damping: 20, stiffness: 300, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+    } else {
+      scaleAnim.setValue(0.85);
+      opacityAnim.setValue(0);
+    }
+  }, [visible]);
+
+  // Auto-notify wishlist owner as soon as the modal appears
+  React.useEffect(() => {
+    if (!visible || !match || !listedItem?.id) return;
+    apiRequest("POST", "/api/wishlist-match-notification", {
+      itemId: listedItem.id,
+      wishlistId: match.id,
+      wishlistOwnerId: match.userId,
+    }).catch(() => {});
+  }, [visible]);
+
+  if (!match) return null;
+
+  const requesterName = match.displayName || match.username || "your neighbour";
+
+  const coins = (() => {
+    if (match.neededDate && match.returnDate) {
+      const days =
+        Math.ceil(
+          (new Date(match.returnDate).getTime() - new Date(match.neededDate).getTime()) /
+            (1000 * 60 * 60 * 24),
+        ) + 1;
+      return 10 + Math.min(days, 10);
+    }
+    return 10;
+  })();
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDone}>
+      <View style={mm.overlay}>
+        <Animated.View style={[mm.card, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}>
+          {/* Teal header */}
+          <View style={mm.header}>
+            <View style={mm.checkCircle}>
+              <Feather name="check-circle" size={32} color="#fff" />
+            </View>
+            <Text style={mm.niceText}>Nice!</Text>
+            <Text style={mm.matchedWith}>You matched with {requesterName}</Text>
+          </View>
+
+          {/* Match details */}
+          <View style={mm.body}>
+            <View style={[mm.matchCard, { borderColor: "#2dd4bf", backgroundColor: "#f0fdfa" }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <Text style={mm.matchItemName} numberOfLines={1}>{match.itemName}</Text>
+                <Feather name="check-circle" size={15} color="#0f766e" />
+              </View>
+              {match.description ? (
+                <Text style={mm.matchDesc} numberOfLines={2}>{match.description}</Text>
+              ) : null}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+                <View style={mm.avatarRow}>
+                  <View style={mm.avatar}>
+                    <Text style={mm.avatarText}>{requesterName.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <Text style={mm.avatarName}>{requesterName}</Text>
+                </View>
+                {match.neededDate ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <Feather name="calendar" size={13} color="#0f766e" />
+                    <Text style={mm.dateText}>
+                      {new Date(match.neededDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {match.returnDate
+                        ? ` – ${new Date(match.returnDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                        : ""}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 }}>
+                <Text style={{ fontSize: 20 }}>🪙</Text>
+                <Text style={mm.coinsText}>Earn {coins} ShareCoins for helping!</Text>
+              </View>
+            </View>
+
+            <Text style={mm.confirmText}>
+              We've let them know your item matches what they're looking for. If they want it,
+              they'll send you a request.
+            </Text>
+
+            <Pressable style={[mm.gotItBtn, { backgroundColor: colors.primary }]} onPress={onDone}>
+              <Text style={mm.gotItText}>Got it</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function ShareScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -157,6 +332,11 @@ export default function ShareScreen() {
     isGift: false,
   });
 
+  // Match modal state
+  const [matchModalVisible, setMatchModalVisible] = useState(false);
+  const [matchedWishlist, setMatchedWishlist] = useState<MatchWishlist | null>(null);
+  const [listedItem, setListedItem] = useState<any>(null);
+
   // Pre-fill name when arriving from wishlist "I Have This Item!"
   React.useEffect(() => {
     if (params.prefill) {
@@ -164,6 +344,13 @@ export default function ShareScreen() {
       setChoiceVisible(false);
     }
   }, [params.prefill]);
+
+  // Auto-detect category from item name when field is empty
+  React.useEffect(() => {
+    if (!name || itemType) return;
+    const detected = autoDetectCategory(name);
+    if (detected) setItemType(detected);
+  }, [name]);
 
   function resetForm() {
     setPhotos([]);
@@ -279,10 +466,30 @@ export default function ShareScreen() {
       const res = await apiRequest("POST", "/api/items", formData);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+
+      // Check for wishlist matches before resetting the form (we need `name`)
+      try {
+        const res = await apiRequest("GET", "/api/all-wishlists");
+        const wishlists: MatchWishlist[] = await res.json();
+        const currentUserId = user?.id;
+        const match = wishlists.find(
+          (w) => w.userId !== currentUserId && isGoodMatch(name, w.itemName),
+        );
+        if (match) {
+          setListedItem(data);
+          setMatchedWishlist(match);
+          resetForm();
+          setMatchModalVisible(true);
+          return;
+        }
+      } catch {
+        // Matching failed silently — listing still succeeded
+      }
+
       resetForm();
       Alert.alert("Listed!", "Your item is now live for neighbours to see.", [
         { text: "View it", onPress: () => router.push("/(tabs)") },
@@ -716,6 +923,25 @@ export default function ShareScreen() {
             </View>
           </View>
 
+          {/* ShareCoin tier preview */}
+          {originalValue && condition ? (() => {
+            const tier = calculateTier(originalValue, condition);
+            const weekly = TIER_WEEKLY_COINS[tier];
+            return (
+              <View style={[tp.row, { backgroundColor: "#f0fdfa", borderColor: "#2dd4bf" }]}>
+                <Text style={{ fontSize: 18 }}>🪙</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[tp.title, { color: "#0f766e" }]}>
+                    ~{weekly} ShareCoins / week
+                  </Text>
+                  <Text style={[tp.sub, { color: "#0f766e" }]}>
+                    {TIER_NAMES[tier]}
+                  </Text>
+                </View>
+              </View>
+            );
+          })() : null}
+
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.foreground }]}>How do you want to share it?</Text>
             <View style={styles.modeRow}>
@@ -756,6 +982,19 @@ export default function ShareScreen() {
           </Pressable>
         </ScrollView>
       )}
+
+      {/* Wishlist match modal */}
+      <MatchModal
+        visible={matchModalVisible}
+        match={matchedWishlist}
+        listedItem={listedItem}
+        colors={colors}
+        onDone={() => {
+          setMatchModalVisible(false);
+          setMatchedWishlist(null);
+          router.push("/(tabs)");
+        }}
+      />
     </View>
   );
 }
@@ -1127,5 +1366,148 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
+  },
+});
+
+// Tier preview row
+const tp = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  title: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+  },
+  sub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+});
+
+// Match modal
+const mm = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  card: {
+    width: "100%",
+    maxWidth: 400,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  header: {
+    backgroundColor: "#0f766e",
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    gap: 6,
+  },
+  checkCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  niceText: {
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  matchedWith: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.9)",
+    textAlign: "center",
+  },
+  body: {
+    padding: 20,
+    gap: 14,
+  },
+  matchCard: {
+    borderWidth: 2,
+    borderRadius: 14,
+    padding: 14,
+  },
+  matchItemName: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: "#111827",
+    flex: 1,
+  },
+  matchDesc: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#6b7280",
+    marginBottom: 4,
+  },
+  avatarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#0f766e",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+  },
+  avatarName: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#374151",
+  },
+  dateText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#0f766e",
+  },
+  coinsText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#0f766e",
+  },
+  confirmText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#6b7280",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  gotItBtn: {
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  gotItText: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
   },
 });

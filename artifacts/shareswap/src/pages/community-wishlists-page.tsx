@@ -17,7 +17,7 @@ import {
   Gift,
   EyeOff,
 } from "lucide-react";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 
 interface Wishlist {
   id: number;
@@ -39,6 +39,7 @@ interface Wishlist {
 }
 
 export default function CommunityWishlistsPage() {
+  const [, navigate] = useLocation();
   const { data: allWishlists = [], isLoading } = useQuery<Wishlist[]>({
     queryKey: ["/api/all-wishlists"],
   });
@@ -229,18 +230,14 @@ export default function CommunityWishlistsPage() {
                   </div>
 
                   <div className="mt-auto pt-1">
-                    <Link
-                      href={`/lend?prefill=${encodeURIComponent(wishlist.itemName)}`}
+                    <Button
+                      size="lg"
+                      className="w-full text-white font-semibold py-2 md:py-3 shadow-lg hover:shadow-xl transition-all duration-200 text-sm md:text-base"
+                      style={{ backgroundColor: "#0DCEA1" }}
+                      onClick={() => navigate(`/lend?prefill=${encodeURIComponent(wishlist.itemName)}`)}
                     >
-                      <Button
-                        size="lg"
-                        className="w-full text-white font-semibold py-2 md:py-3 shadow-lg hover:shadow-xl transition-all duration-200 text-sm md:text-base"
-                        style={{ backgroundColor: "#0DCEA1" }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        I Have This Item!
-                      </Button>
-                    </Link>
+                      I Have This Item!
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

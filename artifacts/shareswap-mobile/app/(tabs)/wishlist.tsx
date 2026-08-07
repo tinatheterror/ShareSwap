@@ -1,7 +1,8 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -237,6 +238,25 @@ export default function WishlistScreen() {
     enabled: !!user && tab === "community",
   });
 
+  // Track which wishlist items this user has offered to help with
+  const HELPING_KEY = "shareswap-helping-wishlists";
+  const [helpingIds, setHelpingIds] = useState<Set<number>>(new Set());
+  useEffect(() => {
+    AsyncStorage.getItem(HELPING_KEY).then((val) => {
+      if (val) {
+        try { setHelpingIds(new Set(JSON.parse(val))); } catch {}
+      }
+    });
+  }, []);
+
+  async function markHelping(wishlistId: number, itemName: string) {
+    const next = new Set(helpingIds);
+    next.add(wishlistId);
+    setHelpingIds(next);
+    try { await AsyncStorage.setItem(HELPING_KEY, JSON.stringify([...next])); } catch {}
+    router.push({ pathname: "/(tabs)/share", params: { prefill: itemName } } as never);
+  }
+
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!itemName.trim()) throw new Error("Please tell us what you're looking for");
@@ -321,7 +341,9 @@ export default function WishlistScreen() {
   const filteredMine =
     myFilter === "active" ? mineActive : myFilter === "expired" ? mineExpired : mineWithExpiry;
 
-  const list = tab === "mine" ? filteredMine : communityWishlists;
+  // Filter expired items from the community feed
+  const activeCommunityWishlists = (communityWishlists ?? []).filter((w: any) => !w.isExpired);
+  const list = tab === "mine" ? filteredMine : activeCommunityWishlists;
   const isLoading = tab === "mine" ? loadingMine : loadingCommunity;
 
   if (!user) {
@@ -568,12 +590,25 @@ export default function WishlistScreen() {
                   </View>
 
                   <Pressable
-                    style={[styles.commBtn, { backgroundColor: colors.primary }]}
-                    onPress={() => router.push({ pathname: "/(tabs)/share", params: { prefill: item.itemName } } as never)}
+                    style={[
+                      styles.commBtn,
+                      { marginTop: 16, backgroundColor: helpingIds.has(item.id) ? "#9CA3AF" : colors.primary },
+                    ]}
+                    disabled={helpingIds.has(item.id)}
+                    onPress={() => !helpingIds.has(item.id) && markHelping(item.id, item.itemName)}
                   >
-                    <Text style={[styles.commBtnText, { color: colors.primaryForeground }]}>
-                      I Have This Item!
-                    </Text>
+                    {helpingIds.has(item.id) ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Feather name="check-circle" size={15} color="#fff" />
+                        <Text style={[styles.commBtnText, { color: "#fff" }]}>
+                          You're helping with this request
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={[styles.commBtnText, { color: colors.primaryForeground }]}>
+                        I Have This Item!
+                      </Text>
+                    )}
                   </Pressable>
                 </View>
               </View>

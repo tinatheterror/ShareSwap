@@ -362,7 +362,7 @@ export default function WishlistScreen() {
           </Pressable>
           <NotificationBell />
         </View>
-        <View style={[styles.tabRow, { backgroundColor: colors.muted }]}>
+        <View style={[styles.tabRow, { backgroundColor: "rgba(0,0,0,0.22)" }]}>
           <Pressable
             style={[styles.tabBtn, tab === "community" && { backgroundColor: colors.card }]}
             onPress={() => setTab("community")}
@@ -370,7 +370,7 @@ export default function WishlistScreen() {
             <Text
               style={[
                 styles.tabText,
-                { color: tab === "community" ? colors.foreground : colors.mutedForeground },
+                { color: tab === "community" ? colors.foreground : "rgba(255,255,255,0.6)" },
               ]}
             >
               Community Wishlist
@@ -383,7 +383,7 @@ export default function WishlistScreen() {
             <Text
               style={[
                 styles.tabText,
-                { color: tab === "mine" ? colors.foreground : colors.mutedForeground },
+                { color: tab === "mine" ? colors.foreground : "rgba(255,255,255,0.6)" },
               ]}
             >
               My Wishlist

@@ -614,7 +614,7 @@ export default function WishlistScreen() {
                     disabled={helpingSet.has(item.id)}
                     onPress={() => !helpingSet.has(item.id) && markHelping(item.id, item.itemName)}
                   >
-                    {helpingIds.has(item.id) ? (
+                    {helpingSet.has(item.id) ? (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                         <Feather name="check-circle" size={15} color="#fff" />
                         <Text style={[styles.commBtnText, { color: "#fff" }]}>

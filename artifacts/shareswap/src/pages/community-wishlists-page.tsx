@@ -259,19 +259,15 @@ export default function CommunityWishlistsPage() {
                         <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-100 rounded-full flex items-center justify-center">
                           <Calendar className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
                         </div>
-                        <div>
-                          <span className="text-slate-600 font-medium text-xs md:text-base">
-                            Needed by:{" "}
-                            {wishlist.neededDate
-                              ? new Date(wishlist.neededDate).toLocaleDateString()
-                              : "Whenever"}
-                          </span>
-                          {wishlist.neededDate && wishlist.returnDate && wishlist.needType === "borrow" && (
-                            <div className="text-[10px] md:text-xs text-slate-500">
-                              Return: {new Date(wishlist.returnDate).toLocaleDateString()}
-                            </div>
-                          )}
-                        </div>
+                        <span className="text-slate-600 font-medium text-xs md:text-base">
+                          Needed by:{" "}
+                          {wishlist.neededDate
+                            ? new Date(wishlist.neededDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
+                              (wishlist.returnDate
+                                ? " – " + new Date(wishlist.returnDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                                : "")
+                            : "Whenever"}
+                        </span>
                       </div>
                     </div>
 

@@ -595,16 +595,15 @@ export default function WishlistScreen() {
                       <View style={styles.commIconPlain}>
                         <Feather name="calendar" size={14} color="#0DCEA1" />
                       </View>
-                      <View>
-                        <Text style={[styles.commInfoText, { color: colors.foreground }]}>
-                          Needed by: {item.neededDate ? fmtDate(item.neededDate, { month: "short", day: "numeric", year: "numeric" }) : "Whenever"}
-                        </Text>
-                        {item.neededDate && item.returnDate && item.needType === "borrow" ? (
-                          <Text style={[styles.commInfoText, { color: colors.mutedForeground, fontSize: 11 }]}>
-                            Return: {fmtDate(item.returnDate, { month: "short", day: "numeric", year: "numeric" })}
-                          </Text>
-                        ) : null}
-                      </View>
+                      <Text style={[styles.commInfoText, { color: colors.foreground }]}>
+                        {"Needed by: "}
+                        {item.neededDate
+                          ? fmtDate(item.neededDate, { month: "short", day: "numeric", year: "numeric" }) +
+                            (item.returnDate
+                              ? " – " + fmtDate(item.returnDate, { month: "short", day: "numeric", year: "numeric" })
+                              : "")
+                          : "Whenever"}
+                      </Text>
                     </View>
                   </View>
 

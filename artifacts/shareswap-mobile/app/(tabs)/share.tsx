@@ -181,11 +181,11 @@ function PuzzlePeopleIcon({ size = 88 }: { size?: number }) {
         fill="#F5C542"
       />
       {/* Left person – head */}
-      <Circle cx="19" cy="13" r="6" fill="#6E82C8" />
+      <Circle cx="19" cy="13" r="6" fill="#FAB87F" />
       {/* Left person – body */}
       <Path d="M10,38 Q10,26 19,26 Q28,26 28,38 L28,46 L10,46 Z" fill="#2B5FD9" />
       {/* Right person – head */}
-      <Circle cx="59" cy="13" r="6" fill="#6E82C8" />
+      <Circle cx="59" cy="13" r="6" fill="#FAB87F" />
       {/* Right person – body */}
       <Path d="M50,38 Q50,26 59,26 Q68,26 68,38 L68,46 L50,46 Z" fill="#1F2937" />
       {/* Outer border */}

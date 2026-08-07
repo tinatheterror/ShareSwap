@@ -115,7 +115,7 @@ export default function WishlistsPage() {
   };
 
   const { data: wishlists = [], isLoading } = useQuery<Wishlist[]>({
-    queryKey: ["/api/wishlists"],
+    queryKey: ["/api/my-wishlists"],
   });
 
   const activeWishlists = wishlists.filter((w: Wishlist) => !w.isExpired);
@@ -132,7 +132,7 @@ export default function WishlistsPage() {
       return apiRequest("POST", "/api/wishlists", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-wishlists"] });
       setShowAddDialog(false);
       setFormData({
         itemName: "",
@@ -162,7 +162,7 @@ export default function WishlistsPage() {
       return apiRequest("DELETE", `/api/wishlists/${wishlistId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-wishlists"] });
       setWishlistToDelete(null);
       toast({
         title: "Wishlist item removed",
@@ -183,7 +183,7 @@ export default function WishlistsPage() {
       return apiRequest("PATCH", `/api/wishlists/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-wishlists"] });
       setWishlistToEdit(null);
       toast({
         title: "Wishlist item updated!",

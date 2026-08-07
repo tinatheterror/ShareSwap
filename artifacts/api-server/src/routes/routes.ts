@@ -3537,7 +3537,20 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(wishlists.userId, req.user.id))
         .orderBy(desc(wishlists.createdAt));
 
-      res.json(myWishlists);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const withExpiry = myWishlists.map(w => {
+        let isExpired = false;
+        if (w.returnDate) {
+          isExpired = new Date(w.returnDate) < today;
+        } else if (w.neededDate) {
+          isExpired = new Date(w.neededDate) < today;
+        }
+        return { ...w, isExpired };
+      });
+
+      res.json(withExpiry);
     } catch (error) {
       console.error("Error fetching my wishlists:", error);
       res.status(500).json({ error: "Failed to fetch your wishlists" });

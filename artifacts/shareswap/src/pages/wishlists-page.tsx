@@ -439,43 +439,40 @@ export default function WishlistsPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">I need</label>
+                <label className="block text-sm font-medium mb-2">What are you looking for?</label>
                 <Input
                   value={formData.itemName}
                   onChange={(e) =>
                     setFormData({ ...formData, itemName: e.target.value })
                   }
-                  placeholder="e.g., Power drill, Camping tent, Stand mixer"
+                  placeholder="e.g. Pressure washer"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Description
+                  Details (optional)
                 </label>
                 <Textarea
                   value={formData.description}
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
-                  placeholder="Describe what you need this item for or any specific requirements..."
+                  placeholder="Any specifics that would help neighbours..."
                   rows={3}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium mb-1">
                   I want to
                 </label>
+                <p className="text-xs text-muted-foreground mb-2">Select one or more options</p>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     type="button"
-                    variant={
-                      formData.needTypes.includes("borrow")
-                        ? "default"
-                        : "outline"
-                    }
+                    variant={formData.needTypes.includes("borrow") ? "default" : "outline"}
                     size="sm"
                     className="justify-center"
                     onClick={() => toggleNeedType("borrow")}
@@ -485,11 +482,7 @@ export default function WishlistsPage() {
                   </Button>
                   <Button
                     type="button"
-                    variant={
-                      formData.needTypes.includes("rent")
-                        ? "default"
-                        : "outline"
-                    }
+                    variant={formData.needTypes.includes("rent") ? "default" : "outline"}
                     size="sm"
                     className="justify-center"
                     onClick={() => toggleNeedType("rent")}
@@ -499,11 +492,7 @@ export default function WishlistsPage() {
                   </Button>
                   <Button
                     type="button"
-                    variant={
-                      formData.needTypes.includes("swap")
-                        ? "default"
-                        : "outline"
-                    }
+                    variant={formData.needTypes.includes("swap") ? "default" : "outline"}
                     size="sm"
                     className="justify-center"
                     onClick={() => toggleNeedType("swap")}
@@ -513,11 +502,7 @@ export default function WishlistsPage() {
                   </Button>
                   <Button
                     type="button"
-                    variant={
-                      formData.needTypes.includes("gift")
-                        ? "default"
-                        : "outline"
-                    }
+                    variant={formData.needTypes.includes("gift") ? "default" : "outline"}
                     size="sm"
                     className={`justify-center ${formData.needTypes.includes("gift") ? "bg-pink-500 hover:bg-pink-600 text-white" : ""}`}
                     onClick={() => toggleNeedType("gift")}
@@ -525,27 +510,6 @@ export default function WishlistsPage() {
                     <Gift className="h-4 w-4 mr-1" />
                     Be Gifted
                   </Button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Select one or more options
-                </p>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
-                <Switch
-                  checked={formData.isPrivate}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isPrivate: checked })}
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <EyeOff className="h-4 w-4 text-slate-500" />
-                    <span className="font-medium text-sm">Private request</span>
-                  </div>
-                  {formData.isPrivate && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      Your name will be hidden until you send a request for an item someone offers.
-                    </p>
-                  )}
                 </div>
               </div>
 
@@ -596,14 +560,29 @@ export default function WishlistsPage() {
                   <Input
                     value={formData.preferredLocation}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        preferredLocation: e.target.value,
-                      })
+                      setFormData({ ...formData, preferredLocation: e.target.value })
                     }
-                    placeholder="Neighbourhood, postal code, or 'nearby'"
+                    placeholder="e.g. Downtown, Westside…"
                     className="pl-10"
                   />
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <Switch
+                  checked={formData.isPrivate}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isPrivate: checked })}
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <EyeOff className="h-4 w-4 text-slate-500" />
+                    <span className="font-medium text-sm">Private request</span>
+                  </div>
+                  {formData.isPrivate && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Your name will be hidden until you send a request for an item someone offers.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -621,9 +600,7 @@ export default function WishlistsPage() {
                   disabled={addWishlistMutation.isPending}
                   className="flex-1"
                 >
-                  {addWishlistMutation.isPending
-                    ? "Adding..."
-                    : "Add to Wishlist"}
+                  {addWishlistMutation.isPending ? "Adding..." : "Add to Wishlist"}
                 </Button>
               </div>
             </form>
@@ -714,32 +691,33 @@ export default function WishlistsPage() {
             >
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  I'm looking for *
+                  What are you looking for?
                 </label>
                 <Input
                   name="itemName"
                   defaultValue={wishlistToEdit?.itemName || ""}
-                  placeholder="e.g., Power drill, Camping tent, Stand mixer"
+                  placeholder="e.g. Pressure washer"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Description
+                  Details (optional)
                 </label>
                 <Textarea
                   name="description"
                   defaultValue={wishlistToEdit?.description || ""}
-                  placeholder="Describe what you need this item for or any specific requirements..."
+                  placeholder="Any specifics that would help neighbours..."
                   rows={3}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium mb-1">
                   I want to
                 </label>
+                <p className="text-xs text-muted-foreground mb-2">Select one or more options</p>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     type="button"

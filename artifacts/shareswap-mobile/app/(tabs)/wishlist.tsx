@@ -273,6 +273,9 @@ export default function WishlistScreen() {
       queryClient.invalidateQueries({ queryKey: ["/api/my-wishlists"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
     },
+    onError: (error: Error) => {
+      Alert.alert("Couldn't remove item", error.message || "Something went wrong. Please try again.");
+    },
   });
 
   const updateMutation = useMutation({
@@ -654,7 +657,10 @@ export default function WishlistScreen() {
                     <Pressable onPress={() => openEdit(item)}>
                       <Feather name="edit-2" size={15} color={colors.primary} />
                     </Pressable>
-                    <Pressable onPress={() => confirmDelete(item)}>
+                    <Pressable
+                      onPress={() => confirmDelete(item)}
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    >
                       <Feather name="trash-2" size={15} color={colors.mutedForeground} />
                     </Pressable>
                   </View>

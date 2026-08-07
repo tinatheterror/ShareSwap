@@ -3498,7 +3498,10 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Delete wishlist item
-  app.delete("/api/wishlists/:id", requireEmailVerified, async (req: any, res) => {
+  app.delete("/api/wishlists/:id", async (req: any, res) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ error: "Please sign in to continue" });
+    }
     try {
       const wishlistId = parseInt(req.params.id);
       if (isNaN(wishlistId)) {

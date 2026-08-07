@@ -621,12 +621,6 @@ export default function WishlistScreen() {
                       </View>
                     );
                   })}
-                  {item.isPrivate ? (
-                    <View style={[styles.needPill, { backgroundColor: "#ede9fe" }]}>
-                      <Feather name="eye-off" size={9} color="#6d28d9" />
-                      <Text style={[styles.needText, { color: "#6d28d9" }]}>Private</Text>
-                    </View>
-                  ) : null}
                 </View>
                 <View style={{ gap: 3 }}>
                   <View style={styles.commInfoRow}>
@@ -643,6 +637,12 @@ export default function WishlistScreen() {
                       <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>
                         {item.preferredLocation}
                       </Text>
+                    </View>
+                  ) : null}
+                  {item.isPrivate ? (
+                    <View style={styles.commInfoRow}>
+                      <Feather name="eye-off" size={12} color={colors.mutedForeground} />
+                      <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Private request</Text>
                     </View>
                   ) : null}
                 </View>

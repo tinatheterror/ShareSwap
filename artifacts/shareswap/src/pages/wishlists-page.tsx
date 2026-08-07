@@ -321,12 +321,6 @@ export default function WishlistsPage() {
                     {item.isExpired && (
                       <Badge variant="secondary">Expired</Badge>
                     )}
-                    {item.isPrivate && (
-                      <Badge className="bg-violet-100 text-violet-700 border-violet-200">
-                        <EyeOff className="h-3 w-3 mr-1" />
-                        Private
-                      </Badge>
-                    )}
                   </div>
                 </div>
                 <CardContent className="p-4">
@@ -384,11 +378,19 @@ export default function WishlistsPage() {
 
                   {/* Location */}
                   {item.preferredLocation && (
-                    <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center gap-2 mb-1">
                       <MapPin className="h-3 w-3 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">
                         {item.preferredLocation}
                       </span>
+                    </div>
+                  )}
+
+                  {/* Private request */}
+                  {item.isPrivate && (
+                    <div className="flex items-center gap-2 mb-4">
+                      <EyeOff className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Private request</span>
                     </div>
                   )}
 

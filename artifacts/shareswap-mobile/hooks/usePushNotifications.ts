@@ -10,12 +10,13 @@
  * at the root layout level to handle taps.
  */
 
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import type * as NotificationsType from "expo-notifications";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { Platform } from "react-native";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, apiGet } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 // expo-notifications throws on web during module init — load it only on native.
 // We keep `import type` above for TypeScript types, and use require() at runtime.
@@ -130,10 +131,18 @@ export function useRegisterPushToken(isAuthenticated: boolean): void {
 export function usePushNotificationNavigation() {
   const notificationListener = useRef<NotificationsType.EventSubscription | null>(null);
   const responseListener = useRef<NotificationsType.EventSubscription | null>(null);
+  // Keep a stable ref to the current user so the async navigate helper can
+  // read it without needing to be re-registered on every user change.
+  const { user } = useAuth();
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   useEffect(() => {
     // Push notification APIs are not available on web
     if (Platform.OS === "web") return;
+
+    const handle = (data: Record<string, unknown>) =>
+      navigateFromPushData(data, userRef).catch(() => {});
 
     // Notification received while app is in the foreground (no navigation, just display)
     notificationListener.current =
@@ -144,21 +153,15 @@ export function usePushNotificationNavigation() {
     // User tapped a notification (foreground or background)
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data as Record<
-          string,
-          unknown
-        >;
-        navigateFromPushData(data);
+        const data = response.notification.request.content.data as Record<string, unknown>;
+        handle(data);
       });
 
     // Handle the notification that launched the app from a killed state
     Notifications.getLastNotificationResponseAsync().then((response) => {
       if (response?.notification?.request?.content?.data) {
-        const data = response.notification.request.content.data as Record<
-          string,
-          unknown
-        >;
-        navigateFromPushData(data);
+        const data = response.notification.request.content.data as Record<string, unknown>;
+        handle(data);
       }
     });
 
@@ -172,10 +175,17 @@ export function usePushNotificationNavigation() {
 /**
  * Derive the correct in-app route from the push notification data payload.
  *
- * The API server attaches `{ screen, requestId, itemId, chatUserId }` so we
- * can deep-link to the right screen.
+ * Priority:
+ *  1. `chatUserId` present → go straight to /chat/:chatUserId  (new notifications)
+ *  2. `requestId` present  → look up the request on the API to find the partner
+ *     and navigate to their chat thread  (works for old notifications too)
+ *  3. `itemId` present     → open the item detail page
+ *  4. Fallback             → open the notifications list
  */
-function navigateFromPushData(data: Record<string, unknown>): void {
+async function navigateFromPushData(
+  data: Record<string, unknown>,
+  userRef: React.MutableRefObject<{ id: number } | null | undefined>,
+): Promise<void> {
   if (!data) return;
 
   const screen = data.screen as string | undefined;
@@ -184,16 +194,41 @@ function navigateFromPushData(data: Record<string, unknown>): void {
   const chatUserId = data.chatUserId as number | undefined;
 
   try {
-    if (screen === "chat" && chatUserId) {
+    // ── 1. Direct chat deep-link (new notifications have chatUserId set) ──
+    if (chatUserId) {
       router.push(`/chat/${chatUserId}` as any);
-    } else if (screen === "item" && itemId) {
-      router.push(`/item/${itemId}` as any);
-    } else if (screen === "notifications") {
-      router.push("/notifications" as any);
-    } else {
-      // Fallback: open the notifications list
-      router.push("/notifications" as any);
+      return;
     }
+
+    // ── 2. Request notification — resolve partner via API ──
+    if (requestId) {
+      try {
+        const requests = await apiGet<any[]>("/api/requests");
+        const req = requests.find((r: any) => r.id === requestId);
+        if (req) {
+          const userId = userRef.current?.id;
+          const partnerId =
+            userId && req.requesterId === userId
+              ? req.item?.ownerId
+              : req.requesterId;
+          if (partnerId) {
+            router.push(`/chat/${partnerId}?requestId=${requestId}` as any);
+            return;
+          }
+        }
+      } catch {
+        // API unavailable (e.g. app just cold-started) — fall through
+      }
+    }
+
+    // ── 3. Item page ──
+    if (screen === "item" && itemId) {
+      router.push(`/item/${itemId}` as any);
+      return;
+    }
+
+    // ── 4. Fallback ──
+    router.push("/notifications" as any);
   } catch (err) {
     console.error("[push] navigation error:", err);
   }

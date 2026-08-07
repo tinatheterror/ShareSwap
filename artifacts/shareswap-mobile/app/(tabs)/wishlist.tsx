@@ -358,8 +358,10 @@ export default function WishlistScreen() {
   const filteredMine =
     myFilter === "active" ? mineActive : myFilter === "expired" ? mineExpired : mineWithExpiry;
 
-  // Filter expired items from the community feed
-  const activeCommunityWishlists = (communityWishlists ?? []).filter((w: any) => !w.isExpired);
+  // Filter expired items, then sort: not-yet-helping first, already-helping last
+  const activeCommunityWishlists = (communityWishlists ?? [])
+    .filter((w: any) => !w.isExpired)
+    .sort((a: any, b: any) => (helpingSet.has(a.id) ? 1 : 0) - (helpingSet.has(b.id) ? 1 : 0));
   const list = tab === "mine" ? filteredMine : activeCommunityWishlists;
   const isLoading = tab === "mine" ? loadingMine : loadingCommunity;
 

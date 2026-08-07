@@ -94,8 +94,14 @@ export default function CommunityWishlistsPage() {
     navigate(`/lend?prefill=${encodeURIComponent(wishlist.itemName)}`);
   }
 
-  // Filter out expired cards
-  const activeWishlists = allWishlists.filter((w) => !w.isExpired);
+  // Filter out expired cards, then sort: not-yet-helping first, already-helping last
+  const activeWishlists = allWishlists
+    .filter((w) => !w.isExpired)
+    .sort((a, b) => {
+      const aHelping = helpingSet.has(a.id) ? 1 : 0;
+      const bHelping = helpingSet.has(b.id) ? 1 : 0;
+      return aHelping - bHelping;
+    });
 
   const isUrgent = (neededDate?: string) => {
     if (!neededDate) return false;

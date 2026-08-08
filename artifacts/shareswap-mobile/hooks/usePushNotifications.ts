@@ -10,13 +10,18 @@
  * at the root layout level to handle taps.
  */
 
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import type * as NotificationsType from "expo-notifications";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { Platform } from "react-native";
 import { apiRequest, apiGet } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
+
+/** Set by RootLayoutNav to avoid an AuthContext ↔ usePushNotifications cycle. */
+let _currentUser: { id: number } | null | undefined = null;
+export function setCurrentUser(u: { id: number } | null | undefined) {
+  _currentUser = u;
+}
 
 // expo-notifications throws on web during module init — load it only on native.
 // We keep `import type` above for TypeScript types, and use require() at runtime.
@@ -137,17 +142,15 @@ let _killedStatePending: Record<string, unknown> | null = null;
 export function usePushNotificationNavigation() {
   const notificationListener = useRef<NotificationsType.EventSubscription | null>(null);
   const responseListener = useRef<NotificationsType.EventSubscription | null>(null);
-  const { user } = useAuth();
-  const userRef = useRef(user);
-  useEffect(() => { userRef.current = user; }, [user]);
 
-  // Once the user is loaded, flush any notification that arrived from a killed state
+  // Flush any killed-state notification once the user is available.
+  // _currentUser is set externally by RootLayoutNav via setCurrentUser().
   useEffect(() => {
-    if (!user || !_killedStatePending) return;
+    if (!_currentUser || !_killedStatePending) return;
     const data = _killedStatePending;
     _killedStatePending = null;
-    navigateFromPushData(data, { current: user }).catch(() => {});
-  }, [user]);
+    navigateFromPushData(data).catch(() => {});
+  }, [_currentUser]);
 
   useEffect(() => {
     // Push notification APIs are not available on web
@@ -155,7 +158,7 @@ export function usePushNotificationNavigation() {
 
     // Foreground/background tap: router + session are already up, navigate immediately
     const handle = (data: Record<string, unknown>) =>
-      navigateFromPushData(data, userRef).catch(() => {});
+      navigateFromPushData(data).catch(() => {});
 
     // Notification received while app is in the foreground (no navigation, just display)
     notificationListener.current =
@@ -202,16 +205,13 @@ export function usePushNotificationNavigation() {
  *  3. `itemId` present     → open the item detail page
  *  4. Fallback             → open the notifications list
  */
-async function navigateFromPushData(
-  data: Record<string, unknown>,
-  userRef: React.MutableRefObject<{ id: number } | null | undefined>,
-): Promise<void> {
+async function navigateFromPushData(data: Record<string, unknown>): Promise<void> {
   if (!data) return;
 
   const screen = data.screen as string | undefined;
   const requestId = data.requestId as number | undefined;
   const itemId = data.itemId as number | undefined;
-  const chatUserId = data.chatUserId as number | undefined;
+  const chatUserId = data.chatUserId as string | number | undefined;
 
   try {
     // ── 1. Direct chat deep-link (new notifications have chatUserId set) ──
@@ -224,9 +224,9 @@ async function navigateFromPushData(
     if (requestId) {
       try {
         const requests = await apiGet<any[]>("/api/requests");
-        const req = requests.find((r: any) => r.id === requestId);
+        const req = requests.find((r: any) => Number(r.id) === Number(requestId));
         if (req) {
-          const userId = userRef.current?.id;
+          const userId = _currentUser?.id;
           const partnerId =
             userId && req.requesterId === userId
               ? req.item?.ownerId

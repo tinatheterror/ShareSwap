@@ -15,7 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { SessionGuard } from "@/components/SessionGuard";
-import { usePushNotificationNavigation, useRegisterPushToken } from "@/hooks/usePushNotifications";
+import { usePushNotificationNavigation, useRegisterPushToken, setCurrentUser } from "@/hooks/usePushNotifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -40,6 +40,7 @@ function RootLayoutNav() {
   // exists (catches permission grants after the initial install, and token
   // rotations after app updates).
   const { user } = useAuth();
+  useEffect(() => { setCurrentUser(user); }, [user]);
   useRegisterPushToken(!!user);
 
   return (

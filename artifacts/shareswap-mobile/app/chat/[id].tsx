@@ -452,15 +452,15 @@ export default function ChatScreen() {
               </View>
             </View>
 
-            {/* Requester name — visible to owner only */}
-            {isOwner && partner && (
-              <View style={card.detailRow}>
-                <Feather name="user" size={12} color={colors.mutedForeground} />
-                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
-                  {partner.displayName || partner.username} wants to borrow
-                </Text>
-              </View>
-            )}
+            {/* Who / what role */}
+            <View style={card.detailRow}>
+              <Feather name="user" size={12} color={colors.mutedForeground} />
+              <Text style={[card.detailText, { color: colors.mutedForeground }]}>
+                {isOwner && partner
+                  ? `${partner.displayName || partner.username} wants to ${request.requestType === "GIFT" ? "claim gift" : request.requestType.toLowerCase()}`
+                  : `You requested to ${request.requestType === "GIFT" ? "claim gift" : request.requestType.toLowerCase()}`}
+              </Text>
+            </View>
 
             {/* Dates */}
             {(request.startDate || request.endDate) && (
@@ -621,18 +621,18 @@ export default function ChatScreen() {
                     </Pressable>
                   </>
                 )}
-                {/* Borrower: PENDING = free cancel, no confirmation needed (mirrors web) */}
+                {/* Borrower: PENDING = free cancel, shown as plain text link (mirrors web) */}
                 {isBorrower &&
                   !iSentCounter &&
                   request.negotiationStatus !== "terms_accepted" && (
                   <Pressable
-                    style={[card.btn, { borderColor: colors.border, flex: 1 }]}
                     onPress={() => cancelMutation.mutate()}
                     disabled={anyMutating}
+                    style={{ paddingVertical: 4 }}
                   >
                     {cancelMutation.isPending
-                      ? <ActivityIndicator size="small" color={colors.foreground} />
-                      : <Text style={[card.btnLabel, { color: colors.foreground }]}>Cancel request</Text>
+                      ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                      : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel request</Text>
                     }
                   </Pressable>
                 )}

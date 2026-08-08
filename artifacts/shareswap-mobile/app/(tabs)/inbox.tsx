@@ -150,25 +150,13 @@ export function InboxRow({ item, onPress }: { item: InboxItem; onPress: () => vo
           </View>
         </View>
 
-        {/* Row 2: item thumbnail + name */}
-        <View style={styles.row2}>
-          {item.itemPhoto ? (
-            <Image
-              source={{ uri: photoUrl(item.itemPhoto) }}
-              style={[styles.itemThumb, { borderColor: colors.border }]}
-            />
-          ) : (
-            <View style={[styles.itemThumbPlaceholder, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-              <Feather name="package" size={9} color={colors.mutedForeground} />
-            </View>
-          )}
-          <Text
-            style={[styles.itemName, { color: colors.foreground }]}
-            numberOfLines={1}
-          >
-            {item.itemName}
-          </Text>
-        </View>
+        {/* Row 2: item name */}
+        <Text
+          style={[styles.itemName, { color: colors.foreground }]}
+          numberOfLines={1}
+        >
+          {item.itemName}
+        </Text>
 
         {/* Row 3: message preview */}
         <Text
@@ -517,27 +505,6 @@ const styles = StyleSheet.create({
   time: {
     fontSize: 10,
     fontFamily: "Inter_400Regular",
-  },
-  row2: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  itemThumb: {
-    width: 18,
-    height: 18,
-    borderRadius: 3,
-    borderWidth: 1,
-    flexShrink: 0,
-  },
-  itemThumbPlaceholder: {
-    width: 18,
-    height: 18,
-    borderRadius: 3,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
   },
   itemName: {
     fontSize: 12,

@@ -1587,17 +1587,8 @@ export function ChatWidget() {
                                 </div>
                               </div>
 
-                              {/* Row 2: item photo + name */}
-                              <div className="-mt-0.5 mb-0.5 flex items-center gap-1.5">
-                                {item.itemPhoto ? (
-                                  <img
-                                    src={item.itemPhoto}
-                                    alt={item.itemName}
-                                    className="w-5 h-5 rounded object-cover flex-shrink-0 border border-gray-200"
-                                  />
-                                ) : (
-                                  <div className="w-5 h-5 rounded bg-gray-200 flex-shrink-0" />
-                                )}
+                              {/* Row 2: item name */}
+                              <div className="-mt-0.5 mb-0.5">
                                 <span className="text-[11px] font-semibold italic text-gray-700 truncate leading-none">{item.itemName}</span>
                               </div>
 

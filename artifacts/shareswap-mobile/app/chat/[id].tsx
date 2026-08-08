@@ -19,12 +19,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { Shield, Coins, Calendar } from "lucide-react-native";
+import { Shield, Coins, Calendar, CreditCard } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiPatch, photoUrl } from "@/lib/api";
 import { fmtDate as fmtDateUtil, safeDate } from "@/lib/dateUtils";
 import { useAuth } from "@/context/AuthContext";
 import { InsufficientShareCoinsModal } from "@/components/InsufficientShareCoinsModal";
+import { PayDepositSheet } from "@/components/PayDepositSheet";
+import { PayRentalSheet } from "@/components/PayRentalSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Message {
@@ -59,6 +61,9 @@ interface RequestItem {
   tier: number | null;
   replacementValue: number | null;
   originalValue: string | null;
+  category: string | null;
+  dollarsPrice: string | null;
+  securityDeposit: number | null;
 }
 
 interface ItemRequest {
@@ -163,6 +168,10 @@ export default function ChatScreen() {
   const [earnRequired, setEarnRequired] = useState(0);
   const [earnContext, setEarnContext] = useState<"borrow" | "swap">("borrow");
   const [pinFetching, setPinFetching] = useState(false);
+
+  // Payment sheets
+  const [showDepositSheet, setShowDepositSheet] = useState(false);
+  const [showRentalSheet, setShowRentalSheet] = useState(false);
 
   // Counter-proposal sheet
   const [showCounterSheet, setShowCounterSheet] = useState(false);
@@ -457,8 +466,8 @@ export default function ChatScreen() {
               <Feather name="user" size={12} color={colors.mutedForeground} />
               <Text style={[card.detailText, { color: colors.mutedForeground }]}>
                 {isOwner && partner
-                  ? `${partner.displayName || partner.username} wants to ${request.requestType === "GIFT" ? "claim gift" : request.requestType.toLowerCase()}`
-                  : `You requested to ${request.requestType === "GIFT" ? "claim gift" : request.requestType.toLowerCase()}`}
+                  ? `${partner.displayName || partner.username} wants to ${request.requestType === "GIFT" ? "claim gift" : (request.requestType?.toLowerCase() ?? "borrow")}`
+                  : `You requested to ${request.requestType === "GIFT" ? "claim gift" : (request.requestType?.toLowerCase() ?? "borrow")}`}
               </Text>
             </View>
 
@@ -639,8 +648,20 @@ export default function ChatScreen() {
               </View>
             )}
 
+            {/* RENT + ACCEPTED: pay rental + deposit */}
+            {isBorrower && status === "ACCEPTED" && request.requestType === "RENT" && (
+              <Pressable
+                style={[card.btn, { backgroundColor: "#16a34a", borderColor: "#16a34a" }]}
+                onPress={() => setShowRentalSheet(true)}
+                disabled={anyMutating}
+              >
+                <CreditCard size={14} color="#fff" strokeWidth={2} />
+                <Text style={[card.btnLabel, { color: "#fff" }]}>Pay & Confirm Booking</Text>
+              </Pressable>
+            )}
+
             {/* ACCEPTED: borrower can still cancel before deposit is confirmed */}
-            {status === "ACCEPTED" && isBorrower && !showDepositNeeded && (
+            {status === "ACCEPTED" && isBorrower && !showDepositNeeded && request.requestType !== "RENT" && (
               <Pressable
                 style={[card.btn, { borderColor: colors.border }]}
                 onPress={() =>
@@ -696,20 +717,18 @@ export default function ChatScreen() {
               </Pressable>
             )}
 
-            {/* ACCEPTED + in_app deposit: borrower needs to pay */}
+            {/* ACCEPTED + in_app deposit: borrower pays deposit */}
             {showDepositNeeded && (
-              <View style={[card.infoBanner, { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" }]}>
-                <Text style={[card.infoBannerTitle, { color: "#1e40af" }]}>
-                  In-app deposit required
+              <Pressable
+                style={[card.btn, { backgroundColor: "#0d9488", borderColor: "#0d9488" }]}
+                onPress={() => setShowDepositSheet(true)}
+                disabled={anyMutating}
+              >
+                <Shield size={14} color="#fff" strokeWidth={2} />
+                <Text style={[card.btnLabel, { color: "#fff" }]}>
+                  Pay ${depositAmt ?? "–"} deposit
                 </Text>
-                <Text style={[card.infoBannerText, { color: "#1d4ed8" }]}>
-                  A trust deposit of{" "}
-                  <Text style={{ fontFamily: "Inter_600SemiBold" }}>
-                    ${depositAmt ?? "–"}
-                  </Text>{" "}
-                  is required to confirm this borrow. Please complete payment on the ShareSwap web app to continue.
-                </Text>
-              </View>
+              </Pressable>
             )}
 
             {/* ACCEPTED + in_app deposit: owner waits */}
@@ -1254,6 +1273,51 @@ export default function ChatScreen() {
         required={earnRequired}
         context={earnContext}
       />
+
+      {/* BORROW in_app deposit payment sheet */}
+      {request && (
+        <PayDepositSheet
+          visible={showDepositSheet}
+          onClose={() => setShowDepositSheet(false)}
+          onSuccess={() => {
+            setShowDepositSheet(false);
+            invalidateAll();
+          }}
+          requestId={request.id}
+          item={{
+            name: request.item?.name ?? "Item",
+            tier: request.item?.tier ?? null,
+            originalValue: request.item?.originalValue ?? null,
+            shareCoinPrice: request.item?.shareCoinPrice ?? null,
+          }}
+          startDate={request.startDate}
+          endDate={request.endDate}
+          reputationScore={Number((user as any)?.reputationScore ?? 0)}
+        />
+      )}
+
+      {/* RENT payment sheet */}
+      {request && (
+        <PayRentalSheet
+          visible={showRentalSheet}
+          onClose={() => setShowRentalSheet(false)}
+          onSuccess={() => {
+            setShowRentalSheet(false);
+            invalidateAll();
+          }}
+          requestId={request.id}
+          item={{
+            name: request.item?.name ?? "Item",
+            tier: request.item?.tier ?? null,
+            category: request.item?.category ?? null,
+            replacementValue: request.item?.replacementValue ?? null,
+            dollarsPrice: request.item?.dollarsPrice ?? null,
+            securityDeposit: request.item?.securityDeposit ?? null,
+          }}
+          startDate={request.startDate}
+          endDate={request.endDate}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }

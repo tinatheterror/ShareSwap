@@ -6900,7 +6900,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     try {
-      const { requestId, depositAmount, rentalAmount, processingFee, platformFee } = req.body;
+      const { requestId, depositAmount, rentalAmount, processingFee, platformFee, confirmIfSaved } = req.body;
 
       if (!requestId || !depositAmount || depositAmount <= 0) {
         return res.status(400).json({ error: "Invalid request parameters" });
@@ -6953,14 +6953,24 @@ Respond with ONLY the category name, nothing else.`
       if (hasSavedCard) {
         paymentIntentParams.customer = userRecord.stripeCustomerId;
         paymentIntentParams.payment_method = userRecord.stripePaymentMethodId;
+        // Native app path: confirm immediately off-session so no Stripe UI is needed.
+        if (confirmIfSaved) {
+          paymentIntentParams.confirm = true;
+          paymentIntentParams.off_session = true;
+        }
       }
 
       const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+      const alreadyConfirmed =
+        hasSavedCard &&
+        !!confirmIfSaved &&
+        (paymentIntent.status === "succeeded" || paymentIntent.status === "requires_capture");
 
       res.json({
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
         hasSavedCard,
+        alreadyConfirmed,
         depositAmount,
         rentalAmount,
         totalHoldAmount: totalChargeAmount,

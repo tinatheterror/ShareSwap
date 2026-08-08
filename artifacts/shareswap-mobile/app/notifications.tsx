@@ -18,6 +18,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useNotifications, type Notification } from "@/hooks/useNotifications";
+import { useAuth } from "@/context/AuthContext";
+import { apiGet } from "@/lib/api";
 import { safeDate } from "@/lib/dateUtils";
 
 // ── Time-ago helper (matches web display) ──────────────────────────────────
@@ -117,6 +119,7 @@ export default function NotificationsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useAuth();
   const { notifications, unreadCount, markAllRead, markRead } = useNotifications();
 
   const [refreshing, setRefreshing] = React.useState(false);

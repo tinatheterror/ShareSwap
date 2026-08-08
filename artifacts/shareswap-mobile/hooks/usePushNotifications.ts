@@ -128,27 +128,38 @@ export function useRegisterPushToken(isAuthenticated: boolean): void {
  * Mount this hook at the root layout to handle deep-links from notification taps.
  * Maps the notification data shape set by the API server to the correct route.
  */
+/**
+ * Holds notification data that arrived while the app was killed (before the
+ * router and session are ready). Cleared once navigation is attempted.
+ */
+let _killedStatePending: Record<string, unknown> | null = null;
+
 export function usePushNotificationNavigation() {
   const notificationListener = useRef<NotificationsType.EventSubscription | null>(null);
   const responseListener = useRef<NotificationsType.EventSubscription | null>(null);
-  // Keep a stable ref to the current user so the async navigate helper can
-  // read it without needing to be re-registered on every user change.
   const { user } = useAuth();
   const userRef = useRef(user);
   useEffect(() => { userRef.current = user; }, [user]);
+
+  // Once the user is loaded, flush any notification that arrived from a killed state
+  useEffect(() => {
+    if (!user || !_killedStatePending) return;
+    const data = _killedStatePending;
+    _killedStatePending = null;
+    navigateFromPushData(data, { current: user }).catch(() => {});
+  }, [user]);
 
   useEffect(() => {
     // Push notification APIs are not available on web
     if (Platform.OS === "web") return;
 
+    // Foreground/background tap: router + session are already up, navigate immediately
     const handle = (data: Record<string, unknown>) =>
       navigateFromPushData(data, userRef).catch(() => {});
 
     // Notification received while app is in the foreground (no navigation, just display)
     notificationListener.current =
-      Notifications.addNotificationReceivedListener(() => {
-        // The handler above already shows the alert; nothing extra to do here.
-      });
+      Notifications.addNotificationReceivedListener(() => {});
 
     // User tapped a notification (foreground or background)
     responseListener.current =
@@ -157,11 +168,20 @@ export function usePushNotificationNavigation() {
         handle(data);
       });
 
-    // Handle the notification that launched the app from a killed state
+    // Notification that cold-launched the app: router isn't mounted yet.
+    // If we already have chatUserId we can navigate after a short delay for
+    // router init; otherwise hold the data and let the user-loaded effect above
+    // retry with a live session.
     Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (response?.notification?.request?.content?.data) {
-        const data = response.notification.request.content.data as Record<string, unknown>;
-        handle(data);
+      if (!response?.notification?.request?.content?.data) return;
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      const chatUserId = data.chatUserId as string | number | undefined;
+      if (chatUserId) {
+        // Router needs ~300ms to mount after a cold start
+        setTimeout(() => handle(data), 350);
+      } else {
+        // Need the session — store and let the user-effect flush it
+        _killedStatePending = data;
       }
     });
 

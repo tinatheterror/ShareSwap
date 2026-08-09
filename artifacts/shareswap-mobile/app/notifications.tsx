@@ -133,6 +133,16 @@ export default function NotificationsScreen() {
   async function handleNotifPress(notif: Notification) {
     if (!notif.isRead) markRead(notif.id);
 
+    // Type-specific deep-links (matches web notifications-page.tsx routing)
+    if (notif.type === "trust_score_changed" || notif.type === "level_up" || notif.type === "milestone_achieved" || notif.type === "badge_earned") {
+      router.push("/(tabs)/achievements" as never);
+      return;
+    }
+    if (notif.type === "sharecoin_earned" || notif.type === "referral_joined") {
+      router.push("/sharecoin-wallet" as never);
+      return;
+    }
+
     if (notif.requestId) {
       try {
         // Need the partner's userId — fetch requests to resolve it

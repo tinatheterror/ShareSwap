@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import React from "react";
+import { useLocalSearchParams } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -120,12 +121,52 @@ export default function AchievementsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const isWeb = Platform.OS === "web";
+  const { from } = useLocalSearchParams<{ from?: string }>();
 
   const { data, isLoading } = useQuery<TrustData>({
     queryKey: ["/api/achievements"],
     queryFn: () => apiGet<TrustData>("/api/achievements"),
     enabled: !!user,
   });
+
+  // Animate trust score from `from` param → current score (matches web ?from= behaviour)
+  const currentScore = data?.score ?? 0;
+  const fromScore = from ? parseInt(from, 10) : null;
+  const [displayScore, setDisplayScore] = useState(fromScore ?? currentScore);
+  const animFrameRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (fromScore === null || isNaN(fromScore) || data === undefined) {
+      setDisplayScore(currentScore);
+      return;
+    }
+    // 300 ms delay → animate over ~1400 ms (matching web requestAnimationFrame ramp)
+    const start = fromScore;
+    const end = currentScore;
+    const duration = 1400;
+    const stepMs = 16;
+    const steps = Math.ceil(duration / stepMs);
+    let step = 0;
+    const delay = setTimeout(() => {
+      animFrameRef.current = setInterval(() => {
+        step++;
+        const progress = step / steps;
+        // ease-out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setDisplayScore(Math.round(start + (end - start) * eased));
+        if (step >= steps) {
+          if (animFrameRef.current) clearInterval(animFrameRef.current);
+          setDisplayScore(end);
+        }
+      }, stepMs);
+    }, 300);
+
+    return () => {
+      clearTimeout(delay);
+      if (animFrameRef.current) clearInterval(animFrameRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.score]);
 
   const levelColor = data?.level
     ? LEVEL_COLORS[data.level] ?? colors.primary
@@ -171,7 +212,7 @@ export default function AchievementsScreen() {
             ]}
           >
             <View style={styles.trustCardTop}>
-              <TrustRing score={data?.score ?? 0} color={levelColor} />
+              <TrustRing score={displayScore} color={levelColor} />
               <View style={styles.trustInfo}>
                 <Text style={[styles.trustScoreLabel, { color: colors.mutedForeground }]}>
                   Trust Score

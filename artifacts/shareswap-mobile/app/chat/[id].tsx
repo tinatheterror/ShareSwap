@@ -2,7 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +27,9 @@ import { useAuth } from "@/context/AuthContext";
 import { InsufficientShareCoinsModal } from "@/components/InsufficientShareCoinsModal";
 import { PayDepositSheet } from "@/components/PayDepositSheet";
 import { PayRentalSheet } from "@/components/PayRentalSheet";
+import { HandoffSheet } from "@/components/HandoffSheet";
+import { ReturnConfirmationSheet } from "@/components/ReturnConfirmationSheet";
+import { PostReturnReviewSheet } from "@/components/PostReturnReviewSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Message {
@@ -161,8 +164,6 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   const [text, setText] = useState("");
-  const [showPinEntry, setShowPinEntry] = useState(false);
-  const [pinInput, setPinInput] = useState("");
   const [ownerPin, setOwnerPin] = useState<PinData | null>(null);
   const [showEarnModal, setShowEarnModal] = useState(false);
   const [earnRequired, setEarnRequired] = useState(0);
@@ -172,6 +173,13 @@ export default function ChatScreen() {
   // Payment sheets
   const [showDepositSheet, setShowDepositSheet] = useState(false);
   const [showRentalSheet, setShowRentalSheet] = useState(false);
+
+  // Handoff / return / review sheets
+  const [showHandoffSheetOwner, setShowHandoffSheetOwner] = useState(false);
+  const [showHandoffSheetBorrower, setShowHandoffSheetBorrower] = useState(false);
+  const [showReturnSheet, setShowReturnSheet] = useState(false);
+  const [showConfirmReturnSheet, setShowConfirmReturnSheet] = useState(false);
+  const [showReviewSheet, setShowReviewSheet] = useState(false);
 
   // Counter-proposal sheet
   const [showCounterSheet, setShowCounterSheet] = useState(false);
@@ -204,6 +212,24 @@ export default function ChatScreen() {
 
   const reqId = requestId ? parseInt(requestId) : null;
   const request = reqId ? (allRequests?.find((r) => r.id === reqId) ?? null) : null;
+
+  // Auto-show review sheet on first transition to COMPLETED/COMPLETED_EARLY
+  const prevStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!request) return;
+    const prev = prevStatusRef.current;
+    const curr = request.status;
+    prevStatusRef.current = curr;
+    if (
+      prev &&
+      prev !== "COMPLETED" &&
+      prev !== "COMPLETED_EARLY" &&
+      (curr === "COMPLETED" || curr === "COMPLETED_EARLY")
+    ) {
+      setShowReviewSheet(true);
+    }
+  }, [request?.status]);
+
   const isOwner = !!(request && request.item?.ownerId === user?.id);
   const isBorrower = !!(request && request.requesterId === user?.id);
   // Counter proposed to ME (I must respond)
@@ -338,65 +364,6 @@ export default function ChatScreen() {
     onError: (e: Error) => Alert.alert("Error", e.message),
   });
 
-  const verifyPinMutation = useMutation({
-    mutationFn: (pin: string) =>
-      apiPost(`/api/requests/${requestId}/verify-pin`, { pin }),
-    onSuccess: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setShowPinEntry(false);
-      setPinInput("");
-      invalidateAll();
-    },
-    onError: (e: Error) => Alert.alert("Incorrect PIN", e.message),
-  });
-
-  const returnMutation = useMutation({
-    mutationFn: () => apiPost(`/api/requests/${requestId}/return`),
-    onSuccess: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      invalidateAll();
-    },
-    onError: (e: Error) => Alert.alert("Error", e.message),
-  });
-
-  const confirmReturnMutation = useMutation({
-    mutationFn: () =>
-      apiPost(`/api/requests/${requestId}/confirm-return`, { sameCondition: true }),
-    onSuccess: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      invalidateAll();
-    },
-    onError: (e: Error) => Alert.alert("Error", e.message),
-  });
-
-  function handleReturnPress() {
-    Alert.alert(
-      "Return item?",
-      "This will notify the owner that you've returned the item. Confirm?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Yes, return it",
-          onPress: () => returnMutation.mutate(),
-        },
-      ],
-    );
-  }
-
-  function handleConfirmReturn() {
-    Alert.alert(
-      "Confirm item returned?",
-      "Did you receive the item back in good condition? The borrower's deposit will be released.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm",
-          onPress: () => confirmReturnMutation.mutate(),
-        },
-      ],
-    );
-  }
-
   // ── Request card ─────────────────────────────────────────────────────────────
   function renderRequestCard() {
     if (!request) return null;
@@ -433,8 +400,7 @@ export default function ChatScreen() {
 
     const anyMutating =
       acceptMutation.isPending || declineMutation.isPending ||
-      cancelMutation.isPending || returnMutation.isPending ||
-      confirmReturnMutation.isPending || acceptCounterMutation.isPending ||
+      cancelMutation.isPending || acceptCounterMutation.isPending ||
       declineCounterMutation.isPending;
 
     return (
@@ -779,10 +745,23 @@ export default function ChatScreen() {
               </View>
             )}
 
+            {/* Owner: confirm handoff button (opens HandoffSheet) */}
+            {canShowOwnerPin && (
+              <Pressable
+                style={[card.btn, { backgroundColor: "#0d9488", borderColor: "#0d9488" }]}
+                onPress={() => setShowHandoffSheetOwner(true)}
+                disabled={anyMutating}
+              >
+                <Feather name="check-circle" size={14} color="#fff" />
+                <Text style={[card.btnLabel, { color: "#fff" }]}>Confirm handoff</Text>
+              </Pressable>
+            )}
+
+            {/* Borrower: enter handoff code (opens HandoffSheet) */}
             {showPinEntryForBorrower && !hasPendingCounter && (
               <Pressable
                 style={[card.btn, { backgroundColor: "#4f46e5", borderColor: "#4f46e5" }]}
-                onPress={() => setShowPinEntry(true)}
+                onPress={() => setShowHandoffSheetBorrower(true)}
               >
                 <Text style={[card.btnLabel, { color: "#fff" }]}>Enter handoff code</Text>
               </Pressable>
@@ -791,17 +770,12 @@ export default function ChatScreen() {
             {/* IN_PROGRESS */}
             {status === "IN_PROGRESS" && isBorrower && (
               <Pressable
-                style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY }]}
-                onPress={handleReturnPress}
-                disabled={returnMutation.isPending}
+                style={[card.btn, { backgroundColor: "#2563eb", borderColor: "#2563eb" }]}
+                onPress={() => setShowReturnSheet(true)}
+                disabled={anyMutating}
               >
-                {returnMutation.isPending
-                  ? <ActivityIndicator size="small" color="#fff" />
-                  : <>
-                      <Feather name="rotate-ccw" size={14} color="#fff" />
-                      <Text style={[card.btnLabel, { color: "#fff" }]}>Return item</Text>
-                    </>
-                }
+                <Feather name="rotate-ccw" size={14} color="#fff" />
+                <Text style={[card.btnLabel, { color: "#fff" }]}>Return item</Text>
               </Pressable>
             )}
             {status === "IN_PROGRESS" && isOwner && (
@@ -815,17 +789,12 @@ export default function ChatScreen() {
             {/* RETURN_REQUESTED */}
             {status === "RETURN_REQUESTED" && isOwner && (
               <Pressable
-                style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY }]}
-                onPress={handleConfirmReturn}
-                disabled={confirmReturnMutation.isPending}
+                style={[card.btn, { backgroundColor: "#16a34a", borderColor: "#16a34a" }]}
+                onPress={() => setShowConfirmReturnSheet(true)}
+                disabled={anyMutating}
               >
-                {confirmReturnMutation.isPending
-                  ? <ActivityIndicator size="small" color="#fff" />
-                  : <>
-                      <Feather name="check-circle" size={14} color="#fff" />
-                      <Text style={[card.btnLabel, { color: "#fff" }]}>Confirm return</Text>
-                    </>
-                }
+                <Feather name="check-circle" size={14} color="#fff" />
+                <Text style={[card.btnLabel, { color: "#fff" }]}>Confirm return</Text>
               </Pressable>
             )}
             {status === "RETURN_REQUESTED" && isBorrower && (
@@ -1178,45 +1147,33 @@ export default function ChatScreen() {
         </Pressable>
       </View>
 
-      {/* PIN entry modal (borrower enters owner's code) */}
-      <Modal visible={showPinEntry} transparent animationType="slide" onRequestClose={() => setShowPinEntry(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setShowPinEntry(false)} />
-        <View style={[styles.pinSheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
-          <View style={[styles.pinHandle, { backgroundColor: colors.border }]} />
-          <Text style={[styles.pinTitle, { color: colors.foreground }]}>Enter handoff code</Text>
-          <Text style={[styles.pinSub, { color: colors.mutedForeground }]}>
-            Ask the owner for their 4-digit code and enter it below to confirm the handoff.
-          </Text>
-          <TextInput
-            style={[styles.pinInput, { borderColor: colors.border, backgroundColor: colors.muted, color: colors.foreground }]}
-            placeholder="••••"
-            placeholderTextColor={colors.mutedForeground}
-            value={pinInput}
-            onChangeText={setPinInput}
-            keyboardType="number-pad"
-            maxLength={4}
-            textAlign="center"
-          />
-          <Pressable
-            style={[
-              styles.pinSubmit,
-              { backgroundColor: pinInput.length === 4 ? PRIMARY : colors.muted },
-            ]}
-            onPress={() => {
-              if (pinInput.length === 4) verifyPinMutation.mutate(pinInput);
-            }}
-            disabled={pinInput.length < 4 || verifyPinMutation.isPending}
-          >
-            {verifyPinMutation.isPending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={[styles.pinSubmitText, { color: pinInput.length === 4 ? "#fff" : colors.mutedForeground }]}>
-                Confirm handoff
-              </Text>
-            )}
-          </Pressable>
-        </View>
-      </Modal>
+      {/* Handoff sheet — owner view */}
+      {request && (
+        <HandoffSheet
+          visible={showHandoffSheetOwner}
+          onClose={() => setShowHandoffSheetOwner(false)}
+          onSuccess={() => { setShowHandoffSheetOwner(false); invalidateAll(); }}
+          requestId={request.id}
+          userRole="owner"
+          itemName={request.item?.name ?? "Item"}
+          requestType={request.requestType}
+          deliveryMethod={request.deliveryMethod}
+        />
+      )}
+
+      {/* Handoff sheet — borrower view */}
+      {request && (
+        <HandoffSheet
+          visible={showHandoffSheetBorrower}
+          onClose={() => setShowHandoffSheetBorrower(false)}
+          onSuccess={() => { setShowHandoffSheetBorrower(false); invalidateAll(); }}
+          requestId={request.id}
+          userRole="borrower"
+          itemName={request.item?.name ?? "Item"}
+          requestType={request.requestType}
+          deliveryMethod={request.deliveryMethod}
+        />
+      )}
 
       {/* Counter-proposal sheet (owner proposes modified terms) */}
       <Modal visible={showCounterSheet} transparent animationType="slide" onRequestClose={() => setShowCounterSheet(false)}>
@@ -1273,6 +1230,50 @@ export default function ChatScreen() {
         required={earnRequired}
         context={earnContext}
       />
+
+      {/* Return sheet — borrower initiates return */}
+      {request && (
+        <ReturnConfirmationSheet
+          visible={showReturnSheet}
+          onClose={() => setShowReturnSheet(false)}
+          onSuccess={() => { setShowReturnSheet(false); invalidateAll(); }}
+          requestId={request.id}
+          itemName={request.item?.name ?? "Item"}
+          depositAmount={request.trustDepositAmount}
+          userRole="borrower"
+          requestType={request.requestType}
+          endDate={request.endDate}
+          depositMethod={request.depositMethod}
+        />
+      )}
+
+      {/* Return sheet — owner confirms return */}
+      {request && (
+        <ReturnConfirmationSheet
+          visible={showConfirmReturnSheet}
+          onClose={() => setShowConfirmReturnSheet(false)}
+          onSuccess={() => { setShowConfirmReturnSheet(false); invalidateAll(); }}
+          requestId={request.id}
+          itemName={request.item?.name ?? "Item"}
+          depositAmount={request.trustDepositAmount}
+          userRole="owner"
+          requestType={request.requestType}
+          endDate={request.endDate}
+          depositMethod={request.depositMethod}
+        />
+      )}
+
+      {/* Post-return review sheet */}
+      {request && partner && (
+        <PostReturnReviewSheet
+          visible={showReviewSheet}
+          onClose={() => setShowReviewSheet(false)}
+          reviewedUserId={partner.id}
+          reviewedUserName={partner.displayName || partner.username}
+          requestId={request.id}
+          requestType={request.requestType as any}
+        />
+      )}
 
       {/* BORROW in_app deposit payment sheet */}
       {request && (

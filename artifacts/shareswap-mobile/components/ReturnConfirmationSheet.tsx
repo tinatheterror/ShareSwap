@@ -1,0 +1,479 @@
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useColors } from "@/hooks/useColors";
+import { apiPost } from "@/lib/api";
+
+interface ReturnConfirmationSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  requestId: number;
+  itemName: string;
+  depositAmount: number | null;
+  userRole: "owner" | "borrower";
+  requestType?: string;
+  endDate?: string | null;
+  depositMethod?: string | null;
+}
+
+const CONDITION_RATINGS = [
+  { value: 4, label: "Good", description: "Minor wear, as expected" },
+  { value: 3, label: "Fair", description: "Some wear but acceptable" },
+  { value: 2, label: "Poor", description: "Noticeable damage or wear" },
+  { value: 1, label: "Damaged", description: "Significant damage occurred" },
+];
+
+export function ReturnConfirmationSheet({
+  visible,
+  onClose,
+  onSuccess,
+  requestId,
+  itemName,
+  depositAmount,
+  userRole,
+  requestType = "BORROW",
+  endDate,
+  depositMethod,
+}: ReturnConfirmationSheetProps) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
+
+  const [sameCondition, setSameCondition] = useState(true);
+  const [conditionRating, setConditionRating] = useState(4);
+  const [conditionNotes, setConditionNotes] = useState("");
+  const [confirmDispute, setConfirmDispute] = useState(false);
+
+  const isEarlyReturn = endDate ? new Date() < new Date(endDate) : false;
+  const isRental = requestType === "RENT";
+  const shouldTriggerDispute = !sameCondition && conditionRating <= 2;
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["/api/requests"] });
+    qc.invalidateQueries({ queryKey: ["/api/user"] });
+    qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+  };
+
+  // Borrower: initiate return
+  const initiateReturnMutation = useMutation({
+    mutationFn: () => apiPost(`/api/requests/${requestId}/return`, {}),
+    onSuccess: () => {
+      invalidate();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onSuccess();
+    },
+    onError: () => {},
+  });
+
+  // Owner: confirm return
+  const confirmReturnMutation = useMutation({
+    mutationFn: () =>
+      apiPost(`/api/requests/${requestId}/confirm-return`, {
+        conditionRating: sameCondition ? 5 : conditionRating,
+        conditionNotes,
+        sameCondition,
+        triggerDispute: shouldTriggerDispute,
+        disputePhotoUrl: null,
+      }),
+    onSuccess: () => {
+      invalidate();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onSuccess();
+    },
+    onError: () => {},
+  });
+
+  const reset = () => {
+    setSameCondition(true);
+    setConditionRating(4);
+    setConditionNotes("");
+    setConfirmDispute(false);
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
+
+  // ── BORROWER VIEW ──────────────────────────────────────────────────────────
+  if (userRole === "borrower") {
+    return (
+      <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+        <Pressable style={ss.backdrop} onPress={handleClose} />
+        <View
+          style={[ss.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 24 }]}
+        >
+          <View style={[ss.handle, { backgroundColor: colors.border }]} />
+          <Text style={[ss.title, { color: colors.foreground }]}>
+            {isEarlyReturn ? "Return Item Early" : "Return Item"}
+          </Text>
+
+          {isEarlyReturn && (
+            <Text style={[ss.sub, { color: colors.mutedForeground }]}>
+              {isRental
+                ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
+                : "You're returning this item before your borrow period ends. No penalty applies."}
+            </Text>
+          )}
+
+          {depositMethod === "in_person" ? (
+            <View style={[ss.infoBox, { backgroundColor: "#fffbeb", borderColor: "#fde68a" }]}>
+              <Feather name="shield" size={14} color="#b45309" />
+              <Text style={{ color: "#92400e", fontSize: 13, flex: 1 }}>
+                Your ${depositAmount ?? "–"} deposit was paid in person. Make sure the owner
+                returns it to you when you hand back the item.
+              </Text>
+            </View>
+          ) : (
+            <View style={[ss.infoBox, { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" }]}>
+              <Feather name="shield" size={14} color="#1d4ed8" />
+              <Text style={{ color: "#1d4ed8", fontSize: 13, flex: 1 }}>
+                Your ${depositAmount ?? "–"} authorization hold will be lifted once the owner
+                confirms the item is returned in good condition.
+              </Text>
+            </View>
+          )}
+
+          <View style={[ss.infoBox, { backgroundColor: "#fffbeb", borderColor: "#fde68a" }]}>
+            <Feather name="alert-circle" size={14} color="#b45309" />
+            <Text style={{ color: "#92400e", fontSize: 12, flex: 1 }}>
+              {isEarlyReturn
+                ? "Only initiate the early return process after you've communicated and returned the item to the owner."
+                : "Only confirm the return after you've physically handed the item back to the owner."}
+            </Text>
+          </View>
+
+          <View style={ss.btnRow}>
+            <Pressable
+              style={[ss.btn, { flex: 1, borderColor: colors.border }]}
+              onPress={handleClose}
+              disabled={initiateReturnMutation.isPending}
+            >
+              <Text style={[ss.btnTxt, { color: colors.foreground }]}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              style={[ss.btn, { flex: 1, backgroundColor: "#2563eb", borderColor: "#2563eb" }]}
+              onPress={() => initiateReturnMutation.mutate()}
+              disabled={initiateReturnMutation.isPending}
+            >
+              {initiateReturnMutation.isPending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Feather name="rotate-ccw" size={14} color="#fff" />
+                  <Text style={[ss.btnTxt, { color: "#fff" }]}>
+                    {isEarlyReturn ? "Initiate Early Return" : "Return Item"}
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  // ── OWNER VIEW ─────────────────────────────────────────────────────────────
+  const canSubmit =
+    !shouldTriggerDispute
+      ? sameCondition || conditionNotes.trim().length > 0
+      : confirmDispute && conditionNotes.trim().length > 0;
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <Pressable style={ss.backdrop} onPress={handleClose} />
+      <View
+        style={[
+          ss.sheet,
+          { backgroundColor: colors.card, paddingBottom: insets.bottom + 24, maxHeight: "90%" },
+        ]}
+      >
+        <View style={[ss.handle, { backgroundColor: colors.border }]} />
+        <Text style={[ss.title, { color: colors.foreground }]}>
+          {isEarlyReturn ? "Confirm Early Return" : "Confirm Item Return"}
+        </Text>
+
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 0 }}>
+          <View style={{ gap: 14, paddingBottom: 8 }}>
+            {isEarlyReturn && (
+              <View style={[ss.infoBox, { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" }]}>
+                <Feather name="clock" size={14} color="#1d4ed8" />
+                <Text style={{ color: "#1d4ed8", fontSize: 13, flex: 1 }}>
+                  {isRental
+                    ? "You keep the full rental amount — no refund for unused days."
+                    : "No ShareCoins deducted for early return. Borrower's deposit will be released immediately."}
+                </Text>
+              </View>
+            )}
+
+            {/* Same condition checkbox */}
+            <Pressable
+              style={[ss.conditionCard, { borderColor: sameCondition ? "#0d9488" : colors.border, backgroundColor: colors.muted }]}
+              onPress={() => {
+                const next = !sameCondition;
+                setSameCondition(next);
+                if (next) {
+                  setConditionRating(4);
+                  setConfirmDispute(false);
+                }
+              }}
+            >
+              <View
+                style={[
+                  ss.checkbox,
+                  {
+                    borderColor: sameCondition ? "#0d9488" : colors.border,
+                    backgroundColor: sameCondition ? "#0d9488" : "transparent",
+                  },
+                ]}
+              >
+                {sameCondition && <Feather name="check" size={12} color="#fff" />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>
+                  Returned in the same condition
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                  Item was returned with no damage or issues
+                </Text>
+              </View>
+            </Pressable>
+
+            {/* Condition rating (shown when not same) */}
+            {!sameCondition && (
+              <View style={{ gap: 8 }}>
+                <Text style={{ fontSize: 13, color: colors.foreground, fontFamily: "Inter_500Medium" }}>
+                  ★ Rate Item Condition
+                </Text>
+                {CONDITION_RATINGS.map((r) => (
+                  <Pressable
+                    key={r.value}
+                    style={[
+                      ss.ratingRow,
+                      {
+                        borderColor: conditionRating === r.value ? "#0d9488" : colors.border,
+                        backgroundColor:
+                          conditionRating === r.value ? "#f0fdf4" : colors.background,
+                      },
+                    ]}
+                    onPress={() => setConditionRating(r.value)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground }}>
+                        {r.label}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                        {r.description}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 2 }}>
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Text
+                          key={s}
+                          style={{ fontSize: 12, color: s <= r.value ? "#f59e0b" : "#d1d5db" }}
+                        >
+                          ★
+                        </Text>
+                      ))}
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {/* Notes */}
+            <View style={{ gap: 6 }}>
+              <Text style={{ fontSize: 13, color: colors.foreground, fontFamily: "Inter_500Medium" }}>
+                {!sameCondition ? "Describe the issue *" : "Additional Notes (optional)"}
+              </Text>
+              <TextInput
+                style={[
+                  ss.notes,
+                  { borderColor: colors.border, backgroundColor: colors.muted, color: colors.foreground },
+                ]}
+                placeholder={
+                  !sameCondition
+                    ? "Please describe what happened to the item..."
+                    : "Any comments about the item condition..."
+                }
+                placeholderTextColor={colors.mutedForeground}
+                value={conditionNotes}
+                onChangeText={setConditionNotes}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* Dispute warning */}
+            {shouldTriggerDispute && (
+              <View style={[ss.disputeBox, { backgroundColor: "#fef2f2", borderColor: "#fecaca" }]}>
+                <Feather name="alert-triangle" size={16} color="#dc2626" />
+                <View style={{ flex: 1, gap: 10 }}>
+                  <View>
+                    <Text style={{ color: "#991b1b", fontFamily: "Inter_500Medium", fontSize: 13 }}>
+                      This will open a dispute
+                    </Text>
+                    <Text style={{ color: "#dc2626", fontSize: 12, marginTop: 3 }}>
+                      Since you reported damage, we'll hold the{" "}
+                      {isRental ? "renter's" : "borrower's"} ${depositAmount ?? "–"} deposit while
+                      we review. Both parties will be contacted to resolve this.
+                    </Text>
+                  </View>
+                  <Pressable
+                    style={ss.disputeCheck}
+                    onPress={() => setConfirmDispute(!confirmDispute)}
+                  >
+                    <View
+                      style={[
+                        ss.checkbox,
+                        {
+                          borderColor: confirmDispute ? "#dc2626" : "#fca5a5",
+                          backgroundColor: confirmDispute ? "#dc2626" : "transparent",
+                        },
+                      ]}
+                    >
+                      {confirmDispute && <Feather name="check" size={12} color="#fff" />}
+                    </View>
+                    <Text style={{ color: "#991b1b", fontSize: 12, flex: 1 }}>
+                      I understand and want to proceed with the dispute
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        <View style={ss.btnRow}>
+          <Pressable
+            style={[ss.btn, { flex: 1, borderColor: colors.border }]}
+            onPress={handleClose}
+            disabled={confirmReturnMutation.isPending}
+          >
+            <Text style={[ss.btnTxt, { color: colors.foreground }]}>Cancel</Text>
+          </Pressable>
+          <Pressable
+            style={[
+              ss.btn,
+              {
+                flex: 1,
+                backgroundColor: shouldTriggerDispute ? "#dc2626" : "#16a34a",
+                borderColor: shouldTriggerDispute ? "#dc2626" : "#16a34a",
+                opacity: canSubmit ? 1 : 0.5,
+              },
+            ]}
+            onPress={() => confirmReturnMutation.mutate()}
+            disabled={!canSubmit || confirmReturnMutation.isPending}
+          >
+            {confirmReturnMutation.isPending ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Feather
+                  name={shouldTriggerDispute ? "alert-triangle" : "check-circle"}
+                  size={14}
+                  color="#fff"
+                />
+                <Text style={[ss.btnTxt, { color: "#fff" }]}>
+                  {shouldTriggerDispute ? "Open Dispute" : "Confirm Return"}
+                </Text>
+              </>
+            )}
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const ss = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)" },
+  sheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    gap: 14,
+  },
+  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 4 },
+  title: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  sub: { fontSize: 13, lineHeight: 18 },
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+  },
+  btnRow: { flexDirection: "row", gap: 10 },
+  btn: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  btnTxt: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  conditionCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  notes: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 13,
+    minHeight: 72,
+  },
+  disputeBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+  },
+  disputeCheck: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+});

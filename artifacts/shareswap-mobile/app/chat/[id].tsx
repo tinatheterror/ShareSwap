@@ -101,6 +101,9 @@ interface ItemRequest {
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
   item: RequestItem | null;
+  // Late-handoff date adjustment
+  handoffDelayAdjustmentStatus: string | null;
+  proposedAdjustedEndDate: string | null;
 }
 
 interface PinData {
@@ -196,6 +199,7 @@ export default function ChatScreen() {
 
   // Counter-proposal sheet
   const [showCounterSheet, setShowCounterSheet] = useState(false);
+
 
   // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: partner } = useQuery<PublicProfile>({
@@ -1274,6 +1278,7 @@ export default function ChatScreen() {
           requestType={request.requestType as any}
         />
       )}
+
 
       {/* BORROW in_app deposit payment sheet */}
       {request && (

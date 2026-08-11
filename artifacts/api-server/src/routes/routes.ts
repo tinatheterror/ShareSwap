@@ -7750,10 +7750,13 @@ Respond with ONLY the category name, nothing else.`
         // Use counter-proposed dates if present — they are the agreed-upon dates after negotiation
         const effectiveStart1 = request.item_requests.counterStartDate || request.item_requests.startDate;
         const effectiveEnd1   = request.item_requests.counterEndDate   || request.item_requests.endDate;
+        // Late handoff: charge only for the actual remaining borrow window (handoff→end)
+        const bookedStart1 = effectiveStart1 ? new Date(effectiveStart1) : null;
+        const isLate1 = request.item_requests.requestType === "BORROW" && bookedStart1 && now > bookedStart1;
         const shareCoinAmount = request.item_requests.requestType === "BORROW"
           ? calcBorrowShareCoinCost(
               parseFloat(request.items.shareCoinPrice || "0"),
-              effectiveStart1,
+              isLate1 ? now : effectiveStart1,
               effectiveEnd1,
             )
           : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
@@ -7829,12 +7832,6 @@ Respond with ONLY the category name, nothing else.`
         updateData.shareCoinsChargedAt = now;
         updateData.depositStatus = "held";
         updateData.confirmationMethod = "manual";
-
-        // Detect late handoff (owner showed up after the booked start date)
-        const bookedStart = request.item_requests.startDate ? new Date(request.item_requests.startDate) : null;
-        if (bookedStart && now > bookedStart && request.item_requests.requestType === "BORROW") {
-          updateData.handoffDelayAdjustmentStatus = "pending_borrower_decision";
-        }
 
         // Mark item as unavailable
         await db
@@ -8045,16 +8042,17 @@ Respond with ONLY the category name, nothing else.`
           // Use counter-proposed dates if present — they are the agreed-upon dates after negotiation
           const effectiveStart2 = request.item_requests.counterStartDate || request.item_requests.startDate;
           const effectiveEnd2   = request.item_requests.counterEndDate   || request.item_requests.endDate;
+          const bookedStartMs = effectiveStart2 ? new Date(effectiveStart2).getTime() : null;
+          const bookedEndDate = effectiveEnd2 ? new Date(effectiveEnd2) : null;
+          const isLateHandoff = isBorrow && bookedStartMs && now.getTime() > bookedStartMs;
+          // Late handoff: charge only for actual remaining window (handoff→end); end date unchanged
           const shareCoinAmount = isBorrow
             ? calcBorrowShareCoinCost(
                 parseFloat(request.items.shareCoinPrice || "0"),
-                effectiveStart2,
+                isLateHandoff ? now : effectiveStart2,
                 effectiveEnd2,
               )
             : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
-          const bookedStartMs = effectiveStart2 ? new Date(effectiveStart2).getTime() : null;
-          const bookedEndDate = effectiveEnd2 ? new Date(effectiveEnd2) : null;
-          const isLateHandoff = bookedStartMs && now.getTime() > bookedStartMs;
           const startFmt = effectiveStart2 ? new Date(effectiveStart2).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : null;
           const endFmt = bookedEndDate ? bookedEndDate.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }) : null;
           const handoffFmt = now.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
@@ -8062,7 +8060,7 @@ Respond with ONLY the category name, nothing else.`
           systemMsgs = [
             `🤝 The ${isBorrow ? "borrow" : "rental"} period has officially started`,
             startFmt && endFmt ? `📅 Booked period: ${startFmt} – ${endFmt} | Handoff completed: ${handoffFmt}` : null,
-            isLateHandoff && isBorrow ? `⚠️ Handoff was late — the borrower may message the owner to request a return date adjustment.` : null,
+            isLateHandoff ? `⚠️ Handoff was late — ShareCoins adjusted to reflect the actual borrow duration.` : null,
           ].filter(Boolean) as string[];
 
           // Role-specific ShareCoin messages — each only visible to the relevant party
@@ -8196,9 +8194,12 @@ Respond with ONLY the category name, nothing else.`
       if (requestType === "BORROW") {
         const effectiveStart3 = request.item_requests.counterStartDate || request.item_requests.startDate;
         const effectiveEnd3   = request.item_requests.counterEndDate   || request.item_requests.endDate;
+        // Late handoff: charge only for actual remaining window (handoff→end); end date unchanged
+        const bookedStart3 = effectiveStart3 ? new Date(effectiveStart3) : null;
+        const isLate3 = bookedStart3 && now > bookedStart3;
         const shareCoinAmount = calcBorrowShareCoinCost(
           parseFloat(request.items.shareCoinPrice || "0"),
-          effectiveStart3,
+          isLate3 ? now : effectiveStart3,
           effectiveEnd3,
         );
         if (shareCoinAmount > 0) {
@@ -8234,8 +8235,6 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // GIFT / SWAP → mark as COMPLETED immediately; BORROW/RENT → IN_PROGRESS (period begins)
-      const pinBookedStart = request.item_requests.startDate ? new Date(request.item_requests.startDate) : null;
-      const pinIsLate = pinBookedStart && now > pinBookedStart && requestType === "BORROW";
       const newStatus = isGiftOrSwapPin ? "COMPLETED" : "IN_PROGRESS";
 
       await db.update(itemRequests).set({
@@ -8243,7 +8242,6 @@ Respond with ONLY the category name, nothing else.`
         handoffConfirmedAt: now,
         ...(isGiftOrSwapPin ? { completedAt: now } : { borrowPeriodStartedAt: now }),
         actualHandoffAt: now,
-        handoffDelayAdjustmentStatus: pinIsLate ? "pending_borrower_decision" : "none",
         shareCoinsCharged: !isGiftOrSwapPin,
         shareCoinsChargedAt: isGiftOrSwapPin ? null : now,
         depositStatus: isGiftOrSwapPin ? null : "held",
@@ -8673,10 +8671,13 @@ Respond with ONLY the category name, nothing else.`
           // Use counter-proposed dates if present — they are the agreed-upon dates after negotiation
           const effectiveStart4 = request.item_requests.counterStartDate || request.item_requests.startDate;
           const effectiveEnd4   = request.item_requests.counterEndDate   || request.item_requests.endDate;
+          // Late handoff: charge only for actual remaining window (handoff→end); end date unchanged
+          const bookedStart4 = effectiveStart4 ? new Date(effectiveStart4) : null;
+          const isLate4 = request.item_requests.requestType === "BORROW" && bookedStart4 && now > bookedStart4;
           const shareCoinAmount = request.item_requests.requestType === "BORROW"
           ? calcBorrowShareCoinCost(
               parseFloat(request.items.shareCoinPrice || "0"),
-              effectiveStart4,
+              isLate4 ? now : effectiveStart4,
               effectiveEnd4,
             )
           : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
@@ -8696,11 +8697,9 @@ Respond with ONLY the category name, nothing else.`
             }
           }
 
-          const autoBookedStart = request.item_requests.startDate ? new Date(request.item_requests.startDate) : null;
-          const autoIsLate = autoBookedStart && now > autoBookedStart && request.item_requests.requestType === "BORROW";
           const isAutoSwap = request.item_requests.requestType === "SWAP";
           await db.update(itemRequests)
-            .set({ status: isAutoSwap ? "COMPLETED" : "IN_PROGRESS", handoffConfirmedAt: now, borrowPeriodStartedAt: now, actualHandoffAt: now, handoffDelayAdjustmentStatus: autoIsLate ? "pending_borrower_decision" : "none", shareCoinsCharged: true, shareCoinsChargedAt: now, depositStatus: "held", handoffAutoAdvanced: true })
+            .set({ status: isAutoSwap ? "COMPLETED" : "IN_PROGRESS", handoffConfirmedAt: now, borrowPeriodStartedAt: now, actualHandoffAt: now, shareCoinsCharged: true, shareCoinsChargedAt: now, depositStatus: "held", handoffAutoAdvanced: true })
             .where(eq(itemRequests.id, reqId));
 
           await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));

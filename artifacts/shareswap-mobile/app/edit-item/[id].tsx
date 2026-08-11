@@ -159,6 +159,14 @@ export default function EditItemScreen() {
       formData.append("itemType", itemType);
       formData.append("category", itemType);
       formData.append("condition", condition);
+      const CONDITION_RATING_MAP: Record<string, number> = {
+        "New / Like New": 10,
+        "Good": 7,
+        "Fair": 5,
+        "Well Loved": 3,
+      };
+      const conditionRating = CONDITION_RATING_MAP[condition] ?? 7;
+      formData.append("conditionRating", String(conditionRating));
       formData.append("originalValue", originalValue);
       Object.entries(modes).forEach(([key, value]) => {
         formData.append(key, String(value));

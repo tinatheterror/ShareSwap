@@ -607,10 +607,15 @@ export default function WishlistScreen() {
                     </View>
                   </View>
 
+                  {/* Earn estimate */}
+                  <View style={styles.earnRow}>
+                    <Text style={styles.earnText}>🪙 Earn up to ~20 ShareCoins</Text>
+                  </View>
+
                   <Pressable
                     style={[
                       styles.commBtn,
-                      { marginTop: 16, backgroundColor: helpingSet.has(item.id) ? "#9CA3AF" : colors.primary },
+                      { marginTop: 10, backgroundColor: helpingSet.has(item.id) ? "#9CA3AF" : colors.primary },
                     ]}
                     disabled={helpingSet.has(item.id)}
                     onPress={() => !helpingSet.has(item.id) && markHelping(item.id, item.itemName)}
@@ -1358,6 +1363,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_400Regular",
     marginTop: 2,
+  },
+  earnRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    marginTop: 12,
+  },
+  earnText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: "#64748b",
   },
   commBtn: {
     marginTop: 2,

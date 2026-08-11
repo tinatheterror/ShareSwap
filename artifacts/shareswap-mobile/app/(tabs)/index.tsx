@@ -277,7 +277,7 @@ function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any
           </Text>
         </View>
         <Text style={[scard.meta, { color: colors.mutedForeground }]}>
-          Condition: {item.conditionRating ?? 10}/10
+          Condition: {item.conditionRating ?? 8}/10
         </Text>
         <View style={scard.coinsRow}>
           <Coins size={13} color="#0DCEA1" strokeWidth={2} />

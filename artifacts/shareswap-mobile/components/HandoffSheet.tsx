@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -25,6 +28,7 @@ interface HandoffSheetProps {
   deliveryMethod?: string | null;
   otherPartyConfirmed?: boolean;
   pinExpiresAt?: string | null;
+  pinUsed?: boolean;
 }
 
 type BorrowerView = "pin" | "manual" | "wrong_pin" | "expired" | "rate_limited";
@@ -40,6 +44,7 @@ export function HandoffSheet({
   deliveryMethod,
   otherPartyConfirmed = false,
   pinExpiresAt,
+  pinUsed,
 }: HandoffSheetProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -58,8 +63,11 @@ export function HandoffSheet({
 
   const isPinExpired = pinExpiresAt ? new Date(pinExpiresAt) < new Date() : false;
   const isCourier = deliveryMethod === "courier";
-  const otherParty =
-    requestType === "RENT" ? "renter" : requestType === "GIFT" ? "receiver" : "borrower";
+
+  const isRental = requestType === "RENT";
+  const isGift = requestType === "GIFT";
+  const isSwap = requestType === "SWAP";
+  const otherParty = isRental ? "renter" : isGift ? "receiver" : isSwap ? "partner" : "borrower";
   const OtherParty = otherParty.charAt(0).toUpperCase() + otherParty.slice(1);
 
   useEffect(() => {
@@ -68,15 +76,13 @@ export function HandoffSheet({
       setBorrowerView(isPinExpired ? "expired" : "pin");
       setShowDenyView(false);
       setAttemptsRemaining(null);
-      if (userRole === "borrower") {
-        setTimeout(() => ref0.current?.focus(), 200);
-      }
     }
   }, [visible]);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["/api/requests"] });
     qc.invalidateQueries({ queryKey: ["/api/user"] });
+    qc.invalidateQueries({ queryKey: ["/api/messages"] });
     qc.invalidateQueries({ queryKey: ["/api/inbox"] });
   };
 
@@ -90,17 +96,16 @@ export function HandoffSheet({
     onError: (err: any) => {
       if (err?.rateLimited) {
         setBorrowerView("rate_limited");
+        setPinDigits(["", "", "", ""]);
       } else if (err?.expired) {
         setBorrowerView("expired");
+        setPinDigits(["", "", "", ""]);
       } else if (err?.incorrect) {
         setBorrowerView("wrong_pin");
         setAttemptsRemaining(err.attemptsRemaining ?? null);
-        setPinDigits(["", "", "", ""]);
-        setTimeout(() => ref0.current?.focus(), 100);
+        // Keep digits visible (user sees what they typed) — "Try again" clears them
       } else {
         setBorrowerView("wrong_pin");
-        setPinDigits(["", "", "", ""]);
-        setTimeout(() => ref0.current?.focus(), 100);
       }
     },
   });
@@ -108,27 +113,36 @@ export function HandoffSheet({
   const confirmHandoffMutation = useMutation({
     mutationFn: () =>
       apiPost(`/api/requests/${requestId}/handoff`, { confirmedBy: userRole }),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       invalidate();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (data?.disputeTriggered) {
+        Alert.alert("Dispute opened", "We've paused this transaction while we review.");
+      } else if (data?.bothConfirmed) {
+        Alert.alert("Handoff complete", "Borrow period has started.");
+      }
       onSuccess();
     },
     onError: (err: any) => {
-      const msg = err?.message || "Failed to confirm handoff";
-      setPinDigits(["", "", "", ""]);
-      setBorrowerView("manual");
-      setTimeout(() => {}, 0);
+      Alert.alert("Handoff failed", err?.message || "Failed to confirm handoff. Please try again.");
     },
   });
 
   const denyHandoffMutation = useMutation({
     mutationFn: () => apiPost(`/api/requests/${requestId}/deny-handoff`, {}),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       invalidate();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      if (data?.disputeTriggered) {
+        Alert.alert("Dispute opened", "We've paused this transaction while both sides are reviewed.");
+      } else {
+        Alert.alert("Reported", "The other party has 24 hours to respond, then this will be flagged for review.");
+      }
       onSuccess();
     },
-    onError: (err: any) => {},
+    onError: (err: any) => {
+      Alert.alert("Error", err?.message || "Failed to report issue");
+    },
   });
 
   const isProcessing =
@@ -151,6 +165,12 @@ export function HandoffSheet({
     if (key === "Backspace" && !pinDigits[i] && i > 0) {
       inputRefs[i - 1].current?.focus();
     }
+  };
+
+  const resetPin = () => {
+    setPinDigits(["", "", "", ""]);
+    setBorrowerView("pin");
+    setTimeout(() => ref0.current?.focus(), 50);
   };
 
   // ── Deny view (shared between owner and borrower) ──────────────────────────
@@ -225,9 +245,10 @@ export function HandoffSheet({
             Confirm that {itemName} has been handed off.
           </Text>
           {otherPartyConfirmed && (
-            <View style={[ss.warnBox, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }]}>
-              <Text style={{ color: "#15803d", fontSize: 13 }}>
-                ✓ {OtherParty} has already confirmed. Your confirmation will complete the handoff.
+            <View style={ss.coConfirmRow}>
+              <Text style={ss.coConfirmTick}>✓</Text>
+              <Text style={ss.coConfirmText}>
+                {OtherParty} has already confirmed. Your confirmation will complete the handoff.
               </Text>
             </View>
           )}
@@ -257,13 +278,9 @@ export function HandoffSheet({
             </Pressable>
           </View>
           <Pressable onPress={() => setShowDenyView(true)} style={{ marginTop: 8 }}>
-            <Text style={{ color: "#ef4444", fontSize: 12, textAlign: "center" }}>
-              Item was not handed off?
-            </Text>
+            <Text style={ss.redLink}>Item was not handed off?</Text>
           </Pressable>
-          <Text
-            style={{ color: colors.mutedForeground, fontSize: 11, textAlign: "center", marginTop: 4 }}
-          >
+          <Text style={[ss.footNote, { color: colors.mutedForeground }]}>
             If only one person confirms, we'll complete this automatically in 24 hours.
           </Text>
         </View>
@@ -285,9 +302,10 @@ export function HandoffSheet({
             Confirm you've received {itemName}.
           </Text>
           {otherPartyConfirmed && (
-            <View style={[ss.warnBox, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }]}>
-              <Text style={{ color: "#15803d", fontSize: 13 }}>
-                ✓ Owner has already confirmed. Your confirmation will complete the handoff.
+            <View style={ss.coConfirmRow}>
+              <Text style={ss.coConfirmTick}>✓</Text>
+              <Text style={ss.coConfirmText}>
+                Owner has already confirmed. Your confirmation will complete the handoff.
               </Text>
             </View>
           )}
@@ -317,13 +335,9 @@ export function HandoffSheet({
             </Pressable>
           </View>
           <Pressable onPress={() => setShowDenyView(true)} style={{ marginTop: 8 }}>
-            <Text style={{ color: "#ef4444", fontSize: 12, textAlign: "center" }}>
-              Item was not received?
-            </Text>
+            <Text style={ss.redLink}>Item was not received?</Text>
           </Pressable>
-          <Text
-            style={{ color: colors.mutedForeground, fontSize: 11, textAlign: "center", marginTop: 4 }}
-          >
+          <Text style={[ss.footNote, { color: colors.mutedForeground }]}>
             If only one person confirms, we'll complete this automatically in 24 hours.
           </Text>
         </View>
@@ -334,13 +348,23 @@ export function HandoffSheet({
   // ── BORROWER PIN entry view (default) ──────────────────────────────────────
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={ss.backdrop} onPress={onClose} />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <Pressable style={ss.backdrop} onPress={onClose} />
       <View
         style={[ss.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 24 }]}
       >
         <View style={[ss.handle, { backgroundColor: colors.border }]} />
-        <Text style={[ss.title, { color: colors.foreground }]}>Enter handoff code</Text>
 
+        {/* Title row with key icon */}
+        <View style={ss.titleRow}>
+          <Text style={ss.keyIcon}>🔑</Text>
+          <Text style={[ss.title, { color: colors.foreground }]}>Enter handoff code</Text>
+        </View>
+
+        {/* PIN boxes — hidden when expired or rate-limited */}
         {borrowerView !== "expired" && borrowerView !== "rate_limited" && (
           <>
             <View style={ss.pinRow}>
@@ -374,13 +398,14 @@ export function HandoffSheet({
                 />
               ))}
             </View>
+
             {verifyPinMutation.isPending ? (
               <View style={ss.centered}>
                 <ActivityIndicator size="small" color="#6366f1" />
                 <Text style={{ color: "#6366f1", fontSize: 13 }}>Checking code…</Text>
               </View>
             ) : borrowerView === "wrong_pin" ? (
-              <View style={{ alignItems: "center", gap: 2 }}>
+              <View style={{ alignItems: "center", gap: 4 }}>
                 <Text style={{ color: "#ef4444", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
                   That code didn't match.
                 </Text>
@@ -389,34 +414,43 @@ export function HandoffSheet({
                     {attemptsRemaining} attempt{attemptsRemaining !== 1 ? "s" : ""} remaining
                   </Text>
                 )}
+                <Pressable onPress={resetPin} style={{ marginTop: 2 }}>
+                  <Text style={{ color: "#6366f1", fontSize: 13 }}>Try again</Text>
+                </Pressable>
               </View>
             ) : (
-              <Text
-                style={{ color: colors.mutedForeground, fontSize: 12, textAlign: "center" }}
-              >
+              <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign: "center" }}>
                 Enter the code after you've checked and received the item.
               </Text>
             )}
           </>
         )}
 
+        {/* Expired state */}
         {borrowerView === "expired" && (
           <View style={[ss.warnBox, { backgroundColor: "#fffbeb", borderColor: "#fde68a" }]}>
-            <Text style={{ color: "#92400e", fontSize: 13, textAlign: "center" }}>
-              This code has expired. Ask the owner to confirm manually, or confirm below.
+            <Text style={{ color: "#92400e", fontSize: 14, fontFamily: "Inter_600SemiBold", textAlign: "center" }}>
+              This code has expired
+            </Text>
+            <Text style={{ color: "#b45309", fontSize: 12, textAlign: "center", marginTop: 2 }}>
+              Ask the owner to confirm manually, or confirm below.
             </Text>
           </View>
         )}
 
+        {/* Rate limited state */}
         {borrowerView === "rate_limited" && (
           <View style={[ss.warnBox, { backgroundColor: "#fef2f2", borderColor: "#fecaca" }]}>
-            <Text style={{ color: "#991b1b", fontSize: 13, textAlign: "center" }}>
-              Too many attempts. Please use the manual confirmation option below.
+            <Text style={{ color: "#991b1b", fontSize: 14, fontFamily: "Inter_600SemiBold", textAlign: "center" }}>
+              Too many attempts
+            </Text>
+            <Text style={{ color: "#b91c1c", fontSize: 12, textAlign: "center", marginTop: 2 }}>
+              Please use the manual confirmation option below.
             </Text>
           </View>
         )}
 
-        <View style={{ gap: 10, marginTop: 12 }}>
+        <View style={{ gap: 10, marginTop: 4 }}>
           {borrowerView !== "expired" && borrowerView !== "rate_limited" && (
             <Pressable
               style={[ss.btn, { borderColor: colors.border }]}
@@ -427,19 +461,16 @@ export function HandoffSheet({
             </Pressable>
           )}
           <Pressable onPress={() => setBorrowerView("manual")} disabled={isProcessing}>
-            <Text
-              style={{ color: colors.mutedForeground, fontSize: 12, textAlign: "center" }}
-            >
+            <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign: "center" }}>
               Didn't get a code? Confirm without code →
             </Text>
           </Pressable>
           <Pressable onPress={() => setShowDenyView(true)} disabled={isProcessing}>
-            <Text style={{ color: "#ef4444", fontSize: 12, textAlign: "center" }}>
-              Item was not received?
-            </Text>
+            <Text style={ss.redLink}>Item was not received?</Text>
           </Pressable>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -460,9 +491,32 @@ const ss = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 4,
   },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  keyIcon: { fontSize: 16 },
   title: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
   sub: { fontSize: 13, lineHeight: 18 },
-  warnBox: { borderRadius: 10, padding: 12, borderWidth: 1 },
+  warnBox: { borderRadius: 10, padding: 12, borderWidth: 1, gap: 2 },
+  coConfirmRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+  },
+  coConfirmTick: {
+    color: "#15803d",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    marginTop: 1,
+  },
+  coConfirmText: {
+    color: "#15803d",
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 18,
+  },
   btnRow: { flexDirection: "row", gap: 10 },
   btn: {
     borderWidth: 1,
@@ -472,6 +526,8 @@ const ss = StyleSheet.create({
     justifyContent: "center",
   },
   btnTxt: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  redLink: { color: "#ef4444", fontSize: 12, textAlign: "center" },
+  footNote: { fontSize: 11, textAlign: "center", marginTop: -4 },
   pinRow: {
     flexDirection: "row",
     justifyContent: "center",

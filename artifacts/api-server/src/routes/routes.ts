@@ -2851,7 +2851,7 @@ Respond with ONLY the category name, nothing else.`
               userId: existingItem.ownerId!,
               type: "swap_match",
               title: "New Swap Match",
-              message: `"${item.name.length > 22 ? item.name.slice(0, 22) + "…" : item.name}" matches your swap request.`,
+              message: `"${item.name.length > 22 ? item.name.slice(0, 22) + "…" : item.name}" matches your swap request for "${existingItem.name!.length > 22 ? existingItem.name!.slice(0, 22) + "…" : existingItem.name}".`,
               itemId: item.id,
               isRead: false,
             });
@@ -3583,13 +3583,13 @@ Respond with ONLY the category name, nothing else.`
         return res.status(404).json({ error: "Item not found" });
       }
 
-      // Get the lister's username
+      // Get the lister's display name
       const [lister] = await db
-        .select({ username: users.username })
+        .select({ displayName: users.displayName, username: users.username })
         .from(users)
         .where(eq(users.id, req.user.id));
 
-      const listerName = lister?.username || "A neighbour";
+      const listerName = lister?.displayName || lister?.username || "A neighbour";
 
       // Create notification for the wishlist owner
       await db.insert(notifications).values({
@@ -5092,6 +5092,19 @@ Respond with ONLY the category name, nothing else.`
     const requesterName = requester?.displayName || requester?.username || "Someone";
     const requestTypeLabel = requestType.charAt(0).toUpperCase() + requestType.slice(1).toLowerCase();
 
+    // Always open the inbox thread with a system summary so the owner's inbox badge fires.
+    // If the requester also wrote a note, that follows immediately after.
+    if (item.ownerId) {
+      const actionVerb = requestType === "GIFT" ? "claim as a gift" : requestType.toLowerCase();
+      await db.insert(messages).values({
+        content: `📬 ${requesterName} sent a ${requestTypeLabel.toLowerCase()} request for "${item.name.length > 30 ? item.name.slice(0, 30) + "…" : item.name}"`,
+        senderId: req.user.id,
+        receiverId: item.ownerId,
+        requestId: request.id,
+        messageType: "system",
+      });
+    }
+
     // Send the requester's note into the inbox chat thread
     if (message && message.trim() && item.ownerId) {
       await db.insert(messages).values({
@@ -6259,16 +6272,34 @@ Respond with ONLY the category name, nothing else.`
       .limit(1);
     const confirmerName = confirmerUser?.displayName || confirmerUser?.username || (role === "giver" ? "The giver" : "The receiver");
 
-    // Send a chat stamp so both parties can see who confirmed
-    await db.insert(messages).values({
-      content: `${confirmerName} confirmed the handoff ✅\nIf only one person confirms, we'll complete this automatically in 24 hours.`,
-      senderId: request.items.ownerId!,
-      receiverId: request.item_requests.requesterId,
-      messageType: "system",
-      requestId,
-    });
-
     const otherPartyId = role === "giver" ? request.item_requests.requesterId : request.items.ownerId!;
+
+    // Send role-specific confirmation stamps
+    await db.insert(messages).values([
+      {
+        content: `✅ You confirmed the handoff`,
+        senderId: request.items.ownerId!,
+        receiverId: request.item_requests.requesterId,
+        messageType: "system",
+        requestId,
+        metadata: { visibleToUserId: req.user.id },
+      },
+      {
+        content: `✅ ${confirmerName} confirmed the handoff`,
+        senderId: request.items.ownerId!,
+        receiverId: request.item_requests.requesterId,
+        messageType: "system",
+        requestId,
+        metadata: { visibleToUserId: otherPartyId },
+      },
+      {
+        content: `If only one person confirms, we'll complete this automatically in 24 hours.`,
+        senderId: request.items.ownerId!,
+        receiverId: request.item_requests.requesterId,
+        messageType: "system",
+        requestId,
+      },
+    ]);
     await db.insert(notifications).values({
       userId: otherPartyId,
       type: "gift_handoff_pending",
@@ -6365,7 +6396,8 @@ Respond with ONLY the category name, nothing else.`
 
       // Immediate capture — this is the real charge (not a hold)
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(platformFeeAmount * 100),
+        // Enforce Stripe's $0.50 minimum charge
+        amount: Math.max(50, Math.round(platformFeeAmount * 100)),
         currency: "usd",
         customer: userRecord.stripeCustomerId,
         payment_method: userRecord.stripePaymentMethodId,
@@ -7915,14 +7947,23 @@ Respond with ONLY the category name, nothing else.`
         }
         const confirmerName = confirmerUser?.displayName || confirmerUser?.username || "One party";
 
-        // One party confirmed — send named confirmation + waiting messages
+        // One party confirmed — send role-specific confirmation + waiting messages
         await db.insert(messages).values([
           {
-            content: `${confirmerName} confirmed the handoff ✅`,
+            content: `✅ You confirmed the handoff`,
             senderId: ownerId,
             receiverId: borrowerId,
             messageType: "system",
             requestId,
+            metadata: { visibleToUserId: req.user.id },
+          },
+          {
+            content: `✅ ${confirmerName} confirmed the handoff`,
+            senderId: ownerId,
+            receiverId: borrowerId,
+            messageType: "system",
+            requestId,
+            metadata: { visibleToUserId: otherPartyId },
           },
           {
             content: `If only one person confirms, we'll complete this automatically in 24 hours.`,
@@ -7966,16 +8007,17 @@ Respond with ONLY the category name, nothing else.`
           const handoffFmt = now.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 
           systemMsgs = [
-            isBorrow && shareCoinAmount > 0
-              ? `➖ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} charged to borrower`
-              : null,
-            isBorrow && shareCoinAmount > 0
-              ? `➕ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} earned by lender`
-              : null,
             `🤝 The ${isBorrow ? "borrow" : "rental"} period has officially started`,
             startFmt && endFmt ? `📅 Booked period: ${startFmt} – ${endFmt} | Handoff completed: ${handoffFmt}` : null,
-            isLateHandoff && isBorrow ? `⚠️ Handoff was late — borrower can request a return date adjustment from their requests page.` : null,
+            isLateHandoff && isBorrow ? `⚠️ Handoff was late — the borrower may message the owner to request a return date adjustment.` : null,
           ].filter(Boolean) as string[];
+
+          // Role-specific ShareCoin messages — each only visible to the relevant party
+          if (isBorrow && shareCoinAmount > 0) {
+            const coinLabel = `${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""}`;
+            await db.insert(messages).values({ content: `🪙 ${coinLabel} charged`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId, metadata: { visibleToUserId: borrowerId } });
+            if (ownerId) await db.insert(messages).values({ content: `🪙 ${coinLabel} earned`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId, metadata: { visibleToUserId: ownerId } });
+          }
         }
 
         for (const content of systemMsgs) {
@@ -9115,7 +9157,7 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(messages).values({
         content: request.item_requests.depositMethod === "in_person"
           ? `✅ Return confirmed — item received in good condition.`
-          : `✅ Return confirmed — item received in good condition. Security deposit hold has been lifted.`,
+          : `✅ Return confirmed — item received in good condition. Deposit hold is lifted.`,
         senderId: ownerId_conf,
         receiverId: borrowerId_conf,
         messageType: "system",

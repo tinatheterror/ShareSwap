@@ -201,6 +201,8 @@ export default function InboxScreen() {
     queryKey: ["/api/inbox/archived"],
     queryFn: () => apiGet<InboxItem[]>("/api/inbox?archived=true"),
     enabled: !!user && isArchiveFilter,
+    // Match web's 60 s poll so auto-unarchived threads surface without manual refresh
+    refetchInterval: 60_000,
   });
 
   const isLoading = isArchiveFilter ? loadingArchived : loadingActive;

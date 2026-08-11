@@ -30,6 +30,7 @@ import { PayRentalSheet } from "@/components/PayRentalSheet";
 import { HandoffSheet } from "@/components/HandoffSheet";
 import { ReturnConfirmationSheet } from "@/components/ReturnConfirmationSheet";
 import { PostReturnReviewSheet } from "@/components/PostReturnReviewSheet";
+import CounterProposalSheet, { type CounterPayload } from "@/components/CounterProposalSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Message {
@@ -84,12 +85,21 @@ interface ItemRequest {
   counterStartDate: string | null;
   counterEndDate: string | null;
   counterDepositMethod: string | null;
+  counterRound: number | null;
+  swapOfferedItemIds: number[] | null;
+  swapOfferedItems?: { id: number; name: string; photos: string[] | null; tier?: number | null }[];
+  counterSwapOwnerItemIds: number[] | null;
+  counterSwapRequesterItemIds: number[] | null;
+  counterNote: string | null;
   trustDepositAmount: number | null;
   trustDepositBaseAmount: number | null;
   trustDiscountPercentage: number | null;
   shareCoinAmount: number | null;
   depositStatus: string | null;
   actualHandoffAt: string | null;
+  // Co-confirmation fields returned by GET /api/requests (routes.ts:5173-5174)
+  ownerConfirmedHandoff: boolean | null;
+  borrowerConfirmedHandoff: boolean | null;
   item: RequestItem | null;
 }
 
@@ -97,6 +107,8 @@ interface PinData {
   pin: string | null;
   expired: boolean;
   pinUsed: boolean;
+  // Returned by GET /api/requests/:id/handoff-pin (routes.ts:8032)
+  pinExpiresAt?: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -162,6 +174,7 @@ export default function ChatScreen() {
   const router = useRouter();
   const isWeb = Platform.OS === "web";
   const flatListRef = useRef<FlatList>(null);
+  const sendingRef = useRef(false);
 
   const [text, setText] = useState("");
   const [ownerPin, setOwnerPin] = useState<PinData | null>(null);
@@ -183,7 +196,6 @@ export default function ChatScreen() {
 
   // Counter-proposal sheet
   const [showCounterSheet, setShowCounterSheet] = useState(false);
-  const [counterDepMethod, setCounterDepMethod] = useState<"in_app" | "in_person">("in_app");
 
   // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: partner } = useQuery<PublicProfile>({
@@ -246,7 +258,11 @@ export default function ChatScreen() {
   function invalidateAll() {
     qc.invalidateQueries({ queryKey: ["/api/requests"] });
     qc.invalidateQueries({ queryKey: [`/api/messages/${id}`, requestId ?? null] });
+    // Invalidate both active and archived inbox so status transitions (accept,
+    // decline, cancel, complete) move the thread to the correct bucket
+    // immediately — matching web's chat-widget.tsx invalidation pattern.
     qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+    qc.invalidateQueries({ queryKey: ["/api/inbox/archived"] });
   }
 
   async function loadOwnerPin() {
@@ -349,13 +365,14 @@ export default function ChatScreen() {
   });
 
   const counterMutation = useMutation({
-    mutationFn: (depositMethod: string) =>
-      apiPost(`/api/requests/${requestId}/counter-proposal`, {
-        depositMethod,
-        deliveryMethod: request?.deliveryMethod ?? "meetup",
-        startDate: request?.startDate ?? undefined,
-        endDate: request?.endDate ?? undefined,
-      }),
+    mutationFn: (payload: CounterPayload) => {
+      if (payload.isResponse) {
+        // Counter-back: respond to an existing counter with new terms
+        const { isResponse, ...counterFields } = payload;
+        return apiPost(`/api/requests/${requestId}/respond-to-counter`, { counter: counterFields });
+      }
+      return apiPost(`/api/requests/${requestId}/counter-proposal`, payload);
+    },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowCounterSheet(false);
@@ -447,7 +464,7 @@ export default function ChatScreen() {
                     {fmtDate(request.startDate)} – {fmtDate(request.endDate)}
                   </Text>
                 </View>
-                {(status === "IN_PROGRESS" || status === "RETURN_REQUESTED") && request.actualHandoffAt && (
+                {(status === "IN_PROGRESS" || status === "RETURN_REQUESTED" || status === "COMPLETED") && request.actualHandoffAt && (
                   <Text style={[card.detailText, { color: colors.mutedForeground, paddingLeft: 17 }]}>
                     Handoff completed: {fmtDate(request.actualHandoffAt)}
                   </Text>
@@ -462,11 +479,7 @@ export default function ChatScreen() {
                 <Text style={[card.detailText, { color: colors.mutedForeground }]}>
                   {"Deposit "}
                   {request.depositMethod === "in_app" ? "in-app" : "in-person"}
-                  {depositAmt != null ? (
-                    depositBase && depositDiscount && depositDiscount > 0 && depositBase > depositAmt
-                      ? ` · $${depositAmt} (${depositDiscount}% off)`
-                      : ` · $${depositAmt}`
-                  ) : ""}
+                  {depositAmt != null ? `: $${depositAmt}` : ""}
                 </Text>
               </View>
             )}
@@ -512,9 +525,18 @@ export default function ChatScreen() {
                   >
                     {acceptCounterMutation.isPending
                       ? <ActivityIndicator size="small" color="#fff" />
-                      : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept counter</Text>
+                      : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept</Text>
                     }
                   </Pressable>
+                  {(request.counterRound ?? 0) < 2 && (
+                    <Pressable
+                      style={[card.btn, { borderColor: "#f59e0b", backgroundColor: "#fffbeb", flex: 1 }]}
+                      onPress={() => setShowCounterSheet(true)}
+                      disabled={anyMutating}
+                    >
+                      <Text style={[card.btnLabel, { color: "#b45309" }]}>Counter</Text>
+                    </Pressable>
+                  )}
                   <Pressable
                     style={[card.btn, { borderColor: colors.border, flex: 1 }]}
                     onPress={() => declineCounterMutation.mutate()}
@@ -546,7 +568,7 @@ export default function ChatScreen() {
             )}
 
             {/* Terms accepted — owner can now accept */}
-            {request.negotiationStatus === "terms_accepted" && isOwner && (
+            {request.negotiationStatus === "terms_accepted" && isOwner && status === "PENDING" && (
               <View style={[card.counterBanner, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }]}>
                 <Text style={[card.counterBannerTitle, { color: "#15803d" }]}>
                   ✓ Requester accepted your proposed terms. You can now accept the request.
@@ -554,8 +576,8 @@ export default function ChatScreen() {
               </View>
             )}
 
-            {/* PENDING: no counter active */}
-            {status === "PENDING" && !hasPendingCounter && (
+            {/* PENDING: no counter active, and not waiting on our own counter */}
+            {status === "PENDING" && !hasPendingCounter && !iSentCounter && (
               <View style={card.btnRow}>
                 {isOwner && (
                   <>
@@ -571,10 +593,7 @@ export default function ChatScreen() {
                     </Pressable>
                     <Pressable
                       style={[card.btn, { borderColor: "#f59e0b", backgroundColor: "#fffbeb", flex: 1 }]}
-                      onPress={() => {
-                        setCounterDepMethod((request.depositMethod as "in_app" | "in_person") ?? "in_app");
-                        setShowCounterSheet(true);
-                      }}
+                      onPress={() => setShowCounterSheet(true)}
                       disabled={anyMutating}
                     >
                       <Text style={[card.btnLabel, { color: "#b45309" }]}>Counter</Text>
@@ -692,7 +711,7 @@ export default function ChatScreen() {
               >
                 <Shield size={14} color="#fff" strokeWidth={2} />
                 <Text style={[card.btnLabel, { color: "#fff" }]}>
-                  Pay ${depositAmt ?? "–"} deposit
+                  {request.requestType === "RENT" ? "Pay Security Deposit" : "Pay Trust Deposit"}
                 </Text>
               </Pressable>
             )}
@@ -1124,7 +1143,9 @@ export default function ChatScreen() {
           ]}
           onPress={async () => {
             const trimmed = text.trim();
-            if (!trimmed) return;
+            if (!trimmed || sendingRef.current) return;
+            sendingRef.current = true;
+            setText("");
             try {
               await apiPost(`/api/messages`, {
                 receiverId: parseInt(id ?? "0"),
@@ -1132,10 +1153,18 @@ export default function ChatScreen() {
                 ...(requestId ? { requestId: parseInt(requestId) } : {}),
               });
               qc.invalidateQueries({ queryKey: [`/api/messages/${id}`, requestId ?? null] });
+              // Invalidate both buckets: sending a message to a terminal-status
+              // thread triggers server-side auto-unarchive (unarchivedAt = now),
+              // so the thread must move from archived → active immediately.
               qc.invalidateQueries({ queryKey: ["/api/inbox"] });
-              setText("");
+              qc.invalidateQueries({ queryKey: ["/api/inbox/archived"] });
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            } catch {}
+            } catch {
+              // Restore text so the user can retry if the send failed
+              setText(trimmed);
+            } finally {
+              sendingRef.current = false;
+            }
           }}
           disabled={!text.trim()}
         >
@@ -1158,6 +1187,10 @@ export default function ChatScreen() {
           itemName={request.item?.name ?? "Item"}
           requestType={request.requestType}
           deliveryMethod={request.deliveryMethod}
+          // Borrower has confirmed on their side — owner sees "borrower confirmed" state
+          otherPartyConfirmed={request.borrowerConfirmedHandoff ?? false}
+          // pinExpiresAt from the owner's own PIN fetch (handoff-pin endpoint)
+          pinExpiresAt={ownerPin?.pinExpiresAt ?? null}
         />
       )}
 
@@ -1172,56 +1205,23 @@ export default function ChatScreen() {
           itemName={request.item?.name ?? "Item"}
           requestType={request.requestType}
           deliveryMethod={request.deliveryMethod}
+          // Owner has confirmed on their side — borrower sees "owner confirmed" state
+          otherPartyConfirmed={request.ownerConfirmedHandoff ?? false}
         />
       )}
 
-      {/* Counter-proposal sheet (owner proposes modified terms) */}
-      <Modal visible={showCounterSheet} transparent animationType="slide" onRequestClose={() => setShowCounterSheet(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setShowCounterSheet(false)} />
-        <View style={[styles.pinSheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
-          <View style={[styles.pinHandle, { backgroundColor: colors.border }]} />
-          <Text style={[styles.pinTitle, { color: colors.foreground }]}>Propose counter terms</Text>
-          <Text style={[styles.pinSub, { color: colors.mutedForeground }]}>
-            Choose how you'd prefer to handle the deposit. The borrower can accept or decline your counter.
-          </Text>
-
-          {/* Deposit method cards */}
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            {(["in_app", "in_person"] as const).map((method) => {
-              const active = counterDepMethod === method;
-              return (
-                <Pressable
-                  key={method}
-                  style={[styles.counterCard, {
-                    flex: 1,
-                    borderColor: active ? PRIMARY : colors.border,
-                    backgroundColor: active ? "#f0fdf4" : colors.background,
-                  }]}
-                  onPress={() => setCounterDepMethod(method)}
-                >
-                  <Text style={[styles.counterCardTitle, { color: colors.foreground }]}>
-                    {method === "in_app" ? "Handle In-app" : "Exchange In Person"}
-                  </Text>
-                  <Text style={[styles.counterCardSub, { color: colors.mutedForeground }]}>
-                    {method === "in_app" ? "Authorization hold" : "No processing fee"}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Pressable
-            style={[styles.pinSubmit, { backgroundColor: PRIMARY }]}
-            onPress={() => counterMutation.mutate(counterDepMethod)}
-            disabled={counterMutation.isPending}
-          >
-            {counterMutation.isPending
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={[styles.pinSubmitText, { color: "#fff" }]}>Send counter</Text>
-            }
-          </Pressable>
-        </View>
-      </Modal>
+      {/* Counter-proposal sheet — BORROW/RENT: dates + deposit; SWAP: item picker + note */}
+      {request && (
+        <CounterProposalSheet
+          visible={showCounterSheet}
+          onClose={() => setShowCounterSheet(false)}
+          request={request}
+          isOwner={isOwner}
+          partnerId={isOwner ? request.requesterId : (request.item?.ownerId ?? null)}
+          onSubmit={(payload) => counterMutation.mutate(payload)}
+          isPending={counterMutation.isPending}
+        />
+      )}
 
       <InsufficientShareCoinsModal
         isOpen={showEarnModal}

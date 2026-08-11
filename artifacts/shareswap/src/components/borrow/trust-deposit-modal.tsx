@@ -79,9 +79,13 @@ export function TrustDepositModal({
     totalFree: number;
   }>({ queryKey: ["/api/user/fee-waiver-status"] });
 
+  const STRIPE_MIN_CHARGE = 0.50;
+  const rawFee = Math.round(depositAmount * 0.03 * 100) / 100;
+  const atMinimum = rawFee < STRIPE_MIN_CHARGE;
+  const platformFeeDisplay = Math.max(STRIPE_MIN_CHARGE, rawFee); // shown for reference even when waived
+  const platformFeeLabel = atMinimum ? "Platform fee (min. $0.50)" : "Platform fee (3%)";
   const PLATFORM_FEE_WAIVED = feeWaiverData?.feeWaived ?? true; // default to waived while loading
-  const platformFee = PLATFORM_FEE_WAIVED ? 0 : Math.round(depositAmount * 0.03 * 100) / 100;
-  const platformFeeDisplay = Math.round(depositAmount * 0.03 * 100) / 100; // shown for reference even when waived
+  const platformFee = PLATFORM_FEE_WAIVED ? 0 : platformFeeDisplay;
   const feeWaiverLabel = feeWaiverData
     ? `Transaction ${feeWaiverData.completedCount + 1} of ${feeWaiverData.totalFree} free`
     : "Free";
@@ -177,7 +181,7 @@ export function TrustDepositModal({
 
             <div className="bg-gray-50 rounded-xl p-4 text-left mb-6 space-y-1.5">
               <div className="flex justify-between text-sm text-gray-500">
-                <span>Platform fee (3%)</span>
+                <span>{platformFeeLabel}</span>
                 {PLATFORM_FEE_WAIVED
                   ? <span className="font-medium text-green-600">{feeWaiverLabel} <span className="line-through text-gray-400">${platformFeeDisplay.toFixed(2)}</span></span>
                   : <span className="font-medium text-gray-800">${platformFee.toFixed(2)} <span className="text-xs font-normal text-green-600">charged</span></span>
@@ -230,7 +234,7 @@ export function TrustDepositModal({
             <div className="bg-gray-50 rounded-xl p-3 mb-4 space-y-2 text-sm">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-gray-700 font-medium">Platform fee (3%)</p>
+                  <p className="text-gray-700 font-medium">{platformFeeLabel}</p>
                   {PLATFORM_FEE_WAIVED
                     ? <p className="text-xs text-green-600">{feeWaiverLabel} 🎉</p>
                     : <p className="text-xs text-green-600">Charged now</p>

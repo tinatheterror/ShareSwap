@@ -143,7 +143,7 @@ function BreakdownRows({ rentalPrice, rentalSubtotal, discountPct, discountAmoun
 
       {/* Platform fee */}
       <div className="flex justify-between text-gray-500">
-        <span>Platform fee (3%)</span>
+        <span>{rentalPrice * 0.03 < 0.50 ? "Platform fee (min. $0.50)" : "Platform fee (3%)"}</span>
         <span>${processingFee.toFixed(2)}</span>
       </div>
 

@@ -22,6 +22,7 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import {
   Calendar,
   ArrowLeftRight,
@@ -209,6 +210,19 @@ export function ItemRequestForm({
         });
       } else if ((error as any).code === "FULL_VERIFICATION_REQUIRED") {
         showVerificationModal();
+      } else if ((error as any).code === "BORROW_LIMIT_REACHED") {
+        toast({
+          title: "Failed to send request",
+          description: error.message,
+          variant: "destructive",
+          action: (
+            <ToastAction altText="Upgrade membership" asChild>
+              <Link href="/subscription" className="shrink-0 rounded-md border border-white/40 bg-white/20 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/30 transition-colors">
+                Upgrade
+              </Link>
+            </ToastAction>
+          ),
+        });
       } else {
         toast({
           title: "Failed to send request",
@@ -611,8 +625,8 @@ export function ItemRequestForm({
                             </span>
                           </div>
                           <div className="flex justify-between text-gray-500 text-xs">
-                            <span>Platform fee (3%)</span>
-                            <span>${(pricing.total * 0.03).toFixed(2)}</span>
+                            <span>{pricing.total * 0.03 < 0.50 ? "Platform fee (min. $0.50)" : "Platform fee (3%)"}</span>
+                            <span>${Math.max(0.50, pricing.total * 0.03).toFixed(2)}</span>
                           </div>
                           <div className="border-t border-gray-200 pt-1.5 mt-0.5">
                             <div className="flex justify-between">

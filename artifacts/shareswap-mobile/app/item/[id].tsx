@@ -77,11 +77,17 @@ interface PendingRequest {
 }
 
 const CONDITION_LABELS: Record<string, string> = {
+  // snake_case backend keys
   new: "Brand New",
   like_new: "Like New",
   good: "Good",
   fair: "Fair",
   poor: "Well Loved",
+  // form string values (what share/edit forms submit)
+  "New / Like New": "New / Like New",
+  "Good": "Good",
+  "Fair": "Fair",
+  "Well Loved": "Well Loved",
 };
 
 export default function ItemDetailScreen() {
@@ -247,6 +253,9 @@ export default function ItemDetailScreen() {
         const required = e.required ?? 0;
         setEarnRequired(required);
         setEarnContext(type === "SWAP" ? "swap" : "borrow");
+        // Close any open sheet first — iOS can't stack two native Modals
+        setShowBorrowSheet(false);
+        setShowSwapSelector(false);
         setShowEarnModal(true);
         return;
       }
@@ -734,6 +743,13 @@ export default function ItemDetailScreen() {
         onClose={() => setShowBorrowSheet(false)}
         onConfirm={async (borrowData) => {
           await handleSendRequest("BORROW", undefined, borrowData);
+        }}
+        onInsufficientBalance={(required) => {
+          setShowBorrowSheet(false);
+          setEarnRequired(required);
+          setEarnContext("borrow");
+          // Small delay so borrow sheet finishes closing before earn modal opens
+          setTimeout(() => setShowEarnModal(true), 300);
         }}
       />
 

@@ -17,10 +17,12 @@ async function throwIfNotOk(res: Response) {
     const err = new Error(msg) as Error & {
       status?: number;
       code?: string;
+      required?: number;
       missing?: Record<string, unknown>;
     };
     err.status = res.status;
     if (parsed?.code) err.code = parsed.code as string;
+    if (parsed?.required !== undefined) err.required = parsed.required as number;
     if (parsed?.missing) err.missing = parsed.missing as Record<string, unknown>;
     throw err;
   }

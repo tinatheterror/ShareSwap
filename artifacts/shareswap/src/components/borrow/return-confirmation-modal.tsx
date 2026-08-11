@@ -302,7 +302,7 @@ export function ReturnConfirmationModal({
               <p className="text-sm text-blue-600 mt-1">
                 {isRental
                   ? "You keep the full rental amount — no refund for unused days."
-                  : "No ShareCoins deducted for early return. Borrower's deposit will be released immediately."}
+                  : "No ShareCoins deducted for early return. Borrower's deposit hold will be released."}
               </p>
             </div>
           )}

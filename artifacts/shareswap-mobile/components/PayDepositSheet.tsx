@@ -109,8 +109,12 @@ export function PayDepositSheet({
     enabled: visible,
   });
 
+  const STRIPE_MIN_CHARGE = 0.50;
+  const rawFee = Math.round(depositAmount * 0.03 * 100) / 100;
+  const atMinimum = rawFee < STRIPE_MIN_CHARGE;
+  const platformFeeDisplay = Math.max(STRIPE_MIN_CHARGE, rawFee);
+  const platformFeeLabel = atMinimum ? "Platform fee (min. $0.50)" : "Platform fee (3%)";
   const feeWaived = feeWaiver?.feeWaived ?? true; // optimistic: show $0 while loading
-  const platformFeeDisplay = Math.round(depositAmount * 0.03 * 100) / 100;
   const platformFee = feeWaived ? 0 : platformFeeDisplay;
   const feeWaiverLabel = feeWaiver
     ? `Transaction ${feeWaiver.completedCount + 1} of ${feeWaiver.totalFree} free`
@@ -206,7 +210,7 @@ export function PayDepositSheet({
 
               <View style={[s.breakdownBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                 <View style={s.breakdownRow}>
-                  <Text style={[s.breakdownLabel, { color: colors.mutedForeground }]}>Platform fee (3%)</Text>
+                  <Text style={[s.breakdownLabel, { color: colors.mutedForeground }]}>{platformFeeLabel}</Text>
                   {feeWaived
                     ? <Text style={[s.breakdownValue, { color: "#16a34a" }]}>{feeWaiverLabel} — $0.00</Text>
                     : <Text style={[s.breakdownValue, { color: colors.foreground }]}>${platformFee.toFixed(2)} charged</Text>
@@ -243,9 +247,9 @@ export function PayDepositSheet({
               {/* Breakdown */}
               <View style={[s.breakdownBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                 <View style={s.breakdownRow}>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={[s.breakdownLabel, { color: colors.foreground, fontFamily: "Inter_500Medium" }]}>
-                      Platform fee (3%)
+                      {platformFeeLabel}
                     </Text>
                     {feeWaived
                       ? <Text style={[s.breakdownNote, { color: "#16a34a", marginTop: 2 }]}>{feeWaiverLabel} 🎉</Text>
@@ -258,12 +262,12 @@ export function PayDepositSheet({
                 </View>
                 <View style={[s.divider, { backgroundColor: colors.border }]} />
                 <View style={s.breakdownRow}>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={[s.breakdownLabel, { color: colors.foreground, fontFamily: "Inter_500Medium" }]}>
                       Security deposit
                     </Text>
                     <Text style={[s.breakdownNote, { color: "#2563eb", marginTop: 2 }]}>
-                      Authorization hold only
+                      Authorization hold only — Lifted automatically on safe return.
                     </Text>
                   </View>
                   <Text style={[s.breakdownValue, { color: colors.foreground }]}>
@@ -272,19 +276,9 @@ export function PayDepositSheet({
                 </View>
               </View>
 
-              {/* Hold note */}
-              <View style={s.holdNote}>
-                <Shield size={12} color="#2563eb" strokeWidth={2} />
-                <Text style={s.holdNoteText}>
-                  The deposit is an{" "}
-                  <Text style={{ fontFamily: "Inter_600SemiBold" }}>authorization hold</Text>
-                  {" "}— not charged. Lifted automatically on safe return.
-                </Text>
-              </View>
-
               {/* ShareCoins note */}
               <View style={s.coinRow}>
-                <Coins size={12} color="#ca8a04" strokeWidth={2} />
+                <Coins size={12} color="#0d9488" strokeWidth={2} />
                 <Text style={[s.coinNote, { color: colors.mutedForeground }]}>
                   {Math.round(shareCoins)} ShareCoins charged at pickup
                 </Text>
@@ -316,10 +310,6 @@ export function PayDepositSheet({
                   </>
                 )}
               </Pressable>
-
-              <Text style={[s.secureNote, { color: colors.mutedForeground }]}>
-                🔒 Deposit hold lifted on safe return — nothing extra charged
-              </Text>
 
               <Pressable style={s.cancelBtn} onPress={handleClose} disabled={processing}>
                 <Text style={[s.cancelBtnText, { color: colors.mutedForeground }]}>Cancel</Text>
@@ -381,6 +371,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    gap: 8,
   },
   breakdownLabel: {
     fontSize: 13,
@@ -389,6 +380,7 @@ const s = StyleSheet.create({
   breakdownValue: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+    flexShrink: 0,
   },
   breakdownNote: {
     fontSize: 11,

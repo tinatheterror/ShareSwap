@@ -1,14 +1,31 @@
 import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
+import { Badge, Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
+import { apiGet } from "@/lib/api";
+
+function useInboxUnread() {
+  const { user } = useAuth();
+  const { data: inbox = [] } = useQuery<{ unreadCount: number }[]>({
+    queryKey: ["/api/inbox"],
+    queryFn: () => apiGet("/api/inbox"),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  return inbox.reduce((sum, item) => sum + (item.unreadCount ?? 0), 0);
+}
 
 function NativeTabLayout() {
+  const totalUnread = useInboxUnread();
+  const badgeText = totalUnread > 0 ? String(totalUnread > 99 ? "99+" : totalUnread) : undefined;
+
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
@@ -22,6 +39,7 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="inbox">
         <Icon sf={{ default: "message", selected: "message.fill" }} />
         <Label>Inbox</Label>
+        <Badge hidden={!badgeText}>{badgeText}</Badge>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="wishlist">
         <Icon sf={{ default: "heart", selected: "heart.fill" }} />
@@ -37,6 +55,7 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const colors = useColors();
+  const totalUnread = useInboxUnread();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
@@ -105,6 +124,7 @@ function ClassicTabLayout() {
         name="inbox"
         options={{
           title: "Inbox",
+          tabBarBadge: totalUnread > 0 ? (totalUnread > 99 ? "99+" : totalUnread) : undefined,
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="message" tintColor={color} size={24} />

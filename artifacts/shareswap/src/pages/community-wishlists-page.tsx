@@ -271,8 +271,16 @@ export default function CommunityWishlistsPage() {
                       </div>
                     </div>
 
+                    {/* Earn estimate */}
+                    <div className="mt-auto pt-3 md:pt-4">
+                      <div className="flex items-center gap-1.5 text-xs md:text-sm font-medium text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mb-3">
+                        <span>🪙</span>
+                        <span>Earn up to ~20 ShareCoins</span>
+                      </div>
+                    </div>
+
                     {/* Action button — pushed to bottom */}
-                    <div className="mt-auto pt-4 md:pt-6">
+                    <div>
                       <Button
                         size="lg"
                         className="w-full font-semibold py-2 md:py-3 transition-all duration-200 text-sm md:text-base shadow-none"

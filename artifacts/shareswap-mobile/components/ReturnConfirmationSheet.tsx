@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -13,8 +15,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { useColors } from "@/hooks/useColors";
-import { apiPost } from "@/lib/api";
+import { apiPost, apiRequest } from "@/lib/api";
 
 interface ReturnConfirmationSheetProps {
   visible: boolean;
@@ -56,6 +59,8 @@ export function ReturnConfirmationSheet({
   const [conditionRating, setConditionRating] = useState(4);
   const [conditionNotes, setConditionNotes] = useState("");
   const [confirmDispute, setConfirmDispute] = useState(false);
+  const [disputePhotoUri, setDisputePhotoUri] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const isEarlyReturn = endDate ? new Date() < new Date(endDate) : false;
   const isRental = requestType === "RENT";
@@ -65,7 +70,40 @@ export function ReturnConfirmationSheet({
     qc.invalidateQueries({ queryKey: ["/api/requests"] });
     qc.invalidateQueries({ queryKey: ["/api/user"] });
     qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+    qc.invalidateQueries({ queryKey: ["/api/inbox/archived"] });
   };
+
+  async function pickDisputePhoto() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Allow photo access to attach damage evidence.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+      allowsEditing: false,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setDisputePhotoUri(result.assets[0].uri);
+    }
+  }
+
+  async function takeDisputePhoto() {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Allow camera access to photograph the damage.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+      allowsEditing: false,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setDisputePhotoUri(result.assets[0].uri);
+    }
+  }
 
   // Borrower: initiate return
   const initiateReturnMutation = useMutation({
@@ -78,16 +116,36 @@ export function ReturnConfirmationSheet({
     onError: () => {},
   });
 
-  // Owner: confirm return
+  // Owner: confirm return — uploads dispute photo first if present
   const confirmReturnMutation = useMutation({
-    mutationFn: () =>
-      apiPost(`/api/requests/${requestId}/confirm-return`, {
+    mutationFn: async () => {
+      let disputePhotoUrl: string | null = null;
+
+      if (shouldTriggerDispute && disputePhotoUri) {
+        setIsUploadingPhoto(true);
+        try {
+          const formData = new FormData();
+          const mimeType = disputePhotoUri.endsWith(".png") ? "image/png" : "image/jpeg";
+          const filename = `dispute-${Date.now()}.${mimeType === "image/png" ? "png" : "jpg"}`;
+          formData.append("photo", { uri: disputePhotoUri, type: mimeType, name: filename } as any);
+          const uploadRes = await apiRequest("POST", "/api/uploads/dispute-photo", formData);
+          const data = await uploadRes.json();
+          if (data?.url) disputePhotoUrl = data.url;
+        } catch {
+          // Photo upload failed — proceed without it (non-blocking)
+        } finally {
+          setIsUploadingPhoto(false);
+        }
+      }
+
+      return apiPost(`/api/requests/${requestId}/confirm-return`, {
         conditionRating: sameCondition ? 5 : conditionRating,
         conditionNotes,
         sameCondition,
         triggerDispute: shouldTriggerDispute,
-        disputePhotoUrl: null,
-      }),
+        disputePhotoUrl,
+      });
+    },
     onSuccess: () => {
       invalidate();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -101,6 +159,7 @@ export function ReturnConfirmationSheet({
     setConditionRating(4);
     setConditionNotes("");
     setConfirmDispute(false);
+    setDisputePhotoUri(null);
   };
 
   const handleClose = () => {
@@ -214,7 +273,7 @@ export function ReturnConfirmationSheet({
                 <Text style={{ color: "#1d4ed8", fontSize: 13, flex: 1 }}>
                   {isRental
                     ? "You keep the full rental amount — no refund for unused days."
-                    : "No ShareCoins deducted for early return. Borrower's deposit will be released immediately."}
+                    : "No ShareCoins deducted for early return. Borrower's deposit hold will be released."}
                 </Text>
               </View>
             )}
@@ -333,6 +392,45 @@ export function ReturnConfirmationSheet({
                       we review. Both parties will be contacted to resolve this.
                     </Text>
                   </View>
+                  {/* Photo evidence — matches web's camera/file input */}
+                  <View style={{ gap: 6 }}>
+                    <Text style={{ color: "#991b1b", fontSize: 12, fontFamily: "Inter_500Medium" }}>
+                      📷 Add a photo of the damage (recommended)
+                    </Text>
+                    {disputePhotoUri ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Image
+                          source={{ uri: disputePhotoUri }}
+                          style={{ width: 80, height: 80, borderRadius: 8, borderWidth: 1, borderColor: "#fca5a5" }}
+                        />
+                        <Pressable
+                          onPress={() => setDisputePhotoUri(null)}
+                          style={{ padding: 6 }}
+                          hitSlop={8}
+                        >
+                          <Feather name="x-circle" size={20} color="#dc2626" />
+                        </Pressable>
+                      </View>
+                    ) : (
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        <Pressable
+                          style={[ss.photoBtn, { borderColor: "#fca5a5" }]}
+                          onPress={takeDisputePhoto}
+                        >
+                          <Feather name="camera" size={14} color="#dc2626" />
+                          <Text style={{ color: "#dc2626", fontSize: 12 }}>Camera</Text>
+                        </Pressable>
+                        <Pressable
+                          style={[ss.photoBtn, { borderColor: "#fca5a5" }]}
+                          onPress={pickDisputePhoto}
+                        >
+                          <Feather name="image" size={14} color="#dc2626" />
+                          <Text style={{ color: "#dc2626", fontSize: 12 }}>Library</Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+
                   <Pressable
                     style={ss.disputeCheck}
                     onPress={() => setConfirmDispute(!confirmDispute)}
@@ -475,5 +573,15 @@ const ss = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
+  },
+  photoBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: "dashed",
   },
 });

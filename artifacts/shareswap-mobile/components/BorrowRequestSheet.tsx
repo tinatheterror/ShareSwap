@@ -15,7 +15,7 @@ import { Calendar, Coins, Shield, MapPin } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
-import { InsufficientShareCoinsModal } from "@/components/InsufficientShareCoinsModal";
+
 
 // ── Deposit calculator (mirrors web lib) ─────────────────────────────────────
 const TIER_DEPOSIT_PCT: Record<number, number> = {
@@ -99,6 +99,8 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (data: BorrowRequestData) => Promise<void>;
+  /** Called instead of opening a nested Modal — parent closes sheet first then shows earn modal */
+  onInsufficientBalance?: (required: number) => void;
 }
 
 const PRIMARY = "#0DCEA1";
@@ -214,7 +216,7 @@ function MiniCalendar({
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: Props) {
+export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onInsufficientBalance }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -277,12 +279,12 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
   const targetName = targetItem.name ?? (targetItem as any).title ?? "Item";
 
   // ── Submit ─────────────────────────────────────────────────────────────────
-  const [showEarnModal, setShowEarnModal] = useState(false);
   const balance = Number((user as any)?.shareCoins ?? 0);
 
   async function handleSend() {
-    if (balance < proratedCost) {
-      setShowEarnModal(true);
+    if (balance < proratedCost && onInsufficientBalance) {
+      // Close this sheet first so parent can open earn modal without stacking two native Modals
+      onInsufficientBalance(proratedCost);
       return;
     }
     setSending(true);
@@ -595,14 +597,6 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
       </View>
 
     </Modal>
-    <InsufficientShareCoinsModal
-      isOpen={showEarnModal}
-      onClose={() => setShowEarnModal(false)}
-      onBeforeNavigate={onClose}
-      currentBalance={balance}
-      required={proratedCost}
-      context="borrow"
-    />
     </>
   );
 }

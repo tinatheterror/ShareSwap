@@ -31,6 +31,7 @@ import { HandoffSheet } from "@/components/HandoffSheet";
 import { ReturnConfirmationSheet } from "@/components/ReturnConfirmationSheet";
 import { PostReturnReviewSheet } from "@/components/PostReturnReviewSheet";
 import CounterProposalSheet, { type CounterPayload } from "@/components/CounterProposalSheet";
+import ExtensionSheet from "@/components/ExtensionSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Message {
@@ -112,6 +113,16 @@ interface PinData {
   pinUsed: boolean;
   // Returned by GET /api/requests/:id/handoff-pin (routes.ts:8032)
   pinExpiresAt?: string | null;
+}
+
+interface ExtensionRequest {
+  id: number;
+  requestId: number;
+  borrowerId: number;
+  ownerId: number;
+  requestedEndDate: string;
+  status: string;
+  message: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -200,6 +211,9 @@ export default function ChatScreen() {
   // Counter-proposal sheet
   const [showCounterSheet, setShowCounterSheet] = useState(false);
 
+  // Extension sheet
+  const [showExtensionSheet, setShowExtensionSheet] = useState(false);
+
 
   // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: partner } = useQuery<PublicProfile>({
@@ -228,6 +242,30 @@ export default function ChatScreen() {
 
   const reqId = requestId ? parseInt(requestId) : null;
   const request = reqId ? (allRequests?.find((r) => r.id === reqId) ?? null) : null;
+
+  // Extension queries — only active during an in-progress borrow
+  const isInProgressBorrow =
+    request?.status === "IN_PROGRESS" && request?.requestType === "BORROW";
+
+  const { data: pendingExtension } = useQuery<ExtensionRequest | null>({
+    queryKey: [`/api/requests/${requestId}/extension`],
+    queryFn: () => apiGet<ExtensionRequest | null>(`/api/requests/${requestId}/extension`),
+    enabled: !!requestId && isInProgressBorrow,
+    refetchInterval: 8000,
+  });
+
+  const { data: activeExtensions } = useQuery<ExtensionRequest[]>({
+    queryKey: ["/api/extensions/active"],
+    queryFn: () => apiGet<ExtensionRequest[]>("/api/extensions/active"),
+    enabled: !!requestId && isInProgressBorrow,
+    refetchInterval: 8000,
+  });
+
+  const hasPendingExtension = !!pendingExtension;
+  const hasAcceptedExtension = !!(
+    reqId && activeExtensions?.some((e) => e.requestId === reqId && e.status === "accepted")
+  );
+  const isOverdue = !!(request?.endDate && new Date() > new Date(request.endDate));
 
   // Auto-show review sheet on first transition to COMPLETED/COMPLETED_EARLY
   const prevStatusRef = useRef<string | null>(null);
@@ -383,6 +421,33 @@ export default function ChatScreen() {
       invalidateAll();
     },
     onError: (e: Error) => Alert.alert("Error", e.message),
+  });
+
+  const requestExtensionMutation = useMutation({
+    mutationFn: (days: 1 | 2 | 3) =>
+      apiPost(`/api/requests/${requestId}/extension`, { days }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowExtensionSheet(false);
+      qc.invalidateQueries({ queryKey: [`/api/requests/${requestId}/extension`] });
+      qc.invalidateQueries({ queryKey: ["/api/extensions/active"] });
+      invalidateAll();
+    },
+    onError: (e: any) =>
+      Alert.alert("Error", e.message || "Could not request extension"),
+  });
+
+  const respondExtensionMutation = useMutation({
+    mutationFn: (action: "accept" | "decline") =>
+      apiPost(`/api/requests/${requestId}/extension/respond`, { action }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      qc.invalidateQueries({ queryKey: [`/api/requests/${requestId}/extension`] });
+      qc.invalidateQueries({ queryKey: ["/api/extensions/active"] });
+      invalidateAll();
+    },
+    onError: (e: any) =>
+      Alert.alert("Error", e.message || "Could not respond to extension"),
   });
 
   // ── Request card ─────────────────────────────────────────────────────────────
@@ -790,22 +855,82 @@ export default function ChatScreen() {
               </Pressable>
             )}
 
-            {/* IN_PROGRESS */}
+            {/* IN_PROGRESS — borrower */}
             {status === "IN_PROGRESS" && isBorrower && (
-              <Pressable
-                style={[card.btn, { backgroundColor: "#2563eb", borderColor: "#2563eb" }]}
-                onPress={() => setShowReturnSheet(true)}
-                disabled={anyMutating}
-              >
-                <Feather name="rotate-ccw" size={14} color="#fff" />
-                <Text style={[card.btnLabel, { color: "#fff" }]}>Return item</Text>
-              </Pressable>
+              <View style={{ gap: 8 }}>
+                <Pressable
+                  style={[card.btn, { backgroundColor: "#2563eb", borderColor: "#2563eb" }]}
+                  onPress={() => setShowReturnSheet(true)}
+                  disabled={anyMutating}
+                >
+                  <Feather name="rotate-ccw" size={14} color="#fff" />
+                  <Text style={[card.btnLabel, { color: "#fff" }]}>Return item</Text>
+                </Pressable>
+
+                {/* Extension controls — hidden when overdue */}
+                {!isOverdue && (
+                  hasPendingExtension ? (
+                    <View style={[card.infoBanner, { backgroundColor: "#fffbeb", borderColor: "#fcd34d" }]}>
+                      <Text style={[card.infoBannerText, { color: "#92400e" }]}>
+                        ⏳ Extension pending owner approval
+                      </Text>
+                    </View>
+                  ) : hasAcceptedExtension ? (
+                    <Text style={[{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center" as const }]}>
+                      No further extensions — return the item or start a new borrow.
+                    </Text>
+                  ) : (
+                    <Pressable
+                      style={[card.btn, { borderColor: colors.border }]}
+                      onPress={() => setShowExtensionSheet(true)}
+                    >
+                      <Feather name="clock" size={14} color={colors.foreground} />
+                      <Text style={[card.btnLabel, { color: colors.foreground }]}>Need more time?</Text>
+                    </Pressable>
+                  )
+                )}
+              </View>
             )}
+
+            {/* IN_PROGRESS — owner */}
             {status === "IN_PROGRESS" && isOwner && (
-              <View style={[card.infoBanner, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                <Text style={[card.infoBannerText, { color: colors.mutedForeground }]}>
-                  The item is with the borrower. You'll be notified when they initiate a return.
-                </Text>
+              <View style={{ gap: 8 }}>
+                <View style={[card.infoBanner, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                  <Text style={[card.infoBannerText, { color: colors.mutedForeground }]}>
+                    The item is with the borrower. You'll be notified when they initiate a return.
+                  </Text>
+                </View>
+
+                {/* Pending extension request from borrower */}
+                {hasPendingExtension && pendingExtension && (
+                  <View style={[card.counterBanner, { backgroundColor: "#fffbeb", borderColor: "#fcd34d" }]}>
+                    <Text style={[card.counterBannerTitle, { color: "#92400e" }]}>
+                      Extension requested: {pendingExtension.message}
+                    </Text>
+                    <Text style={[card.counterBannerText, { color: "#78350f" }]}>
+                      New return date: {fmtDate(pendingExtension.requestedEndDate)}
+                    </Text>
+                    <View style={[card.btnRow, { marginTop: 6 }]}>
+                      <Pressable
+                        style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 }]}
+                        onPress={() => respondExtensionMutation.mutate("accept")}
+                        disabled={respondExtensionMutation.isPending}
+                      >
+                        {respondExtensionMutation.isPending
+                          ? <ActivityIndicator size="small" color="#fff" />
+                          : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept</Text>
+                        }
+                      </Pressable>
+                      <Pressable
+                        style={[card.btn, { borderColor: colors.border, flex: 1 }]}
+                        onPress={() => respondExtensionMutation.mutate("decline")}
+                        disabled={respondExtensionMutation.isPending}
+                      >
+                        <Text style={[card.btnLabel, { color: colors.foreground }]}>Decline</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
               </View>
             )}
 
@@ -1276,6 +1401,18 @@ export default function ChatScreen() {
           reviewedUserName={partner.displayName || partner.username}
           requestId={request.id}
           requestType={request.requestType as any}
+        />
+      )}
+
+      {/* Extension sheet — borrower requests more time */}
+      {request && (
+        <ExtensionSheet
+          visible={showExtensionSheet}
+          onClose={() => setShowExtensionSheet(false)}
+          onRequest={(days) => requestExtensionMutation.mutate(days)}
+          isPending={requestExtensionMutation.isPending}
+          currentEndDate={request.endDate}
+          itemName={request.item?.name ?? "Item"}
         />
       )}
 

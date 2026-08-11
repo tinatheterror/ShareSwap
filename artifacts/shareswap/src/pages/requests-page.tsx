@@ -200,8 +200,6 @@ export default function RequestsPage() {
   const [counterInsufficientCoins, setCounterInsufficientCoins] = useState<{ required: number; context: "borrow" | "swap" } | null>(null);
 
   // Late-handoff date adjustment state
-  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
-  const [adjustmentRequest, setAdjustmentRequest] = useState<ItemRequest | null>(null);
 
   const { data: requests = [], isLoading } = useQuery<ItemRequest[]>({
     queryKey: ["/api/requests"],
@@ -248,37 +246,6 @@ export default function RequestsPage() {
     },
   });
 
-  const proposeDateAdjustmentMutation = useMutation({
-    mutationFn: async ({ requestId, keepOriginal, proposedEndDate }: { requestId: number; keepOriginal?: boolean; proposedEndDate?: string }) => {
-      const res = await apiRequest("POST", `/api/requests/${requestId}/propose-date-adjustment`, { keepOriginal, proposedEndDate });
-      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Failed"); }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      setShowAdjustmentModal(false);
-      setAdjustmentRequest(null);
-      toast({ title: "Done", description: "Your response has been recorded." });
-    },
-    onError: (err: any) => {
-      toast({ title: "Failed", description: err.message, variant: "destructive" });
-    },
-  });
-
-  const respondDateAdjustmentMutation = useMutation({
-    mutationFn: async ({ requestId, accept }: { requestId: number; accept: boolean }) => {
-      const res = await apiRequest("POST", `/api/requests/${requestId}/respond-date-adjustment`, { accept });
-      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Failed"); }
-      return res.json();
-    },
-    onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      toast({ title: vars.accept ? "Date adjustment approved" : "Date adjustment declined" });
-    },
-    onError: (err: any) => {
-      toast({ title: "Failed", description: err.message, variant: "destructive" });
-    },
-  });
 
   const acceptMutation = useMutation({
     mutationFn: async (requestId: number) => {
@@ -997,40 +964,8 @@ export default function RequestsPage() {
                               const isOverdue = request.endDate ? new Date() > new Date(request.endDate) : false;
                               const hasPending = !!pendingExtByRequestId[request.id];
                               const hasAccepted = !!acceptedExtByRequestId[request.id];
-                              const adjStatus = request.handoffDelayAdjustmentStatus;
                               return (
                                 <div className="flex flex-col gap-2 w-full">
-                                  {adjStatus === "pending_borrower_decision" && (
-                                    <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                                      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                                      <div className="flex-1">
-                                        <p className="font-medium">Handoff happened after your booked start date</p>
-                                        <p className="text-xs mt-0.5">ShareCoins are based on your original booking. You can keep the original return date or request an adjustment.</p>
-                                        <Button size="sm" className="mt-2 h-7 text-xs"
-                                          onClick={() => { setAdjustmentRequest(request); setShowAdjustmentModal(true); }}>
-                                          Review date adjustment
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )}
-                                  {adjStatus === "pending_owner" && (
-                                    <div className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-                                      <Clock className="h-3.5 w-3.5" />
-                                      Date adjustment pending owner approval.
-                                    </div>
-                                  )}
-                                  {adjStatus === "approved" && request.endDate && (
-                                    <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-                                      <CheckCircle className="h-3.5 w-3.5" />
-                                      Return date adjusted to {format(new Date(request.endDate), "MMM d, yyyy")}.
-                                    </div>
-                                  )}
-                                  {adjStatus === "declined" && (
-                                    <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                                      <XCircle className="h-3.5 w-3.5" />
-                                      Date adjustment declined. Original return date stands.
-                                    </div>
-                                  )}
                                   {isOverdue && (
                                     <div className="flex items-center gap-1.5 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
                                       <Clock className="h-3.5 w-3.5" />
@@ -1206,34 +1141,8 @@ export default function RequestsPage() {
                             {request.status === "IN_PROGRESS" && (() => {
                               const isOverdue = request.endDate ? new Date() > new Date(request.endDate) : false;
                               const pendingExt = pendingExtByRequestId[request.id];
-                              const adjStatus = request.handoffDelayAdjustmentStatus;
                               return (
                                 <>
-                                  {adjStatus === "pending_owner" && (
-                                    <div className="w-full mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                      <p className="text-sm font-medium text-amber-800 mb-0.5">
-                                        Return date adjustment requested
-                                      </p>
-                                      {request.proposedAdjustedEndDate && (
-                                        <p className="text-xs text-amber-700 mb-2">
-                                          {request.requestType === "RENT" ? "Renter" : "Borrower"} proposes new return date: <strong>{format(new Date(request.proposedAdjustedEndDate), "MMM d, yyyy")}</strong>
-                                          <br />Handoff was late — {request.requestType === "RENT" ? "renter" : "borrower"} is requesting the missed days back.
-                                        </p>
-                                      )}
-                                      <div className="flex gap-2">
-                                        <Button size="sm" className="bg-green-600 hover:bg-green-700"
-                                          disabled={respondDateAdjustmentMutation.isPending}
-                                          onClick={() => respondDateAdjustmentMutation.mutate({ requestId: request.id, accept: true })}>
-                                          <CheckCircle className="h-3.5 w-3.5 mr-1" /> Approve
-                                        </Button>
-                                        <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50"
-                                          disabled={respondDateAdjustmentMutation.isPending}
-                                          onClick={() => respondDateAdjustmentMutation.mutate({ requestId: request.id, accept: false })}>
-                                          <XCircle className="h-3.5 w-3.5 mr-1" /> Decline
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )}
                                   {isOverdue && (
                                     <div className="w-full mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                                       <p className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-1.5">
@@ -1512,59 +1421,6 @@ export default function RequestsPage() {
           }}
         />
       )}
-
-      {/* Late Handoff Date Adjustment Modal */}
-      {adjustmentRequest && (() => {
-        const req = adjustmentRequest;
-        const bookedStart = req.startDate ? new Date(req.startDate) : null;
-        const bookedEnd = req.endDate ? new Date(req.endDate) : null;
-        const actualHandoff = req.actualHandoffAt ? new Date(req.actualHandoffAt) : null;
-        const daysLate = bookedStart && actualHandoff ? Math.ceil((actualHandoff.getTime() - bookedStart.getTime()) / 86400000) : 0;
-        const adjustedEnd = bookedEnd && daysLate > 0 ? new Date(bookedEnd.getTime() + daysLate * 86400000) : bookedEnd;
-        return (
-          <Dialog open={showAdjustmentModal} onOpenChange={(open) => { setShowAdjustmentModal(open); if (!open) setAdjustmentRequest(null); }}>
-            <DialogContent className="sm:max-w-sm">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-amber-500" />
-                  Handoff was late
-                </DialogTitle>
-                <DialogDescription>
-                  The handoff happened after your booked start date. ShareCoins are still charged based on your original booking period.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 py-1">
-                <div className="rounded-lg bg-gray-50 border p-3 text-sm space-y-1">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Booked period</span><span className="font-medium">{bookedStart ? format(bookedStart, "MMM d") : "–"} – {bookedEnd ? format(bookedEnd, "MMM d, yyyy") : "–"}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Handoff completed</span><span className="font-medium">{actualHandoff ? format(actualHandoff, "MMM d") : "–"}</span></div>
-                  {daysLate > 0 && <div className="flex justify-between text-amber-700"><span>Days late</span><span className="font-medium">{daysLate} day{daysLate !== 1 ? "s" : ""}</span></div>}
-                </div>
-                <p className="text-sm font-medium">What would you like to do?</p>
-                <div className="space-y-2">
-                  <button
-                    className="w-full text-left border rounded-lg p-3 hover:bg-gray-50 transition-colors"
-                    onClick={() => proposeDateAdjustmentMutation.mutate({ requestId: req.id, keepOriginal: true })}
-                    disabled={proposeDateAdjustmentMutation.isPending}
-                  >
-                    <p className="font-medium text-sm">Keep original return date</p>
-                    <p className="text-xs text-muted-foreground">{bookedEnd ? format(bookedEnd, "MMM d, yyyy") : "–"} — no change needed</p>
-                  </button>
-                  {adjustedEnd && daysLate > 0 && (
-                    <button
-                      className="w-full text-left border-2 border-primary rounded-lg p-3 bg-primary/5 hover:bg-primary/10 transition-colors"
-                      onClick={() => proposeDateAdjustmentMutation.mutate({ requestId: req.id, proposedEndDate: adjustedEnd.toISOString() })}
-                      disabled={proposeDateAdjustmentMutation.isPending}
-                    >
-                      <p className="font-medium text-sm">Adjust return date</p>
-                      <p className="text-xs text-muted-foreground">Move to {format(adjustedEnd, "MMM d, yyyy")} (+{daysLate} day{daysLate !== 1 ? "s" : ""}) — owner must approve</p>
-                    </button>
-                  )}
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        );
-      })()}
 
       {/* Short Extension Dialog */}
       <Dialog open={showExtendDialog} onOpenChange={(open) => { setShowExtendDialog(open); if (!open) { setExtendDays(null); } }}>

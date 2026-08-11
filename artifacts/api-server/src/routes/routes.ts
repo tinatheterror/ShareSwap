@@ -5475,6 +5475,20 @@ Respond with ONLY the category name, nothing else.`
     if (status === "ACCEPTED") {
       try { await issueHandoffPin(requestId); } catch (_) {}
 
+      // System message → requester's inbox badge fires immediately on acceptance.
+      // Inserted before any early-return paths so it always runs.
+      try {
+        const _itemShortAcc = request.items.name.length > 30 ? request.items.name.slice(0, 30) + "…" : request.items.name;
+        const _typeLabel = request.item_requests.requestType === "GIFT" ? "gift claim" : (request.item_requests.requestType?.toLowerCase() || "request") + " request";
+        await db.insert(messages).values({
+          content: `✅ Your ${_typeLabel} for "${_itemShortAcc}" was accepted`,
+          senderId: req.user.id,
+          receiverId: request.item_requests.requesterId,
+          messageType: "system",
+          requestId,
+        });
+      } catch (_) {}
+
       // For BORROW requests where the deposit is exchanged in person, no in-app payment is
       // needed — skip straight to DEPOSIT_CONFIRMED so the handoff PIN flow unlocks immediately.
       if (
@@ -5771,6 +5785,18 @@ Respond with ONLY the category name, nothing else.`
       ...swapEventMeta,
     });
 
+    // System message → other party's inbox badge fires when a counter-offer is sent
+    try {
+      const _cpShort = request.items.name.length > 30 ? request.items.name.slice(0, 30) + "…" : request.items.name;
+      await db.insert(messages).values({
+        content: `📋 New terms proposed for "${_cpShort}"`,
+        senderId: req.user.id,
+        receiverId: otherUserId,
+        messageType: "system",
+        requestId,
+      });
+    } catch (_) {}
+
     // Notify other party
     const _cpItemName1 = request.items.name;
     const _cpType1 = request.item_requests.requestType?.toLowerCase() || "request";
@@ -5895,6 +5921,18 @@ Respond with ONLY the category name, nothing else.`
         ...swapCounterBackMeta,
       });
 
+      // System message → other party's inbox badge fires for counter-back
+      try {
+        const _cbShort = request.items.name.length > 30 ? request.items.name.slice(0, 30) + "…" : request.items.name;
+        await db.insert(messages).values({
+          content: `📋 New terms proposed for "${_cbShort}"`,
+          senderId: req.user.id,
+          receiverId: otherUserId,
+          messageType: "system",
+          requestId,
+        });
+      } catch (_) {}
+
       const _cpItemName2 = request.items.name;
       const _cpType2 = request.item_requests.requestType?.toLowerCase() || "request";
       const _cpItemShort2 = _cpItemName2.length > 30 ? _cpItemName2.slice(0, 30) + "…" : _cpItemName2;
@@ -5966,6 +6004,21 @@ Respond with ONLY the category name, nothing else.`
           acceptedByRole: isOwner ? "owner" : "requester",
         }
       );
+
+      // System message → other party's inbox badge fires on acceptance or terms confirmation
+      try {
+        const _rtcShort = request.items.name.length > 30 ? request.items.name.slice(0, 30) + "…" : request.items.name;
+        const _rtcTypeLabel = request.item_requests.requestType === "GIFT" ? "gift claim" : (request.item_requests.requestType?.toLowerCase() || "request") + " request";
+        await db.insert(messages).values({
+          content: ownerIsAccepting
+            ? `✅ Your ${_rtcTypeLabel} for "${_rtcShort}" was accepted`
+            : `✅ Terms accepted for "${_rtcShort}" — awaiting owner's final approval`,
+          senderId: req.user.id,
+          receiverId: otherUserId,
+          messageType: "system",
+          requestId,
+        });
+      } catch (_) {}
 
       // Notification message: for in-person BORROW deposit, skip deposit step messaging
       const inPersonBorrowDeposit =

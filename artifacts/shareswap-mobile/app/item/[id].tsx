@@ -246,7 +246,14 @@ export default function ItemDetailScreen() {
         return;
       }
       if (e.code === "BORROW_LIMIT_REACHED") {
-        Alert.alert("Monthly limit reached", e.message || "Upgrade to Member for unlimited borrows.");
+        Alert.alert(
+          "Monthly limit reached",
+          e.message || "Upgrade to Member for unlimited borrows.",
+          [
+            { text: "Not now", style: "cancel" },
+            { text: "Upgrade", onPress: () => router.push("/subscription" as never) },
+          ],
+        );
         return;
       }
       if (e.code === "INSUFFICIENT_SHARECOINS") {

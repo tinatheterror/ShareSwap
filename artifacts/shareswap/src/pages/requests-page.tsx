@@ -60,8 +60,6 @@ interface ItemRequest {
   handoffConfirmDeadline: string | null;
   actualHandoffAt: string | null;
   actualReturnAt: string | null;
-  handoffDelayAdjustmentStatus: string | null;
-  proposedAdjustedEndDate: string | null;
   ownerConfirmedReturn: boolean | null;
   borrowerConfirmedReturn: boolean | null;
   returnConditionOk: boolean | null;

@@ -58,8 +58,6 @@ interface TransactionDetail {
   borrowPeriodStartedAt: string | null;
   actualHandoffAt: string | null;
   actualReturnAt: string | null;
-  handoffDelayAdjustmentStatus: string | null;
-  proposedAdjustedEndDate: string | null;
   handoffDisputeTriggered: boolean;
   handoffDisputeAt: string | null;
   handoffProofOwner: string | null;

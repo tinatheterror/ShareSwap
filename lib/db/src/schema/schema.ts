@@ -388,10 +388,6 @@ export const itemRequests = pgTable("item_requests", {
   actualHandoffAt: timestamp("actual_handoff_at"),
   actualReturnAt: timestamp("actual_return_at"),
 
-  // Late-handoff date-adjustment flow (owner shows up late → borrower can propose end-date shift)
-  handoffDelayAdjustmentStatus: text("handoff_delay_adjustment_status").default("none"), // "none" | "pending_owner" | "approved" | "declined"
-  proposedAdjustedEndDate: timestamp("proposed_adjusted_end_date"),
-  
   // Rental-specific fields
   rentalAmount: decimal("rental_amount", { precision: 10, scale: 2 }), // rental fee in dollars
   rentalProcessingFee: decimal("rental_processing_fee", { precision: 10, scale: 2 }), // 3% processing fee

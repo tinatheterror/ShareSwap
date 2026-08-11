@@ -102,9 +102,6 @@ interface ItemRequest {
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
   item: RequestItem | null;
-  // Late-handoff date adjustment
-  handoffDelayAdjustmentStatus: string | null;
-  proposedAdjustedEndDate: string | null;
 }
 
 interface PinData {

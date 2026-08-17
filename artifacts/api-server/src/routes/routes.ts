@@ -9035,7 +9035,7 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: request.items.ownerId!,
         type: "return_initiated",
-        title: isEarlyReturn ? "Early return initiated" : "Return initiated",
+        title: isEarlyReturn ? "EARLY RETURN INITIATED" : "Return initiated",
         message: isEarlyReturn
           ? `"${request.items.name}" is being returned early. Confirm receipt in chat.`
           : `"${request.items.name}" has been returned. Confirm receipt in chat.`,
@@ -9049,7 +9049,7 @@ Respond with ONLY the category name, nothing else.`
       const borrowerId_ret = request.item_requests.requesterId;
       const [returnMsg] = await db.insert(messages).values({
         content: isEarlyReturn
-          ? `📦 Early return initiated — awaiting your confirmation.`
+          ? `📦 EARLY RETURN INITIATED — awaiting your confirmation.`
           : `📦 Return initiated — awaiting your confirmation.`,
         senderId: borrowerId_ret,
         receiverId: ownerId_ret,
@@ -9069,7 +9069,7 @@ Respond with ONLY the category name, nothing else.`
         request: updated,
         isEarlyReturn,
         message: isEarlyReturn 
-          ? "Early return initiated. Waiting for lender confirmation."
+          ? "EARLY RETURN INITIATED. Waiting for lender confirmation."
           : "Return initiated. Waiting for lender confirmation.",
       });
     } catch (error: any) {

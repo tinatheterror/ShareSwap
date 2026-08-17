@@ -95,7 +95,7 @@ export function ReturnConfirmationModal({
       setIsProcessing(false);
       if (isEarlyReturn) {
         toast({
-          title: "Early return initiated!",
+          title: "EARLY RETURN INITIATED",
           description: "Waiting for owner to confirm. No refund for unused days.",
         });
       } else {

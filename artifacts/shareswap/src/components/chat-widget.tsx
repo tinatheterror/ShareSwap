@@ -2216,7 +2216,7 @@ export function ChatWidget() {
                     return (
                       <div className="px-3 py-2 border-t border-amber-100 bg-amber-50 space-y-2">
                         <p className="text-xs text-amber-800 font-semibold text-center">
-                          {wasEarlyReturn ? "↩️ Early return initiated" : "↩️ Return requested"} — waiting for owner to confirm
+                          {wasEarlyReturn ? "↩️ EARLY RETURN INITIATED" : "↩️ Return requested"} — waiting for owner to confirm
                         </p>
                         <Button
                           className="w-full h-9 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl gap-2"

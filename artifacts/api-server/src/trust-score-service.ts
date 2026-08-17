@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { users, reputationActivities } from "@workspace/db";
-import { eq, and, gte } from "drizzle-orm";
+import { eq, and, gte, like } from "drizzle-orm";
 
 export const TRUST_POINTS = {
   MAJOR: {
@@ -159,6 +159,7 @@ export async function awardTrustPoints(
       points: scaledPoints,
       description,
       itemId: metadata.itemId,
+      requestId: metadata.requestId ?? null,
       createdAt: new Date(),
     });
   });
@@ -256,6 +257,34 @@ export async function awardBorrowReturnPoints(
   daysLate: number,
   notifyDelayUsed: boolean,
 ): Promise<{ borrowerPoints: number; activityType: TrustActivityType }> {
+  // ── Idempotency guard ──────────────────────────────────────────────────────
+  // Prevent double-application if confirm-return is called more than once
+  // (e.g. network retry or bug). We check for any borrow_return_* activity
+  // already recorded for this (borrower, request) pair.
+  const existingActivities = await db
+    .select({ id: reputationActivities.id, activityType: reputationActivities.activityType })
+    .from(reputationActivities)
+    .where(
+      and(
+        eq(reputationActivities.userId, borrowerId),
+        eq(reputationActivities.requestId, requestId),
+        like(reputationActivities.activityType, "borrow_return_%"),
+      ),
+    )
+    .limit(1);
+
+  if (existingActivities.length > 0) {
+    console.warn(
+      `[awardBorrowReturnPoints] Skipping duplicate award: borrower=${borrowerId} requestId=${requestId} ` +
+        `already has activity "${existingActivities[0].activityType}" (id=${existingActivities[0].id})`,
+    );
+    // Return the previously recorded values without touching the score again.
+    // We don't have the original points handy here, so return 0 to signal
+    // the caller that nothing was applied this time.
+    return { borrowerPoints: 0, activityType: existingActivities[0].activityType as TrustActivityType };
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   let borrowerPoints: number;
   let borrowerActivityType: TrustActivityType;
   const lenderPoints = TRUST_POINTS.MAJOR.LENDING_SMOOTH;

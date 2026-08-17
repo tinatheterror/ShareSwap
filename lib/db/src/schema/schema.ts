@@ -84,6 +84,7 @@ export const reputationActivities = pgTable("reputation_activities", {
   activityType: text("activity_type").notNull(),
   points: integer("points").notNull(),
   itemId: integer("item_id").references(() => items.id),
+  requestId: integer("request_id").references(() => itemRequests.id),
   description: text("description").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });

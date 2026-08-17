@@ -213,7 +213,7 @@ export function ReturnConfirmationSheet({
               onPress={handleClose}
               disabled={initiateReturnMutation.isPending}
             >
-              <Text style={[ss.btnTxt, { color: colors.foreground }]}>Cancel</Text>
+              <Text style={[ss.btnTxt, { color: colors.foreground }]}>Message Owner</Text>
             </Pressable>
             <Pressable
               style={[ss.btn, { flex: 1, backgroundColor: "#2563eb", borderColor: "#2563eb" }]}

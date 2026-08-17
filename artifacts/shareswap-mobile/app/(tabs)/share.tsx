@@ -622,7 +622,7 @@ export default function ShareScreen() {
 
       resetForm();
       Alert.alert("Listed!", "Your item is now live for neighbours to see.", [
-        { text: "View it", onPress: () => router.push("/(tabs)") },
+        { text: "View it", onPress: () => router.push(`/item/${data.id}` as any) },
       ]);
     },
     onError: (error: Error) => {

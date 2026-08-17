@@ -233,8 +233,10 @@ function buildActivityDescription(
  *
  * notifyDelayUsed shifts the tier down by one (e.g. tier 3 → tier 2).
  * Tier 1 cannot be softened further.
+ *
+ * Exported for unit testing.
  */
-function lateTier(daysLate: number, notifyDelayUsed: boolean): 1 | 2 | 3 | 4 {
+export function lateTier(daysLate: number, notifyDelayUsed: boolean): 1 | 2 | 3 | 4 {
   let tier: 1 | 2 | 3 | 4;
   if (daysLate >= 14)     tier = 4;
   else if (daysLate >= 7) tier = 3;

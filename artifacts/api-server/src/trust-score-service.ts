@@ -366,19 +366,74 @@ export async function awardSwapCompletionPoints(
   item1Id: number,
   item2Id: number,
 ): Promise<void> {
+  // ── Per-participant idempotency guard ──────────────────────────────────────
+  // Each participant is checked independently so that a partial failure on a
+  // previous attempt (user1 committed, user2 failed) can be retried and only
+  // the missing award is applied — without double-awarding the successful one.
+  const [existingUser1, existingUser2] = await Promise.all([
+    db
+      .select({ id: reputationActivities.id })
+      .from(reputationActivities)
+      .where(
+        and(
+          eq(reputationActivities.userId, user1Id),
+          eq(reputationActivities.requestId, requestId),
+          eq(reputationActivities.activityType, "swap_completed"),
+        ),
+      )
+      .limit(1),
+    db
+      .select({ id: reputationActivities.id })
+      .from(reputationActivities)
+      .where(
+        and(
+          eq(reputationActivities.userId, user2Id),
+          eq(reputationActivities.requestId, requestId),
+          eq(reputationActivities.activityType, "swap_completed"),
+        ),
+      )
+      .limit(1),
+  ]);
+
+  if (existingUser1.length > 0) {
+    console.warn(
+      `[awardSwapCompletionPoints] Skipping duplicate award: user1=${user1Id} requestId=${requestId} ` +
+        `already has swap_completed (id=${existingUser1[0].id})`,
+    );
+  }
+  if (existingUser2.length > 0) {
+    console.warn(
+      `[awardSwapCompletionPoints] Skipping duplicate award: user2=${user2Id} requestId=${requestId} ` +
+        `already has swap_completed (id=${existingUser2[0].id})`,
+    );
+  }
+  if (existingUser1.length > 0 && existingUser2.length > 0) {
+    return; // Both participants already awarded — nothing to do.
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   const points = TRUST_POINTS.MAJOR.SWAP_COMPLETED;
   const metadata = { requestId, swapItems: [item1Id, item2Id] };
+  const awards: Promise<{ newScore: number; pointsAwarded: number }>[] = [];
 
-  await Promise.all([
-    awardTrustPoints(user1Id, "swap_completed", points, {
-      ...metadata,
-      counterpartyId: user2Id,
-    }),
-    awardTrustPoints(user2Id, "swap_completed", points, {
-      ...metadata,
-      counterpartyId: user1Id,
-    }),
-  ]);
+  if (existingUser1.length === 0) {
+    awards.push(
+      awardTrustPoints(user1Id, "swap_completed", points, {
+        ...metadata,
+        counterpartyId: user2Id,
+      }),
+    );
+  }
+  if (existingUser2.length === 0) {
+    awards.push(
+      awardTrustPoints(user2Id, "swap_completed", points, {
+        ...metadata,
+        counterpartyId: user1Id,
+      }),
+    );
+  }
+
+  await Promise.all(awards);
 }
 
 export async function awardRentalCompletionPoints(
@@ -390,19 +445,74 @@ export async function awardRentalCompletionPoints(
 ): Promise<void> {
   if (hadDispute) return;
 
+  // ── Per-participant idempotency guard ──────────────────────────────────────
+  // Each participant is checked independently so that a partial failure on a
+  // previous attempt (renter committed, owner failed) can be retried and only
+  // the missing award is applied — without double-awarding the successful one.
+  const [existingRenter, existingOwner] = await Promise.all([
+    db
+      .select({ id: reputationActivities.id })
+      .from(reputationActivities)
+      .where(
+        and(
+          eq(reputationActivities.userId, renterId),
+          eq(reputationActivities.requestId, requestId),
+          eq(reputationActivities.activityType, "rental_dispute_free"),
+        ),
+      )
+      .limit(1),
+    db
+      .select({ id: reputationActivities.id })
+      .from(reputationActivities)
+      .where(
+        and(
+          eq(reputationActivities.userId, ownerId),
+          eq(reputationActivities.requestId, requestId),
+          eq(reputationActivities.activityType, "rental_dispute_free"),
+        ),
+      )
+      .limit(1),
+  ]);
+
+  if (existingRenter.length > 0) {
+    console.warn(
+      `[awardRentalCompletionPoints] Skipping duplicate award: renterId=${renterId} requestId=${requestId} ` +
+        `already has rental_dispute_free (id=${existingRenter[0].id})`,
+    );
+  }
+  if (existingOwner.length > 0) {
+    console.warn(
+      `[awardRentalCompletionPoints] Skipping duplicate award: ownerId=${ownerId} requestId=${requestId} ` +
+        `already has rental_dispute_free (id=${existingOwner[0].id})`,
+    );
+  }
+  if (existingRenter.length > 0 && existingOwner.length > 0) {
+    return; // Both participants already awarded — nothing to do.
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   const points = TRUST_POINTS.MICRO.RENTAL_DISPUTE_FREE;
   const metadata = { requestId, itemId };
+  const awards: Promise<{ newScore: number; pointsAwarded: number }>[] = [];
 
-  await Promise.all([
-    awardTrustPoints(renterId, "rental_dispute_free", points, {
-      ...metadata,
-      counterpartyId: ownerId,
-    }),
-    awardTrustPoints(ownerId, "rental_dispute_free", points, {
-      ...metadata,
-      counterpartyId: renterId,
-    }),
-  ]);
+  if (existingRenter.length === 0) {
+    awards.push(
+      awardTrustPoints(renterId, "rental_dispute_free", points, {
+        ...metadata,
+        counterpartyId: ownerId,
+      }),
+    );
+  }
+  if (existingOwner.length === 0) {
+    awards.push(
+      awardTrustPoints(ownerId, "rental_dispute_free", points, {
+        ...metadata,
+        counterpartyId: renterId,
+      }),
+    );
+  }
+
+  await Promise.all(awards);
 }
 
 export async function awardGiftingPoints(

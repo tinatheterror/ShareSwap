@@ -241,13 +241,19 @@ async function navigateFromPushData(data: Record<string, unknown>): Promise<void
       }
     }
 
-    // ── 3. Item page ──
+    // ── 3. Achievements / trust score page ──
+    if (screen === "achievements") {
+      router.push("/achievements" as any);
+      return;
+    }
+
+    // ── 4. Item page ──
     if (screen === "item" && itemId) {
       router.push(`/item/${itemId}` as any);
       return;
     }
 
-    // ── 4. Fallback ──
+    // ── 5. Fallback ──
     router.push("/notifications" as any);
   } catch (err) {
     console.error("[push] navigation error:", err);

@@ -134,8 +134,8 @@ export default function NotificationsScreen() {
     if (!notif.isRead) markRead(notif.id);
 
     // Type-specific deep-links (matches web notifications-page.tsx routing)
-    if (notif.type === "trust_score_changed" || notif.type === "level_up" || notif.type === "milestone_achieved" || notif.type === "badge_earned") {
-      router.push("/(tabs)/achievements" as never);
+    if (notif.type === "trust_score_changed" || notif.type === "level_up" || notif.type === "milestone_achieved" || notif.type === "badge_earned" || notif.type === "new_review_received") {
+      router.push("/achievements" as never);
       return;
     }
     if (notif.type === "sharecoin_earned" || notif.type === "referral_joined") {

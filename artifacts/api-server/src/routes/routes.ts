@@ -9049,8 +9049,8 @@ Respond with ONLY the category name, nothing else.`
       const borrowerId_ret = request.item_requests.requesterId;
       const [returnMsg] = await db.insert(messages).values({
         content: isEarlyReturn
-          ? `📦 EARLY RETURN INITIATED — awaiting your confirmation.`
-          : `📦 Return initiated — awaiting your confirmation.`,
+          ? `📦 EARLY RETURN INITIATED — awaiting owner's confirmation.`
+          : `📦 Return initiated — awaiting owner's confirmation.`,
         senderId: borrowerId_ret,
         receiverId: ownerId_ret,
         messageType: "system",

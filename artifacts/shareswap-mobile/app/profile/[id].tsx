@@ -45,6 +45,7 @@ interface PublicProfile {
   reviewCount?: number;
   averageRating?: number | null;
   onTimeReturnRate?: number | null;
+  frequentlyLate?: boolean;
   replyRate?: number | null;
   issuesCount?: number;
   activeStatus?: { label: string; isNow: boolean } | null;
@@ -613,6 +614,22 @@ export default function PublicProfileScreen() {
                   : "No issues reported"}
               </Text>
             </View>
+            {profile.onTimeReturnRate != null && (
+              <View style={styles.infoRow}>
+                <Feather name="clock" size={13} color={colors.mutedForeground} />
+                <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
+                  {profile.onTimeReturnRate}% on-time returns
+                </Text>
+              </View>
+            )}
+            {profile.frequentlyLate && (
+              <View style={styles.infoRow}>
+                <Feather name="alert-triangle" size={13} color="#f59e0b" />
+                <Text style={[styles.infoText, { color: "#f59e0b", fontWeight: "600" }]}>
+                  Frequently late
+                </Text>
+              </View>
+            )}
             <View style={styles.infoRow}>
               <Feather name="shield" size={13} color={colors.primary} />
               <Text

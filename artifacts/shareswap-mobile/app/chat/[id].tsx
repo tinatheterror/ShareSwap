@@ -98,6 +98,7 @@ interface ItemRequest {
   shareCoinAmount: number | null;
   depositStatus: string | null;
   actualHandoffAt: string | null;
+  returnDelayNotifiedAt: string | null;
   // Co-confirmation fields returned by GET /api/requests (routes.ts:5173-5174)
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
@@ -445,6 +446,21 @@ export default function ChatScreen() {
     },
     onError: (e: any) =>
       Alert.alert("Error", e.message || "Could not respond to extension"),
+  });
+
+  const notifyDelayMutation = useMutation({
+    mutationFn: () =>
+      apiPost(`/api/requests/${requestId}/notify-delay`, {}),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      invalidateAll();
+    },
+    onError: (e: any) => {
+      const msg = e?.alreadyOverdue
+        ? "The due date has already passed — you can no longer notify in advance."
+        : e.message || "Could not send delay notification";
+      Alert.alert("Could not notify", msg);
+    },
   });
 
   // ── Request card ─────────────────────────────────────────────────────────────
@@ -886,6 +902,43 @@ export default function ChatScreen() {
                     </Pressable>
                   )
                 )}
+
+                {/* Notify-delay — shown before due date only */}
+                {request.returnDelayNotifiedAt ? (
+                  <View style={[card.infoBanner, { backgroundColor: "#f0fdf4", borderColor: "#86efac" }]}>
+                    <Feather name="check-circle" size={13} color="#16a34a" />
+                    <Text style={[card.infoBannerText, { color: "#15803d" }]}>
+                      Owner notified — late-return penalty softened
+                    </Text>
+                  </View>
+                ) : !isOverdue ? (
+                  <Pressable
+                    style={[card.btn, { borderColor: "#f59e0b", backgroundColor: "#fffbeb" }]}
+                    disabled={notifyDelayMutation.isPending}
+                    onPress={() =>
+                      Alert.alert(
+                        "Notify owner about delay?",
+                        "This lets the owner know you'll return late. Communicating in advance softens your late-return trust penalty by one tier.",
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Send notification",
+                            onPress: () => notifyDelayMutation.mutate(),
+                          },
+                        ]
+                      )
+                    }
+                  >
+                    {notifyDelayMutation.isPending ? (
+                      <ActivityIndicator size="small" color="#92400e" />
+                    ) : (
+                      <>
+                        <Feather name="alert-triangle" size={14} color="#92400e" />
+                        <Text style={[card.btnLabel, { color: "#92400e" }]}>I'll be returning late</Text>
+                      </>
+                    )}
+                  </Pressable>
+                ) : null}
               </View>
             )}
 
@@ -1102,6 +1155,7 @@ export default function ChatScreen() {
               const actorName = partner?.displayName || partner?.username || "";
               const actor = iActor ? "You" : actorName;
 
+              const extDate = msg.metadata?.requestedEndDate as string | undefined;
               const eventLabel =
                 et === "request_accepted" ? `✅ ${actor} accepted the request` :
                 et === "request_declined" ? `❌ ${actor} declined the request` :
@@ -1110,6 +1164,9 @@ export default function ChatScreen() {
                 et === "terms_declined" ? `❌ ${actor} declined the new terms` :
                 et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
                 et === "deposit_confirmed" ? "🔒 Deposit secured" :
+                et === "extension_accepted" ? `✅ Extension accepted${extDate ? ` — new return date: ${fmtDate(extDate)}` : ""}` :
+                et === "extension_declined" ? `❌ Extension declined` :
+                et === "extension_requested" ? null :
                 et === "counter_proposed" ? null :
                 msg.content;
 
@@ -1185,12 +1242,62 @@ export default function ChatScreen() {
                   })()
                 : null;
 
+              // Extension-requested card: owner sees Accept / Decline inline
+              const extensionCard = et === "extension_requested" && msg.metadata
+                ? (() => {
+                    const days = msg.metadata.days as number | undefined;
+                    const reqEndDate = msg.metadata.requestedEndDate as string | undefined;
+                    const isPending = hasPendingExtension; // still awaiting response
+                    return (
+                      <View style={[card.counterBanner, { backgroundColor: "#fffbeb", borderColor: "#fcd34d", marginTop: 6 }]}>
+                        <Text style={[card.counterBannerTitle, { color: "#92400e" }]}>
+                          ⏳ {iActor ? "You requested" : `${actorName} requested`} +{days} day{days !== 1 ? "s" : ""}
+                        </Text>
+                        {reqEndDate && (
+                          <Text style={[card.counterBannerText, { color: "#78350f" }]}>
+                            New return date: {fmtDate(reqEndDate)}
+                          </Text>
+                        )}
+                        {isOwner && isPending && (
+                          <View style={[card.btnRow, { marginTop: 8 }]}>
+                            <Pressable
+                              style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 }]}
+                              onPress={() => respondExtensionMutation.mutate("accept")}
+                              disabled={respondExtensionMutation.isPending}
+                            >
+                              {respondExtensionMutation.isPending
+                                ? <ActivityIndicator size="small" color="#fff" />
+                                : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept</Text>
+                              }
+                            </Pressable>
+                            <Pressable
+                              style={[card.btn, { borderColor: colors.border, flex: 1 }]}
+                              onPress={() => respondExtensionMutation.mutate("decline")}
+                              disabled={respondExtensionMutation.isPending}
+                            >
+                              <Text style={[card.btnLabel, { color: colors.foreground }]}>Decline</Text>
+                            </Pressable>
+                          </View>
+                        )}
+                        {isOwner && !isPending && (
+                          <Text style={[card.counterBannerText, { color: "#6b7280", marginTop: 4 }]}>
+                            Already responded
+                          </Text>
+                        )}
+                      </View>
+                    );
+                  })()
+                : null;
+
               return (
                 <View style={styles.eventWrap}>
                   <Text style={[styles.eventLabel, { color: colors.mutedForeground }]}>
-                    {et === "counter_proposed" ? `🔄 ${actor} proposed new terms` : eventLabel}
+                    {et === "counter_proposed" ? `🔄 ${actor} proposed new terms` :
+                     et === "extension_requested" ? null :
+                     eventLabel}
                   </Text>
                   {counterCard}
+                  {extensionCard}
                 </View>
               );
             }

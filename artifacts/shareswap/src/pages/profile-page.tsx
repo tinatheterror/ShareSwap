@@ -768,14 +768,6 @@ export default function ProfilePage() {
 
               {/* Trust stats — full-width row below avatar+info, left-aligned */}
               <div className="mt-2 space-y-0.5 text-xxs text-slate-500">
-                {(publicProfile as any).onTimeReturnRate != null && (
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
-                    <span>
-                      {(publicProfile as any).onTimeReturnRate}% on-time returns
-                    </span>
-                  </div>
-                )}
                 {(publicProfile as any).replyRate != null && (
                   <div className="flex items-center gap-1.5">
                     <MessageSquare className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
@@ -798,6 +790,18 @@ export default function ProfilePage() {
                       })()}
                     </span>
                   </div>
+                  {(publicProfile as any).onTimeReturnRate != null && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-teal-400 flex-shrink-0" />
+                      <span>{(publicProfile as any).onTimeReturnRate}% on-time returns</span>
+                    </div>
+                  )}
+                  {(publicProfile as any).frequentlyLate && (
+                    <div className="flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3 text-amber-500 flex-shrink-0" />
+                      <span className="text-amber-500 font-medium">Frequently late</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1">
                     <Shield className="h-3 w-3 text-teal-400 flex-shrink-0" />
                     <span>Trust Score: {(publicProfile as any).trustScore ?? 0}</span>

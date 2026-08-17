@@ -6,7 +6,7 @@ export const TRUST_POINTS = {
   MAJOR: {
     BORROW_RETURN_PERFECT: 40,
     BORROW_RETURN_GOOD: 25,
-    BORROW_RETURN_LATE: 10,
+    BORROW_RETURN_LATE_MINOR: 5,   // 1-2 days late
     LENDING_SMOOTH: 20,
     SWAP_COMPLETED: 20,
   },
@@ -27,8 +27,11 @@ export const TRUST_POINTS = {
     DEPOSIT_CLAIMED: -50,
     FRAUD_ABUSE: -100,
     REPEATED_NO_SHOWS: -35,
-    // Medium penalties (moderate trust impact)
-    LATE_RETURN_NO_COMMUNICATION: -25,
+    // Late-return tiers (applied at confirm-return; notify-delay softens one tier)
+    LATE_RETURN_MODERATE: -20,    // 3-6 days late
+    LATE_RETURN_SEVERE: -40,      // 7-13 days late
+    LATE_RETURN_CRITICAL: -60,    // 14+ days late
+    // Other medium penalties
     CANCEL_AFTER_ACCEPTANCE: -20,
     IGNORING_MESSAGES: -18,
     // Low-review penalties (only when negative tags are also selected)
@@ -43,7 +46,6 @@ export const TRUST_SCORE_FLOOR = 0;
 // Grace pass configuration - first-time offenders get a warning instead of penalty
 export const GRACE_PASS_CONFIG = {
   ENABLED_PENALTY_TYPES: [
-    "late_return_no_communication",
     "cancel_after_acceptance",
     "low_review_one_star",
     "low_review_two_star",
@@ -56,7 +58,10 @@ export type TrustActivityType =
   // Positive activities
   | "borrow_return_perfect"
   | "borrow_return_good"
-  | "borrow_return_late"
+  | "borrow_return_late_minor"     // 1-2 days late (+5)
+  | "borrow_return_late_moderate"  // 3-6 days late (−20; effective after soften from 7-13 with notify-delay)
+  | "borrow_return_late_severe"    // 7-13 days late (−40; effective after soften from 14+ with notify-delay)
+  | "borrow_return_late_critical"  // 14+ days late (−60)
   | "borrow_return_damaged"
   | "lending_smooth"
   | "swap_completed"
@@ -72,7 +77,6 @@ export type TrustActivityType =
   | "fraud_abuse"
   | "repeated_no_shows"
   // Medium penalty activities
-  | "late_return_no_communication"
   | "cancel_after_acceptance"
   | "ignoring_messages"
   // Low-review penalties
@@ -87,7 +91,6 @@ export type PenaltyType =
   | "deposit_claimed"
   | "fraud_abuse"
   | "repeated_no_shows"
-  | "late_return_no_communication"
   | "cancel_after_acceptance"
   | "ignoring_messages"
   | "low_review_one_star"
@@ -174,7 +177,13 @@ function buildActivityDescription(
       return "Your trust score was adjusted based on this transaction.";
     case "borrow_return_good":
       return "Your trust score was adjusted based on this transaction.";
-    case "borrow_return_late":
+    case "borrow_return_late_minor":
+      return "Your trust score was adjusted based on this transaction.";
+    case "borrow_return_late_moderate":
+      return "Your trust score was adjusted based on this transaction.";
+    case "borrow_return_late_severe":
+      return "Your trust score was adjusted based on this transaction.";
+    case "borrow_return_late_critical":
       return "Your trust score was adjusted based on this transaction.";
     case "borrow_return_damaged":
       return "Your trust score was adjusted based on this transaction.";
@@ -203,8 +212,6 @@ function buildActivityDescription(
       return "Your trust score was adjusted based on this transaction.";
     case "repeated_no_shows":
       return "Your trust score was adjusted based on this transaction.";
-    case "late_return_no_communication":
-      return "Your trust score was adjusted based on this transaction.";
     case "cancel_after_acceptance":
       return "Your trust score was adjusted based on this transaction.";
     case "ignoring_messages":
@@ -217,33 +224,78 @@ function buildActivityDescription(
   }
 }
 
+/**
+ * Returns the effective late tier (1–4) after optionally softening by one step.
+ *  1 = 1-2 days  → +5
+ *  2 = 3-6 days  → −20
+ *  3 = 7-13 days → −40
+ *  4 = 14+ days  → −60
+ *
+ * notifyDelayUsed shifts the tier down by one (e.g. tier 3 → tier 2).
+ * Tier 1 cannot be softened further.
+ */
+function lateTier(daysLate: number, notifyDelayUsed: boolean): 1 | 2 | 3 | 4 {
+  let tier: 1 | 2 | 3 | 4;
+  if (daysLate >= 14)     tier = 4;
+  else if (daysLate >= 7) tier = 3;
+  else if (daysLate >= 3) tier = 2;
+  else                    tier = 1;
+
+  if (notifyDelayUsed && tier > 1) tier = (tier - 1) as 1 | 2 | 3 | 4;
+  return tier;
+}
+
 export async function awardBorrowReturnPoints(
   borrowerId: number,
   lenderId: number,
   requestId: number,
   itemId: number,
   conditionRating: number,
-  wasOnTime: boolean,
-): Promise<void> {
-  let borrowerPoints = 0;
+  daysLate: number,
+  notifyDelayUsed: boolean,
+): Promise<{ borrowerPoints: number; activityType: TrustActivityType }> {
+  let borrowerPoints: number;
   let borrowerActivityType: TrustActivityType;
-  let lenderPoints = TRUST_POINTS.MAJOR.LENDING_SMOOTH;
+  const lenderPoints = TRUST_POINTS.MAJOR.LENDING_SMOOTH;
 
-  if (conditionRating >= 4 && wasOnTime) {
-    borrowerPoints = TRUST_POINTS.MAJOR.BORROW_RETURN_PERFECT;
-    borrowerActivityType = "borrow_return_perfect";
-  } else if (conditionRating >= 3 && wasOnTime) {
-    borrowerPoints = TRUST_POINTS.MAJOR.BORROW_RETURN_GOOD;
-    borrowerActivityType = "borrow_return_good";
-  } else if (conditionRating >= 3) {
-    borrowerPoints = TRUST_POINTS.MAJOR.BORROW_RETURN_LATE;
-    borrowerActivityType = "borrow_return_late";
-  } else {
+  if (conditionRating < 3) {
+    // Damaged — lateness is irrelevant; damage penalty dominates
     borrowerPoints = TRUST_POINTS.PENALTIES.DAMAGE_CONFIRMED;
     borrowerActivityType = "borrow_return_damaged";
+  } else if (daysLate === 0) {
+    // On-time return
+    if (conditionRating >= 4) {
+      borrowerPoints = TRUST_POINTS.MAJOR.BORROW_RETURN_PERFECT; // +40
+      borrowerActivityType = "borrow_return_perfect";
+    } else {
+      borrowerPoints = TRUST_POINTS.MAJOR.BORROW_RETURN_GOOD;    // +25
+      borrowerActivityType = "borrow_return_good";
+    }
+  } else {
+    // Late return — tier determined by daysLate, softened by notify-delay
+    const tier = lateTier(daysLate, notifyDelayUsed);
+    switch (tier) {
+      case 1:
+        borrowerPoints = TRUST_POINTS.MAJOR.BORROW_RETURN_LATE_MINOR;   // +5
+        borrowerActivityType = "borrow_return_late_minor";
+        break;
+      case 2:
+        borrowerPoints = TRUST_POINTS.PENALTIES.LATE_RETURN_MODERATE;   // −20
+        borrowerActivityType = "borrow_return_late_moderate";
+        break;
+      case 3:
+        borrowerPoints = TRUST_POINTS.PENALTIES.LATE_RETURN_SEVERE;     // −40
+        borrowerActivityType = "borrow_return_late_severe";
+        break;
+      case 4:
+      default:
+        borrowerPoints = TRUST_POINTS.PENALTIES.LATE_RETURN_CRITICAL;   // −60
+        borrowerActivityType = "borrow_return_late_critical";
+        break;
+    }
   }
 
-  const metadata = { requestId, itemId, conditionRating, wasOnTime };
+  const metadata = { requestId, itemId, conditionRating, daysLate, notifyDelayUsed };
 
   await awardTrustPoints(borrowerId, borrowerActivityType, borrowerPoints, {
     ...metadata,
@@ -256,6 +308,8 @@ export async function awardBorrowReturnPoints(
       counterpartyId: borrowerId,
     });
   }
+
+  return { borrowerPoints, activityType: borrowerActivityType };
 }
 
 export async function awardSwapCompletionPoints(
@@ -378,8 +432,6 @@ const PENALTY_POINTS: Record<PenaltyType, number> = {
   deposit_claimed: TRUST_POINTS.PENALTIES.DEPOSIT_CLAIMED,
   fraud_abuse: TRUST_POINTS.PENALTIES.FRAUD_ABUSE,
   repeated_no_shows: TRUST_POINTS.PENALTIES.REPEATED_NO_SHOWS,
-  late_return_no_communication:
-    TRUST_POINTS.PENALTIES.LATE_RETURN_NO_COMMUNICATION,
   cancel_after_acceptance: TRUST_POINTS.PENALTIES.CANCEL_AFTER_ACCEPTANCE,
   ignoring_messages: TRUST_POINTS.PENALTIES.IGNORING_MESSAGES,
   low_review_one_star: TRUST_POINTS.PENALTIES.LOW_REVIEW_ONE_STAR,
@@ -491,34 +543,6 @@ export async function applyTrustPenalty(
 }
 
 // Convenience functions for specific penalty types
-export async function applyLateReturnPenalty(
-  userId: number,
-  requestId: number,
-  itemId: number,
-  daysLate: number,
-  hadCommunication: boolean,
-): Promise<{ applied: boolean; wasGracePass: boolean }> {
-  // Don't penalize if they communicated in advance
-  if (hadCommunication) {
-    console.log(
-      `ℹ️ Late return for user ${userId} not penalized - prior communication noted`,
-    );
-    return { applied: false, wasGracePass: false };
-  }
-
-  const result = await applyTrustPenalty(
-    userId,
-    "late_return_no_communication",
-    {
-      requestId,
-      itemId,
-      daysLate,
-    },
-  );
-
-  return { applied: result.applied, wasGracePass: result.wasGracePass };
-}
-
 export async function applyCancellationPenalty(
   userId: number,
   requestId: number,

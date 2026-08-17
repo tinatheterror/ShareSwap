@@ -72,7 +72,6 @@ import {
   awardGiftingPoints, 
   awardFeedbackPoints, 
   TRUST_POINTS,
-  applyLateReturnPenalty,
   applyCancellationPenalty,
   applyDepositClaimedPenalty,
   applyLowReviewPenalty
@@ -4207,6 +4206,8 @@ Respond with ONLY the category name, nothing else.`
       activeStatus,
       responseTime,
       referralCountResult,
+      lateTaggedTransactions,
+      last10ReviewsReceived,
     ] = await Promise.all([
       db.select({ rating: userReviews.rating }).from(userReviews).where(eq(userReviews.reviewedUserId, targetId)),
       db.select({ count: sql<number>`count(*)` })
@@ -4216,7 +4217,8 @@ Respond with ONLY the category name, nothing else.`
           or(eq(itemRequests.requesterId, targetId), sql`${items.ownerId} = ${targetId}`),
           or(eq(itemRequests.status, 'COMPLETED'), eq(itemRequests.status, 'COMPLETED_EARLY'))
         )),
-      db.select({ returnConfirmedAt: itemRequests.returnConfirmedAt, endDate: itemRequests.endDate })
+      // Include id so we can cross-reference with late_return review tags
+      db.select({ id: itemRequests.id, returnConfirmedAt: itemRequests.returnConfirmedAt, endDate: itemRequests.endDate })
         .from(itemRequests)
         .where(and(
           eq(itemRequests.requesterId, targetId),
@@ -4235,6 +4237,20 @@ Respond with ONLY the category name, nothing else.`
       computeActiveStatusFromDb(targetId, user.lastActiveAt ?? null),
       computeResponseTime(targetId),
       db.select({ count: sql<number>`count(*)` }).from(referrals).where(and(eq(referrals.referrerId, targetId), eq(referrals.isRewardClaimed, true))),
+      // Transactions where a late_return tag was left for this user as borrower
+      db.select({ transactionId: userReviews.transactionId })
+        .from(userReviews)
+        .where(and(
+          eq(userReviews.reviewedUserId, targetId),
+          sql`'late_return' = ANY(${userReviews.feedbackTags})`,
+          isNotNull(userReviews.transactionId),
+        )),
+      // Last 10 reviews received — for "Frequently late" flag
+      db.select({ feedbackTags: userReviews.feedbackTags })
+        .from(userReviews)
+        .where(eq(userReviews.reviewedUserId, targetId))
+        .orderBy(desc(userReviews.createdAt))
+        .limit(10),
     ]);
 
     const reviewCount = reviews.length;
@@ -4245,11 +4261,20 @@ Respond with ONLY the category name, nothing else.`
     const referralCount = Number(referralCountResult[0]?.count ?? 0);
 
     // On-time return rate (as borrower)
+    // A borrow is considered late if the date was overdue OR a reviewer left a late_return tag
+    const lateTaggedIds = new Set(lateTaggedTransactions.map(r => r.transactionId).filter(Boolean));
     let onTimeReturnRate: number | null = null;
     if (completedBorrows.length > 0) {
-      const onTime = completedBorrows.filter(r => r.returnConfirmedAt! <= r.endDate!).length;
+      const onTime = completedBorrows.filter(r =>
+        r.returnConfirmedAt! <= r.endDate! && !lateTaggedIds.has(r.id)
+      ).length;
       onTimeReturnRate = Math.round((onTime / completedBorrows.length) * 100);
     }
+
+    // "Frequently late" flag: 3+ late_return tags in the last 10 reviews received
+    const frequentlyLate = last10ReviewsReceived.filter(r =>
+      Array.isArray(r.feedbackTags) && r.feedbackTags.includes('late_return')
+    ).length >= 3;
 
     // Reply rate
     const senderSet = new Set(uniqueSenders.map(s => s.senderId));
@@ -4267,6 +4292,7 @@ Respond with ONLY the category name, nothing else.`
       completedShares,
       referralCount,
       onTimeReturnRate,
+      frequentlyLate,
       replyRate,
       issuesCount,
       trustScore,
@@ -5182,6 +5208,8 @@ Respond with ONLY the category name, nothing else.`
         counterSwapRequesterItemIds: itemRequests.counterSwapRequesterItemIds,
         counterNote: itemRequests.counterNote,
         counterRound: itemRequests.counterRound,
+        // Delay notification
+        returnDelayNotifiedAt: itemRequests.returnDelayNotifiedAt,
         // Handoff / return confirmations
         ownerConfirmedHandoff: itemRequests.ownerConfirmedHandoff,
         borrowerConfirmedHandoff: itemRequests.borrowerConfirmedHandoff,
@@ -5262,6 +5290,7 @@ Respond with ONLY the category name, nothing else.`
       counterSwapRequesterItemIds: r.counterSwapRequesterItemIds,
       counterNote: r.counterNote,
       counterRound: r.counterRound,
+      returnDelayNotifiedAt: r.returnDelayNotifiedAt,
       ownerConfirmedHandoff: r.ownerConfirmedHandoff,
       borrowerConfirmedHandoff: r.borrowerConfirmedHandoff,
       handoffConfirmDeadline: r.handoffConfirmDeadline,
@@ -8934,6 +8963,20 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(itemRequests.id, requestId))
         .returning();
 
+      // Auto-send a chat message from the borrower to the owner
+      if (request.ownerId) {
+        const dueStr = request.endDate
+          ? new Date(request.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          : "the due date";
+        await db.insert(messages).values({
+          content: `⏰ I wanted to let you know that I'll be returning this a bit later than ${dueStr}. I'll get it back to you as soon as possible — thanks for your understanding!`,
+          senderId: request.requesterId,
+          receiverId: request.ownerId,
+          requestId,
+          messageType: "text",
+        });
+      }
+
       res.json({
         success: true,
         request: updated,
@@ -9216,27 +9259,29 @@ Respond with ONLY the category name, nothing else.`
       }
       
       try {
-        await awardBorrowReturnPoints(
+        const hadCommunication = !!request.item_requests.returnDelayNotifiedAt;
+        const returnResult = await awardBorrowReturnPoints(
           request.item_requests.requesterId,
           request.items.ownerId!,
           requestId,
           request.items.id,
           conditionRating || 5,
-          wasOnTime
+          daysLate,
+          hadCommunication
         );
 
-        // Send trust score notifications
-        const condRating = conditionRating || 5;
-        let borrowerPts: number;
+        // Build notification message from the unified result
+        const borrowerPts = returnResult.borrowerPoints;
         let borrowerMsg: string;
-        if (condRating >= 4 && wasOnTime) {
-          borrowerPts = 40; borrowerMsg = "Perfect borrow return +40";
-        } else if (condRating >= 3 && wasOnTime) {
-          borrowerPts = 25; borrowerMsg = "Good borrow return +25";
-        } else if (condRating >= 3) {
-          borrowerPts = 10; borrowerMsg = "Late borrow return +10";
-        } else {
-          borrowerPts = -45; borrowerMsg = "Damage confirmed −45";
+        switch (returnResult.activityType) {
+          case "borrow_return_perfect":    borrowerMsg = "On-time return, great condition +40"; break;
+          case "borrow_return_good":       borrowerMsg = "On-time return +25"; break;
+          case "borrow_return_late_minor": borrowerMsg = daysLate <= 2 ? "1-2 day late return +5" : "Late return +5"; break;
+          case "borrow_return_late_moderate": borrowerMsg = "Late return −20"; break;
+          case "borrow_return_late_severe":   borrowerMsg = "Late return −40"; break;
+          case "borrow_return_late_critical": borrowerMsg = "Late return −60"; break;
+          case "borrow_return_damaged":    borrowerMsg = "Damage confirmed −45"; break;
+          default:                         borrowerMsg = "Return processed";
         }
         const lenderPts = 20;
         await db.insert(notifications).values([
@@ -9259,19 +9304,6 @@ Respond with ONLY the category name, nothing else.`
             isRead: false,
           },
         ]);
-        
-        // Apply late return penalty if applicable (with grace pass for first-time offenders)
-        // Only penalize if borrower didn't notify about the delay in advance
-        if (!wasOnTime && daysLate >= 1) {
-          const hadCommunication = !!request.item_requests.returnDelayNotifiedAt;
-          await applyLateReturnPenalty(
-            request.item_requests.requesterId,
-            requestId,
-            request.items.id,
-            daysLate,
-            hadCommunication
-          );
-        }
       } catch (trustError) {
         console.error("Error awarding trust points:", trustError);
         // Don't fail the return if trust scoring fails
@@ -9905,6 +9937,21 @@ Respond with ONLY the category name, nothing else.`
         isRead: false,
       });
 
+      // Auto-send a chat event message so the owner sees it in the thread
+      await db.insert(messages).values({
+        content: `⏳ Extension requested: +${addDays} day${addDays > 1 ? "s" : ""} (new return date: ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`,
+        senderId: req.user.id,
+        receiverId: borrow.ownerId,
+        requestId,
+        messageType: "event",
+        metadata: {
+          eventType: "extension_requested",
+          days: addDays,
+          requestedEndDate: newEnd.toISOString(),
+          extensionId: ext.id,
+        },
+      });
+
       res.json(ext);
     } catch (error) {
       console.error("Extension request error:", error);
@@ -9958,6 +10005,22 @@ Respond with ONLY the category name, nothing else.`
           : `Your extension request for "${borrowRow?.itemName}" was declined.`,
         requestId,
         isRead: false,
+      });
+
+      // Auto-send a chat event message so both parties see the outcome in the thread
+      const newDateStr = pending.requestedEndDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      await db.insert(messages).values({
+        content: action === "accept"
+          ? `✅ Extension accepted — new return date: ${newDateStr}`
+          : `❌ Extension declined`,
+        senderId: req.user.id,
+        receiverId: pending.borrowerId,
+        requestId,
+        messageType: "event",
+        metadata: {
+          eventType: action === "accept" ? "extension_accepted" : "extension_declined",
+          requestedEndDate: pending.requestedEndDate.toISOString(),
+        },
       });
 
       res.json({ success: true, status: newStatus });
@@ -10097,10 +10160,10 @@ Respond with ONLY the category name, nothing else.`
         .where(
           and(
             eq(itemRequests.requesterId, userId),
-            eq(itemRequests.status, "ACCEPTED"),
+            eq(itemRequests.status, "IN_PROGRESS"),
             or(
-              eq(itemRequests.requestType, "borrow"),
-              eq(itemRequests.requestType, "rent")
+              eq(itemRequests.requestType, "BORROW"),
+              eq(itemRequests.requestType, "RENT")
             ),
             // Only check items with endDate within next 2 days or overdue
             sql`${itemRequests.endDate} IS NOT NULL AND ${itemRequests.endDate} <= ${twoDaysFromNow}`

@@ -771,6 +771,30 @@ export function ChatWidget() {
     onError: () => { toast({ title: "Error", description: "Could not confirm return", variant: "destructive" }); },
   });
 
+  const { data: activeExtensions = [] } = useQuery<any[]>({
+    queryKey: ["/api/extensions/active"],
+    refetchInterval: 10000,
+  });
+  const pendingExtByRequestId = Object.fromEntries(
+    activeExtensions.filter((e) => e.status === "pending").map((e) => [e.requestId, e])
+  );
+
+  const respondExtensionMutation = useMutation({
+    mutationFn: async ({ requestId, action }: { requestId: number; action: "accept" | "decline" }) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/extension/respond`, { action });
+      return res.json();
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["/api/extensions/active"] });
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/messages"] });
+      toast({ title: vars.action === "accept" ? "Extension accepted" : "Extension declined" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed", description: err.message || "Could not respond.", variant: "destructive" });
+    },
+  });
+
 
   const openChatCounter = (request: ItemRequest, role: "owner" | "requester") => {
     // SWAP requests get a dedicated item-picker modal
@@ -1791,6 +1815,10 @@ export function ChatWidget() {
                       );
                       const actor = iActor ? "You" : partnerName;
 
+                      const extDate = msg.metadata?.requestedEndDate as string | undefined;
+                      const extDateFmt = extDate
+                        ? new Date(extDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        : null;
                       const eventLabel =
                         et === "request_accepted" ? `✅ ${actor} accepted the request` :
                         et === "request_declined" ? `❌ ${actor} declined the request` :
@@ -1799,8 +1827,18 @@ export function ChatWidget() {
                         et === "terms_declined" ? `❌ ${actor} declined the new terms` :
                         et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
                         et === "deposit_confirmed" ? "🔒 Deposit secured" :
+                        et === "extension_accepted" ? `✅ Extension accepted${extDateFmt ? ` — new return date: ${extDateFmt}` : ""}` :
+                        et === "extension_declined" ? `❌ Extension declined` :
+                        et === "extension_requested" ? null :
                         et === "counter_proposed" ? null :
                         msg.content;
+
+                      const extReqDays = msg.metadata?.days as number | undefined;
+                      const extReqDate = msg.metadata?.requestedEndDate as string | undefined;
+                      const extReqDateFmt = extReqDate
+                        ? new Date(extReqDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        : null;
+                      const isPendingExt = !!(msg.requestId && pendingExtByRequestId[msg.requestId]);
 
                       return (
                         <React.Fragment key={msg.id}>
@@ -1809,6 +1847,36 @@ export function ChatWidget() {
                               <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
                                 🔄 {actor} proposed new terms
                               </span>
+                            ) : et === "extension_requested" ? (
+                              <div className="w-full max-w-xs mx-auto rounded-lg border border-amber-200 bg-amber-50 p-3 text-center">
+                                <p className="text-xs font-semibold text-amber-800">
+                                  ⏳ {iActor ? "You requested" : `${actor} requested`} +{extReqDays} day{extReqDays !== 1 ? "s" : ""}
+                                </p>
+                                {extReqDateFmt && (
+                                  <p className="text-xs text-amber-700 mt-0.5">New return date: {extReqDateFmt}</p>
+                                )}
+                                {iAmOwner && isPendingExt && msg.requestId && (
+                                  <div className="flex gap-2 mt-2 justify-center">
+                                    <button
+                                      className="px-3 py-1 text-xs rounded bg-green-600 text-white font-medium hover:bg-green-700 disabled:opacity-50"
+                                      disabled={respondExtensionMutation.isPending}
+                                      onClick={() => respondExtensionMutation.mutate({ requestId: msg.requestId!, action: "accept" })}
+                                    >
+                                      Accept
+                                    </button>
+                                    <button
+                                      className="px-3 py-1 text-xs rounded border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50"
+                                      disabled={respondExtensionMutation.isPending}
+                                      onClick={() => respondExtensionMutation.mutate({ requestId: msg.requestId!, action: "decline" })}
+                                    >
+                                      Decline
+                                    </button>
+                                  </div>
+                                )}
+                                {iAmOwner && !isPendingExt && (
+                                  <p className="text-xs text-muted-foreground mt-1">Already responded</p>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-xs text-muted-foreground font-semibold">{eventLabel}</span>
                             )}

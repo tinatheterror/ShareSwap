@@ -147,22 +147,38 @@ export async function awardTrustPoints(
 
   const description = buildActivityDescription(activityType, metadata);
 
-  await db.transaction(async (tx) => {
-    await tx
-      .update(users)
-      .set({ reputationScore: newScore })
-      .where(eq(users.id, userId));
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ reputationScore: newScore })
+        .where(eq(users.id, userId));
 
-    await tx.insert(reputationActivities).values({
-      userId,
-      activityType,
-      points: scaledPoints,
-      description,
-      itemId: metadata.itemId,
-      requestId: metadata.requestId ?? null,
-      createdAt: new Date(),
+      await tx.insert(reputationActivities).values({
+        userId,
+        activityType,
+        points: scaledPoints,
+        description,
+        itemId: metadata.itemId,
+        requestId: metadata.requestId ?? null,
+        createdAt: new Date(),
+      });
     });
-  });
+  } catch (err: any) {
+    // PostgreSQL unique-constraint violation (23505) means a concurrent call
+    // already committed this (userId, requestId, activityType) tuple.
+    // Drizzle wraps the pg error, so the code may be on either err or err.cause.
+    // Treat it as an idempotent no-op rather than crashing.
+    const pgCode: string | undefined = err?.code ?? err?.cause?.code;
+    if (pgCode === "23505") {
+      console.warn(
+        `[awardTrustPoints] Unique-constraint conflict for userId=${userId} ` +
+          `activityType=${activityType} requestId=${metadata.requestId ?? "null"} — skipping duplicate`,
+      );
+      return { newScore: currentScore, pointsAwarded: 0 };
+    }
+    throw err;
+  }
 
   return { newScore, pointsAwarded: scaledPoints };
 }

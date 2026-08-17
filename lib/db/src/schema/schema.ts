@@ -78,16 +78,28 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const reputationActivities = pgTable("reputation_activities", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
-  activityType: text("activity_type").notNull(),
-  points: integer("points").notNull(),
-  itemId: integer("item_id").references(() => items.id),
-  requestId: integer("request_id").references(() => itemRequests.id),
-  description: text("description").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const reputationActivities = pgTable(
+  "reputation_activities",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").references(() => users.id),
+    activityType: text("activity_type").notNull(),
+    points: integer("points").notNull(),
+    itemId: integer("item_id").references(() => items.id),
+    requestId: integer("request_id").references(() => itemRequests.id),
+    description: text("description").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [
+    // Prevents double-application of the same activity for the same request,
+    // even under concurrent calls from multiple server instances.
+    uniqueIndex("reputation_activities_user_request_type_uidx").on(
+      t.userId,
+      t.requestId,
+      t.activityType,
+    ),
+  ],
+);
 
 export const userReviews = pgTable("user_reviews", {
   id: serial("id").primaryKey(),

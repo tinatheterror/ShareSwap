@@ -7424,7 +7424,7 @@ Respond with ONLY the category name, nothing else.`
         userId: row.items.ownerId,
         type: "request_withdrawn" as any,
         title: "Offer Withdrawn",
-        message: `${req.user.username} withdrew their offer for "${row.items.name}".`,
+        message: `${(req.user as any).displayName || req.user.username} withdrew their offer for "${row.items.name}".`,
         itemId: row.items.id,
         requestId,
       });
@@ -10193,18 +10193,18 @@ Respond with ONLY the category name, nothing else.`
           // Tomorrow
           notificationType = "return_reminder_tomorrow";
           title = "Return due tomorrow";
-          message = `"${item.name}" is due back to ${owner.username} tomorrow.`;
+          message = `"${item.name}" is due back to ${owner.displayName || owner.username} tomorrow.`;
         } else if (daysUntilReturn === 0) {
           // Today
           notificationType = "return_reminder_today";
           title = "Return due today";
-          message = `"${item.name}" must be returned to ${owner.username} today.`;
+          message = `"${item.name}" must be returned to ${owner.displayName || owner.username} today.`;
         } else if (daysUntilReturn < 0) {
           // Overdue
           const daysOverdue = Math.abs(daysUntilReturn);
           notificationType = "return_reminder_overdue";
           title = `Return overdue by ${daysOverdue}d`;
-          message = `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue. Return to ${owner.username} now.`;
+          message = `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue. Return to ${owner.displayName || owner.username} now.`;
         }
 
         if (notificationType) {
@@ -12623,9 +12623,10 @@ Respond with ONLY the category name, nothing else.`
         ? `New ${rating}-star review (${effectivePoints} trust)`
         : `New ${rating}-star review`;
 
+    const reviewerName = req.user.displayName || req.user.username;
     const reviewLine = comment
-      ? `${req.user.username} ${stars}: "${comment.slice(0, 60)}${comment.length > 60 ? '…' : ''}"`
-      : `${req.user.username} left you a ${rating}-star review ${stars}`;
+      ? `${reviewerName} ${stars}: "${comment.slice(0, 60)}${comment.length > 60 ? '…' : ''}"`
+      : `${reviewerName} left you a ${rating}-star review ${stars}`;
     const breakdownLine = !pairCapHit && breakdownParts.length > 0 ? `\n${breakdownParts.join(', ')}` : '';
 
     const [reviewNotif] = await db.insert(notifications).values({

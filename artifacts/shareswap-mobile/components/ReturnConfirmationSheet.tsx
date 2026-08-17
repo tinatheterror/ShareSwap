@@ -184,7 +184,7 @@ export function ReturnConfirmationSheet({
             <Text style={[ss.sub, { color: colors.mutedForeground }]}>
               {isRental
                 ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
-                : "You're returning this item before your borrow period ends. No penalty applies."}
+                : "You're returning this item early. No penalty applies. The authorization hold will be released once the owner confirms its safe return."}
             </Text>
           )}
 
@@ -196,15 +196,7 @@ export function ReturnConfirmationSheet({
                 returns it to you when you hand back the item.
               </Text>
             </View>
-          ) : (
-            <View style={[ss.infoBox, { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" }]}>
-              <Feather name="shield" size={14} color="#1d4ed8" />
-              <Text style={{ color: "#1d4ed8", fontSize: 13, flex: 1 }}>
-                Your ${depositAmount ?? "–"} authorization hold will be lifted once the owner
-                confirms the item is returned in good condition.
-              </Text>
-            </View>
-          )}
+          ) : null}
 
           <View style={[ss.infoBox, { backgroundColor: "#fffbeb", borderColor: "#fde68a" }]}>
             <Feather name="alert-circle" size={14} color="#b45309" />

@@ -210,7 +210,7 @@ export function ReturnConfirmationModal({
               <p className="text-sm text-gray-600">
                 {isRental
                   ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
-                  : "You're returning this item before your borrow period ends. No penalty applies. No refund in ShareCoins."}
+                  : "You're returning this item early. No penalty applies. The authorization hold will be released once the owner confirms its safe return."}
               </p>
             )}
 
@@ -224,17 +224,7 @@ export function ReturnConfirmationModal({
                   {`Your $${depositAmount} deposit was paid in person. Make sure the owner returns it to you when you hand back the item.`}
                 </p>
               </div>
-            ) : (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-blue-700 font-medium text-sm">
-                  <Shield className="h-4 w-4" />
-                  Deposit
-                </div>
-                <p className="text-sm text-blue-600">
-                  {`Your $${depositAmount} authorization hold will be lifted once the owner confirms the item is returned in good condition.`}
-                </p>
-              </div>
-            )}
+            ) : null}
 
             <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
               <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />

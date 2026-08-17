@@ -277,8 +277,10 @@ export function ReturnConfirmationSheet({
                 const next = !sameCondition;
                 setSameCondition(next);
                 if (next) {
-                  setConditionRating(4);
+                  setConditionRating(5);
                   setConfirmDispute(false);
+                } else {
+                  setConditionRating(4);
                 }
               }}
             >
@@ -309,7 +311,7 @@ export function ReturnConfirmationSheet({
                 <Text style={{ fontSize: 13, color: colors.foreground, fontFamily: "Inter_500Medium" }}>
                   ★ Rate Item Condition
                 </Text>
-                {CONDITION_RATINGS.map((r) => (
+                {CONDITION_RATINGS.filter((r) => r.value < 5).map((r) => (
                   <Pressable
                     key={r.value}
                     style={[

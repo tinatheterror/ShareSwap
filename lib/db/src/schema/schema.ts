@@ -114,7 +114,7 @@ export const userReviews = pgTable("user_reviews", {
 
 export const verifications = pgTable("verifications", {
   id: serial("id").primaryKey(),
-  userId: serial("user_id").references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id),
   fullName: text("full_name"),
   idNumber: text("id_number"),
   personaInquiryId: text("persona_inquiry_id"),
@@ -174,8 +174,8 @@ export const items = pgTable("items", {
 
 export const itemConditionVerifications = pgTable("item_condition_verifications", {
   id: serial("id").primaryKey(),
-  itemId: serial("item_id").references(() => items.id),
-  verifierId: serial("verifier_id").references(() => users.id),
+  itemId: integer("item_id").references(() => items.id),
+  verifierId: integer("verifier_id").references(() => users.id),
   actualConditionRating: integer("actual_condition_rating").notNull(),
   notes: text("notes"),
   photos: text("photos").array(),
@@ -186,8 +186,8 @@ export const itemConditionVerifications = pgTable("item_condition_verifications"
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
-  senderId: serial("sender_id").references(() => users.id),
-  receiverId: serial("receiver_id").references(() => users.id),
+  senderId: integer("sender_id").references(() => users.id),
+  receiverId: integer("receiver_id").references(() => users.id),
   isRead: boolean("is_read").default(false).notNull(),
   messageType: text("message_type").default("text").notNull(), // 'text' | 'event'
   metadata: jsonb("metadata"), // for event messages: { eventType, deliveryMethod, depositMethod, startDate, endDate, ... }
@@ -267,8 +267,8 @@ export const sponsoredGames = pgTable("sponsored_games", {
 
 export const gameSessions = pgTable("game_sessions", {
   id: serial("id").primaryKey(),
-  userId: serial("user_id").references(() => users.id),
-  gameId: serial("game_id").references(() => sponsoredGames.id),
+  userId: integer("user_id").references(() => users.id),
+  gameId: integer("game_id").references(() => sponsoredGames.id),
   startedAt: timestamp("started_at").defaultNow(),
   completedAt: timestamp("completed_at"),
   score: integer("score"),
@@ -290,8 +290,8 @@ export const communityChallenges = pgTable("community_challenges", {
 
 export const challengeParticipants = pgTable("challenge_participants", {
   id: serial("id").primaryKey(),
-  userId: serial("user_id").references(() => users.id),
-  challengeId: serial("challenge_id").references(() => communityChallenges.id),
+  userId: integer("user_id").references(() => users.id),
+  challengeId: integer("challenge_id").references(() => communityChallenges.id),
   currentScore: integer("current_score").default(0),
   currentRank: integer("current_rank"),
   rewardClaimed: boolean("reward_claimed").default(false),
@@ -300,8 +300,8 @@ export const challengeParticipants = pgTable("challenge_participants", {
 
 export const itemRequests = pgTable("item_requests", {
   id: serial("id").primaryKey(),
-  itemId: serial("item_id").references(() => items.id),
-  requesterId: serial("requester_id").references(() => users.id),
+  itemId: integer("item_id").references(() => items.id),
+  requesterId: integer("requester_id").references(() => users.id),
   requestType: text("request_type").notNull(),
   status: text("status").default("PENDING").notNull(),
   // Extended status for transaction lifecycle:
@@ -360,7 +360,7 @@ export const itemRequests = pgTable("item_requests", {
   // PIN-based handoff confirmation
   acceptedAt: timestamp("accepted_at"),                       // when owner formally accepts
   handoffPin: text("handoff_pin"),                            // 4-digit PIN generated on accept
-  pinExpiresAt: timestamp("pin_expires_at"),                  // 24h from acceptance
+  pinExpiresAt: timestamp("pin_expires_at", { withTimezone: true }),  // 24h from acceptance
   pinUsed: boolean("pin_used").default(false),                // true once borrower uses PIN
   pinAttempts: integer("pin_attempts").default(0),            // rate-limit tracker
   noPinUsed: boolean("no_pin_used").default(false),           // true if fallback to manual
@@ -428,7 +428,7 @@ export const itemRequests = pgTable("item_requests", {
 
 export const locationAlerts = pgTable("location_alerts", {
   id: serial("id").primaryKey(),
-  userId: serial("user_id").references(() => users.id),
+  userId: integer("user_id").references(() => users.id),
   keywords: text("keywords").array().notNull(),
   latitude: numeric("latitude", { precision: 10, scale: 8 }),
   longitude: numeric("longitude", { precision: 11, scale: 8 }),
@@ -439,8 +439,8 @@ export const locationAlerts = pgTable("location_alerts", {
 
 export const swapMatches = pgTable("swap_matches", {
   id: serial("id").primaryKey(),
-  requestId: serial("request_id").references(() => itemRequests.id),
-  matchedItemId: serial("matched_item_id").references(() => items.id),
+  requestId: integer("request_id").references(() => itemRequests.id),
+  matchedItemId: integer("matched_item_id").references(() => items.id),
   matchScore: integer("match_score").notNull(),
   compatibility: text("compatibility").notNull(), // JSON string with matching details
   createdAt: timestamp("created_at").defaultNow(),
@@ -448,7 +448,7 @@ export const swapMatches = pgTable("swap_matches", {
 
 export const deliveryArrangements = pgTable("delivery_arrangements", {
   id: serial("id").primaryKey(),
-  requestId: serial("request_id").references(() => itemRequests.id),
+  requestId: integer("request_id").references(() => itemRequests.id),
   deliveryType: text("delivery_type").notNull(),
   deliveryFee: decimal("delivery_fee", { precision: 10, scale: 2 }),
   deliveryAddress: text("delivery_address"),

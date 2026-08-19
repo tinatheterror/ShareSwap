@@ -105,14 +105,6 @@ interface ItemRequest {
   item: RequestItem | null;
 }
 
-interface PinData {
-  pin: string | null;
-  expired: boolean;
-  pinUsed: boolean;
-  // Returned by GET /api/requests/:id/handoff-pin (routes.ts:8032)
-  pinExpiresAt?: string | null;
-}
-
 interface ExtensionRequest {
   id: number;
   requestId: number;
@@ -189,11 +181,9 @@ export default function ChatScreen() {
   const sendingRef = useRef(false);
 
   const [text, setText] = useState("");
-  const [ownerPin, setOwnerPin] = useState<PinData | null>(null);
   const [showEarnModal, setShowEarnModal] = useState(false);
   const [earnRequired, setEarnRequired] = useState(0);
   const [earnContext, setEarnContext] = useState<"borrow" | "swap">("borrow");
-  const [pinFetching, setPinFetching] = useState(false);
 
   // Payment sheets
   const [showDepositSheet, setShowDepositSheet] = useState(false);
@@ -303,19 +293,6 @@ export default function ChatScreen() {
     // immediately — matching web's chat-widget.tsx invalidation pattern.
     qc.invalidateQueries({ queryKey: ["/api/inbox"] });
     qc.invalidateQueries({ queryKey: ["/api/inbox/archived"] });
-  }
-
-  async function loadOwnerPin() {
-    if (!requestId) return;
-    setPinFetching(true);
-    try {
-      const data = await apiGet<PinData>(`/api/requests/${requestId}/handoff-pin`);
-      setOwnerPin(data);
-    } catch (e: unknown) {
-      Alert.alert("Error", (e as Error).message ?? "Could not load PIN");
-    } finally {
-      setPinFetching(false);
-    }
   }
 
   // ── Mutations ─────────────────────────────────────────────────────────────────
@@ -537,7 +514,7 @@ export default function ChatScreen() {
       request.depositMethod !== "in_app";
     const showHandoffForOwnerInApp =
       isOwner && status === "DEPOSIT_CONFIRMED";
-    const canShowOwnerPin = showHandoffForOwner || showHandoffForOwnerInApp;
+    const canConfirmOwnerHandoff = showHandoffForOwner || showHandoffForOwnerInApp;
 
     const showPinEntryForBorrower =
       isBorrower &&
@@ -852,47 +829,8 @@ export default function ChatScreen() {
               </View>
             )}
 
-            {/* Handoff PIN — owner shows it, borrower enters it */}
-            {canShowOwnerPin && (
-              <View style={{ gap: 8 }}>
-                {ownerPin ? (
-                  <View style={[card.pinDisplay, { backgroundColor: "#eef2ff", borderColor: "#c7d2fe" }]}>
-                    {ownerPin.expired || !ownerPin.pin ? (
-                      <Text style={[card.pinExpiredText, { color: "#6b7280" }]}>
-                        PIN expired. Refresh to get a new one.
-                      </Text>
-                    ) : ownerPin.pinUsed ? (
-                      <Text style={[card.pinExpiredText, { color: "#16a34a" }]}>
-                        ✓ PIN used — handoff confirmed
-                      </Text>
-                    ) : (
-                      <>
-                        <Text style={[card.pinLabel, { color: "#4338ca" }]}>Your handoff code</Text>
-                        <Text style={[card.pinCode, { color: "#312e81" }]}>{ownerPin.pin}</Text>
-                        <Text style={[card.pinHint, { color: "#6366f1" }]}>
-                          Share this with the borrower to confirm the handoff
-                        </Text>
-                      </>
-                    )}
-                  </View>
-                ) : null}
-                <Pressable
-                  style={[card.btn, { backgroundColor: "#4f46e5", borderColor: "#4f46e5" }]}
-                  onPress={loadOwnerPin}
-                  disabled={pinFetching}
-                >
-                  {pinFetching
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <Text style={[card.btnLabel, { color: "#fff" }]}>
-                        {ownerPin ? "Refresh handoff code" : "Show handoff code"}
-                      </Text>
-                  }
-                </Pressable>
-              </View>
-            )}
-
-            {/* Owner: confirm handoff button (opens HandoffSheet) */}
-            {canShowOwnerPin && (
+            {/* Owner has one handoff action: confirmation opens the sheet. */}
+            {canConfirmOwnerHandoff && (
               <Pressable
                 style={[card.btn, { backgroundColor: "#0d9488", borderColor: "#0d9488" }]}
                 onPress={() => setShowHandoffSheetOwner(true)}
@@ -1498,8 +1436,6 @@ export default function ChatScreen() {
           deliveryMethod={request.deliveryMethod}
           // Borrower has confirmed on their side — owner sees "borrower confirmed" state
           otherPartyConfirmed={request.borrowerConfirmedHandoff ?? false}
-          // pinExpiresAt from the owner's own PIN fetch (handoff-pin endpoint)
-          pinExpiresAt={ownerPin?.pinExpiresAt ?? null}
         />
       )}
 

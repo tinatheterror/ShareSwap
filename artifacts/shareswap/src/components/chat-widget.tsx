@@ -326,11 +326,6 @@ export function ChatWidget() {
   const [proofText, setProofText] = useState("");
   const [showAutoReport, setShowAutoReport] = useState(false);
   const [autoReportText, setAutoReportText] = useState("");
-  const [ownerPinRevealed, setOwnerPinRevealed] = useState(false);
-  const [ownerPinValue, setOwnerPinValue] = useState<string | null>(null);
-  const [ownerPinExpired, setOwnerPinExpired] = useState(false);
-  const [ownerPinUsed, setOwnerPinUsed] = useState(false);
-  const [ownerPinLoading, setOwnerPinLoading] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ItemRequest | null>(
     null,
   );
@@ -2345,8 +2340,6 @@ export function ChatWidget() {
                     // Legacy: BORROW + in_person deposit stuck at ACCEPTED before auto-advance existed
                     (pr.status === "ACCEPTED" && pr.requestType === "BORROW" && pr.depositMethod === "in_person")
                   ) {
-                    const pinExpiresAt = (pr as any).pinExpiresAt;
-                    const isPinExpired = pinExpiresAt ? new Date(pinExpiresAt) < new Date() : false;
                     const isOwnerInPersonDeposit = pr.requestType === "BORROW" && pr.depositMethod === "in_person";
 
                     // For RENT: gate the handoff code behind the rental start date
@@ -2359,7 +2352,7 @@ export function ChatWidget() {
                       return (
                         <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
                           <p className="text-xs text-center text-indigo-700 font-medium">
-                            📅 Handoff on {format(rentalStart, "MMMM d")} — your code will be ready then
+                            📅 Handoff on {format(rentalStart, "MMMM d")} — return here then to confirm handoff
                           </p>
                         </div>
                       );
@@ -2370,53 +2363,15 @@ export function ChatWidget() {
                         {isOverdue && (
                           <p className="text-xs text-center text-amber-700 font-medium">⚠️ Handoff overdue</p>
                         )}
-                        {/* PIN display card */}
-                        <div className="rounded-xl border border-indigo-200 bg-white px-4 py-3 space-y-2">
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700 uppercase tracking-wide">
-                            <span>Your handoff code</span>
-                          </div>
-                          {isPinExpired ? (
-                            <p className="text-xs text-amber-600 font-medium">Code expired — confirm manually below</p>
-                          ) : ownerPinRevealed && ownerPinValue ? (
-                            <div className="flex items-center gap-3">
-                              <span className="text-3xl font-bold tracking-[0.25em] text-indigo-700 font-mono">{ownerPinValue}</span>
-                              {ownerPinUsed && <span className="text-xs text-green-600 font-medium bg-green-50 border border-green-200 rounded px-1.5 py-0.5">Used</span>}
-                            </div>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full border-indigo-300 text-indigo-700 hover:bg-indigo-50 text-xs h-8"
-                              disabled={ownerPinLoading}
-                              onClick={async () => {
-                                setOwnerPinLoading(true);
-                                try {
-                                  const res = await fetch(`/api/requests/${pr.id}/handoff-pin`, { credentials: "include" });
-                                  const data = await res.json();
-                                  setOwnerPinValue(data.pin);
-                                  setOwnerPinExpired(data.expired);
-                                  setOwnerPinUsed(data.pinUsed);
-                                  setOwnerPinRevealed(true);
-                                } catch (_) {}
-                                setOwnerPinLoading(false);
-                              }}
-                            >
-                              {ownerPinLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Show handoff code"}
-                            </Button>
-                          )}
-                          {ownerPinRevealed && !isPinExpired && !ownerPinUsed && (
-                            <p className="text-xs text-muted-foreground">Only share this code after both of you have checked the item and agree on the handoff.</p>
-                          )}
-                        </div>
-                        {/* Manual confirm fallback */}
-                        <button
+                        <Button
+                          className="w-full h-10 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl"
                           onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}
-                          className="text-xs text-muted-foreground hover:text-indigo-600 w-full text-center py-0.5 transition-colors"
                         >
-                          Confirm manually instead →
-                        </button>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Confirm handoff
+                        </Button>
                         {isOwnerInPersonDeposit && (
-                          <p className="text-xs text-center text-amber-700 font-medium">💵 Remember to collect the security deposit in person before sharing your code</p>
+                          <p className="text-xs text-center text-amber-700 font-medium">💵 Remember to collect the security deposit in person before confirming</p>
                         )}
                       </div>
                     );

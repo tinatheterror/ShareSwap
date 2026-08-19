@@ -97,6 +97,7 @@ interface ItemRequest {
   trustDiscountPercentage: number | null;
   shareCoinAmount: number | null;
   depositStatus: string | null;
+  handoffConfirmedAt: string | null;
   actualHandoffAt: string | null;
   returnDelayNotifiedAt: string | null;
   // Co-confirmation fields returned by GET /api/requests (routes.ts:5173-5174)
@@ -510,6 +511,7 @@ export default function ChatScreen() {
       ["ACCEPTED", "DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED", "COMPLETED", "COMPLETED_EARLY"].includes(status);
     const bookedStartDate = hasFinalizedTerms ? (request.counterStartDate || request.startDate) : request.startDate;
     const bookedEndDate = hasFinalizedTerms ? (request.counterEndDate || request.endDate) : request.endDate;
+    const handoffCompletedAt = request.actualHandoffAt || request.handoffConfirmedAt;
 
     const handoffStatuses = ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "ACCEPTED"];
     const showHandoffForOwner =
@@ -577,9 +579,9 @@ export default function ChatScreen() {
                     {fmtCalendarDate(bookedStartDate)} – {fmtCalendarDate(bookedEndDate)}
                   </Text>
                 </View>
-                {request.actualHandoffAt && (
+                {handoffCompletedAt && (
                   <Text style={[card.detailText, { color: colors.mutedForeground, paddingLeft: 17 }]}>
-                    Handoff completed: {fmtDate(request.actualHandoffAt)}
+                    Handoff completed: {fmtDate(handoffCompletedAt)}
                   </Text>
                 )}
               </View>

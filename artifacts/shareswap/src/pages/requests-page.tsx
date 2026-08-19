@@ -63,6 +63,7 @@ interface ItemRequest {
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
   handoffConfirmDeadline: string | null;
+  handoffConfirmedAt: string | null;
   actualHandoffAt: string | null;
   actualReturnAt: string | null;
   ownerConfirmedReturn: boolean | null;
@@ -649,9 +650,9 @@ export default function RequestsPage() {
                                 }
                               </span>
                             </div>
-                            {request.actualHandoffAt && (
+                            {(request.actualHandoffAt || request.handoffConfirmedAt) && (
                               <div className="flex items-center gap-2 text-xs text-muted-foreground ml-6">
-                                Handoff completed: {format(new Date(request.actualHandoffAt), "MMM d")}
+                                Handoff completed: {format(new Date(request.actualHandoffAt || request.handoffConfirmedAt!), "MMM d")}
                               </div>
                             )}
                           </div>

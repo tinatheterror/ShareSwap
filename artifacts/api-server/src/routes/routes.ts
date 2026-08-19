@@ -7329,7 +7329,7 @@ Respond with ONLY the category name, nothing else.`
 
       // Notify both parties that the deposit authorization is in place
       await db.insert(messages).values({
-        content: "🔒 Security deposit authorization is in place — your card is not charged unless damage is reported.",
+        content: "🔒 Security deposit authorized — your card is not charged unless damage is reported.",
         senderId: request.items.ownerId!,
         receiverId: request.item_requests.requesterId,
         messageType: "system",
@@ -7482,7 +7482,7 @@ Respond with ONLY the category name, nothing else.`
       // Notify both parties that the deposit authorization is in place (only for in-app Stripe holds)
       if (paymentIntentId) {
         await db.insert(messages).values({
-          content: "🔒 Security deposit authorization is in place — your card is not charged unless damage is reported.",
+          content: "🔒 Security deposit authorized — your card is not charged unless damage is reported.",
           senderId: request.items.ownerId!,
           receiverId: request.item_requests.requesterId,
           messageType: "system",

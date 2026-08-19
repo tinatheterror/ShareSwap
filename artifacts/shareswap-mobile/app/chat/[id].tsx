@@ -760,7 +760,7 @@ export default function ChatScreen() {
             {/* ACCEPTED: borrower can always cancel before deposit or handoff */}
             {status === "ACCEPTED" && isBorrower && (
               <Pressable
-                style={[card.btn, { borderColor: colors.border }]}
+                style={{ alignItems: "center", paddingVertical: 6 }}
                 onPress={() =>
                   Alert.alert("Cancel request?", "The owner has already accepted your request.", [
                     { text: "Keep booking", style: "cancel" },
@@ -771,7 +771,7 @@ export default function ChatScreen() {
               >
                 {cancelMutation.isPending
                   ? <ActivityIndicator size="small" color={colors.foreground} />
-                  : <Text style={[card.btnLabel, { color: colors.foreground }]}>Cancel request</Text>
+                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
                 }
               </Pressable>
             )}

@@ -1483,7 +1483,7 @@ export function ChatWidget() {
                   className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
                   onClick={(e) => { e.stopPropagation(); setCancelConfirmRequest(request); }}
                 >
-                  Cancel request
+                  Cancel
                 </button>
               )}
 

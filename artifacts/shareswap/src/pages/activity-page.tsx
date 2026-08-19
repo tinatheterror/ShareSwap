@@ -20,6 +20,7 @@ type Tab = "all" | "transactions" | "trust" | "coins" | "system";
 
 const TRANSACTION_TYPES = new Set([
   "item_request", "request_accepted", "request_declined",
+  "request_cancelled",
   "terms_accepted", "terms_declined", "terms_counter_proposed",
   "handoff_pending", "handoff_confirmed", "handoff_auto_advanced",
   "handoff_dispute", "handoff_disputed", "handoff_flagged",
@@ -82,6 +83,7 @@ function getIcon(type: string) {
     case "item_request": return <Package className={`${cls} text-primary`} />;
     case "request_accepted": case "terms_accepted": return <CheckCircle2 className={`${cls} text-green-600`} />;
     case "request_declined": case "terms_declined": return <AlertCircle className={`${cls} text-red-500`} />;
+    case "request_cancelled": return <AlertCircle className={`${cls} text-red-500`} />;
     case "terms_counter_proposed": return <FileText className={`${cls} text-amber-500`} />;
     case "wishlist_match": return <Heart className={`${cls} text-pink-500`} />;
     case "swap_match": return <ArrowLeftRight className={`${cls} text-teal-500`} />;

@@ -92,6 +92,8 @@ export default function NotificationsPage() {
       case 'request_declined':
       case 'terms_declined':
         return <AlertCircle className="h-5 w-5 text-red-600" />;
+      case 'request_cancelled':
+        return <AlertCircle className="h-5 w-5 text-red-600" />;
       case 'terms_counter_proposed':
         return <FileText className="h-5 w-5 text-blue-500" />;
       case 'wishlist_match':

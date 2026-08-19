@@ -43,6 +43,7 @@ function getNotificationIcon(type: string) {
   if (type === "wishlist_match") return <Heart className="h-4 w-4 text-pink-500" />;
   if (type === "swap_match") return <ArrowLeftRight className="h-4 w-4 text-teal-500" />;
   if (type === "item_request" || type === "request_accepted") return <Package className="h-4 w-4 text-blue-500" />;
+  if (type === "request_cancelled") return <AlertTriangle className="h-4 w-4 text-red-500" />;
   if (type === "terms_counter_proposed") return <AlertTriangle className="h-4 w-4 text-amber-500" />;
   if (type === "terms_declined") return <AlertTriangle className="h-4 w-4 text-red-500" />;
   if (type === "gift_completed" || type === "gift_received" || type === "gift_handoff_pending") return <Gift className="h-4 w-4 text-pink-500" />;

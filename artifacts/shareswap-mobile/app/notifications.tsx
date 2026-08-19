@@ -46,6 +46,7 @@ function notifIcon(type: string): { Icon: LucideIcon; color: string } {
   if (type === "wishlist_match")                                                return { Icon: Heart,          color: "#ec4899" };
   if (type === "swap_match")                                                    return { Icon: ArrowLeftRight, color: "#14b8a6" };
   if (type === "item_request" || type === "request_accepted")                   return { Icon: Package,        color: "#3b82f6" };
+  if (type === "request_cancelled")                                             return { Icon: AlertTriangle,  color: "#ef4444" };
   if (type === "terms_counter_proposed")                                        return { Icon: AlertTriangle,  color: "#f59e0b" };
   if (type === "terms_declined")                                                return { Icon: AlertTriangle,  color: "#ef4444" };
   if (type === "gift_completed" || type === "gift_received" || type === "gift_handoff_pending") return { Icon: Gift, color: "#ec4899" };

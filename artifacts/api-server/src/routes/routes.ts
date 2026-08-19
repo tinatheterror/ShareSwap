@@ -7538,6 +7538,9 @@ Respond with ONLY the category name, nothing else.`
           status: "CANCELLED",
           depositStatus: request.item_requests.depositPaymentIntentId ? "released" : null,
           depositReleasedAt: request.item_requests.depositPaymentIntentId ? new Date() : null,
+          // Keep the cancelled thread in the active inbox until the other
+          // party reads the cancellation event.
+          unarchivedAt: new Date(),
         })
         .where(eq(itemRequests.id, requestId))
         .returning();
@@ -7581,6 +7584,22 @@ Respond with ONLY the category name, nothing else.`
         cancelledByRole: isOwner ? "owner" : "requester",
         itemName: request.items.name,
       });
+
+      const cancelledByLabel = isOwner ? "The owner" : "The borrower";
+      await db.insert(notifications).values({
+        userId: otherPartyId,
+        type: "request_cancelled",
+        title: "Request Cancelled",
+        message: `"${request.items.name}" — ${cancelledByLabel.toLowerCase()} cancelled the request.`,
+        itemId: request.items.id,
+        requestId,
+        isRead: false,
+      });
+      sendPushToUser(otherPartyId, {
+        title: "Request Cancelled",
+        body: `"${request.items.name}" — ${cancelledByLabel.toLowerCase()} cancelled the request.`,
+        data: { screen: "chat", chatUserId: req.user.id, requestId, itemId: request.items.id },
+      }, "requests").catch(() => {});
 
       // If a Stripe deposit was held, confirm its release in the chat
       if (request.item_requests.depositPaymentIntentId && request.item_requests.depositMethod !== "in_person") {

@@ -4164,6 +4164,20 @@ Respond with ONLY the category name, nothing else.`
         : baseWhere;
 
       await db.update(messages).set({ isRead: true }).where(whereClause);
+      // Request notifications and inbox activity describe the same lifecycle
+      // event. Opening a request thread should clear both alerts together.
+      if (requestId) {
+        await db
+          .update(notifications)
+          .set({ isRead: true })
+          .where(
+            and(
+              eq(notifications.userId, req.user.id),
+              eq(notifications.requestId, requestId),
+              eq(notifications.isRead, false),
+            ),
+          );
+      }
       res.json({ success: true });
     } catch (error) {
       console.error("Error marking messages as read:", error);
@@ -4365,6 +4379,29 @@ Respond with ONLY the category name, nothing else.`
           .orderBy(desc(messages.createdAt))
       : [];
 
+    // A request notification is also inbox activity. Some request flows already
+    // write a chat lifecycle event, while scheduled/system flows only create a
+    // notification. Reading notification rows here ensures every request-linked
+    // bell alert appears as an unread inbox alert without duplicating messages.
+    const allRequestNotifications = allReqIds.length > 0
+      ? await db
+          .select({
+            requestId: notifications.requestId,
+            title: notifications.title,
+            message: notifications.message,
+            isRead: notifications.isRead,
+            createdAt: notifications.createdAt,
+          })
+          .from(notifications)
+          .where(
+            and(
+              eq(notifications.userId, userId),
+              sql`${notifications.requestId} = ANY(ARRAY[${sql.raw(allReqIds.join(','))}]::int[])`,
+            ),
+          )
+          .orderBy(desc(notifications.createdAt))
+      : [];
+
     // Build per-request message map (covers all requests so we can use unread for archive decisions)
     const reqMsgMap = new Map<number, { lastMsg: string; lastTime: Date; unread: number; lastSenderId: number }>();
     for (const msg of allThreadMessages) {
@@ -4382,6 +4419,30 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
+    const reqNotificationMap = new Map<number, { lastMsg: string; lastTime: Date; unread: number }>();
+    for (const notification of allRequestNotifications) {
+      if (!notification.requestId) continue;
+      const notificationTime = notification.createdAt ?? new Date(0);
+      const existing = reqNotificationMap.get(notification.requestId);
+      if (!existing) {
+        reqNotificationMap.set(notification.requestId, {
+          lastMsg: notification.message || notification.title,
+          lastTime: notificationTime,
+          unread: notification.isRead ? 0 : 1,
+        });
+      } else if (!notification.isRead) {
+        existing.unread += 1;
+      }
+    }
+
+    // Avoid double-counting actions that already have both a lifecycle message
+    // and a bell notification, while still surfacing notification-only events.
+    const threadUnreadCount = (requestId: number) =>
+      Math.max(
+        reqMsgMap.get(requestId)?.unread ?? 0,
+        reqNotificationMap.get(requestId)?.unread ?? 0,
+      );
+
     // Determine effective archive status for each request.
     // A status-archived thread surfaces in the active inbox while it has unread messages.
     // Once all messages are read, it re-archives immediately.
@@ -4393,7 +4454,7 @@ Respond with ONLY the category name, nothing else.`
 
     // Now filter to the requested bucket
     const filteredRequests = allRequests.filter(r => {
-      const unread = reqMsgMap.get(r.id)?.unread ?? 0;
+      const unread = threadUnreadCount(r.id);
       const archived = isEffectivelyArchived(r, unread);
       return showArchived ? archived : !archived;
     });
@@ -4445,8 +4506,12 @@ Respond with ONLY the category name, nothing else.`
       const partnerId: number = reqData.requesterId === userId ? reqData.ownerId! : reqData.requesterId;
       const partner = partnerMap.get(partnerId);
       const msgData = reqMsgMap.get(reqData.id);
+      const notificationData = reqNotificationMap.get(reqData.id);
 
       const msgTime = msgData?.lastTime ? new Date(msgData.lastTime) : null;
+      const notificationTime = notificationData?.lastTime
+        ? new Date(notificationData.lastTime)
+        : null;
       const reqTime = reqData.createdAt ? new Date(reqData.createdAt) : new Date(0);
 
       let lastActivityTime: Date;
@@ -4454,7 +4519,16 @@ Respond with ONLY the category name, nothing else.`
       let previewType: "message" | "request";
       let previewSentByMe: boolean | null;
 
-      if (msgTime && msgTime >= reqTime) {
+      if (
+        notificationTime &&
+        notificationTime >= reqTime &&
+        (!msgTime || notificationTime > msgTime)
+      ) {
+        lastActivityTime = notificationTime;
+        previewType = "message";
+        preview = notificationData!.lastMsg;
+        previewSentByMe = false;
+      } else if (msgTime && msgTime >= reqTime) {
         lastActivityTime = msgTime;
         previewType = "message";
         preview = msgData!.lastMsg;
@@ -4480,7 +4554,7 @@ Respond with ONLY the category name, nothing else.`
         preview,
         previewType,
         previewSentByMe,
-        unreadCount: msgData?.unread || 0,
+        unreadCount: threadUnreadCount(reqData.id),
         requestType: reqData.requestType,
         requestStatus: reqData.status,
         requestNegotiationStatus: reqData.negotiationStatus || null,
@@ -4488,7 +4562,7 @@ Respond with ONLY the category name, nothing else.`
         itemId: reqData.itemId,
         itemPhoto: (reqData.itemPhotos as string[] | null)?.[0] ?? null,
         iAmRequester: reqData.requesterId === userId,
-        isArchived: isEffectivelyArchived(reqData, msgData?.unread ?? 0),
+        isArchived: isEffectivelyArchived(reqData, threadUnreadCount(reqData.id)),
       };
     });
 

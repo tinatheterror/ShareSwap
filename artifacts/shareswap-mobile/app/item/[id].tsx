@@ -237,8 +237,12 @@ export default function ItemDetailScreen() {
       const e = err as Error & { code?: string; required?: number; missing?: { idVerified?: boolean; paymentVerified?: boolean } };
       if (e.code === "FULL_VERIFICATION_REQUIRED") {
         setVerifMissing(e.missing ?? {});
-        setShowVerifModal(true);
         setActiveRequestType(null);
+        // Native modal stacking can leave the verification prompt hidden behind
+        // the borrow sheet, which makes this server-side requirement appear silent.
+        setShowBorrowSheet(false);
+        setShowSwapSelector(false);
+        setTimeout(() => setShowVerifModal(true), 300);
         return;
       }
       if (e.code === "EMAIL_NOT_VERIFIED") {

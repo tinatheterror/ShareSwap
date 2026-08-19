@@ -8190,7 +8190,17 @@ Respond with ONLY the category name, nothing else.`
           // Use counter-proposed dates if present — they are the agreed-upon dates after negotiation
           const effectiveStart2 = request.item_requests.counterStartDate || request.item_requests.startDate;
           const effectiveEnd2   = request.item_requests.counterEndDate   || request.item_requests.endDate;
-          const bookedEndDate = effectiveEnd2 ? new Date(effectiveEnd2) : null;
+          const formatBookedCalendarDate = (value: Date | string | null | undefined, includeYear = false) => {
+            if (!value) return null;
+            const datePart = value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return null;
+            return new Intl.DateTimeFormat("en-US", {
+              timeZone: "UTC",
+              month: "short",
+              day: "numeric",
+              ...(includeYear ? { year: "numeric" as const } : {}),
+            }).format(new Date(`${datePart}T00:00:00.000Z`));
+          };
           // ShareCoin amount is always based on the original booked period — never adjusted for early/late handoff
           const shareCoinAmount = isBorrow
             ? calcBorrowShareCoinCost(
@@ -8199,8 +8209,8 @@ Respond with ONLY the category name, nothing else.`
                 effectiveEnd2,
               )
             : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
-          const startFmt = effectiveStart2 ? new Date(effectiveStart2).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : null;
-          const endFmt = bookedEndDate ? bookedEndDate.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }) : null;
+          const startFmt = formatBookedCalendarDate(effectiveStart2);
+          const endFmt = formatBookedCalendarDate(effectiveEnd2, true);
           const handoffFmt = now.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 
           systemMsgs = [

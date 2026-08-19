@@ -26,6 +26,11 @@ import { getStripePromise } from "@/lib/stripe-client";
 
 const stripePromise = getStripePromise();
 
+function parseCalendarDate(dateString: string): Date {
+  const [year, month, day] = dateString.slice(0, 10).split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 interface ItemRequest {
   id: number;
   itemId: number;
@@ -639,8 +644,8 @@ export default function RequestsPage() {
                               <Clock className="h-4 w-4" />
                               <span>
                                 {request.status === "IN_PROGRESS" || request.status === "RETURN_REQUESTED"
-                                  ? <>Booked: {format(new Date(request.startDate), "MMM d")} – {format(new Date(request.endDate), "MMM d, yyyy")}</>
-                                  : <>{format(new Date(request.startDate), "MMM d")} - {format(new Date(request.endDate), "MMM d, yyyy")}</>
+                                  ? <>Booked: {format(parseCalendarDate(request.counterStartDate || request.startDate), "MMM d")} – {format(parseCalendarDate(request.counterEndDate || request.endDate), "MMM d, yyyy")}</>
+                                  : <>{format(parseCalendarDate(request.counterStartDate || request.startDate), "MMM d")} - {format(parseCalendarDate(request.counterEndDate || request.endDate), "MMM d, yyyy")}</>
                                 }
                               </span>
                             </div>

@@ -1,4 +1,4 @@
-import { safeDate, fmtDate, formatTime } from "../dateUtils";
+import { safeDate, fmtCalendarDate, fmtDate, formatTime } from "../dateUtils";
 
 describe("safeDate", () => {
   it("parses a bare YYYY-MM-DD string without returning Invalid Date", () => {
@@ -65,6 +65,16 @@ describe("fmtDate", () => {
     });
     expect(result).not.toBe("–");
     expect(result).not.toBe("Invalid Date");
+  });
+});
+
+describe("fmtCalendarDate", () => {
+  it("preserves the selected calendar day from a midnight UTC booking timestamp", () => {
+    expect(fmtCalendarDate("2025-06-15T00:00:00.000Z")).toBe("Jun 15");
+  });
+
+  it("returns '–' for malformed date-only input", () => {
+    expect(fmtCalendarDate("garbage-input")).toBe("–");
   });
 });
 

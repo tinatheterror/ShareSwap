@@ -22,7 +22,7 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { Shield, Coins, Calendar, CreditCard } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiPatch, photoUrl } from "@/lib/api";
-import { fmtDate as fmtDateUtil, safeDate } from "@/lib/dateUtils";
+import { fmtCalendarDate, fmtDate as fmtDateUtil, safeDate } from "@/lib/dateUtils";
 import { useAuth } from "@/context/AuthContext";
 import { InsufficientShareCoinsModal } from "@/components/InsufficientShareCoinsModal";
 import { PayDepositSheet } from "@/components/PayDepositSheet";
@@ -506,6 +506,10 @@ export default function ChatScreen() {
     const depositDiscount = request.trustDiscountPercentage;
     const coinAmt = request.shareCoinAmount;
     const depositMethodLabel = request.depositMethod === "in_app" ? "In-app" : "In-person";
+    const hasFinalizedTerms = request.negotiationStatus === "terms_accepted" ||
+      ["ACCEPTED", "DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED", "COMPLETED", "COMPLETED_EARLY"].includes(status);
+    const bookedStartDate = hasFinalizedTerms ? (request.counterStartDate || request.startDate) : request.startDate;
+    const bookedEndDate = hasFinalizedTerms ? (request.counterEndDate || request.endDate) : request.endDate;
 
     const handoffStatuses = ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "ACCEPTED"];
     const showHandoffForOwner =
@@ -564,13 +568,13 @@ export default function ChatScreen() {
             </View>
 
             {/* Dates */}
-            {(request.startDate || request.endDate) && (
+            {(bookedStartDate || bookedEndDate) && (
               <View style={{ gap: 1 }}>
                 <View style={card.detailRow}>
                   <Feather name="clock" size={12} color={colors.mutedForeground} />
                   <Text style={[card.detailText, { color: colors.mutedForeground }]}>
                     {(status === "IN_PROGRESS" || status === "RETURN_REQUESTED") ? "Booked: " : ""}
-                    {fmtDate(request.startDate)} – {fmtDate(request.endDate)}
+                    {fmtCalendarDate(bookedStartDate)} – {fmtCalendarDate(bookedEndDate)}
                   </Text>
                 </View>
                 {request.actualHandoffAt && (
@@ -617,7 +621,7 @@ export default function ChatScreen() {
                   <Text style={[card.counterBannerTitle, { color: "#92400e" }]}>Counter-proposal received</Text>
                   {request.counterStartDate && (
                     <Text style={[card.counterBannerText, { color: "#78350f" }]}>
-                      📅 {fmtDate(request.counterStartDate)} – {fmtDate(request.counterEndDate)}
+                      📅 {fmtCalendarDate(request.counterStartDate)} – {fmtCalendarDate(request.counterEndDate)}
                     </Text>
                   )}
                   {request.counterDepositMethod && (
@@ -665,7 +669,7 @@ export default function ChatScreen() {
                 </Text>
                 {request.counterStartDate && (
                   <Text style={[card.counterBannerText, { color: "#78350f" }]}>
-                    📅 {fmtDate(request.counterStartDate)} – {fmtDate(request.counterEndDate)}
+                    📅 {fmtCalendarDate(request.counterStartDate)} – {fmtCalendarDate(request.counterEndDate)}
                   </Text>
                 )}
                 {request.counterDepositMethod && (
@@ -990,7 +994,7 @@ export default function ChatScreen() {
                       Extension requested: {pendingExtension.message}
                     </Text>
                     <Text style={[card.counterBannerText, { color: "#78350f" }]}>
-                      New return date: {fmtDate(pendingExtension.requestedEndDate)}
+                      New return date: {fmtCalendarDate(pendingExtension.requestedEndDate)}
                     </Text>
                     <View style={[card.btnRow, { marginTop: 6 }]}>
                       <Pressable
@@ -1203,7 +1207,7 @@ export default function ChatScreen() {
                 et === "terms_declined" ? `❌ ${actor} declined the new terms` :
                 et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
                 et === "deposit_confirmed" ? "🔒 Deposit secured" :
-                et === "extension_accepted" ? `✅ Extension accepted${extDate ? ` — new return date: ${fmtDate(extDate)}` : ""}` :
+                et === "extension_accepted" ? `✅ Extension accepted${extDate ? ` — new return date: ${fmtCalendarDate(extDate)}` : ""}` :
                 et === "extension_declined" ? `❌ Extension declined` :
                 et === "extension_requested" ? null :
                 et === "counter_proposed" ? null :
@@ -1216,10 +1220,10 @@ export default function ChatScreen() {
                     const mEnd = msg.metadata.endDate as string | undefined;
                     const origStartRaw = (msg.metadata.origStartDate as string | undefined) ?? relatedReq?.startDate ?? undefined;
                     const origEndRaw = (msg.metadata.origEndDate as string | undefined) ?? relatedReq?.endDate ?? undefined;
-                    const origStart = origStartRaw ? fmtDate(origStartRaw) : null;
-                    const origEnd = origEndRaw ? fmtDate(origEndRaw) : null;
-                    const newStart = mStart ? fmtDate(mStart) : null;
-                    const newEnd = mEnd ? fmtDate(mEnd) : null;
+                    const origStart = origStartRaw ? fmtCalendarDate(origStartRaw) : null;
+                    const origEnd = origEndRaw ? fmtCalendarDate(origEndRaw) : null;
+                    const newStart = mStart ? fmtCalendarDate(mStart) : null;
+                    const newEnd = mEnd ? fmtCalendarDate(mEnd) : null;
                     const dateChanged = (newStart && newStart !== origStart) || (newEnd && newEnd !== origEnd);
                     const origDeposit = msg.metadata.origDepositMethod as string | undefined;
                     const newDeposit = msg.metadata.depositMethod as string | undefined;
@@ -1295,7 +1299,7 @@ export default function ChatScreen() {
                         </Text>
                         {reqEndDate && (
                           <Text style={[card.counterBannerText, { color: "#78350f" }]}>
-                            New return date: {fmtDate(reqEndDate)}
+                            New return date: {fmtCalendarDate(reqEndDate)}
                           </Text>
                         )}
                       </View>

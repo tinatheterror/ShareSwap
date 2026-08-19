@@ -10,6 +10,24 @@ export function safeDate(d: string): Date {
 }
 
 /**
+ * Format a date-only value as the calendar day the user selected.
+ * PostgreSQL serializes date-only booking fields as midnight UTC timestamps;
+ * parsing those as an instant can shift the visible day in timezones west of UTC.
+ */
+export function fmtCalendarDate(
+  d: string | null | undefined,
+  options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" },
+): string {
+  if (!d) return "–";
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+  if (!match) return "–";
+  const [, year, month, day] = match;
+  const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+  if (isNaN(parsed.getTime())) return "–";
+  return parsed.toLocaleDateString("en-US", options);
+}
+
+/**
  * Format a nullable date string for display. Returns "–" for null/undefined/invalid.
  * Handles both "YYYY-MM-DD" and full ISO timestamp inputs safely on iOS.
  */

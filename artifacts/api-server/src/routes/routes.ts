@@ -5437,6 +5437,35 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
+    // BORROW requests are paid for by the requester. Enforce the prorated
+    // ShareCoin requirement on the server so an owner cannot accept a request
+    // whose borrower cannot afford the final date range.
+    if (status === "ACCEPTED" && request.item_requests.requestType === "BORROW") {
+      const weeklyPrice = parseFloat(request.items.shareCoinPrice?.toString() ?? "0") || 5;
+      const startDate = request.item_requests.counterStartDate || request.item_requests.startDate;
+      const endDate = request.item_requests.counterEndDate || request.item_requests.endDate;
+      const days = startDate && endDate
+        ? Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000))
+        : 0;
+      const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
+      const [borrower] = await db
+        .select({ shareCoins: users.shareCoins })
+        .from(users)
+        .where(eq(users.id, request.item_requests.requesterId))
+        .limit(1);
+      const currentBalance = Math.floor(parseFloat(borrower?.shareCoins?.toString() ?? "0"));
+
+      if (currentBalance < required) {
+        return res.status(400).json({
+          code: "INSUFFICIENT_SHARECOINS",
+          error: `The borrower needs ${required} ShareCoins for these dates but has ${currentBalance}.`,
+          required,
+          currentBalance,
+          payerIsRequester: true,
+        });
+      }
+    }
+
     // Check for active cooldowns before accepting swaps
     if (status === "ACCEPTED" && request.item_requests.requestType === "SWAP") {
       const cooldownCheck = await CooldownChecker.checkSwapCooldown(
@@ -5967,6 +5996,32 @@ Respond with ONLY the category name, nothing else.`
       const finalDepositMethod = request.item_requests.counterDepositMethod || request.item_requests.depositMethod;
       const finalStartDate = request.item_requests.counterStartDate || request.item_requests.startDate;
       const finalEndDate = request.item_requests.counterEndDate || request.item_requests.endDate;
+
+      // The requester pays the ShareCoin cost for BORROW requests, regardless
+      // of whether the requester or owner clicks Accept on these final terms.
+      if (request.item_requests.requestType === "BORROW") {
+        const weeklyPrice = parseFloat(request.items.shareCoinPrice?.toString() ?? "0") || 5;
+        const days = finalStartDate && finalEndDate
+          ? Math.max(1, Math.ceil((new Date(finalEndDate).getTime() - new Date(finalStartDate).getTime()) / 86_400_000))
+          : 0;
+        const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
+        const [borrower] = await db
+          .select({ shareCoins: users.shareCoins })
+          .from(users)
+          .where(eq(users.id, request.item_requests.requesterId))
+          .limit(1);
+        const currentBalance = Math.floor(parseFloat(borrower?.shareCoins?.toString() ?? "0"));
+
+        if (currentBalance < required) {
+          return res.status(400).json({
+            code: "INSUFFICIENT_SHARECOINS",
+            error: `The borrower needs ${required} ShareCoins for these dates but has ${currentBalance}.`,
+            required,
+            currentBalance,
+            payerIsRequester: true,
+          });
+        }
+      }
 
       // When the OWNER accepts a counter, fully accept the request (they have final approval authority).
       // When the REQUESTER accepts, the owner still needs to formally approve.

@@ -2,3 +2,4 @@
 - [Extracting shadcn theme tokens](shadcn-theme-token-extraction.md) — curl the running Vite dev server HTML to read the actual injected `--background`/`--primary`/etc HSL values instead of guessing from theme.json.
 - [Always-mounted RN components surface missing imports immediately](always-mounted-rn-imports.md) — components rendered unconditionally (isOpen=false) on a screen will crash it on mount if they have any undefined reference, not just when opened.
 - [Expo Go crash diagnosis workflow](expo-go-crash-diagnosis.md) — "Try Again" re-runs cached bundle; shake→Reload fetches fresh from Metro. Make ErrorFallback show error.message inline in __DEV__ to read the crash without a debugger.
+- [Borrow acceptance affordability](borrow-acceptance-affordability.md) — enforce borrower ShareCoin affordability at final acceptance, with a pre-handoff cancellation escape hatch.

@@ -361,16 +361,39 @@ export default function ChatScreen() {
   });
 
   const acceptCounterMutation = useMutation({
-    mutationFn: () => apiPost(`/api/requests/${requestId}/respond-to-counter`, { accept: true }),
+    mutationFn: () => {
+      // Only the requester pays ShareCoins. If they are accepting an owner's
+      // counter, validate the final dates before sending the acceptance.
+      if (request?.requestType === "BORROW" && request.requesterId === user?.id) {
+        const weeklyPrice = parseFloat(String(request.item?.shareCoinPrice ?? 0)) || 5;
+        const startDate = request.counterStartDate || request.startDate;
+        const endDate = request.counterEndDate || request.endDate;
+        const days = startDate && endDate
+          ? Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000))
+          : 0;
+        const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
+        if (Number((user as any)?.shareCoins ?? 0) < required) {
+          const error: any = new Error("Insufficient ShareCoins");
+          error.code = "PREFLIGHT_INSUFFICIENT";
+          error.required = required;
+          throw error;
+        }
+      }
+      return apiPost(`/api/requests/${requestId}/respond-to-counter`, { accept: true });
+    },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       invalidateAll();
     },
     onError: (e: any) => {
       if (e?.code === "PREFLIGHT_INSUFFICIENT" || e?.code === "INSUFFICIENT_SHARECOINS") {
-        setEarnRequired(e.required ?? 0);
-        setEarnContext(e.context ?? "swap");
-        setShowEarnModal(true);
+        if (request?.requesterId === user?.id) {
+          setEarnRequired(e.required ?? 0);
+          setEarnContext("borrow");
+          setShowEarnModal(true);
+        } else {
+          Alert.alert("Borrower needs more ShareCoins", e.message || "The borrower cannot afford these dates yet.");
+        }
       } else {
         Alert.alert("Error", e.message || "Failed to accept counter");
       }
@@ -734,8 +757,8 @@ export default function ChatScreen() {
               </Pressable>
             )}
 
-            {/* ACCEPTED: borrower can still cancel before deposit is confirmed */}
-            {status === "ACCEPTED" && isBorrower && !showDepositNeeded && request.requestType !== "RENT" && (
+            {/* ACCEPTED: borrower can always cancel before deposit or handoff */}
+            {status === "ACCEPTED" && isBorrower && (
               <Pressable
                 style={[card.btn, { borderColor: colors.border }]}
                 onPress={() =>

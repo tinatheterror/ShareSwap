@@ -600,6 +600,10 @@ export function ChatWidget() {
   const respondToCounterMutation = useMutation({
     mutationFn: async ({ requestId, accept }: { requestId: number; accept: boolean }) => {
       const res = await apiRequest("POST", `/api/requests/${requestId}/respond-to-counter`, { accept });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw Object.assign(new Error(body.error || "Failed to respond to counter"), body);
+      }
       return res.json();
     },
     onSuccess: (data, vars) => {
@@ -617,6 +621,27 @@ export function ChatWidget() {
           description: data.message,
         });
       }
+    },
+    onError: (error: any, vars) => {
+      if (error?.code === "INSUFFICIENT_SHARECOINS") {
+        const request = requests.find((candidate) => candidate.id === vars.requestId);
+        if (request?.requesterId === user?.id) {
+          setInsufficientCoinsRequired(error.required ?? 0);
+          setShowInsufficientCoinsModal(true);
+        } else {
+          toast({
+            title: "Borrower needs more ShareCoins",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+      toast({
+        title: "Could not update the request",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -1301,7 +1326,26 @@ export function ChatWidget() {
               <Button
                 size="sm"
                 className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
-                onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: true })}
+                onClick={() => {
+                  // A borrower may accept an owner's counter only when their
+                  // balance covers its final date range. Owners are never
+                  // checked against the borrower's ShareCoin balance.
+                  if (request.requestType === "BORROW" && request.requesterId === user?.id) {
+                    const weeklyPrice = parseFloat((request.item as any)?.shareCoinPrice || "0") || 5;
+                    const startDate = request.counterStartDate || request.startDate;
+                    const endDate = request.counterEndDate || request.endDate;
+                    const days = startDate && endDate
+                      ? Math.max(1, Math.ceil((parseLocalDate(endDate).getTime() - parseLocalDate(startDate).getTime()) / 86_400_000))
+                      : 0;
+                    const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
+                    if (Number((user as any)?.shareCoins ?? 0) < required) {
+                      setInsufficientCoinsRequired(required);
+                      setShowInsufficientCoinsModal(true);
+                      return;
+                    }
+                  }
+                  respondToCounterMutation.mutate({ requestId: request.id, accept: true });
+                }}
                 disabled={respondToCounterMutation.isPending}
               >
                 Accept

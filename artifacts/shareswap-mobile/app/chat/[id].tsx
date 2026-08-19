@@ -351,7 +351,13 @@ export default function ChatScreen() {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: () => apiPost(`/api/requests/${requestId}/cancel`, {}),
+    mutationFn: () => {
+      const cancelRequestId = request?.id ?? reqId;
+      if (!cancelRequestId) {
+        throw new Error("Unable to identify this request. Please reopen the chat and try again.");
+      }
+      return apiPost(`/api/requests/${cancelRequestId}/cancel`, {});
+    },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       invalidateAll();
@@ -359,6 +365,20 @@ export default function ChatScreen() {
     },
     onError: (e: Error) => Alert.alert("Error", e.message),
   });
+
+  function confirmAcceptedRequestCancellation() {
+    const message = "The owner has already accepted your request.";
+    if (isWeb && typeof window !== "undefined") {
+      if (window.confirm(`Cancel request?\n\n${message}`)) {
+        cancelMutation.mutate();
+      }
+      return;
+    }
+    Alert.alert("Cancel request?", message, [
+      { text: "Keep booking", style: "cancel" },
+      { text: "Cancel request", style: "destructive", onPress: () => cancelMutation.mutate() },
+    ]);
+  }
 
   const acceptCounterMutation = useMutation({
     mutationFn: () => {
@@ -813,12 +833,7 @@ export default function ChatScreen() {
             {status === "ACCEPTED" && isBorrower && (
               <Pressable
                 style={{ alignItems: "center", paddingVertical: 6 }}
-                onPress={() =>
-                  Alert.alert("Cancel request?", "The owner has already accepted your request.", [
-                    { text: "Keep booking", style: "cancel" },
-                    { text: "Cancel request", style: "destructive", onPress: () => cancelMutation.mutate() },
-                  ])
-                }
+                onPress={confirmAcceptedRequestCancellation}
                 disabled={anyMutating}
               >
                 {cancelMutation.isPending

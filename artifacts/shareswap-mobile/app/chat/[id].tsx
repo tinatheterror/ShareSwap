@@ -1000,9 +1000,12 @@ export default function ChatScreen() {
                     </Text>
                   )}
                   {request.returnDelayNotifiedAt && (
-                    <Text style={[{ fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" as const }, { color: "#15803d" }]}>
-                      Owner notified — late-return penalty softened.
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <Feather name="check-circle" size={14} color="#16a34a" />
+                      <Text style={[{ fontSize: 12, fontFamily: "Inter_400Regular" }, { color: "#15803d" }]}>
+                        Owner notified — late-return penalty softened.
+                      </Text>
+                    </View>
                   )}
                   </>
                 )}

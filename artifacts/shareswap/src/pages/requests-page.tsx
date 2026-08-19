@@ -60,6 +60,8 @@ interface ItemRequest {
   counterSwapRequesterItemIds: number[] | null;
   counterNote: string | null;
   counterRound: number | null;
+  returnDelayNotifiedAt: string | null;
+  returnDelayFollowUpNotifiedAt: string | null;
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
   handoffConfirmDeadline: string | null;
@@ -226,12 +228,42 @@ export default function RequestsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/extensions/active"] });
-      toast({ title: "Extension requested", description: "The owner has been notified." });
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+      toast({
+        title: "Extension requested",
+        description: "The owner has been notified. This counts as advance communication.",
+      });
       setShowExtendDialog(false);
       setExtendDays(null);
     },
     onError: (err: any) => {
       toast({ title: "Failed", description: err.message || "Could not send extension request.", variant: "destructive" });
+    },
+  });
+
+  const notifyDelayMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/notify-delay`, {});
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Could not update the owner.");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      toast({
+        title: "Owner updated",
+        description: "This follow-up does not change the revised return date.",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Could not update owner",
+        description: err.message || "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -1018,6 +1050,22 @@ export default function RequestsPage() {
                                         Need a bit more time?
                                       </Button>
                                     )}
+                                   {hasAccepted && !isOverdue && (
+                                     <Button
+                                       size="sm"
+                                       variant="outline"
+                                       className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                                       disabled={!!request.returnDelayFollowUpNotifiedAt || notifyDelayMutation.isPending}
+                                       onClick={() => {
+                                         if (window.confirm("Let the owner know you may also miss the extended return date? This does not change the date.")) {
+                                           notifyDelayMutation.mutate(request.id);
+                                         }
+                                       }}
+                                     >
+                                       <AlertTriangle className="h-4 w-4 mr-1" />
+                                       {notifyDelayMutation.isPending ? "Sending…" : "Still running late?"}
+                                     </Button>
+                                   )}
                                     {hasPending && (
                                       <span className="text-xs text-amber-700 self-center">
                                         Extension pending owner approval
@@ -1028,6 +1076,11 @@ export default function RequestsPage() {
                                         Free extension already used
                                       </span>
                                     )}
+                                   {request.returnDelayFollowUpNotifiedAt && (
+                                     <span className="text-xs text-amber-700 self-center">
+                                       Owner updated about the extended return date
+                                     </span>
+                                   )}
                                   </div>
                                 </div>
                               );
@@ -1180,7 +1233,7 @@ export default function RequestsPage() {
                                       </div>
                                     </div>
                                   )}
-                                  {!isOverdue && pendingExt && (
+                                  {pendingExt && (
                                     <div className="w-full mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                                       <p className="text-sm font-medium text-amber-800 mb-1">
                                         Short extension requested: {pendingExt.message} → {format(new Date(pendingExt.requestedEndDate), "MMM d, yyyy")}
@@ -1451,13 +1504,8 @@ export default function RequestsPage() {
               Short extension (up to 3 days)
             </DialogTitle>
             <DialogDescription>
-              Short extensions help with small delays. For a longer period, start a new borrow.
+              Choose up to 3 extra days. The owner is notified now, and this counts as advance communication if you ultimately return late.
             </DialogDescription>
-            {extendRequest?.returnDelayNotifiedAt && (
-              <p className="text-sm text-amber-700">
-                The owner has already been notified that you may be running late. Your extension request will include that context.
-              </p>
-            )}
           </DialogHeader>
 
           {extendRequest && (

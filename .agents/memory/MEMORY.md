@@ -5,3 +5,4 @@
 - [Borrow acceptance affordability](borrow-acceptance-affordability.md) — enforce borrower ShareCoin affordability at final acceptance, with a pre-handoff cancellation escape hatch.
 - [Request notification inbox parity](request-notification-inbox-parity.md) — request-linked bell notifications must also surface as unread inbox activity until viewed.
 - [Return-date action sequencing](return-date-action-sequencing.md) — pending extensions freeze late notices, while an early return remains available and withdraws the extension.
+- [Borrow lifecycle transaction locking](borrow-lifecycle-transaction-locking.md) — serialize extension and follow-up state changes on the request row so concurrent actions cannot split due dates, credits, or alerts.

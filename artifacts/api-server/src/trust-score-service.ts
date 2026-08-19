@@ -264,6 +264,20 @@ export function lateTier(daysLate: number, notifyDelayUsed: boolean): 1 | 2 | 3 
   return tier;
 }
 
+/**
+ * Returns the late duration against the currently active due date. Accepted
+ * extensions replace that due date before this helper is called.
+ */
+export function daysLateAgainstDueDate(
+  returnedAt: Date,
+  activeDueDate: Date | null,
+): number {
+  if (!activeDueDate || returnedAt <= activeDueDate) return 0;
+  return Math.ceil(
+    (returnedAt.getTime() - activeDueDate.getTime()) / (1000 * 60 * 60 * 24),
+  );
+}
+
 export async function awardBorrowReturnPoints(
   borrowerId: number,
   lenderId: number,

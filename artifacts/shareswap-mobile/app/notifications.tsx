@@ -43,7 +43,7 @@ function notifIcon(type: string): { Icon: LucideIcon; color: string } {
   if (type === "return_reminder_overdue")                                      return { Icon: AlertCircle,    color: "#ef4444" };
   if (type === "return_reminder_today")                                         return { Icon: Clock,          color: "#f97316" };
   if (type === "return_reminder_tomorrow")                                      return { Icon: Clock,          color: "#fbbf24" };
-  if (type === "return_delay_notified")                                         return { Icon: AlertTriangle,  color: "#f59e0b" };
+  if (type === "return_delay_notified" || type === "return_delay_follow_up")     return { Icon: AlertTriangle,  color: "#f59e0b" };
   if (type === "wishlist_match")                                                return { Icon: Heart,          color: "#ec4899" };
   if (type === "swap_match")                                                    return { Icon: ArrowLeftRight, color: "#14b8a6" };
   if (type === "item_request" || type === "request_accepted")                   return { Icon: Package,        color: "#3b82f6" };

@@ -100,6 +100,7 @@ interface ItemRequest {
   handoffConfirmedAt: string | null;
   actualHandoffAt: string | null;
   returnDelayNotifiedAt: string | null;
+  returnDelayFollowUpNotifiedAt: string | null;
   // Co-confirmation fields returned by GET /api/requests (routes.ts:5173-5174)
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
@@ -484,10 +485,7 @@ export default function ChatScreen() {
       invalidateAll();
     },
     onError: (e: any) => {
-      const msg = e?.alreadyOverdue
-        ? "The due date has already passed — you can no longer notify in advance."
-        : e.message || "Could not send delay notification";
-      Alert.alert("Could not notify", msg);
+      Alert.alert("Could not update owner", e.message || "Could not send follow-up notice");
     },
   });
 
@@ -869,8 +867,8 @@ export default function ChatScreen() {
                   <Text style={[card.btnLabel, { color: "#fff" }]}>Return item</Text>
                 </Pressable>
 
-                {/* Extension controls remain visible but unavailable while the
-                    owner decides, or after the one free extension is used. */}
+                {/* The extension request is the initial advance communication.
+                    After approval, its revised date becomes the due date. */}
                 {!isOverdue && (
                   <>
                     <Pressable
@@ -895,62 +893,58 @@ export default function ChatScreen() {
                     )}
                     {hasAcceptedExtension && (
                       <Text style={[{ fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" as const }, { color: colors.mutedForeground }]}>
-                        Your free extension has already been used.
+                        Extension approved — the revised date is now your due date.
                       </Text>
                     )}
                   </>
                 )}
 
-                {/* A late-return notice is unavailable until a pending
-                    extension is resolved, and remains disabled once sent. */}
-                {!isOverdue && (
+                {/* A follow-up is only useful after the approved extension and
+                    must be sent before that revised due date. It informs the
+                    owner but never adds a second trust-score credit. */}
+                {!isOverdue && hasAcceptedExtension && (
                   <>
-                  <Pressable
-                    style={[
-                      card.btn,
-                      {
-                        borderColor: request.returnDelayNotifiedAt || hasPendingExtension ? colors.border : "#f59e0b",
-                        backgroundColor: request.returnDelayNotifiedAt || hasPendingExtension ? colors.muted : "#fffbeb",
-                        opacity: request.returnDelayNotifiedAt || hasPendingExtension ? 0.55 : 1,
-                      },
-                    ]}
-                    disabled={!!request.returnDelayNotifiedAt || hasPendingExtension || notifyDelayMutation.isPending}
-                    onPress={() =>
-                      Alert.alert(
-                        "Notify owner about delay?",
-                        "This lets the owner know you'll return late. Communicating in advance softens your late-return trust penalty by one tier.",
-                        [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "Send notification",
-                            onPress: () => notifyDelayMutation.mutate(),
-                          },
-                        ]
-                      )
-                    }
-                  >
-                    {notifyDelayMutation.isPending ? (
-                      <ActivityIndicator size="small" color="#92400e" />
-                    ) : (
-                      <>
-                        <Feather name="alert-triangle" size={14} color="#92400e" />
-                        <Text style={[card.btnLabel, { color: "#92400e" }]}>I'll be running late</Text>
-                      </>
+                    <Pressable
+                      style={[
+                        card.btn,
+                        {
+                          borderColor: request.returnDelayFollowUpNotifiedAt ? colors.border : "#f59e0b",
+                          backgroundColor: request.returnDelayFollowUpNotifiedAt ? colors.muted : "#fffbeb",
+                          opacity: request.returnDelayFollowUpNotifiedAt ? 0.55 : 1,
+                        },
+                      ]}
+                      disabled={!!request.returnDelayFollowUpNotifiedAt || notifyDelayMutation.isPending}
+                      onPress={() =>
+                        Alert.alert(
+                          "Still running late?",
+                          "Let the owner know you may miss the extended return date. This does not change the date or add another trust-score discount.",
+                          [
+                            { text: "Cancel", style: "cancel" },
+                            {
+                              text: "Update owner",
+                              onPress: () => notifyDelayMutation.mutate(),
+                            },
+                          ]
+                        )
+                      }
+                    >
+                      {notifyDelayMutation.isPending ? (
+                        <ActivityIndicator size="small" color="#92400e" />
+                      ) : (
+                        <>
+                          <Feather name="alert-triangle" size={14} color="#92400e" />
+                          <Text style={[card.btnLabel, { color: "#92400e" }]}>Still running late?</Text>
+                        </>
+                      )}
+                    </Pressable>
+                    {request.returnDelayFollowUpNotifiedAt && (
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                        <Feather name="check-circle" size={14} color="#16a34a" />
+                        <Text style={[{ fontSize: 12, fontFamily: "Inter_400Regular" }, { color: "#15803d" }]}>
+                          Owner updated about the extended return date.
+                        </Text>
+                      </View>
                     )}
-                  </Pressable>
-                  {hasPendingExtension && (
-                    <Text style={[{ fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" as const }, { color: "#92400e" }]}>
-                      Available after the extension is resolved.
-                    </Text>
-                  )}
-                  {request.returnDelayNotifiedAt && (
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                      <Feather name="check-circle" size={14} color="#16a34a" />
-                      <Text style={[{ fontSize: 12, fontFamily: "Inter_400Regular" }, { color: "#15803d" }]}>
-                        Owner notified — late-return penalty softened.
-                      </Text>
-                    </View>
-                  )}
                   </>
                 )}
               </View>
@@ -966,13 +960,6 @@ export default function ChatScreen() {
                 >
                   <Feather name="clock" size={14} color={colors.mutedForeground} />
                   <Text style={[card.btnLabel, { color: colors.mutedForeground }]}>Need more time?</Text>
-                </Pressable>
-                <Pressable
-                  style={[card.btn, { borderColor: colors.border, backgroundColor: colors.muted, opacity: 0.55 }]}
-                  disabled
-                >
-                  <Feather name="alert-triangle" size={14} color={colors.mutedForeground} />
-                  <Text style={[card.btnLabel, { color: colors.mutedForeground }]}>I'll be running late</Text>
                 </Pressable>
                 <Text style={[{ fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" as const }, { color: colors.mutedForeground }]}>
                   Return is awaiting owner confirmation, so these actions are unavailable.
@@ -1535,7 +1522,6 @@ export default function ChatScreen() {
           isPending={requestExtensionMutation.isPending}
           currentEndDate={request.endDate}
           itemName={request.item?.name ?? "Item"}
-          ownerAlreadyNotifiedOfDelay={!!request.returnDelayNotifiedAt}
         />
       )}
 

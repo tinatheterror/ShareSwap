@@ -1,16 +1,16 @@
 /**
  * Unit tests for the late-return penalty softening logic in trust-score-service.
  *
- * These tests verify the core promise made to borrowers: tapping
- * "I'll be returning late" (which sets returnDelayNotifiedAt) genuinely
- * reduces the trust-score penalty applied at confirm-return time.
+ * These tests verify the core promise made to borrowers: requesting more
+ * time in advance records one communication credit that genuinely reduces
+ * the trust-score penalty applied at confirm-return time.
  *
  * The lateTier helper is a pure function so no database is needed.
  */
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { lateTier } from "./trust-score-service.js";
+import { daysLateAgainstDueDate, lateTier } from "./trust-score-service.js";
 
 // ── Tier boundaries without notification ─────────────────────────────────────
 
@@ -34,7 +34,16 @@ test("14+ days late → tier 4 (−60) without notification", () => {
   assert.equal(lateTier(30, false), 4);
 });
 
-// ── Notification softens by one tier ─────────────────────────────────────────
+// ── Advance communication softens by one tier ────────────────────────────────
+
+test("an accepted extension becomes the due date used for lateness", () => {
+  const originalDueDate = new Date("2026-08-20T18:00:00.000Z");
+  const approvedExtensionDueDate = new Date("2026-08-23T18:00:00.000Z");
+  const returnedAt = new Date("2026-08-24T18:00:00.000Z");
+
+  assert.equal(daysLateAgainstDueDate(returnedAt, originalDueDate), 4);
+  assert.equal(daysLateAgainstDueDate(returnedAt, approvedExtensionDueDate), 1);
+});
 
 test("notification: 1-2 days late stays tier 1 — cannot soften below minimum", () => {
   // Tier 1 is already the lightest; notifying doesn't push it below 1

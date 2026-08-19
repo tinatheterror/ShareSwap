@@ -72,6 +72,7 @@ import {
   awardGiftingPoints, 
   awardFeedbackPoints, 
   TRUST_POINTS,
+  daysLateAgainstDueDate,
   applyCancellationPenalty,
   applyDepositClaimedPenalty,
   applyLowReviewPenalty
@@ -5297,6 +5298,14 @@ Respond with ONLY the category name, nothing else.`
         counterRound: itemRequests.counterRound,
         // Delay notification
         returnDelayNotifiedAt: itemRequests.returnDelayNotifiedAt,
+        returnDelayFollowUpNotifiedAt: sql<Date | null>`(
+          SELECT ${notifications.createdAt}
+          FROM ${notifications}
+          WHERE ${notifications.requestId} = ${itemRequests.id}
+            AND ${notifications.type} = 'return_delay_follow_up'
+          ORDER BY ${notifications.createdAt} DESC
+          LIMIT 1
+        )`,
         // Handoff / return confirmations
         ownerConfirmedHandoff: itemRequests.ownerConfirmedHandoff,
         borrowerConfirmedHandoff: itemRequests.borrowerConfirmedHandoff,
@@ -5379,6 +5388,7 @@ Respond with ONLY the category name, nothing else.`
       counterNote: r.counterNote,
       counterRound: r.counterRound,
       returnDelayNotifiedAt: r.returnDelayNotifiedAt,
+      returnDelayFollowUpNotifiedAt: r.returnDelayFollowUpNotifiedAt,
       ownerConfirmedHandoff: r.ownerConfirmedHandoff,
       borrowerConfirmedHandoff: r.borrowerConfirmedHandoff,
       handoffConfirmDeadline: r.handoffConfirmDeadline,
@@ -9045,8 +9055,9 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // Borrower notifies about expected late return (avoids penalty when communicating in advance)
-  // IMPORTANT: Must be called BEFORE the due date to avoid penalties - post-facto notifications are rejected
+  // Borrower follows up after an accepted extension when the revised due date
+  // may still be missed. The extension itself records the one trust-score
+  // communication credit; this endpoint only keeps the owner informed.
   app.post("/api/requests/:requestId/notify-delay", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
@@ -9054,134 +9065,151 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const requestId = parseInt(req.params.requestId);
-      const { reason } = req.body;
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
+      if (isNaN(requestId)) return res.status(400).json({ error: "Invalid id" });
 
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
-      }
+      const result = await db.transaction(async (tx) => {
+        // Lock the request for the full check-and-create sequence so parallel
+        // taps cannot create duplicate follow-up notifications or messages.
+        await tx.execute(sql`
+          SELECT 1 FROM ${itemRequests}
+          WHERE ${itemRequests.id} = ${requestId}
+          FOR UPDATE
+        `);
+        const [request] = await tx
+          .select()
+          .from(itemRequests)
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
+        if (!request) return { status: 404, error: "Request not found" };
+        if (request.requesterId !== req.user.id) {
+          return { status: 403, error: "Only the borrower can notify about delays" };
+        }
+        if (request.status !== "IN_PROGRESS") {
+          return { status: 400, error: "Cannot notify delay in current status" };
+        }
 
-      // The owner belongs to the item, not item_requests. Resolve it before
-      // delivering the notice; item_requests has no ownerId column.
-      const [requestItem] = await db
-        .select({ ownerId: items.ownerId })
-        .from(items)
-        .where(eq(items.id, request.itemId))
-        .limit(1);
+        const [requestItem] = await tx
+          .select({ ownerId: items.ownerId })
+          .from(items)
+          .where(eq(items.id, request.itemId))
+          .limit(1);
+        if (!requestItem?.ownerId) return { status: 404, error: "Item owner not found" };
 
-      // Must be the borrower/requester
-      if (request.requesterId !== req.user.id) {
-        return res.status(403).json({ error: "Only the borrower can notify about delays" });
-      }
+        const [acceptedExtension] = await tx
+          .select({ id: extensionRequests.id })
+          .from(extensionRequests)
+          .where(
+            and(
+              eq(extensionRequests.requestId, requestId),
+              eq(extensionRequests.status, "accepted"),
+            ),
+          )
+          .limit(1);
+        if (!acceptedExtension) {
+          return {
+            status: 400,
+            error: "Request a short extension first. A follow-up notice is available only after the owner accepts it.",
+          };
+        }
 
-      // Must be in a valid state for delay notification
-      const validStatuses = ["IN_PROGRESS"];
-      if (!validStatuses.includes(request.status)) {
-        return res.status(400).json({ error: "Cannot notify delay in current status" });
-      }
+        const now = new Date();
+        const endDate = request.endDate ? new Date(request.endDate) : null;
+        if (endDate && now >= endDate) {
+          return {
+            status: 400,
+            error: "The extended return date has already passed. Return the item as soon as possible.",
+          };
+        }
 
-      // A borrower must let the owner respond to an extension before sending a
-      // separate late-return notice. This prevents two competing expectations
-      // about the return date from reaching the owner at the same time.
-      const [pendingExtension] = await db
-        .select({ id: extensionRequests.id })
-        .from(extensionRequests)
-        .where(
-          and(
-            eq(extensionRequests.requestId, requestId),
-            eq(extensionRequests.status, "pending"),
-          ),
-        )
-        .limit(1);
-      if (pendingExtension) {
-        return res.status(400).json({
-          error: "An extension request is awaiting the owner's response. Please wait before sending a late-return notice.",
-          code: "EXTENSION_PENDING",
-        });
-      }
+        const [existingFollowUp] = await tx
+          .select({ id: notifications.id })
+          .from(notifications)
+          .where(
+            and(
+              eq(notifications.requestId, requestId),
+              eq(notifications.userId, requestItem.ownerId),
+              eq(notifications.type, "return_delay_follow_up"),
+            ),
+          )
+          .limit(1);
+        if (existingFollowUp) {
+          return {
+            status: 409,
+            error: "The owner has already been updated about this extended return date.",
+          };
+        }
 
-      // CRITICAL: Can only notify BEFORE the due date
-      // Post-facto notifications don't count - must communicate in advance
-      const now = new Date();
-      const endDate = request.endDate ? new Date(request.endDate) : null;
-      
-      if (endDate && now >= endDate) {
-        return res.status(400).json({ 
-          error: "Cannot notify about delay after the due date. To avoid penalties, please communicate before the return date.",
-          alreadyOverdue: true
-        });
-      }
+        // Preserve an earlier extension credit. This only repairs older
+        // in-progress extensions that predate the new request-time credit.
+        const [updated] = await tx
+          .update(itemRequests)
+          .set({
+            returnDelayNotifiedAt: request.returnDelayNotifiedAt ?? now,
+            returnDelayReason: request.returnDelayReason ?? "Borrower requested an extension in advance",
+          })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
 
-      // Update the request with delay notification
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          returnDelayNotifiedAt: new Date(),
-          returnDelayReason: reason || "Borrower notified about expected delay",
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
-
-      // Deliver the late-return notice through every owner-facing channel:
-      // activity/bell notification, live websocket update, native push, and
-      // the request chat thread.
-      if (requestItem?.ownerId) {
         const dueStr = request.endDate
           ? new Date(request.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
           : "the due date";
         const borrowerName = (req.user as any).displayName || req.user.username || "The borrower";
-        const notificationTitle = "Return may be late";
-        const notificationMessage = `${borrowerName} let you know they may return this item after ${dueStr}.`;
-
-        const [delayNotification] = await db.insert(notifications).values({
+        const notificationTitle = "Return may still be late";
+        const notificationMessage = `${borrowerName} let you know they may miss the extended return date of ${dueStr}.`;
+        const [delayNotification] = await tx.insert(notifications).values({
           userId: requestItem.ownerId,
-          type: "return_delay_notified",
+          type: "return_delay_follow_up",
           title: notificationTitle,
           message: notificationMessage,
           itemId: request.itemId,
           requestId,
           isRead: false,
         }).returning();
-
-        const [delayMessage] = await db.insert(messages).values({
-          content: `⏰ I wanted to let you know that I'll be returning this a bit later than ${dueStr}. I'll get it back to you as soon as possible — thanks for your understanding!`,
+        const [delayMessage] = await tx.insert(messages).values({
+          content: `⏰ I may still be running late after the extension ending ${dueStr}. I'll return this as soon as possible — thanks for your understanding!`,
           senderId: request.requesterId,
           receiverId: requestItem.ownerId,
           requestId,
           messageType: "text",
         }).returning();
 
-        const ownerWs = connectedClients.get(requestItem.ownerId);
-        if (ownerWs?.readyState === WebSocket.OPEN) {
-          ownerWs.send(JSON.stringify({ type: "new_message", message: delayMessage }));
-          ownerWs.send(JSON.stringify({ type: "new_notification", notification: delayNotification }));
-        }
+        return {
+          updated,
+          request,
+          ownerId: requestItem.ownerId,
+          delayNotification,
+          delayMessage,
+          notificationTitle,
+          notificationMessage,
+        };
+      });
 
-        sendPushToUser(
-          requestItem.ownerId,
-          {
-            title: notificationTitle,
-            body: notificationMessage,
-            data: {
-              screen: "chat",
-              chatUserId: request.requesterId,
-              requestId,
-              itemId: request.itemId,
-            },
-          },
-          "requests",
-        ).catch(() => {});
+      if ("error" in result) return res.status(result.status).json({ error: result.error });
+
+      const ownerWs = connectedClients.get(result.ownerId);
+      if (ownerWs?.readyState === WebSocket.OPEN) {
+        ownerWs.send(JSON.stringify({ type: "new_message", message: result.delayMessage }));
+        ownerWs.send(JSON.stringify({ type: "new_notification", notification: result.delayNotification }));
       }
+      sendPushToUser(
+        result.ownerId,
+        {
+          title: result.notificationTitle,
+          body: result.notificationMessage,
+          data: {
+            screen: "chat",
+            chatUserId: result.request.requesterId,
+            requestId,
+            itemId: result.request.itemId,
+          },
+        },
+        "requests",
+      ).catch(() => {});
 
       res.json({
         success: true,
-        request: updated,
-        message: "Delay notification recorded. Thank you for communicating - this will help avoid trust score penalties.",
+        request: result.updated,
+        message: "The owner has been updated. Your original extension request already counts as advance communication.",
       });
     } catch (error: any) {
       console.error("Error recording delay notification:", error);
@@ -9197,98 +9225,105 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const requestId = parseInt(req.params.requestId);
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
+      if (isNaN(requestId)) return res.status(400).json({ error: "Invalid id" });
 
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
-      }
+      const result = await db.transaction(async (tx) => {
+        // Return initiation shares the request-row lock with extension and
+        // follow-up mutations. Whichever lifecycle action obtains it first
+        // establishes the definitive order of events.
+        await tx.execute(sql`
+          SELECT 1 FROM ${itemRequests}
+          WHERE ${itemRequests.id} = ${requestId}
+          FOR UPDATE
+        `);
+        const [request] = await tx
+          .select()
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
+        if (!request) return { status: 404, error: "Request not found" };
+        if (request.item_requests.requesterId !== req.user.id) {
+          return { status: 403, error: "Unauthorized" };
+        }
+        if (request.item_requests.status !== "IN_PROGRESS") {
+          return { status: 400, error: "Request is not in progress" };
+        }
 
-      // Must be the borrower
-      if (request.item_requests.requesterId !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
+        const endDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
+        const isEarlyReturn = endDate ? new Date() < endDate : false;
 
-      // Must be in progress
-      if (request.item_requests.status !== "IN_PROGRESS") {
-        return res.status(400).json({ error: "Request is not in progress" });
-      }
+        // Returning takes precedence over any unanswered extension, and both
+        // the cancellation and status transition commit together.
+        await tx
+          .update(extensionRequests)
+          .set({ status: "declined", respondedAt: new Date() })
+          .where(
+            and(
+              eq(extensionRequests.requestId, requestId),
+              eq(extensionRequests.status, "pending"),
+            ),
+          );
 
-      const endDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
-      const isEarlyReturn = endDate ? new Date() < endDate : false;
+        const [updated] = await tx
+          .update(itemRequests)
+          .set({
+            status: "RETURN_REQUESTED",
+            returnRequestedAt: new Date(),
+            isEarlyReturn,
+          })
+          .where(and(eq(itemRequests.id, requestId), eq(itemRequests.status, "IN_PROGRESS")))
+          .returning();
+        if (!updated) {
+          throw Object.assign(new Error("Request is no longer in progress."), { status: 409 });
+        }
 
-      // Returning the item takes precedence over a pending extension. The
-      // borrower can still return early while waiting for a response, but the
-      // owner must not be able to approve extra time after return is underway.
-      await db
-        .update(extensionRequests)
-        .set({ status: "declined", respondedAt: new Date() })
-        .where(
-          and(
-            eq(extensionRequests.requestId, requestId),
-            eq(extensionRequests.status, "pending"),
-          ),
-        );
+        const ownerId = request.items.ownerId!;
+        await tx.insert(notifications).values({
+          userId: ownerId,
+          type: "return_initiated",
+          title: isEarlyReturn ? "EARLY RETURN INITIATED" : "Return initiated",
+          message: isEarlyReturn
+            ? `"${request.items.name}" is being returned early. Confirm receipt in chat.`
+            : `"${request.items.name}" has been returned. Confirm receipt in chat.`,
+          itemId: request.items.id,
+          requestId,
+          isRead: false,
+        });
 
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          status: "RETURN_REQUESTED",
-          returnRequestedAt: new Date(),
-          isEarlyReturn,
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
+        const [returnMsg] = await tx.insert(messages).values({
+          content: isEarlyReturn
+            ? `📦 EARLY RETURN INITIATED — awaiting owner's confirmation.`
+            : `📦 Return initiated — awaiting owner's confirmation.`,
+          senderId: request.item_requests.requesterId,
+          receiverId: ownerId,
+          messageType: "system",
+          requestId,
+        }).returning();
 
-      // Notify owner that borrower has initiated a return
-      await db.insert(notifications).values({
-        userId: request.items.ownerId!,
-        type: "return_initiated",
-        title: isEarlyReturn ? "EARLY RETURN INITIATED" : "Return initiated",
-        message: isEarlyReturn
-          ? `"${request.items.name}" is being returned early. Confirm receipt in chat.`
-          : `"${request.items.name}" has been returned. Confirm receipt in chat.`,
-        itemId: request.items.id,
-        requestId,
-        isRead: false,
+        return { updated, isEarlyReturn, ownerId, returnMsg };
       });
 
-      // System message scoped to the request so it appears in the request's chat thread
-      const ownerId_ret = request.items.ownerId!;
-      const borrowerId_ret = request.item_requests.requesterId;
-      const [returnMsg] = await db.insert(messages).values({
-        content: isEarlyReturn
-          ? `📦 EARLY RETURN INITIATED — awaiting owner's confirmation.`
-          : `📦 Return initiated — awaiting owner's confirmation.`,
-        senderId: borrowerId_ret,
-        receiverId: ownerId_ret,
-        messageType: "system",
-        requestId: requestId,
-      }).returning();
+      if ("error" in result) return res.status(result.status).json({ error: result.error });
 
       // Push via WebSocket so the owner's client immediately invalidates /api/requests
       // and shows the Confirm Return button without waiting for the 20s poll cycle.
-      const ownerWs = connectedClients.get(ownerId_ret);
+      const ownerWs = connectedClients.get(result.ownerId);
       if (ownerWs?.readyState === WebSocket.OPEN) {
-        ownerWs.send(JSON.stringify({ type: "new_message", message: returnMsg }));
+        ownerWs.send(JSON.stringify({ type: "new_message", message: result.returnMsg }));
       }
 
       res.json({
         success: true,
-        request: updated,
-        isEarlyReturn,
-        message: isEarlyReturn 
+        request: result.updated,
+        isEarlyReturn: result.isEarlyReturn,
+        message: result.isEarlyReturn
           ? "EARLY RETURN INITIATED. Waiting for lender confirmation."
           : "Return initiated. Waiting for lender confirmation.",
       });
     } catch (error: any) {
       console.error("Error initiating return:", error);
-      res.status(500).json({ error: "Failed to initiate return" });
+      res.status(error.status || 500).json({ error: error.message || "Failed to initiate return" });
     }
   });
 
@@ -9461,16 +9496,11 @@ Respond with ONLY the category name, nothing else.`
       });
 
       // Award trust points using the new tiered system
-      // Check if return was on time (before or on the end date)
       const endDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
       const now = new Date();
-      const wasOnTime = endDate ? now <= endDate : true;
-      
-      // Calculate days late for penalty purposes
-      let daysLate = 0;
-      if (!wasOnTime && endDate) {
-        daysLate = Math.ceil((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
-      }
+      // Calculate lateness from the active due date. An accepted extension
+      // replaces endDate, so it is always accounted for here.
+      const daysLate = daysLateAgainstDueDate(now, endDate);
       
       try {
         const hadCommunication = !!request.item_requests.returnDelayNotifiedAt;
@@ -10086,7 +10116,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // POST borrower requests an extension
-  app.post("/api/requests/:id/extension", async (req, res) => {
+  app.post("/api/requests/:id/extension", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const requestId = parseInt(req.params.id);
     if (isNaN(requestId)) return res.status(400).json({ error: "Invalid id" });
@@ -10095,90 +10125,127 @@ Respond with ONLY the category name, nothing else.`
     if (![1, 2, 3].includes(addDays)) return res.status(400).json({ error: "days must be 1, 2, or 3" });
 
     try {
-      const [borrow] = await db
-        .select({
-          requesterId: itemRequests.requesterId,
-          ownerId: items.ownerId,
-          status: itemRequests.status,
-          endDate: itemRequests.endDate,
-          itemName: items.name,
-          returnDelayNotifiedAt: itemRequests.returnDelayNotifiedAt,
-        })
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
+      const result = await db.transaction(async (tx) => {
+        // Serialize extension state transitions with return initiation and
+        // concurrent requests for this borrow.
+        await tx.execute(sql`
+          SELECT 1 FROM ${itemRequests}
+          WHERE ${itemRequests.id} = ${requestId}
+          FOR UPDATE
+        `);
 
-      if (!borrow) return res.status(404).json({ error: "Request not found" });
-      if (borrow.requesterId !== req.user.id) return res.status(403).json({ error: "Not your borrow" });
-      if (borrow.status !== "IN_PROGRESS") return res.status(400).json({ error: "Can only extend in-progress borrows" });
+        const [borrow] = await tx
+          .select({
+            requesterId: itemRequests.requesterId,
+            ownerId: items.ownerId,
+            itemId: itemRequests.itemId,
+            status: itemRequests.status,
+            endDate: itemRequests.endDate,
+            itemName: items.name,
+          })
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
 
-      // Must not be overdue
-      if (borrow.endDate && new Date() > borrow.endDate) {
-        return res.status(400).json({ error: "Item is overdue — extensions no longer available" });
+        if (!borrow) return { status: 404, error: "Request not found" };
+        if (borrow.requesterId !== req.user.id) return { status: 403, error: "Not your borrow" };
+        if (borrow.status !== "IN_PROGRESS") return { status: 400, error: "Can only extend in-progress borrows" };
+        if (borrow.endDate && new Date() > borrow.endDate) {
+          return { status: 400, error: "Item is overdue — extensions no longer available" };
+        }
+
+        const [alreadyUsed] = await tx
+          .select({ id: extensionRequests.id })
+          .from(extensionRequests)
+          .where(and(eq(extensionRequests.requestId, requestId), eq(extensionRequests.status, "accepted")))
+          .limit(1);
+        if (alreadyUsed) return { status: 400, error: "Extension already used for this transaction" };
+        if (!borrow.endDate) return { status: 400, error: "Borrow has no end date" };
+
+        const newEnd = new Date(borrow.endDate);
+        newEnd.setDate(newEnd.getDate() + addDays);
+
+        // A new request replaces an unanswered request; the row lock ensures
+        // that the owner cannot accept the replaced request concurrently.
+        await tx
+          .update(extensionRequests)
+          .set({ status: "declined", respondedAt: new Date() })
+          .where(and(eq(extensionRequests.requestId, requestId), eq(extensionRequests.status, "pending")));
+
+        const [ext] = await tx
+          .insert(extensionRequests)
+          .values({
+            requestId,
+            borrowerId: req.user.id,
+            ownerId: borrow.ownerId,
+            requestedEndDate: newEnd,
+            status: "pending",
+            message: `+${addDays} day${addDays > 1 ? "s" : ""}`,
+          })
+          .returning();
+
+        // Asking for more time records the one communication credit. Preserve
+        // it when a borrower changes an unanswered extension request.
+        await tx
+          .update(itemRequests)
+          .set({
+            returnDelayNotifiedAt: sql`COALESCE(${itemRequests.returnDelayNotifiedAt}, NOW())`,
+            returnDelayReason: sql`COALESCE(${itemRequests.returnDelayReason}, 'Borrower requested an extension in advance')`,
+          })
+          .where(eq(itemRequests.id, requestId));
+
+        const borrowerName = (req.user as any).displayName || req.user.username || "The borrower";
+        const [extensionNotification] = await tx.insert(notifications).values({
+          userId: borrow.ownerId,
+          type: "extension_requested",
+          title: "Short Extension Requested",
+          message: `${borrowerName.slice(0, 15)} wants +${addDays}d for "${borrow.itemName.length > 18 ? borrow.itemName.slice(0, 18) + "…" : borrow.itemName}" (due ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}).`,
+          itemId: borrow.itemId,
+          requestId,
+          isRead: false,
+        }).returning();
+
+        const [extensionMessage] = await tx.insert(messages).values({
+          content: `⏳ Extension requested: +${addDays} day${addDays > 1 ? "s" : ""} (new return date: ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`,
+          senderId: req.user.id,
+          receiverId: borrow.ownerId,
+          requestId,
+          messageType: "event",
+          metadata: {
+            eventType: "extension_requested",
+            days: addDays,
+            requestedEndDate: newEnd.toISOString(),
+            extensionId: ext.id,
+          },
+        }).returning();
+
+        return { ext, borrow, extensionNotification, extensionMessage };
+      });
+
+      if ("error" in result) return res.status(result.status).json({ error: result.error });
+
+      const ownerWs = connectedClients.get(result.borrow.ownerId);
+      if (ownerWs?.readyState === WebSocket.OPEN) {
+        ownerWs.send(JSON.stringify({ type: "new_message", message: result.extensionMessage }));
+        ownerWs.send(JSON.stringify({ type: "new_notification", notification: result.extensionNotification }));
       }
-
-      // Only 1 extension per transaction
-      const [alreadyUsed] = await db
-        .select({ id: extensionRequests.id })
-        .from(extensionRequests)
-        .where(and(eq(extensionRequests.requestId, requestId), eq(extensionRequests.status, "accepted")))
-        .limit(1);
-      if (alreadyUsed) return res.status(400).json({ error: "Extension already used for this transaction" });
-
-      if (!borrow.endDate) return res.status(400).json({ error: "Borrow has no end date" });
-
-      const newEnd = new Date(borrow.endDate);
-      newEnd.setDate(newEnd.getDate() + addDays);
-      const ownerAlreadyNotifiedOfDelay = !!borrow.returnDelayNotifiedAt;
-      const extensionMessage = `+${addDays} day${addDays > 1 ? "s" : ""}${
-        ownerAlreadyNotifiedOfDelay ? " · late-return notice already sent" : ""
-      }`;
-
-      // Cancel any existing pending extension
-      await db
-        .update(extensionRequests)
-        .set({ status: "declined", respondedAt: new Date() })
-        .where(and(eq(extensionRequests.requestId, requestId), eq(extensionRequests.status, "pending")));
-
-      const [ext] = await db
-        .insert(extensionRequests)
-        .values({
-          requestId: requestId as number,
-          borrowerId: req.user.id as number,
-          ownerId: borrow.ownerId as number,
-          requestedEndDate: newEnd,
-          status: "pending",
-          message: extensionMessage,
-        })
-        .returning();
-
-      await db.insert(notifications).values({
-        userId: borrow.ownerId,
-        type: "extension_requested",
-        title: "Short Extension Requested",
-        message: `${((req.user as any).displayName || req.user.username).slice(0, 15)} wants +${addDays}d for "${borrow.itemName.length > 18 ? borrow.itemName.slice(0, 18) + "…" : borrow.itemName}" (due ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })})${ownerAlreadyNotifiedOfDelay ? ". They already notified you they may be running late." : "."}`,
-        requestId,
-        isRead: false,
-      });
-
-      // Auto-send a chat event message so the owner sees it in the thread
-      await db.insert(messages).values({
-        content: `⏳ Extension requested: +${addDays} day${addDays > 1 ? "s" : ""} (new return date: ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })})${ownerAlreadyNotifiedOfDelay ? " — late-return notice already sent" : ""}`,
-        senderId: req.user.id,
-        receiverId: borrow.ownerId,
-        requestId,
-        messageType: "event",
-        metadata: {
-          eventType: "extension_requested",
-          days: addDays,
-          requestedEndDate: newEnd.toISOString(),
-          extensionId: ext.id,
-          ownerAlreadyNotifiedOfDelay,
+      sendPushToUser(
+        result.borrow.ownerId,
+        {
+          title: result.extensionNotification.title,
+          body: result.extensionNotification.message,
+          data: {
+            screen: "chat",
+            chatUserId: req.user.id,
+            requestId,
+            itemId: result.borrow.itemId,
+          },
         },
-      });
+        "requests",
+      ).catch(() => {});
 
-      res.json(ext);
+      res.json(result.ext);
     } catch (error) {
       console.error("Extension request error:", error);
       res.status(500).json({ error: "Failed to create extension request" });
@@ -10186,7 +10253,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // POST owner responds to extension (accept / decline)
-  app.post("/api/requests/:id/extension/respond", async (req, res) => {
+  app.post("/api/requests/:id/extension/respond", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const requestId = parseInt(req.params.id);
     if (isNaN(requestId)) return res.status(400).json({ error: "Invalid id" });
@@ -10194,76 +10261,110 @@ Respond with ONLY the category name, nothing else.`
     if (!["accept", "decline"].includes(action)) return res.status(400).json({ error: "action must be accept or decline" });
 
     try {
-      const [pending] = await db
-        .select()
-        .from(extensionRequests)
-        .where(and(eq(extensionRequests.requestId, requestId), eq(extensionRequests.status, "pending")))
-        .orderBy(desc(extensionRequests.createdAt))
-        .limit(1);
+      const result = await db.transaction(async (tx) => {
+        await tx.execute(sql`
+          SELECT 1 FROM ${itemRequests}
+          WHERE ${itemRequests.id} = ${requestId}
+          FOR UPDATE
+        `);
 
-      if (!pending) return res.status(404).json({ error: "No pending extension request" });
-      if (pending.ownerId !== req.user.id) return res.status(403).json({ error: "Not your item" });
+        const [pending] = await tx
+          .select()
+          .from(extensionRequests)
+          .where(and(eq(extensionRequests.requestId, requestId), eq(extensionRequests.status, "pending")))
+          .orderBy(desc(extensionRequests.createdAt))
+          .limit(1);
+        if (!pending) return { status: 404, error: "No pending extension request" };
+        if (pending.ownerId !== req.user.id) return { status: 403, error: "Not your item" };
 
-      const [requestRow] = await db
-        .select({ status: itemRequests.status })
-        .from(itemRequests)
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-      if (requestRow?.status !== "IN_PROGRESS") {
-        return res.status(400).json({
-          error: "This item is being returned, so the extension can no longer be approved.",
+        const [requestRow] = await tx
+          .select({ status: itemRequests.status })
+          .from(itemRequests)
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
+        if (requestRow?.status !== "IN_PROGRESS") {
+          return {
+            status: 400,
+            error: "This item is being returned, so the extension can no longer be approved.",
+          };
+        }
+
+        if (action === "accept") {
+          const [alreadyAccepted] = await tx
+            .select({ id: extensionRequests.id })
+            .from(extensionRequests)
+            .where(and(eq(extensionRequests.requestId, requestId), eq(extensionRequests.status, "accepted")))
+            .limit(1);
+          if (alreadyAccepted) {
+            return { status: 400, error: "An extension has already been used for this transaction." };
+          }
+        }
+
+        if (action === "accept") {
+          const [updatedRequest] = await tx
+            .update(itemRequests)
+            .set({ endDate: pending.requestedEndDate })
+            .where(and(eq(itemRequests.id, requestId), eq(itemRequests.status, "IN_PROGRESS")))
+            .returning({ id: itemRequests.id });
+          if (!updatedRequest) {
+            throw Object.assign(
+              new Error("The item is already being returned, so the extension cannot be approved."),
+              { status: 409 },
+            );
+          }
+        }
+
+        const newStatus = action === "accept" ? "accepted" : "declined";
+        const [updatedExtension] = await tx
+          .update(extensionRequests)
+          .set({ status: newStatus, respondedAt: new Date() })
+          .where(and(eq(extensionRequests.id, pending.id), eq(extensionRequests.status, "pending")))
+          .returning({ id: extensionRequests.id });
+        if (!updatedExtension) {
+          throw Object.assign(new Error("This extension request was already handled."), { status: 409 });
+        }
+
+        const [borrowRow] = await tx
+          .select({ itemName: items.name })
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
+
+        await tx.insert(notifications).values({
+          userId: pending.borrowerId,
+          type: action === "accept" ? "extension_accepted" : "extension_declined",
+          title: action === "accept" ? "Extension accepted!" : "Extension declined",
+          message: action === "accept"
+            ? `Your return date for "${borrowRow?.itemName}" has been extended to ${pending.requestedEndDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`
+            : `Your extension request for "${borrowRow?.itemName}" was declined.`,
+          requestId,
+          isRead: false,
         });
-      }
 
-      const newStatus = action === "accept" ? "accepted" : "declined";
+        const newDateStr = pending.requestedEndDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        await tx.insert(messages).values({
+          content: action === "accept"
+            ? `✅ Extension accepted — new return date: ${newDateStr}`
+            : `❌ Extension declined`,
+          senderId: req.user.id,
+          receiverId: pending.borrowerId,
+          requestId,
+          messageType: "event",
+          metadata: {
+            eventType: action === "accept" ? "extension_accepted" : "extension_declined",
+            requestedEndDate: pending.requestedEndDate.toISOString(),
+          },
+        });
 
-      await db
-        .update(extensionRequests)
-        .set({ status: newStatus, respondedAt: new Date() })
-        .where(eq(extensionRequests.id, pending.id));
-
-      if (action === "accept") {
-        await db
-          .update(itemRequests)
-          .set({ endDate: pending.requestedEndDate })
-          .where(eq(itemRequests.id, requestId));
-      }
-
-      // Notify borrower
-      const [ownerRow] = await db.select({ name: users.displayName, username: users.username }).from(users).where(eq(users.id, req.user.id)).limit(1);
-      const [borrowRow] = await db.select({ itemName: items.name }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(eq(itemRequests.id, requestId)).limit(1);
-
-      await db.insert(notifications).values({
-        userId: pending.borrowerId,
-        type: action === "accept" ? "extension_accepted" : "extension_declined",
-        title: action === "accept" ? "Extension accepted!" : "Extension declined",
-        message: action === "accept"
-          ? `Your return date for "${borrowRow?.itemName}" has been extended to ${pending.requestedEndDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`
-          : `Your extension request for "${borrowRow?.itemName}" was declined.`,
-        requestId,
-        isRead: false,
+        return { status: 200, newStatus };
       });
 
-      // Auto-send a chat event message so both parties see the outcome in the thread
-      const newDateStr = pending.requestedEndDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      await db.insert(messages).values({
-        content: action === "accept"
-          ? `✅ Extension accepted — new return date: ${newDateStr}`
-          : `❌ Extension declined`,
-        senderId: req.user.id,
-        receiverId: pending.borrowerId,
-        requestId,
-        messageType: "event",
-        metadata: {
-          eventType: action === "accept" ? "extension_accepted" : "extension_declined",
-          requestedEndDate: pending.requestedEndDate.toISOString(),
-        },
-      });
-
-      res.json({ success: true, status: newStatus });
-    } catch (error) {
+      if ("error" in result) return res.status(result.status).json({ error: result.error });
+      res.json({ success: true, status: result.newStatus });
+    } catch (error: any) {
       console.error("Extension respond error:", error);
-      res.status(500).json({ error: "Failed to respond to extension" });
+      res.status(error.status || 500).json({ error: error.message || "Failed to respond to extension" });
     }
   });
 

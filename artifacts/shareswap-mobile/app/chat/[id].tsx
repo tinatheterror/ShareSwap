@@ -757,25 +757,6 @@ export default function ChatScreen() {
               </Pressable>
             )}
 
-            {/* ACCEPTED: borrower can always cancel before deposit or handoff */}
-            {status === "ACCEPTED" && isBorrower && (
-              <Pressable
-                style={{ alignItems: "center", paddingVertical: 6 }}
-                onPress={() =>
-                  Alert.alert("Cancel request?", "The owner has already accepted your request.", [
-                    { text: "Keep booking", style: "cancel" },
-                    { text: "Cancel request", style: "destructive", onPress: () => cancelMutation.mutate() },
-                  ])
-                }
-                disabled={anyMutating}
-              >
-                {cancelMutation.isPending
-                  ? <ActivityIndicator size="small" color={colors.foreground} />
-                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
-                }
-              </Pressable>
-            )}
-
             {/* DEPOSIT_CONFIRMED: borrower can still cancel (deposit will be refunded) */}
             {status === "DEPOSIT_CONFIRMED" && isBorrower && (
               <Pressable
@@ -825,6 +806,25 @@ export default function ChatScreen() {
                 <Text style={[card.btnLabel, { color: "#fff" }]}>
                   {request.requestType === "RENT" ? "Pay Security Deposit" : "Pay Trust Deposit"}
                 </Text>
+              </Pressable>
+            )}
+
+            {/* ACCEPTED: borrower can always cancel before deposit or handoff */}
+            {status === "ACCEPTED" && isBorrower && (
+              <Pressable
+                style={{ alignItems: "center", paddingVertical: 6 }}
+                onPress={() =>
+                  Alert.alert("Cancel request?", "The owner has already accepted your request.", [
+                    { text: "Keep booking", style: "cancel" },
+                    { text: "Cancel request", style: "destructive", onPress: () => cancelMutation.mutate() },
+                  ])
+                }
+                disabled={anyMutating}
+              >
+                {cancelMutation.isPending
+                  ? <ActivityIndicator size="small" color={colors.foreground} />
+                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
+                }
               </Pressable>
             )}
 

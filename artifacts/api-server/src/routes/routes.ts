@@ -9108,18 +9108,55 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(itemRequests.id, requestId))
         .returning();
 
-      // Auto-send a chat message from the borrower to the owner
+      // Deliver the late-return notice through every owner-facing channel:
+      // activity/bell notification, live websocket update, native push, and
+      // the request chat thread.
       if (request.ownerId) {
         const dueStr = request.endDate
           ? new Date(request.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
           : "the due date";
-        await db.insert(messages).values({
+        const borrowerName = (req.user as any).displayName || req.user.username || "The borrower";
+        const notificationTitle = "Return may be late";
+        const notificationMessage = `${borrowerName} let you know they may return this item after ${dueStr}.`;
+
+        const [delayNotification] = await db.insert(notifications).values({
+          userId: request.ownerId,
+          type: "return_delay_notified",
+          title: notificationTitle,
+          message: notificationMessage,
+          itemId: request.itemId,
+          requestId,
+          isRead: false,
+        }).returning();
+
+        const [delayMessage] = await db.insert(messages).values({
           content: `⏰ I wanted to let you know that I'll be returning this a bit later than ${dueStr}. I'll get it back to you as soon as possible — thanks for your understanding!`,
           senderId: request.requesterId,
           receiverId: request.ownerId,
           requestId,
           messageType: "text",
-        });
+        }).returning();
+
+        const ownerWs = connectedClients.get(request.ownerId);
+        if (ownerWs?.readyState === WebSocket.OPEN) {
+          ownerWs.send(JSON.stringify({ type: "new_message", message: delayMessage }));
+          ownerWs.send(JSON.stringify({ type: "new_notification", notification: delayNotification }));
+        }
+
+        sendPushToUser(
+          request.ownerId,
+          {
+            title: notificationTitle,
+            body: notificationMessage,
+            data: {
+              screen: "chat",
+              chatUserId: request.requesterId,
+              requestId,
+              itemId: request.itemId,
+            },
+          },
+          "requests",
+        ).catch(() => {});
       }
 
       res.json({

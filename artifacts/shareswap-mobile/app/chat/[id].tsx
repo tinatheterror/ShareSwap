@@ -1340,12 +1340,13 @@ export default function ChatScreen() {
                   })()
                 : null;
 
-              // Extension-requested card: owner sees Accept / Decline inline
+              // Extension-requested cards are a read-only history entry. The
+              // one active Accept / Decline control pair lives in the request
+              // card above, so owners never see duplicate actions.
               const extensionCard = et === "extension_requested" && msg.metadata
                 ? (() => {
                     const days = msg.metadata.days as number | undefined;
                     const reqEndDate = msg.metadata.requestedEndDate as string | undefined;
-                    const isPending = hasPendingExtension; // still awaiting response
                     return (
                       <View style={[card.counterBanner, { backgroundColor: "#fffbeb", borderColor: "#fcd34d", marginTop: 6 }]}>
                         <Text style={[card.counterBannerTitle, { color: "#92400e" }]}>
@@ -1354,32 +1355,6 @@ export default function ChatScreen() {
                         {reqEndDate && (
                           <Text style={[card.counterBannerText, { color: "#78350f" }]}>
                             New return date: {fmtDate(reqEndDate)}
-                          </Text>
-                        )}
-                        {isOwner && isPending && (
-                          <View style={[card.btnRow, { marginTop: 8 }]}>
-                            <Pressable
-                              style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 }]}
-                              onPress={() => respondExtensionMutation.mutate("accept")}
-                              disabled={respondExtensionMutation.isPending}
-                            >
-                              {respondExtensionMutation.isPending
-                                ? <ActivityIndicator size="small" color="#fff" />
-                                : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept</Text>
-                              }
-                            </Pressable>
-                            <Pressable
-                              style={[card.btn, { borderColor: colors.border, flex: 1 }]}
-                              onPress={() => respondExtensionMutation.mutate("decline")}
-                              disabled={respondExtensionMutation.isPending}
-                            >
-                              <Text style={[card.btnLabel, { color: colors.foreground }]}>Decline</Text>
-                            </Pressable>
-                          </View>
-                        )}
-                        {isOwner && !isPending && (
-                          <Text style={[card.counterBannerText, { color: "#6b7280", marginTop: 4 }]}>
-                            Already responded
                           </Text>
                         )}
                       </View>

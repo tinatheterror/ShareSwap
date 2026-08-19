@@ -516,6 +516,7 @@ export default function CounterProposalSheet({
                 <DateTimePicker
                   value={startDate ?? today}
                   mode="date"
+                  display={Platform.OS === "ios" ? "inline" : "default"}
                   minimumDate={today}
                   onChange={(_, date) => {
                     setShowStartPicker(Platform.OS === "ios");
@@ -531,6 +532,7 @@ export default function CounterProposalSheet({
                 <DateTimePicker
                   value={endDate ?? startDate ?? today}
                   mode="date"
+                  display={Platform.OS === "ios" ? "inline" : "default"}
                   minimumDate={startDate ?? today}
                   onChange={(_, date) => {
                     setShowEndPicker(Platform.OS === "ios");

@@ -5830,7 +5830,7 @@ Respond with ONLY the category name, nothing else.`
       userId: otherUserId,
       type: "terms_counter_proposed",
       title: "New Terms Proposed",
-      message: `New terms for ${isSwap ? "swap" : _cpType1} request on "${_cpItemShort1}"`,
+      message: `For ${isSwap ? "swap" : _cpType1} request on "${_cpItemShort1}"`,
       itemId: request.items.id,
       requestId,
     });
@@ -5965,7 +5965,7 @@ Respond with ONLY the category name, nothing else.`
         userId: otherUserId,
         type: "terms_counter_proposed",
         title: "New Terms Proposed",
-        message: `New terms for ${isSwap ? "swap" : _cpType2} request on "${_cpItemShort2}"`,
+        message: `For ${isSwap ? "swap" : _cpType2} request on "${_cpItemShort2}"`,
         itemId: request.items.id,
         requestId,
       });

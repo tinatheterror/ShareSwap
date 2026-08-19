@@ -523,6 +523,20 @@ export default function RequestsPage() {
       toast({ title: "Invalid dates", description: "End date cannot be before start date.", variant: "destructive" });
       return;
     }
+    // Only the requester pays ShareCoins for a BORROW request. Show the
+    // balance warning while they are submitting their proposed date range,
+    // not when the owner later accepts it.
+    if (counterProposalRequest.requestType === "BORROW" && counterProposalRequest.requesterId === user?.id) {
+      const weeklyPrice = parseFloat((counterProposalRequest.item as any)?.shareCoinPrice || "0") || 5;
+      const days = proposedStartDate && proposedEndDate
+        ? Math.max(1, Math.ceil((new Date(`${proposedEndDate}T12:00:00`).getTime() - new Date(`${proposedStartDate}T12:00:00`).getTime()) / 86_400_000))
+        : 0;
+      const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
+      if (Number((user as any)?.shareCoins ?? 0) < required) {
+        setCounterInsufficientCoins({ required, context: "borrow" });
+        return;
+      }
+    }
     counterProposalMutation.mutate({
       requestId: counterProposalRequest.id,
       deliveryMethod: "in_person",

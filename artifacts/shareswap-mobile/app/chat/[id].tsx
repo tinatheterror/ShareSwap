@@ -361,28 +361,7 @@ export default function ChatScreen() {
   });
 
   const acceptCounterMutation = useMutation({
-    mutationFn: () => {
-      // Preflight: check ShareCoin balance for BORROW counter acceptance
-      if (request?.requestType === "BORROW") {
-        const weeklyPrice = parseFloat(String(request.item?.shareCoinPrice ?? 0)) || 5;
-        const startD = request.counterStartDate || request.startDate;
-        const endD = request.counterEndDate || request.endDate;
-        let days = 0;
-        if (startD && endD) {
-          days = Math.max(1, Math.ceil((new Date(endD).getTime() - new Date(startD).getTime()) / 86400000));
-        }
-        const cost = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
-        const balance = Number((user as any)?.shareCoins ?? 0);
-        if (balance < cost) {
-          const err: any = new Error("Insufficient ShareCoins");
-          err.code = "PREFLIGHT_INSUFFICIENT";
-          err.required = cost;
-          err.context = "borrow";
-          throw err;
-        }
-      }
-      return apiPost(`/api/requests/${requestId}/respond-to-counter`, { accept: true });
-    },
+    mutationFn: () => apiPost(`/api/requests/${requestId}/respond-to-counter`, { accept: true }),
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       invalidateAll();
@@ -406,6 +385,25 @@ export default function ChatScreen() {
 
   const counterMutation = useMutation({
     mutationFn: (payload: CounterPayload) => {
+      // Only a borrower/requester spends ShareCoins. Validate their chosen
+      // date range before sending the counter, rather than blocking the owner
+      // from accepting it later.
+      if (request?.requestType === "BORROW" && request.requesterId === user?.id) {
+        const weeklyPrice = parseFloat(String(request.item?.shareCoinPrice ?? 0)) || 5;
+        const startD = payload.startDate || request.counterStartDate || request.startDate;
+        const endD = payload.endDate || request.counterEndDate || request.endDate;
+        const days = startD && endD
+          ? Math.max(1, Math.ceil((new Date(endD).getTime() - new Date(startD).getTime()) / 86400000))
+          : 0;
+        const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
+        if (Number((user as any)?.shareCoins ?? 0) < required) {
+          const err: any = new Error("Insufficient ShareCoins");
+          err.code = "PREFLIGHT_INSUFFICIENT";
+          err.required = required;
+          err.context = "borrow";
+          throw err;
+        }
+      }
       if (payload.isResponse) {
         // Counter-back: respond to an existing counter with new terms
         const { isResponse, ...counterFields } = payload;
@@ -418,7 +416,16 @@ export default function ChatScreen() {
       setShowCounterSheet(false);
       invalidateAll();
     },
-    onError: (e: Error) => Alert.alert("Error", e.message),
+    onError: (e: any) => {
+      if (e?.code === "PREFLIGHT_INSUFFICIENT" || e?.code === "INSUFFICIENT_SHARECOINS") {
+        setShowCounterSheet(false);
+        setEarnRequired(e.required ?? 0);
+        setEarnContext("borrow");
+        setShowEarnModal(true);
+      } else {
+        Alert.alert("Error", e.message || "Failed to send counter");
+      }
+    },
   });
 
   const requestExtensionMutation = useMutation({

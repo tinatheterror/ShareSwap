@@ -1301,26 +1301,7 @@ export function ChatWidget() {
               <Button
                 size="sm"
                 className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
-                onClick={() => {
-                  // Preflight: check if requester can afford BORROW counter terms
-                  if (request.requestType === "BORROW") {
-                    const weeklyPrice = parseFloat((request.item as any)?.shareCoinPrice || "0") || 5;
-                    const startD = request.counterStartDate || request.startDate;
-                    const endD = request.counterEndDate || request.endDate;
-                    let days = 0;
-                    if (startD && endD) {
-                      days = Math.max(1, Math.ceil((new Date(endD).getTime() - new Date(startD).getTime()) / 86400000));
-                    }
-                    const cost = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
-                    const balance = Number((user as any)?.shareCoins ?? 0);
-                    if (balance < cost) {
-                      setInsufficientCoinsRequired(cost);
-                      setShowInsufficientCoinsModal(true);
-                      return;
-                    }
-                  }
-                  respondToCounterMutation.mutate({ requestId: request.id, accept: true });
-                }}
+                onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: true })}
                 disabled={respondToCounterMutation.isPending}
               >
                 Accept
@@ -2909,6 +2890,20 @@ export function ChatWidget() {
                 if (chatProposedStart && chatProposedEnd && chatProposedEnd < chatProposedStart) {
                   toast({ title: "Invalid dates", description: "End date cannot be before start date.", variant: "destructive" });
                   return;
+                }
+                // The requester is the person who spends ShareCoins. Check their
+                // proposed duration before sending, never when the owner accepts.
+                if (chatCounterRequest.requestType === "BORROW" && chatCounterRequest.requesterId === user?.id) {
+                  const weeklyPrice = parseFloat((chatCounterRequest.item as any)?.shareCoinPrice || "0") || 5;
+                  const days = chatProposedStart && chatProposedEnd
+                    ? Math.max(1, Math.ceil((parseLocalDate(chatProposedEnd).getTime() - parseLocalDate(chatProposedStart).getTime()) / 86_400_000))
+                    : 0;
+                  const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
+                  if (Number((user as any)?.shareCoins ?? 0) < required) {
+                    setInsufficientCoinsRequired(required);
+                    setShowInsufficientCoinsModal(true);
+                    return;
+                  }
                 }
                 chatCounterMutation.mutate({
                   requestId: chatCounterRequest.id,

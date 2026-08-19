@@ -218,7 +218,7 @@ export function PayDepositSheet({
                 </View>
                 <View style={[s.divider, { backgroundColor: colors.border }]} />
                 <View style={s.breakdownRow}>
-                  <Text style={[s.breakdownLabel, { color: colors.mutedForeground }]}>Security deposit</Text>
+                   <Text style={[s.breakdownLabel, { color: colors.mutedForeground }]}>Trust deposit</Text>
                   <Text style={[s.breakdownValue, { color: "#2563eb" }]}>${depositAmount.toFixed(2)} hold</Text>
                 </View>
                 <Text style={[s.breakdownNote, { color: colors.mutedForeground }]}>
@@ -264,7 +264,7 @@ export function PayDepositSheet({
                 <View style={s.breakdownRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={[s.breakdownLabel, { color: colors.foreground, fontFamily: "Inter_500Medium" }]}>
-                      Security deposit
+                       Trust deposit
                     </Text>
                     <Text style={[s.breakdownNote, { color: "#2563eb", marginTop: 2 }]}>
                       Authorization hold only — Lifted automatically on safe return.

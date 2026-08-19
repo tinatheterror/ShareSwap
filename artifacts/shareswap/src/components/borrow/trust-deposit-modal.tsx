@@ -188,7 +188,7 @@ export function TrustDepositModal({
                 }
               </div>
               <div className="flex justify-between text-sm text-gray-500">
-                <span>Security deposit</span>
+                <span>{isRental ? "Security deposit" : "Trust deposit"}</span>
                 <span className="font-medium text-gray-800">${depositAmount.toFixed(2)} <span className="text-xs font-normal text-blue-500">hold</span></span>
               </div>
               <p className="text-xs text-gray-400 italic pt-1 border-t border-gray-200">Deposit hold lifted automatically on safe return</p>
@@ -248,7 +248,7 @@ export function TrustDepositModal({
               <div className="border-t border-gray-200" />
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-gray-700 font-medium">Security deposit</p>
+                  <p className="text-gray-700 font-medium">{isRental ? "Security deposit" : "Trust deposit"}</p>
                   <p className="text-xs text-blue-500">Authorization hold only</p>
                 </div>
                 <span className="font-semibold text-gray-900">${depositAmount.toFixed(2)}</span>

@@ -6019,20 +6019,8 @@ Respond with ONLY the category name, nothing else.`
         }
       );
 
-      // System message → other party's inbox badge fires on acceptance or terms confirmation
-      try {
-        const _rtcShort = request.items.name.length > 30 ? request.items.name.slice(0, 30) + "…" : request.items.name;
-        const _rtcTypeLabel = request.item_requests.requestType === "GIFT" ? "gift claim" : (request.item_requests.requestType?.toLowerCase() || "request") + " request";
-        await db.insert(messages).values({
-          content: ownerIsAccepting
-            ? `✅ Your ${_rtcTypeLabel} for "${_rtcShort}" was accepted`
-            : `✅ Terms accepted for "${_rtcShort}" — awaiting owner's final approval`,
-          senderId: req.user.id,
-          receiverId: otherUserId,
-          messageType: "system",
-          requestId,
-        });
-      } catch (_) {}
+      // The lifecycle event above is the canonical chat message. Do not add a
+      // second system stamp for the same acceptance/terms action.
 
       // Notification message: for in-person BORROW deposit, skip deposit step messaging
       const inPersonBorrowDeposit =

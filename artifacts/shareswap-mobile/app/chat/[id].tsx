@@ -1034,6 +1034,9 @@ export default function ChatScreen() {
         // The counter event card already conveys the proposed terms. Do not
         // render legacy duplicate system stamps in existing conversations.
         if (msg.content.startsWith("📋 New terms proposed for")) return false;
+        // Acceptance events are now rendered once as lifecycle events; hide
+        // redundant stamps created by older builds.
+        if (msg.content.startsWith("✅ Your ") && msg.content.includes(" was accepted")) return false;
 
         const visibleTo = msg.metadata?.visibleToUserId as number | undefined;
         if (visibleTo && visibleTo !== user?.id) return false;

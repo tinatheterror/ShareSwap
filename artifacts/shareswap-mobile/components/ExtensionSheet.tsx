@@ -21,6 +21,7 @@ interface Props {
   isPending: boolean;
   currentEndDate: string | null;
   itemName: string;
+  ownerAlreadyNotifiedOfDelay?: boolean;
 }
 
 export default function ExtensionSheet({
@@ -30,6 +31,7 @@ export default function ExtensionSheet({
   isPending,
   currentEndDate,
   itemName,
+  ownerAlreadyNotifiedOfDelay = false,
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -85,6 +87,15 @@ export default function ExtensionSheet({
           Short extensions help with small delays. For a longer period, start a
           new borrow.
         </Text>
+
+        {ownerAlreadyNotifiedOfDelay && (
+          <View style={styles.notice}>
+            <Feather name="info" size={14} color="#92400e" />
+            <Text style={styles.noticeText}>
+              Your request will note that the owner has already been notified you may be running late.
+            </Text>
+          </View>
+        )}
 
         {/* Current end date */}
         {currentEndDate && (
@@ -227,6 +238,24 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 18,
+  },
+  notice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#fcd34d",
+    backgroundColor: "#fffbeb",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  noticeText: {
+    flex: 1,
+    color: "#92400e",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
   },
   dateRow: {
     flexDirection: "row",

@@ -9066,6 +9066,26 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Cannot notify delay in current status" });
       }
 
+      // A borrower must let the owner respond to an extension before sending a
+      // separate late-return notice. This prevents two competing expectations
+      // about the return date from reaching the owner at the same time.
+      const [pendingExtension] = await db
+        .select({ id: extensionRequests.id })
+        .from(extensionRequests)
+        .where(
+          and(
+            eq(extensionRequests.requestId, requestId),
+            eq(extensionRequests.status, "pending"),
+          ),
+        )
+        .limit(1);
+      if (pendingExtension) {
+        return res.status(400).json({
+          error: "An extension request is awaiting the owner's response. Please wait before sending a late-return notice.",
+          code: "EXTENSION_PENDING",
+        });
+      }
+
       // CRITICAL: Can only notify BEFORE the due date
       // Post-facto notifications don't count - must communicate in advance
       const now = new Date();
@@ -9145,6 +9165,19 @@ Respond with ONLY the category name, nothing else.`
 
       const endDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
       const isEarlyReturn = endDate ? new Date() < endDate : false;
+
+      // Returning the item takes precedence over a pending extension. The
+      // borrower can still return early while waiting for a response, but the
+      // owner must not be able to approve extra time after return is underway.
+      await db
+        .update(extensionRequests)
+        .set({ status: "declined", respondedAt: new Date() })
+        .where(
+          and(
+            eq(extensionRequests.requestId, requestId),
+            eq(extensionRequests.status, "pending"),
+          ),
+        );
 
       const [updated] = await db
         .update(itemRequests)
@@ -10007,7 +10040,14 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const [borrow] = await db
-        .select({ requesterId: itemRequests.requesterId, ownerId: items.ownerId, status: itemRequests.status, endDate: itemRequests.endDate, itemName: items.name })
+        .select({
+          requesterId: itemRequests.requesterId,
+          ownerId: items.ownerId,
+          status: itemRequests.status,
+          endDate: itemRequests.endDate,
+          itemName: items.name,
+          returnDelayNotifiedAt: itemRequests.returnDelayNotifiedAt,
+        })
         .from(itemRequests)
         .innerJoin(items, eq(items.id, itemRequests.itemId))
         .where(eq(itemRequests.id, requestId))
@@ -10034,6 +10074,10 @@ Respond with ONLY the category name, nothing else.`
 
       const newEnd = new Date(borrow.endDate);
       newEnd.setDate(newEnd.getDate() + addDays);
+      const ownerAlreadyNotifiedOfDelay = !!borrow.returnDelayNotifiedAt;
+      const extensionMessage = `+${addDays} day${addDays > 1 ? "s" : ""}${
+        ownerAlreadyNotifiedOfDelay ? " · late-return notice already sent" : ""
+      }`;
 
       // Cancel any existing pending extension
       await db
@@ -10049,7 +10093,7 @@ Respond with ONLY the category name, nothing else.`
           ownerId: borrow.ownerId as number,
           requestedEndDate: newEnd,
           status: "pending",
-          message: `+${addDays} day${addDays > 1 ? "s" : ""}`,
+          message: extensionMessage,
         })
         .returning();
 
@@ -10057,14 +10101,14 @@ Respond with ONLY the category name, nothing else.`
         userId: borrow.ownerId,
         type: "extension_requested",
         title: "Short Extension Requested",
-        message: `${((req.user as any).displayName || req.user.username).slice(0, 15)} wants +${addDays}d for "${borrow.itemName.length > 18 ? borrow.itemName.slice(0, 18) + "…" : borrow.itemName}" (due ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}).`,
+        message: `${((req.user as any).displayName || req.user.username).slice(0, 15)} wants +${addDays}d for "${borrow.itemName.length > 18 ? borrow.itemName.slice(0, 18) + "…" : borrow.itemName}" (due ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })})${ownerAlreadyNotifiedOfDelay ? ". They already notified you they may be running late." : "."}`,
         requestId,
         isRead: false,
       });
 
       // Auto-send a chat event message so the owner sees it in the thread
       await db.insert(messages).values({
-        content: `⏳ Extension requested: +${addDays} day${addDays > 1 ? "s" : ""} (new return date: ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`,
+        content: `⏳ Extension requested: +${addDays} day${addDays > 1 ? "s" : ""} (new return date: ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })})${ownerAlreadyNotifiedOfDelay ? " — late-return notice already sent" : ""}`,
         senderId: req.user.id,
         receiverId: borrow.ownerId,
         requestId,
@@ -10074,6 +10118,7 @@ Respond with ONLY the category name, nothing else.`
           days: addDays,
           requestedEndDate: newEnd.toISOString(),
           extensionId: ext.id,
+          ownerAlreadyNotifiedOfDelay,
         },
       });
 
@@ -10102,6 +10147,17 @@ Respond with ONLY the category name, nothing else.`
 
       if (!pending) return res.status(404).json({ error: "No pending extension request" });
       if (pending.ownerId !== req.user.id) return res.status(403).json({ error: "Not your item" });
+
+      const [requestRow] = await db
+        .select({ status: itemRequests.status })
+        .from(itemRequests)
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+      if (requestRow?.status !== "IN_PROGRESS") {
+        return res.status(400).json({
+          error: "This item is being returned, so the extension can no longer be approved.",
+        });
+      }
 
       const newStatus = action === "accept" ? "accepted" : "declined";
 

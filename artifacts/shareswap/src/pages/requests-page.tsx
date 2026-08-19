@@ -1001,24 +1001,26 @@ export default function RequestsPage() {
                                       >
                                         Start new borrow period
                                       </Button>
-                                    ) : hasPending ? (
-                                      <Badge variant="secondary" className="bg-amber-100 text-amber-800 self-center">
-                                        <Clock className="h-3 w-3 mr-1" />
-                                        Extension pending owner approval
-                                      </Badge>
-                                    ) : hasAccepted ? (
-                                      <span className="text-xs text-muted-foreground self-center">
-                                        Further extensions not available. Please return the item or arrange a new request.
-                                      </span>
                                     ) : (
                                       <Button
                                         size="sm"
                                         variant="outline"
+                                        disabled={hasPending || hasAccepted}
                                         onClick={() => { setExtendRequest(request); setExtendDays(null); setShowExtendDialog(true); }}
                                       >
                                         <Clock className="h-4 w-4 mr-1" />
                                         Need a bit more time?
                                       </Button>
+                                    )}
+                                    {hasPending && (
+                                      <span className="text-xs text-amber-700 self-center">
+                                        Extension pending owner approval
+                                      </span>
+                                    )}
+                                    {hasAccepted && (
+                                      <span className="text-xs text-muted-foreground self-center">
+                                        Free extension already used
+                                      </span>
                                     )}
                                   </div>
                                 </div>
@@ -1445,6 +1447,11 @@ export default function RequestsPage() {
             <DialogDescription>
               Short extensions help with small delays. For a longer period, start a new borrow.
             </DialogDescription>
+            {extendRequest?.returnDelayNotifiedAt && (
+              <p className="text-sm text-amber-700">
+                The owner has already been notified that you may be running late. Your extension request will include that context.
+              </p>
+            )}
           </DialogHeader>
 
           {extendRequest && (

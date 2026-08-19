@@ -9066,6 +9066,14 @@ Respond with ONLY the category name, nothing else.`
         return res.status(404).json({ error: "Request not found" });
       }
 
+      // The owner belongs to the item, not item_requests. Resolve it before
+      // delivering the notice; item_requests has no ownerId column.
+      const [requestItem] = await db
+        .select({ ownerId: items.ownerId })
+        .from(items)
+        .where(eq(items.id, request.itemId))
+        .limit(1);
+
       // Must be the borrower/requester
       if (request.requesterId !== req.user.id) {
         return res.status(403).json({ error: "Only the borrower can notify about delays" });
@@ -9122,7 +9130,7 @@ Respond with ONLY the category name, nothing else.`
       // Deliver the late-return notice through every owner-facing channel:
       // activity/bell notification, live websocket update, native push, and
       // the request chat thread.
-      if (request.ownerId) {
+      if (requestItem?.ownerId) {
         const dueStr = request.endDate
           ? new Date(request.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
           : "the due date";
@@ -9131,7 +9139,7 @@ Respond with ONLY the category name, nothing else.`
         const notificationMessage = `${borrowerName} let you know they may return this item after ${dueStr}.`;
 
         const [delayNotification] = await db.insert(notifications).values({
-          userId: request.ownerId,
+          userId: requestItem.ownerId,
           type: "return_delay_notified",
           title: notificationTitle,
           message: notificationMessage,
@@ -9143,19 +9151,19 @@ Respond with ONLY the category name, nothing else.`
         const [delayMessage] = await db.insert(messages).values({
           content: `⏰ I wanted to let you know that I'll be returning this a bit later than ${dueStr}. I'll get it back to you as soon as possible — thanks for your understanding!`,
           senderId: request.requesterId,
-          receiverId: request.ownerId,
+          receiverId: requestItem.ownerId,
           requestId,
           messageType: "text",
         }).returning();
 
-        const ownerWs = connectedClients.get(request.ownerId);
+        const ownerWs = connectedClients.get(requestItem.ownerId);
         if (ownerWs?.readyState === WebSocket.OPEN) {
           ownerWs.send(JSON.stringify({ type: "new_message", message: delayMessage }));
           ownerWs.send(JSON.stringify({ type: "new_notification", notification: delayNotification }));
         }
 
         sendPushToUser(
-          request.ownerId,
+          requestItem.ownerId,
           {
             title: notificationTitle,
             body: notificationMessage,

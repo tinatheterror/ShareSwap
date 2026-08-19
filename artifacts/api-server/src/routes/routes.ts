@@ -5118,17 +5118,30 @@ Respond with ONLY the category name, nothing else.`
     const requesterName = requester?.displayName || requester?.username || "Someone";
     const requestTypeLabel = requestType.charAt(0).toUpperCase() + requestType.slice(1).toLowerCase();
 
-    // Always open the inbox thread with a system summary so the owner's inbox badge fires.
-    // If the requester also wrote a note, that follows immediately after.
+    // Open the inbox thread with party-specific system summaries. The owner
+    // receives the sender's name and the requester sees a clear confirmation
+    // without generating an unread message for either party.
     if (item.ownerId) {
-      const actionVerb = requestType === "GIFT" ? "claim as a gift" : requestType.toLowerCase();
-      await db.insert(messages).values({
-        content: `📬 ${requesterName} sent a ${requestTypeLabel.toLowerCase()} request for "${item.name.length > 30 ? item.name.slice(0, 30) + "…" : item.name}"`,
-        senderId: req.user.id,
-        receiverId: item.ownerId,
-        requestId: request.id,
-        messageType: "system",
-      });
+      const itemShortName = item.name.length > 30 ? item.name.slice(0, 30) + "…" : item.name;
+      await db.insert(messages).values([
+        {
+          content: `📬 You sent a ${requestTypeLabel.toLowerCase()} request for "${itemShortName}"`,
+          senderId: req.user.id,
+          receiverId: item.ownerId,
+          requestId: request.id,
+          messageType: "system",
+          isRead: true,
+          metadata: { visibleToUserId: req.user.id },
+        },
+        {
+          content: `📬 ${requesterName} sent a ${requestTypeLabel.toLowerCase()} request for "${itemShortName}"`,
+          senderId: req.user.id,
+          receiverId: item.ownerId,
+          requestId: request.id,
+          messageType: "system",
+          metadata: { visibleToUserId: item.ownerId },
+        },
+      ]);
     }
 
     // Send the requester's note into the inbox chat thread
@@ -5810,18 +5823,6 @@ Respond with ONLY the category name, nothing else.`
       ...swapEventMeta,
     });
 
-    // System message → other party's inbox badge fires when a counter-offer is sent
-    try {
-      const _cpShort = request.items.name.length > 30 ? request.items.name.slice(0, 30) + "…" : request.items.name;
-      await db.insert(messages).values({
-        content: `📋 New terms proposed for "${_cpShort}"`,
-        senderId: req.user.id,
-        receiverId: otherUserId,
-        messageType: "system",
-        requestId,
-      });
-    } catch (_) {}
-
     // Notify other party
     const _cpItemName1 = request.items.name;
     const _cpType1 = request.item_requests.requestType?.toLowerCase() || "request";
@@ -5945,18 +5946,6 @@ Respond with ONLY the category name, nothing else.`
         proposedByRole: isOwner ? "owner" : "requester",
         ...swapCounterBackMeta,
       });
-
-      // System message → other party's inbox badge fires for counter-back
-      try {
-        const _cbShort = request.items.name.length > 30 ? request.items.name.slice(0, 30) + "…" : request.items.name;
-        await db.insert(messages).values({
-          content: `📋 New terms proposed for "${_cbShort}"`,
-          senderId: req.user.id,
-          receiverId: otherUserId,
-          messageType: "system",
-          requestId,
-        });
-      } catch (_) {}
 
       const _cpItemName2 = request.items.name;
       const _cpType2 = request.item_requests.requestType?.toLowerCase() || "request";

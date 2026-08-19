@@ -1024,6 +1024,10 @@ export default function ChatScreen() {
   const reversed = messages
   ? [...messages].reverse().filter((msg) => {
       if (msg.messageType === "system") {
+        // The counter event card already conveys the proposed terms. Do not
+        // render legacy duplicate system stamps in existing conversations.
+        if (msg.content.startsWith("📋 New terms proposed for")) return false;
+
         const visibleTo = msg.metadata?.visibleToUserId as number | undefined;
         if (visibleTo && visibleTo !== user?.id) return false;
       }

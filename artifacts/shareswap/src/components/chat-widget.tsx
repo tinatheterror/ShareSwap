@@ -2005,6 +2005,10 @@ export function ChatWidget() {
 
                     // System notice — subtle muted text, no box
                     if (msg.messageType === "system") {
+                      // The counter event card already conveys the proposed terms.
+                      // Hide legacy duplicate system stamps from older conversations.
+                      if (msg.content.startsWith("📋 New terms proposed for")) return null;
+
                       // Visibility guard: some stamps (e.g. coin charge/earn) are only for one party
                       const visibleTo = (msg.metadata as any)?.visibleToUserId;
                       if (visibleTo && visibleTo !== user.id) return null;

@@ -376,7 +376,7 @@ export default function ChatScreen() {
     }
     Alert.alert("Cancel request?", message, [
       { text: "Keep booking", style: "cancel" },
-      { text: "Cancel request", style: "destructive", onPress: () => cancelMutation.mutate() },
+      { text: "Cancel", style: "destructive", onPress: () => cancelMutation.mutate() },
     ]);
   }
 
@@ -596,7 +596,7 @@ export default function ChatScreen() {
                     {fmtDate(request.startDate)} – {fmtDate(request.endDate)}
                   </Text>
                 </View>
-                {(status === "IN_PROGRESS" || status === "RETURN_REQUESTED" || status === "COMPLETED") && request.actualHandoffAt && (
+                {request.actualHandoffAt && (
                   <Text style={[card.detailText, { color: colors.mutedForeground, paddingLeft: 17 }]}>
                     Handoff completed: {fmtDate(request.actualHandoffAt)}
                   </Text>
@@ -758,7 +758,7 @@ export default function ChatScreen() {
                   >
                     {cancelMutation.isPending
                       ? <ActivityIndicator size="small" color={colors.mutedForeground} />
-                      : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel request</Text>
+                      : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
                     }
                   </Pressable>
                 )}
@@ -780,18 +780,18 @@ export default function ChatScreen() {
             {/* DEPOSIT_CONFIRMED: borrower can still cancel (deposit will be refunded) */}
             {status === "DEPOSIT_CONFIRMED" && isBorrower && (
               <Pressable
-                style={[card.btn, { borderColor: colors.border }]}
+                style={{ alignItems: "center", paddingVertical: 6 }}
                 onPress={() =>
                   Alert.alert("Cancel this booking?", "Your deposit will be refunded automatically.", [
                     { text: "Keep booking", style: "cancel" },
-                    { text: "Cancel booking", style: "destructive", onPress: () => cancelMutation.mutate() },
+                    { text: "Cancel", style: "destructive", onPress: () => cancelMutation.mutate() },
                   ])
                 }
                 disabled={anyMutating}
               >
                 {cancelMutation.isPending
-                  ? <ActivityIndicator size="small" color={colors.foreground} />
-                  : <Text style={[card.btnLabel, { color: colors.foreground }]}>Cancel request</Text>
+                  ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
                 }
               </Pressable>
             )}
@@ -799,18 +799,18 @@ export default function ChatScreen() {
             {/* GIFT owner: cancel an accepted gift (e.g. receiver never showed up) */}
             {isOwner && request.requestType === "GIFT" && status === "ACCEPTED" && (
               <Pressable
-                style={[card.btn, { borderColor: colors.border }]}
+                style={{ alignItems: "center", paddingVertical: 6 }}
                 onPress={() =>
                   Alert.alert("Cancel this gift?", "The requester will be notified.", [
                     { text: "Keep it", style: "cancel" },
-                    { text: "Cancel gift", style: "destructive", onPress: () => cancelMutation.mutate() },
+                    { text: "Cancel", style: "destructive", onPress: () => cancelMutation.mutate() },
                   ])
                 }
                 disabled={anyMutating}
               >
                 {cancelMutation.isPending
-                  ? <ActivityIndicator size="small" color={colors.foreground} />
-                  : <Text style={[card.btnLabel, { color: colors.foreground }]}>Cancel gift</Text>
+                  ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
                 }
               </Pressable>
             )}

@@ -1319,7 +1319,7 @@ export function ChatWidget() {
         </button>
 
         {/* Action buttons */}
-        <div className="flex gap-2 flex-nowrap mt-3">
+        <div className="flex flex-wrap gap-2 mt-3">
           {/* Counter received: inline Accept / Counter / Decline */}
           {iReceivedCounter && (
             <>
@@ -1425,11 +1425,11 @@ export function ChatWidget() {
               {/* Giver: cancel an accepted gift (e.g. receiver never showed up) */}
               {isOwner && request.requestType === "GIFT" && request.status === "ACCEPTED" && (
                 <button
-                  className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
+                  className="w-full text-center text-xs text-muted-foreground hover:text-red-500 transition-colors"
                   onClick={(e) => { e.stopPropagation(); setCancelConfirmRequest(request); }}
                   disabled={cancelMutation.isPending}
                 >
-                  Cancel gift
+                  Cancel
                 </button>
               )}
 
@@ -1441,11 +1441,11 @@ export function ChatWidget() {
               {/* Borrower: Cancel request (PENDING = free cancel, no confirmation needed) */}
               {isBorrower && request.status === "PENDING" && !iCounterPending && !iTermsAccepted && (
                 <button
-                  className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
+                  className="w-full text-center text-xs text-muted-foreground hover:text-red-500 transition-colors"
                   onClick={(e) => { e.stopPropagation(); cancelMutation.mutate(request.id); }}
                   disabled={cancelMutation.isPending}
                 >
-                  Cancel request
+                  Cancel
                 </button>
               )}
 
@@ -1480,7 +1480,7 @@ export function ChatWidget() {
               {/* Borrower: discreet cancel for post-accept pre-handoff */}
               {isBorrower && ["ACCEPTED", "DEPOSIT_CONFIRMED"].includes(request.status) && (
                 <button
-                  className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
+                  className="w-full text-center text-xs text-muted-foreground hover:text-red-500 transition-colors"
                   onClick={(e) => { e.stopPropagation(); setCancelConfirmRequest(request); }}
                 >
                   Cancel
@@ -2980,7 +2980,7 @@ export function ChatWidget() {
               {cancelConfirmRequest?.status === "DEPOSIT_CONFIRMED" && "Your deposit will be refunded automatically."}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-row gap-2 sm:justify-end">
+          <DialogFooter className="flex-col gap-2 sm:flex-col sm:items-stretch">
             <Button variant="outline" onClick={() => setCancelConfirmRequest(null)}>
               Keep booking
             </Button>
@@ -2989,7 +2989,7 @@ export function ChatWidget() {
               disabled={cancelMutation.isPending}
               onClick={() => cancelConfirmRequest && cancelMutation.mutate(cancelConfirmRequest.id)}
             >
-              {cancelMutation.isPending ? "Cancelling…" : "Cancel booking"}
+              {cancelMutation.isPending ? "Cancelling…" : "Cancel"}
             </Button>
           </DialogFooter>
         </DialogContent>

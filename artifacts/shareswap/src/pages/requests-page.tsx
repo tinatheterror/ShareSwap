@@ -644,7 +644,7 @@ export default function RequestsPage() {
                                 }
                               </span>
                             </div>
-                            {(request.status === "IN_PROGRESS" || request.status === "RETURN_REQUESTED") && request.actualHandoffAt && (
+                            {request.actualHandoffAt && (
                               <div className="flex items-center gap-2 text-xs text-muted-foreground ml-6">
                                 Handoff completed: {format(new Date(request.actualHandoffAt), "MMM d")}
                               </div>

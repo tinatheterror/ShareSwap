@@ -521,6 +521,28 @@ export async function awardGiftingPoints(
   requestId: number,
   itemId: number,
 ): Promise<void> {
+  // ── Idempotency guard ──────────────────────────────────────────────────────
+  const existingActivities = await db
+    .select({ id: reputationActivities.id })
+    .from(reputationActivities)
+    .where(
+      and(
+        eq(reputationActivities.userId, giverId),
+        eq(reputationActivities.requestId, requestId),
+        eq(reputationActivities.activityType, "gifting_completed"),
+      ),
+    )
+    .limit(1);
+
+  if (existingActivities.length > 0) {
+    console.warn(
+      `[awardGiftingPoints] Skipping duplicate award: giverId=${giverId} requestId=${requestId} ` +
+        `already has gifting_completed (id=${existingActivities[0].id})`,
+    );
+    return;
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   const points = TRUST_POINTS.MICRO.GIFTING_COMPLETED;
 
   await awardTrustPoints(giverId, "gifting_completed", points, {
@@ -536,6 +558,28 @@ export async function awardCommunicationPoints(
   responseTimeMs: number,
   slaThresholdMs: number = 4 * 60 * 60 * 1000,
 ): Promise<void> {
+  // ── Idempotency guard ──────────────────────────────────────────────────────
+  const existingActivities = await db
+    .select({ id: reputationActivities.id })
+    .from(reputationActivities)
+    .where(
+      and(
+        eq(reputationActivities.userId, userId),
+        eq(reputationActivities.requestId, requestId),
+        eq(reputationActivities.activityType, "timely_communication"),
+      ),
+    )
+    .limit(1);
+
+  if (existingActivities.length > 0) {
+    console.warn(
+      `[awardCommunicationPoints] Skipping duplicate award: userId=${userId} requestId=${requestId} ` +
+        `already has timely_communication (id=${existingActivities[0].id})`,
+    );
+    return;
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   if (responseTimeMs <= slaThresholdMs) {
     await awardTrustPoints(
       userId,
@@ -555,6 +599,28 @@ export async function awardFeedbackPoints(
   requestId: number,
   feedbackTags: ("reliable" | "on_time" | "as_described")[],
 ): Promise<void> {
+  // ── Idempotency guard ──────────────────────────────────────────────────────
+  const existingActivities = await db
+    .select({ id: reputationActivities.id })
+    .from(reputationActivities)
+    .where(
+      and(
+        eq(reputationActivities.userId, userId),
+        eq(reputationActivities.requestId, requestId),
+        eq(reputationActivities.activityType, "positive_feedback"),
+      ),
+    )
+    .limit(1);
+
+  if (existingActivities.length > 0) {
+    console.warn(
+      `[awardFeedbackPoints] Skipping duplicate award: userId=${userId} requestId=${requestId} ` +
+        `already has positive_feedback (id=${existingActivities[0].id})`,
+    );
+    return;
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   let totalPoints = 0;
 
   for (const tag of feedbackTags) {

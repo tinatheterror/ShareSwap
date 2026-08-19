@@ -507,16 +507,38 @@ export default function ShareScreen() {
     }
   }
 
+  async function appendImageUpload(
+    formData: FormData,
+    fieldName: string,
+    asset: ImagePicker.ImagePickerAsset,
+    index: number,
+    prefix: string,
+  ) {
+    const filename = getImageFilename(asset, index, prefix);
+    if (Platform.OS === "web") {
+      const blob = await fetch(asset.uri).then((response) => {
+        if (!response.ok) throw new Error("Could not read the selected photo.");
+        return response.blob();
+      });
+      formData.append(fieldName, blob, filename);
+      return;
+    }
+
+    formData.append(fieldName, {
+      uri: asset.uri,
+      name: filename,
+      type: getImageMimeType(asset),
+    } as any);
+  }
+
   const analyzeMutation = useMutation({
     mutationFn: async (assets: ImagePicker.ImagePickerAsset[]) => {
       const formData = new FormData();
-      assets.forEach((asset, i) => {
-        formData.append("photos", {
-          uri: asset.uri,
-          name: getImageFilename(asset, i, "screenshot"),
-          type: getImageMimeType(asset),
-        } as any);
-      });
+      await Promise.all(
+        assets.map((asset, i) =>
+          appendImageUpload(formData, "photos", asset, i, "screenshot"),
+        ),
+      );
       const res = await apiRequest("POST", "/api/smartscan/analyze", formData);
       return res.json() as Promise<{ analysis: SmartScanAnalysis }>;
     },
@@ -585,13 +607,11 @@ export default function ShareScreen() {
         formData.append(key, String(value));
       });
 
-      photos.forEach((p, i) => {
-        formData.append("photos", {
-          uri: p.uri,
-          name: getImageFilename(p, i, "photo"),
-          type: getImageMimeType(p),
-        } as any);
-      });
+      await Promise.all(
+        photos.map((photo, index) =>
+          appendImageUpload(formData, "photos", photo, index, "photo"),
+        ),
+      );
 
       const res = await apiRequest("POST", "/api/items", formData);
       return res.json();

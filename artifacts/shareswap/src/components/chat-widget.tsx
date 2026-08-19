@@ -342,6 +342,7 @@ export function ChatWidget() {
   const [showChatCounterModal, setShowChatCounterModal] = useState(false);
   const [chatCounterRequest, setChatCounterRequest] = useState<ItemRequest | null>(null);
   const [chatCounterRole, setChatCounterRole] = useState<"owner" | "requester">("requester");
+  const todayAsInputDate = format(new Date(), "yyyy-MM-dd");
   const [chatProposedDeposit, setChatProposedDeposit] = useState("in_app");
   const [chatProposedStart, setChatProposedStart] = useState("");
   const [chatProposedEnd, setChatProposedEnd] = useState("");
@@ -2886,11 +2887,11 @@ export function ChatWidget() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Start</Label>
-                    <Input type="date" value={chatProposedStart} onChange={(e) => { setChatProposedStart(e.target.value); if (chatProposedEnd && e.target.value > chatProposedEnd) setChatProposedEnd(""); }} min={new Date().toLocaleDateString("en-CA")} />
+                    <Input type="date" value={chatProposedStart} onChange={(e) => { setChatProposedStart(e.target.value); if (chatProposedEnd && e.target.value > chatProposedEnd) setChatProposedEnd(""); }} min={todayAsInputDate} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">End</Label>
-                    <Input type="date" value={chatProposedEnd} onChange={(e) => setChatProposedEnd(e.target.value)} min={chatProposedStart || new Date().toLocaleDateString("en-CA")} />
+                    <Input type="date" value={chatProposedEnd} onChange={(e) => setChatProposedEnd(e.target.value)} min={chatProposedStart || todayAsInputDate} />
                   </div>
                 </div>
               </div>

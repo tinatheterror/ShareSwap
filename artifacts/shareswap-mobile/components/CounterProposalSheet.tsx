@@ -219,6 +219,54 @@ function DateButton({
   );
 }
 
+function WebDateInput({
+  label,
+  date,
+  minimumDate,
+  onChange,
+  colors,
+}: {
+  label: string;
+  date: Date | null;
+  minimumDate: Date;
+  onChange: (date: Date | null) => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  if (Platform.OS !== "web") return null;
+
+  return (
+    <View
+      style={[
+        ss.dateBtn,
+        { borderColor: colors.border, backgroundColor: colors.background },
+      ]}
+    >
+      <Text style={[ss.dateBtnLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      {React.createElement("input", {
+        type: "date",
+        value: date ? toISODateStr(date) : "",
+        min: toISODateStr(minimumDate),
+        "aria-label": `${label} date`,
+        onChange: (event: { currentTarget: { value: string } }) => {
+          const value = event.currentTarget.value;
+          onChange(value ? new Date(`${value}T12:00:00`) : null);
+        },
+        style: {
+          width: "100%",
+          minWidth: 0,
+          border: "none",
+          outline: "none",
+          padding: 0,
+          background: "transparent",
+          color: colors.foreground,
+          fontFamily: "inherit",
+          fontSize: "13px",
+        } as any,
+      })}
+    </View>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function CounterProposalSheet({
@@ -425,24 +473,46 @@ export default function CounterProposalSheet({
               {/* Date range */}
               <View style={ss.section}>
                 <Text style={[ss.sectionLabel, { color: colors.foreground }]}>Date range</Text>
-                <View style={{ flexDirection: "row", gap: 10 }}>
-                  <DateButton
-                    label="Start"
-                    date={startDate}
-                    onPress={() => setShowStartPicker(true)}
-                    colors={colors}
-                  />
-                  <DateButton
-                    label="End"
-                    date={endDate}
-                    onPress={() => setShowEndPicker(true)}
-                    colors={colors}
-                  />
-                </View>
+                {Platform.OS === "web" ? (
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <WebDateInput
+                      label="Start"
+                      date={startDate}
+                      minimumDate={today}
+                      onChange={(date) => {
+                        setStartDate(date);
+                        if (date && endDate && date > endDate) setEndDate(null);
+                      }}
+                      colors={colors}
+                    />
+                    <WebDateInput
+                      label="End"
+                      date={endDate}
+                      minimumDate={startDate ?? today}
+                      onChange={setEndDate}
+                      colors={colors}
+                    />
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <DateButton
+                      label="Start"
+                      date={startDate}
+                      onPress={() => setShowStartPicker(true)}
+                      colors={colors}
+                    />
+                    <DateButton
+                      label="End"
+                      date={endDate}
+                      onPress={() => setShowEndPicker(true)}
+                      colors={colors}
+                    />
+                  </View>
+                )}
               </View>
 
               {/* Native date pickers */}
-              {showStartPicker && (
+              {Platform.OS !== "web" && showStartPicker && (
                 <DateTimePicker
                   value={startDate ?? today}
                   mode="date"
@@ -457,7 +527,7 @@ export default function CounterProposalSheet({
                   }}
                 />
               )}
-              {showEndPicker && (
+              {Platform.OS !== "web" && showEndPicker && (
                 <DateTimePicker
                   value={endDate ?? startDate ?? today}
                   mode="date"

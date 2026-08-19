@@ -209,7 +209,10 @@ export function ItemRequestForm({
           variant: "destructive",
         });
       } else if ((error as any).code === "FULL_VERIFICATION_REQUIRED") {
-        showVerificationModal();
+        // Radix dialogs do not reliably stack in the browser preview. Close the
+        // request form first, then present the single verification dialog.
+        onClose();
+        setTimeout(showVerificationModal, 150);
       } else if ((error as any).code === "BORROW_LIMIT_REACHED") {
         toast({
           title: "Failed to send request",
@@ -427,7 +430,6 @@ export function ItemRequestForm({
             </div>
           )}
 
-          <VerificationModal />
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit((data) => {

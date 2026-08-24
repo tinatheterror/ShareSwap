@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { Clock, MapPin, User, CheckCircle, XCircle, Package, Shield, Truck, RotateCcw, HandMetal, ArrowRightLeft, CreditCard, RefreshCw, Gift, AlertTriangle, Star } from "lucide-react";
+import { Clock, MapPin, User, CheckCircle, XCircle, Package, Shield, Truck, RotateCcw, HandMetal, ArrowRightLeft, CreditCard, RefreshCw, Gift, AlertTriangle, Star, KeyRound } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -400,65 +400,6 @@ export default function RequestsPage() {
           variant: "destructive",
         });
       }
-    },
-  });
-
-  // Gift handoff confirmation mutations
-  const confirmGiftReceivedMutation = useMutation({
-    mutationFn: async (requestId: number) => {
-      const response = await apiRequest("POST", `/api/requests/${requestId}/confirm-gift-handoff`, { role: "receiver" });
-      return response.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      if (data.completed) {
-        setShowCelebration(true);
-        toast({
-          title: "Gift Complete!",
-          description: "Enjoy your new item! +1 ShareCoins",
-        });
-      } else {
-        toast({
-          title: "Receipt Confirmed",
-          description: "Waiting for the giver to confirm.",
-        });
-      }
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to confirm receipt",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const confirmGiftGivenMutation = useMutation({
-    mutationFn: async (requestId: number) => {
-      const response = await apiRequest("POST", `/api/requests/${requestId}/confirm-gift-handoff`, { role: "giver" });
-      return response.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      if (data.completed) {
-        setShowCelebration(true);
-        toast({
-          title: "Gift Complete!",
-          description: "Thank you for your generosity! +1 ShareCoins",
-        });
-      } else {
-        toast({
-          title: "Handoff Confirmed",
-          description: "Waiting for the receiver to confirm.",
-        });
-      }
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to confirm handoff",
-        variant: "destructive",
-      });
     },
   });
 
@@ -923,28 +864,23 @@ export default function RequestsPage() {
                         )}
 
                         {request.requestType === "GIFT" && request.status === "ACCEPTED" && (
-                          <div className="flex gap-2 mt-3 p-3 bg-pink-50 border border-pink-200 rounded-lg">
+                          <div className="flex gap-2 mt-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
                             <div className="flex-1">
-                              <p className="text-sm text-pink-700 font-medium mb-2">
-                                <Gift className="h-4 w-4 inline mr-1" />
-                                Gift accepted! Arrange pickup with the giver.
+                              <p className="text-sm text-indigo-700 font-medium mb-2">
+                                <KeyRound className="h-4 w-4 inline mr-1" />
+                                Gift accepted! Ask the giver for the handoff code after pickup.
                               </p>
-                              {request.borrowerConfirmedHandoff ? (
-                                <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  Waiting for giver to confirm
-                                </Badge>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  onClick={() => confirmGiftReceivedMutation.mutate(request.id)}
-                                  disabled={confirmGiftReceivedMutation.isPending}
-                                  className="bg-pink-500 hover:bg-pink-600"
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-1" />
-                                  Confirm Received
-                                </Button>
-                              )}
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedRequest(request);
+                                  setShowHandoffModal(true);
+                                }}
+                                className="bg-indigo-600 hover:bg-indigo-700"
+                              >
+                                <KeyRound className="h-4 w-4 mr-1" />
+                                Enter handoff code
+                              </Button>
                             </div>
                           </div>
                         )}
@@ -1192,20 +1128,19 @@ export default function RequestsPage() {
                                     Waiting for {request.requestType === "RENT" ? "renter" : request.requestType === "SWAP" ? "swapper" : request.requestType === "GIFT" ? "recipient" : "borrower"}
                                   </Badge>
                                 )}
-                                {/* Show confirm button if owner hasn't confirmed yet */}
+                                {/* Owners show the borrower their one-time handoff code.
+                                    Handoff completion is recorded when the borrower enters it. */}
                                 {!(request.status === "AWAITING_HANDOFF_CONFIRM" && request.ownerConfirmedHandoff) && (
                                   <Button
                                     size="sm"
-                                    variant="outline"
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
                                     onClick={() => {
                                       setSelectedRequest(request);
                                       setShowHandoffModal(true);
                                     }}
                                   >
-                                    <HandMetal className="h-4 w-4 mr-1" />
-                                    {request.deliveryMethod === "courier" 
-                                      ? "Confirm Sent (via courier)" 
-                                      : "Confirm Handoff (together)"}
+                                    <KeyRound className="h-4 w-4 mr-1" />
+                                    Show handoff code
                                   </Button>
                                 )}
                               </>
@@ -1357,22 +1292,17 @@ export default function RequestsPage() {
                           </div>
 
                           <div className="flex gap-2 mt-3">
-                            {request.ownerConfirmedHandoff ? (
-                              <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-                                <Clock className="h-3 w-3 mr-1" />
-                                Waiting for receiver to confirm
-                              </Badge>
-                            ) : (
-                              <Button
-                                size="sm"
-                                onClick={() => confirmGiftGivenMutation.mutate(request.id)}
-                                disabled={confirmGiftGivenMutation.isPending}
-                                className="bg-pink-500 hover:bg-pink-600"
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Confirm Given
-                              </Button>
-                            )}
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedRequest(request);
+                                setShowHandoffModal(true);
+                              }}
+                              className="bg-indigo-600 hover:bg-indigo-700"
+                            >
+                              <KeyRound className="h-4 w-4 mr-1" />
+                              Show handoff code
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -1465,7 +1395,7 @@ export default function RequestsPage() {
               ? !!selectedRequest.ownerConfirmedHandoff 
               : !!selectedRequest.borrowerConfirmedHandoff
           }
-          requestType={selectedRequest.requestType as "BORROW" | "RENT"}
+          requestType={selectedRequest.requestType as "BORROW" | "RENT" | "GIFT" | "SWAP"}
           onSuccess={() => {
             setShowHandoffModal(false);
             setSelectedRequest(null);

@@ -15,7 +15,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
-import { apiPost } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 
 interface HandoffSheetProps {
   visible: boolean;
@@ -54,6 +54,9 @@ export function HandoffSheet({
   const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
   const [borrowerView, setBorrowerView] = useState<BorrowerView>("pin");
   const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null);
+  const [ownerPin, setOwnerPin] = useState<{ pin: string | null; pinUsed: boolean; expired: boolean } | null>(null);
+  const [ownerPinLoading, setOwnerPinLoading] = useState(false);
+  const [ownerPinError, setOwnerPinError] = useState<string | null>(null);
 
   const ref0 = useRef<TextInput>(null);
   const ref1 = useRef<TextInput>(null);
@@ -78,6 +81,30 @@ export function HandoffSheet({
       setAttemptsRemaining(null);
     }
   }, [visible]);
+
+  useEffect(() => {
+    if (!visible || userRole !== "owner") return;
+
+    let cancelled = false;
+    setOwnerPin(null);
+    setOwnerPinError(null);
+    setOwnerPinLoading(true);
+
+    apiGet<{ pin: string | null; pinUsed: boolean; expired: boolean }>(`/api/requests/${requestId}/handoff-pin`)
+      .then((data) => {
+        if (!cancelled) setOwnerPin(data);
+      })
+      .catch((error: any) => {
+        if (!cancelled) setOwnerPinError(error?.message || "Could not load the handoff code");
+      })
+      .finally(() => {
+        if (!cancelled) setOwnerPinLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, requestId, userRole]);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["/api/requests"] });
@@ -238,51 +265,44 @@ export function HandoffSheet({
           style={[ss.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 24 }]}
         >
           <View style={[ss.handle, { backgroundColor: colors.border }]} />
-          <Text style={[ss.title, { color: colors.foreground }]}>
-            {isCourier ? "Confirm Item Sent" : "Confirm Item Handoff"}
-          </Text>
+          <View style={ss.titleRow}>
+            <Text style={ss.keyIcon}>🔑</Text>
+            <Text style={[ss.title, { color: colors.foreground }]}>Handoff code</Text>
+          </View>
           <Text style={[ss.sub, { color: colors.mutedForeground }]}>
-            Confirm that {itemName} has been handed off.
+            Show this code to the borrower after {itemName} has been handed off.
           </Text>
-          {otherPartyConfirmed && (
-            <View style={ss.coConfirmRow}>
-              <Text style={ss.coConfirmTick}>✓</Text>
-              <Text style={ss.coConfirmText}>
-                {OtherParty} has already confirmed. Your confirmation will complete the handoff.
-              </Text>
-            </View>
-          )}
-          <View style={[ss.warnBox, { backgroundColor: "#fffbeb", borderColor: "#fde68a" }]}>
-            <Text style={{ color: "#92400e", fontSize: 13 }}>
-              ⚠ Only confirm once you've physically handed off the item.
-            </Text>
+          <View style={[ss.ownerCodeBox, { backgroundColor: "#eef2ff", borderColor: "#c7d2fe" }]}>
+            {ownerPinLoading ? (
+              <ActivityIndicator color="#4f46e5" />
+            ) : ownerPinError ? (
+              <Text style={{ color: "#b91c1c", fontSize: 13, textAlign: "center" }}>{ownerPinError}</Text>
+            ) : ownerPin?.pin ? (
+              <>
+                <Text style={ss.ownerCodeLabel}>HANDOFF CODE</Text>
+                <Text style={ss.ownerCode}>{ownerPin.pin}</Text>
+              </>
+            ) : ownerPin?.pinUsed ? (
+              <Text style={{ color: "#047857", fontSize: 13, textAlign: "center" }}>This handoff code has already been used.</Text>
+            ) : ownerPin?.expired ? (
+              <Text style={{ color: "#92400e", fontSize: 13, textAlign: "center" }}>This handoff code has expired.</Text>
+            ) : (
+              <Text style={{ color: "#92400e", fontSize: 13, textAlign: "center" }}>No handoff code is available for this request.</Text>
+            )}
           </View>
-          <View style={ss.btnRow}>
-            <Pressable
-              style={[ss.btn, { flex: 1, borderColor: colors.border }]}
-              onPress={onClose}
-              disabled={isProcessing}
-            >
-              <Text style={[ss.btnTxt, { color: colors.foreground }]}>Not yet</Text>
-            </Pressable>
-            <Pressable
-              style={[ss.btn, { flex: 1, backgroundColor: "#0d9488", borderColor: "#0d9488" }]}
-              onPress={() => confirmHandoffMutation.mutate()}
-              disabled={isProcessing}
-            >
-              {confirmHandoffMutation.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={[ss.btnTxt, { color: "#fff" }]}>Confirm handoff</Text>
-              )}
-            </Pressable>
-          </View>
+          <Text style={[ss.footNote, { color: colors.mutedForeground }]}>
+            The borrower enters this code to start the borrow period.
+          </Text>
+          <Pressable
+            style={[ss.btn, { borderColor: colors.border, marginTop: 4 }]}
+            onPress={onClose}
+            disabled={isProcessing}
+          >
+            <Text style={[ss.btnTxt, { color: colors.foreground }]}>Done</Text>
+          </Pressable>
           <Pressable onPress={() => setShowDenyView(true)} style={{ marginTop: 8 }}>
             <Text style={ss.redLink}>Item was not handed off?</Text>
           </Pressable>
-          <Text style={[ss.footNote, { color: colors.mutedForeground }]}>
-            If only one person confirms, we'll complete this automatically in 24 hours.
-          </Text>
         </View>
       </Modal>
     );
@@ -516,6 +536,29 @@ const ss = StyleSheet.create({
     fontSize: 13,
     flex: 1,
     lineHeight: 18,
+  },
+  ownerCodeBox: {
+    minHeight: 118,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    gap: 6,
+  },
+  ownerCodeLabel: {
+    color: "#4f46e5",
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 2,
+  },
+  ownerCode: {
+    color: "#312e81",
+    fontSize: 36,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 12,
+    paddingLeft: 12,
   },
   btnRow: { flexDirection: "row", gap: 10 },
   btn: {

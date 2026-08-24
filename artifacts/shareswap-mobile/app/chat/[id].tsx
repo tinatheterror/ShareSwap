@@ -833,15 +833,15 @@ export default function ChatScreen() {
               </View>
             )}
 
-            {/* Owner has one handoff action: confirmation opens the sheet. */}
+            {/* Owner shows the borrower the handoff code; the borrower submits it. */}
             {canConfirmOwnerHandoff && (
               <Pressable
-                style={[card.btn, { backgroundColor: "#0d9488", borderColor: "#0d9488" }]}
+                style={[card.btn, { backgroundColor: "#4f46e5", borderColor: "#4f46e5" }]}
                 onPress={() => setShowHandoffSheetOwner(true)}
                 disabled={anyMutating}
               >
-                <Feather name="check-circle" size={14} color="#fff" />
-                <Text style={[card.btnLabel, { color: "#fff" }]}>Confirm handoff</Text>
+                <Feather name="key" size={14} color="#fff" />
+                <Text style={[card.btnLabel, { color: "#fff" }]}>Show handoff code</Text>
               </Pressable>
             )}
 

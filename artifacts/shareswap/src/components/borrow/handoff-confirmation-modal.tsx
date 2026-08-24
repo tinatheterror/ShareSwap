@@ -56,6 +56,9 @@ export function HandoffConfirmationModal({
   const [view, setView] = useState<BorrowerView>("pin");
   const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null);
   const [showDenyView, setShowDenyView] = useState(false);
+  const [ownerPin, setOwnerPin] = useState<{ pin: string | null; pinExpiresAt: string | null; pinUsed: boolean; expired: boolean } | null>(null);
+  const [ownerPinLoading, setOwnerPinLoading] = useState(false);
+  const [ownerPinError, setOwnerPinError] = useState<string | null>(null);
   const inputRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -74,6 +77,32 @@ export function HandoffConfirmationModal({
       setTimeout(() => inputRefs[0].current?.focus(), 100);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || userRole !== "owner") return;
+
+    let cancelled = false;
+    setOwnerPin(null);
+    setOwnerPinError(null);
+    setOwnerPinLoading(true);
+
+    apiRequest("GET", `/api/requests/${requestId}/handoff-pin`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not load the handoff code");
+        if (!cancelled) setOwnerPin(data);
+      })
+      .catch((error: any) => {
+        if (!cancelled) setOwnerPinError(error.message || "Could not load the handoff code");
+      })
+      .finally(() => {
+        if (!cancelled) setOwnerPinLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, requestId, userRole]);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
@@ -213,27 +242,49 @@ export function HandoffConfirmationModal({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>{deliveryMethod === "courier" ? "Confirm Item Sent" : "Confirm Item Handoff"}</DialogTitle>
-            <DialogDescription>Confirm that {itemName} has been handed off.</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-indigo-500" />
+              Handoff code
+            </DialogTitle>
+            <DialogDescription>
+              Show this code to the borrower after {itemName} has been handed off.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            {otherPartyConfirmed && (
-              <div className="flex items-start gap-2 text-sm text-green-700">
-                <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>{OtherParty} has already confirmed. Your confirmation will complete the handoff.</span>
+            {ownerPinLoading ? (
+              <div className="flex items-center justify-center gap-2 py-7 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading code…
+              </div>
+            ) : ownerPinError ? (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-3 text-sm text-red-700">
+                {ownerPinError}
+              </div>
+            ) : ownerPin?.pin ? (
+              <>
+                <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50 px-4 py-5 text-center">
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-indigo-600">Handoff code</p>
+                  <p className="mt-1 text-4xl font-bold tracking-[0.45em] text-indigo-900">{ownerPin.pin}</p>
+                </div>
+                <p className="text-xs text-center text-muted-foreground">
+                  The borrower enters this code to start the borrow period.
+                </p>
+              </>
+            ) : ownerPin?.pinUsed ? (
+              <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-3 text-sm text-emerald-700">
+                This handoff code has already been used.
+              </div>
+            ) : ownerPin?.expired ? (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-3 text-sm text-amber-800">
+                This handoff code has expired.
+              </div>
+            ) : (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-3 text-sm text-amber-800">
+                No handoff code is available for this request.
               </div>
             )}
-            <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5">
-              <span className="text-amber-500 text-base leading-snug">⚠</span>
-              <p className="text-sm text-amber-800">Only confirm once you've physically handed off the item.</p>
-            </div>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose} disabled={isProcessing} className="flex-1">Not yet</Button>
-            <Button onClick={() => confirmHandoffMutation.mutate()} disabled={isProcessing} className="flex-1 bg-teal-600 hover:bg-teal-700">
-              {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Confirming...</> : "Confirm handoff"}
-            </Button>
-          </div>
+          <Button variant="outline" onClick={onClose} disabled={isProcessing} className="w-full">Done</Button>
           <button onClick={() => setShowDenyView(true)} className="text-xs text-red-500 hover:text-red-600 text-center w-full mt-1 underline-offset-2 hover:underline">
             Item was not handed off?
           </button>

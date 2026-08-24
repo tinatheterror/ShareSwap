@@ -640,23 +640,6 @@ export function ChatWidget() {
     },
   });
 
-  const confirmGiftHandoffMutation = useMutation({
-    mutationFn: async ({ requestId, role }: { requestId: number; role: "giver" | "receiver" }) => {
-      const res = await apiRequest("POST", `/api/requests/${requestId}/confirm-gift-handoff`, { role });
-      return res.json();
-    },
-    onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ["/api/requests"] });
-      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
-      // Refresh user so coin balance updates and coin animation fires
-      qc.invalidateQueries({ queryKey: ["/api/user"] });
-      toast({ title: data.completed ? "Gift completed! 🎁" : "Confirmed!", description: data.message || "Waiting for the other party to confirm." });
-    },
-    onError: (err: any) => {
-      toast({ title: "Error", description: err.message || "Could not confirm handoff", variant: "destructive" });
-    },
-  });
-
   const withdrawMutation = useMutation({
     mutationFn: async (requestId: number) => {
       const res = await apiRequest("POST", `/api/requests/${requestId}/withdraw`, {});
@@ -2102,21 +2085,15 @@ export function ChatWidget() {
                   const bt = Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100));
 
                   if (pr.status === "ACCEPTED" && pr.requestType === "GIFT") {
-                    const alreadyConfirmed = pr.borrowerConfirmedHandoff;
                     return (
-                      <div className="px-3 py-2 border-t border-pink-100 bg-pink-50">
-                        {alreadyConfirmed ? (
-                          <p className="text-xs text-pink-700 text-center font-medium py-1.5">✓ Confirmed — waiting for the giver to confirm</p>
-                        ) : (
-                          <Button
-                            className="w-full h-10 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium rounded-xl"
-                            disabled={confirmGiftHandoffMutation.isPending}
-                            onClick={() => confirmGiftHandoffMutation.mutate({ requestId: pr.id, role: "receiver" })}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Confirm received
-                          </Button>
-                        )}
+                      <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
+                        <Button
+                          className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl"
+                          onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}
+                        >
+                          <KeyRound className="h-4 w-4 mr-2" />
+                          Enter handoff code
+                        </Button>
                       </div>
                     );
                   }
@@ -2314,21 +2291,15 @@ export function ChatWidget() {
                 // --- OWNER CTAs ---
                 if (isOwner) {
                   if (pr.status === "ACCEPTED" && pr.requestType === "GIFT") {
-                    const alreadyConfirmed = pr.ownerConfirmedHandoff;
                     return (
-                      <div className="px-3 py-2 border-t border-pink-100 bg-pink-50">
-                        {alreadyConfirmed ? (
-                          <p className="text-xs text-pink-700 text-center font-medium py-1.5">✓ Confirmed — waiting for the receiver to confirm</p>
-                        ) : (
-                          <Button
-                            className="w-full h-10 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium rounded-xl"
-                            disabled={confirmGiftHandoffMutation.isPending}
-                            onClick={() => confirmGiftHandoffMutation.mutate({ requestId: pr.id, role: "giver" })}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Confirm given
-                          </Button>
-                        )}
+                      <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
+                        <Button
+                          className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl"
+                          onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}
+                        >
+                          <KeyRound className="h-4 w-4 mr-2" />
+                          Show handoff code
+                        </Button>
                       </div>
                     );
                   }
@@ -2364,14 +2335,14 @@ export function ChatWidget() {
                           <p className="text-xs text-center text-amber-700 font-medium">⚠️ Handoff overdue</p>
                         )}
                         <Button
-                          className="w-full h-10 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl"
+                          className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl"
                           onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}
                         >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Confirm handoff
+                          <KeyRound className="h-4 w-4 mr-2" />
+                          Show handoff code
                         </Button>
                         {isOwnerInPersonDeposit && (
-                          <p className="text-xs text-center text-amber-700 font-medium">💵 Remember to collect the security deposit in person before confirming</p>
+                          <p className="text-xs text-center text-amber-700 font-medium">💵 Remember to collect the security deposit in person before sharing the code</p>
                         )}
                       </div>
                     );

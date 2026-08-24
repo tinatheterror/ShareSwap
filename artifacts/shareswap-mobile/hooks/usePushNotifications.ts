@@ -14,7 +14,7 @@ import { useEffect, useRef } from "react";
 import type * as NotificationsType from "expo-notifications";
 import Constants from "expo-constants";
 import { router } from "expo-router";
-import { Platform } from "react-native";
+import { AppState, AppStateStatus, Platform } from "react-native";
 import { apiRequest, apiGet } from "@/lib/api";
 
 /** Set by RootLayoutNav to avoid an AuthContext ↔ usePushNotifications cycle. */
@@ -126,6 +126,48 @@ export function useRegisterPushToken(isAuthenticated: boolean): void {
     if (_registeredThisLaunch) return;
     _registeredThisLaunch = true;
     registerPushToken().catch(() => {});
+  }, [isAuthenticated]);
+}
+
+/**
+ * Run the server-side return reminder check while the native app is active.
+ *
+ * The API creates the in-app notification and sends the registered Expo push
+ * notification. Running this on launch/resume keeps native clients from
+ * depending on the web notification bell to trigger reminders.
+ */
+export function useReturnReminderCheck(isAuthenticated: boolean): void {
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  useEffect(() => {
+    if (Platform.OS === "web" || !isAuthenticated) return;
+
+    let isCancelled = false;
+    const checkReminders = async () => {
+      if (isCancelled || appStateRef.current !== "active") return;
+      try {
+        await apiRequest("POST", "/api/notifications/check-return-reminders", {});
+      } catch (err) {
+        // Reminder generation is best-effort and must not interrupt the app.
+        console.error("[notifications] return reminder check failed:", err);
+      }
+    };
+
+    const initialTimer = setTimeout(checkReminders, 5000);
+    const interval = setInterval(checkReminders, 15 * 60 * 1000);
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      appStateRef.current = nextState;
+      if (nextState === "active") {
+        checkReminders();
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+      subscription.remove();
+    };
   }, [isAuthenticated]);
 }
 

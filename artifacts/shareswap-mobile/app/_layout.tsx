@@ -16,7 +16,12 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { SessionGuard } from "@/components/SessionGuard";
-import { usePushNotificationNavigation, useRegisterPushToken, setCurrentUser } from "@/hooks/usePushNotifications";
+import {
+  usePushNotificationNavigation,
+  useRegisterPushToken,
+  useReturnReminderCheck,
+  setCurrentUser,
+} from "@/hooks/usePushNotifications";
 import { ShareCoinAnimation } from "@/components/ShareCoinAnimation";
 import { LevelUpBanner } from "@/components/LevelUpBanner";
 
@@ -45,6 +50,7 @@ function RootLayoutNav() {
   const { user } = useAuth();
   useEffect(() => { setCurrentUser(user); }, [user]);
   useRegisterPushToken(!!user);
+  useReturnReminderCheck(!!user);
 
   return (
     <View style={{ flex: 1 }}>

@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { safeDate } from "@/lib/dateUtils";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,19 +60,6 @@ interface Review {
     handle?: string;
     profilePhoto?: string;
   };
-}
-
-interface ReputationActivity {
-  activityType: string;
-  points: number;
-  description: string;
-  createdAt: string;
-}
-
-interface ReputationData {
-  reputationScore: number;
-  reputationLevel: string;
-  recentActivities: ReputationActivity[];
 }
 
 interface BadgeItem {
@@ -244,13 +230,6 @@ export default function AchievementsScreen() {
     enabled: !!user?.username,
   });
 
-  // Reputation score history
-  const { data: reputation } = useQuery<ReputationData>({
-    queryKey: [`/api/users/${user?.id}/reputation`],
-    queryFn: () => apiGet<ReputationData>(`/api/users/${user!.id}/reputation`),
-    enabled: !!user,
-  });
-
   // ── Score animation (same ease-out cubic as web) ──────────────────────────
   const reputationScore = data?.score ?? 0;
   const fromScore = from ? parseInt(from, 10) : null;
@@ -359,7 +338,19 @@ export default function AchievementsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Trust Score Card ─────────────────────────────────────────────── */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Pressable
+          onPress={() => router.push("/score-history" as never)}
+          accessibilityRole="button"
+          accessibilityLabel="View score history"
+          style={({ pressed }) => [
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              opacity: pressed ? 0.85 : 1,
+            },
+          ]}
+        >
           <View style={styles.trustCardTop}>
             <TrustRing score={displayScore} color={levelColor} />
             <View style={styles.trustInfo}>
@@ -367,8 +358,9 @@ export default function AchievementsScreen() {
               <Text style={[styles.trustMsg, { color: colors.foreground }]}>{trustMsg}</Text>
               <Text style={[styles.trustSub, { color: colors.mutedForeground }]}>{trustSub}</Text>
             </View>
+            <Feather name="chevron-right" size={22} color={colors.mutedForeground} />
           </View>
-        </View>
+        </Pressable>
 
         {/* ── Level Card ───────────────────────────────────────────────────── */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -498,40 +490,6 @@ export default function AchievementsScreen() {
           )}
         </View>
 
-        {/* ── Score History ────────────────────────────────────────────────── */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Score History</Text>
-          {reputation?.recentActivities?.length ? (
-            reputation.recentActivities.map((activity, i) => {
-              const isPositive = activity.points >= 0;
-              const dateStr = safeDate(activity.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-              return (
-                <View
-                  key={i}
-                  style={[
-                    styles.activityRow,
-                    i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-                  ]}
-                >
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[styles.activityDesc, { color: colors.foreground }]}>{activity.description}</Text>
-                    <Text style={[styles.activityDate, { color: colors.mutedForeground }]}>{dateStr}</Text>
-                  </View>
-                  <View style={[styles.pointsBadge, { backgroundColor: isPositive ? "#dcfce7" : "#fee2e2" }]}>
-                    <Text style={[styles.pointsText, { color: isPositive ? "#15803d" : "#991b1b" }]}>
-                      {isPositive ? "+" : ""}{activity.points}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })
-          ) : (
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Complete your first share to start building history
-            </Text>
-          )}
-        </View>
-
         <Text style={[styles.footer, { color: colors.mutedForeground }]}>
           You're part of a growing community of sharers.
         </Text>
@@ -612,13 +570,6 @@ const styles = StyleSheet.create({
   badgeTile: { width: "30%", borderRadius: 12, borderWidth: 1, padding: 10, alignItems: "center", gap: 4 },
   badgeEmoji: { fontSize: 22 },
   badgeTitle: { fontSize: 10, fontFamily: "Inter_500Medium", textAlign: "center", lineHeight: 13 },
-
-  // Score history
-  activityRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
-  activityDesc: { fontSize: 13, fontFamily: "Inter_500Medium", lineHeight: 17 },
-  activityDate: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  pointsBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0 },
-  pointsText: { fontSize: 12, fontFamily: "Inter_700Bold" },
 
   // Misc
   emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold" },

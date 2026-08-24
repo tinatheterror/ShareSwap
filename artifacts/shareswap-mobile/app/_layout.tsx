@@ -119,6 +119,10 @@ function RootLayoutNav() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="score-history"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="referrals"
         options={{ title: "Referrals", headerBackTitle: "Back" }}
       />

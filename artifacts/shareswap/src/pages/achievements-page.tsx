@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -42,6 +42,7 @@ import {
   UserPlus,
   Home,
   PartyPopper,
+  ChevronRight,
 } from "lucide-react";
 
 interface UserStats {
@@ -223,40 +224,47 @@ export default function AchievementsPage() {
   const CIRCUMFERENCE = 2 * Math.PI * 42;
 
   const TrustScoreCard = ({ gradientId }: { gradientId: string }) => (
-    <Card className="overflow-hidden">
-      <CardContent className="py-4 px-5">
-        <div className="flex items-center gap-4">
-          <div className="relative w-20 h-20 flex-shrink-0">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-              <defs>
-                <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#0DCEA1" />
-                  <stop offset="100%" stopColor="#10B981" />
-                </linearGradient>
-              </defs>
-              <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" strokeWidth="10" />
-              <circle cx="50" cy="50" r="42" fill="none" stroke={`url(#${gradientId})`} strokeWidth="10" strokeLinecap="round"
-                strokeDasharray={`${(displayTrustPercentage / 100) * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-                style={{ transition: fromScore !== null ? "none" : "stroke-dasharray 1s ease-out" }}
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Shield className="h-5 w-5 text-teal-500" />
+    <Link
+      href="/score-history"
+      className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
+      aria-label="View score history"
+    >
+      <Card className="overflow-hidden cursor-pointer transition-shadow hover:shadow-md">
+        <CardContent className="py-4 px-5">
+          <div className="flex items-center gap-4">
+            <div className="relative w-20 h-20 flex-shrink-0">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <defs>
+                  <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#0DCEA1" />
+                    <stop offset="100%" stopColor="#10B981" />
+                  </linearGradient>
+                </defs>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+                <circle cx="50" cy="50" r="42" fill="none" stroke={`url(#${gradientId})`} strokeWidth="10" strokeLinecap="round"
+                  strokeDasharray={`${(displayTrustPercentage / 100) * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+                  style={{ transition: fromScore !== null ? "none" : "stroke-dasharray 1s ease-out" }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Shield className="h-5 w-5 text-teal-500" />
+              </div>
             </div>
+            <div className="flex-1">
+              <span className="text-3xl font-bold text-slate-800 tabular-nums leading-none">{displayScore}</span>
+              <p className="text-xs text-slate-500 mt-0.5">Trust Score</p>
+              <p className="text-sm font-medium text-slate-700 mt-1">
+                {trustPercentage >= 80 ? "You're a trusted neighbour!" : trustPercentage >= 50 ? "You're doing great!" : trustPercentage >= 25 ? "You're on your way!" : "You're new here!"}
+              </p>
+              <p className="text-xs text-slate-500">
+                {trustPercentage >= 80 ? "Your neighbours trust you with their items." : trustPercentage >= 50 ? "Building a solid reputation." : trustPercentage >= 25 ? "Each exchange builds more trust." : "Start sharing to build your trust score."}
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-slate-400 shrink-0" aria-hidden="true" />
           </div>
-          <div>
-            <span className="text-3xl font-bold text-slate-800 tabular-nums leading-none">{displayScore}</span>
-            <p className="text-xs text-slate-500 mt-0.5">Trust Score</p>
-            <p className="text-sm font-medium text-slate-700 mt-1">
-              {trustPercentage >= 80 ? "You're a trusted neighbour!" : trustPercentage >= 50 ? "You're doing great!" : trustPercentage >= 25 ? "You're on your way!" : "You're new here!"}
-            </p>
-            <p className="text-xs text-slate-500">
-              {trustPercentage >= 80 ? "Your neighbours trust you with their items." : trustPercentage >= 50 ? "Building a solid reputation." : trustPercentage >= 25 ? "Each exchange builds more trust." : "Start sharing to build your trust score."}
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </Link>
   );
 
   const levelBadgeColor = [

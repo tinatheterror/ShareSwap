@@ -36,6 +36,7 @@ import GamesPage from "@/pages/games-page";
 import SwapPage from "@/pages/swap-page";
 import ProfilePage from "@/pages/profile-page";
 import AchievementsPage from "@/pages/achievements-page";
+import ScoreHistoryPage from "@/pages/score-history-page";
 import WishlistsPage from "@/pages/wishlists-page";
 import CommunityWishlistsPage from "@/pages/community-wishlists-page";
 import FAQPage from "@/pages/faq-page";
@@ -94,6 +95,7 @@ function Router() {
       <ProtectedRoute path="/profile/:username" component={ProfilePage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/achievements" component={AchievementsPage} />
+      <ProtectedRoute path="/score-history" component={ScoreHistoryPage} />
       <ProtectedRoute path="/wishlists" component={WishlistsPage} />
       <ProtectedRoute path="/community-wishlists" component={CommunityWishlistsPage} />
       <Route path="/sharecoins-info" component={ShareCoinsInfoPage} />

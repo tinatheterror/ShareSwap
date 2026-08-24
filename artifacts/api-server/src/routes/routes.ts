@@ -12896,7 +12896,12 @@ Respond with ONLY the category name, nothing else.`
           eq(items.id, itemRequests.itemId),
         ),
       )
-      .where(eq(reputationActivities.userId, userId))
+      .where(
+        and(
+          eq(reputationActivities.userId, userId),
+          ne(reputationActivities.points, 0),
+        ),
+      )
       .orderBy(desc(reputationActivities.createdAt))
       .limit(10);
 

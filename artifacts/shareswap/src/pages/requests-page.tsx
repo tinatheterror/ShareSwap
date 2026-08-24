@@ -231,7 +231,7 @@ export default function RequestsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       toast({
         title: "Extension requested",
-        description: "The owner has been notified. This counts as advance communication.",
+        description: "Your request counts as advance notice if you return late, reducing the Trust Score penalty.",
       });
       setShowExtendDialog(false);
       setExtendDays(null);
@@ -1434,7 +1434,7 @@ export default function RequestsPage() {
               Short extension (up to 3 days)
             </DialogTitle>
             <DialogDescription>
-              Choose up to 3 extra days. The owner is notified now, and this counts as advance communication if you ultimately return late.
+              Choose up to 3 extra days. The owner will be notified, and your request counts as advance notice if you return late, reducing the Trust Score penalty.
             </DialogDescription>
           </DialogHeader>
 

@@ -82,8 +82,9 @@ export default function ExtensionSheet({
           Need a bit more time?
         </Text>
         <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-          Choose up to 3 extra days. The owner is notified now, and this counts
-          as advance communication if you ultimately return late.
+          Choose up to 3 extra days. The owner will be notified, and your
+          request counts as advance notice if you return late, reducing the
+          Trust Score penalty.
         </Text>
 
         {/* Current end date */}

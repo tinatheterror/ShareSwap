@@ -899,10 +899,10 @@ export default function ChatScreen() {
                   </>
                 )}
 
-                {/* A follow-up is only useful after the approved extension and
-                    must be sent before that revised due date. It informs the
-                    owner but never adds a second trust-score credit. */}
-                {!isOverdue && hasAcceptedExtension && (
+                {/* A follow-up is available after the approved extension,
+                    including once the revised due date has passed. It informs
+                    the owner but never adds a second trust-score credit. */}
+                {hasAcceptedExtension && (
                   <>
                     <Pressable
                       style={[

@@ -9113,13 +9113,6 @@ Respond with ONLY the category name, nothing else.`
         }
 
         const now = new Date();
-        const endDate = request.endDate ? new Date(request.endDate) : null;
-        if (endDate && now >= endDate) {
-          return {
-            status: 400,
-            error: "The extended return date has already passed. Return the item as soon as possible.",
-          };
-        }
 
         const [existingFollowUp] = await tx
           .select({ id: notifications.id })
@@ -9209,7 +9202,7 @@ Respond with ONLY the category name, nothing else.`
       res.json({
         success: true,
         request: result.updated,
-        message: "The owner has been updated. Your original extension request already counts as advance communication.",
+        message: "The owner has been updated. Your original extension request already counts as advance notice.",
       });
     } catch (error: any) {
       console.error("Error recording delay notification:", error);

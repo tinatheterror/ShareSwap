@@ -986,7 +986,7 @@ export default function RequestsPage() {
                                         Need a bit more time?
                                       </Button>
                                     )}
-                                   {hasAccepted && !isOverdue && (
+                                    {hasAccepted && (
                                      <Button
                                        size="sm"
                                        variant="outline"

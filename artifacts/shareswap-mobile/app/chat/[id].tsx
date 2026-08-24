@@ -483,6 +483,7 @@ export default function ChatScreen() {
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       invalidateAll();
+      Alert.alert("Owner updated", "Your follow-up notice was sent.");
     },
     onError: (e: any) => {
       Alert.alert("Could not update owner", e.message || "Could not send follow-up notice");
@@ -914,19 +915,7 @@ export default function ChatScreen() {
                         },
                       ]}
                       disabled={!!request.returnDelayFollowUpNotifiedAt || notifyDelayMutation.isPending}
-                      onPress={() =>
-                        Alert.alert(
-                          "Still running late?",
-                          "Let the owner know you may miss the extended return date. This does not change the date or add another trust-score discount.",
-                          [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                              text: "Update owner",
-                              onPress: () => notifyDelayMutation.mutate(),
-                            },
-                          ]
-                        )
-                      }
+                      onPress={() => notifyDelayMutation.mutate()}
                     >
                       {notifyDelayMutation.isPending ? (
                         <ActivityIndicator size="small" color="#92400e" />

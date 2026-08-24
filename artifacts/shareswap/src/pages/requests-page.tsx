@@ -992,11 +992,8 @@ export default function RequestsPage() {
                                        variant="outline"
                                        className="border-amber-300 text-amber-700 hover:bg-amber-50"
                                        disabled={!!request.returnDelayFollowUpNotifiedAt || notifyDelayMutation.isPending}
-                                       onClick={() => {
-                                         if (window.confirm("Let the owner know you may also miss the extended return date? This does not change the date.")) {
-                                           notifyDelayMutation.mutate(request.id);
-                                         }
-                                       }}
+                                        type="button"
+                                        onClick={() => notifyDelayMutation.mutate(request.id)}
                                      >
                                        <AlertTriangle className="h-4 w-4 mr-1" />
                                        {notifyDelayMutation.isPending ? "Sending…" : "Still running late?"}

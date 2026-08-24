@@ -927,12 +927,9 @@ export default function ChatScreen() {
                       )}
                     </Pressable>
                     {request.returnDelayFollowUpNotifiedAt && (
-                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                        <Feather name="check-circle" size={14} color="#16a34a" />
-                        <Text style={[{ fontSize: 12, fontFamily: "Inter_400Regular" }, { color: "#15803d" }]}>
-                          Owner notified that you may still be running late.
-                        </Text>
-                      </View>
+                      <Text style={[{ fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" as const }, { color: colors.mutedForeground }]}>
+                        Owner notified that you may still be running late.
+                      </Text>
                     )}
                   </>
                 )}

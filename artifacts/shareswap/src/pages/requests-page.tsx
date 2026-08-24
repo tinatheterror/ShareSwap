@@ -1010,7 +1010,7 @@ export default function RequestsPage() {
                                       </span>
                                     )}
                                    {request.returnDelayFollowUpNotifiedAt && (
-                                     <span className="text-xs text-amber-700 self-center">
+                                      <span className="text-xs text-muted-foreground self-center">
                                         Owner notified that you may still be running late
                                      </span>
                                    )}

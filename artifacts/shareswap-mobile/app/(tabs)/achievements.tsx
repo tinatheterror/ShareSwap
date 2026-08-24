@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -219,6 +219,7 @@ function StarRow({ rating }: { rating: number }) {
 export default function AchievementsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user } = useAuth();
   const isWeb = Platform.OS === "web";
   const { from } = useLocalSearchParams<{ from?: string }>();
@@ -338,6 +339,22 @@ export default function AchievementsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.background,
+            borderBottomColor: colors.border,
+            paddingTop: insets.top + (isWeb ? 8 : 0),
+          },
+        ]}
+      >
+        <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={10}>
+          <Feather name="chevron-left" size={26} color={colors.foreground} />
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Achievements</Text>
+        <View style={styles.headerSpacer} />
+      </View>
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 90 }]}
         showsVerticalScrollIndicator={false}
@@ -531,6 +548,21 @@ export default function AchievementsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  backButton: { width: 30, alignItems: "flex-start" },
+  headerTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.3,
+  },
+  headerSpacer: { width: 30 },
   scroll: { padding: 16, gap: 14 },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 32 },
   badgeRow: { flexDirection: "row", justifyContent: "flex-end" },

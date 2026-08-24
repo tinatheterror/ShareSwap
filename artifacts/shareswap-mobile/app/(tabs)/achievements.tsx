@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { ShareCoinBadge } from "@/components/ShareCoinBadge";
 import { safeDate } from "@/lib/dateUtils";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -359,11 +358,6 @@ export default function AchievementsScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 90 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ShareCoin wallet badge */}
-        <View style={styles.badgeRow}>
-          <ShareCoinBadge />
-        </View>
-
         {/* ── Trust Score Card ─────────────────────────────────────────────── */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.trustCardTop}>

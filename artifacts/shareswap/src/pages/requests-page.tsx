@@ -1011,7 +1011,7 @@ export default function RequestsPage() {
                                     )}
                                    {request.returnDelayFollowUpNotifiedAt && (
                                      <span className="text-xs text-amber-700 self-center">
-                                       Owner updated about the extended return date
+                                        Owner notified that you may still be running late
                                      </span>
                                    )}
                                   </div>

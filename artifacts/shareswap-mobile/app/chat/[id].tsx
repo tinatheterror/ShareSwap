@@ -511,6 +511,9 @@ export default function ChatScreen() {
     const bookedStartDate = hasFinalizedTerms ? (request.counterStartDate || request.startDate) : request.startDate;
     const bookedEndDate = hasFinalizedTerms ? (request.counterEndDate || request.endDate) : request.endDate;
     const handoffCompletedAt = request.actualHandoffAt || request.handoffConfirmedAt;
+    const handoffIsComplete =
+      !!handoffCompletedAt ||
+      ["IN_PROGRESS", "RETURN_REQUESTED", "COMPLETED", "COMPLETED_EARLY"].includes(status);
 
     const handoffStatuses = ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "ACCEPTED"];
     const showHandoffForOwner =
@@ -578,9 +581,9 @@ export default function ChatScreen() {
                     {fmtCalendarDate(bookedStartDate)} – {fmtCalendarDate(bookedEndDate)}
                   </Text>
                 </View>
-                {handoffCompletedAt && (
+                {handoffIsComplete && (
                   <Text style={[card.detailText, { color: colors.mutedForeground, paddingLeft: 17 }]}>
-                    Handoff completed: {fmtDate(handoffCompletedAt)}
+                    Handoff completed{handoffCompletedAt ? `: ${fmtDate(handoffCompletedAt)}` : ""}
                   </Text>
                 )}
               </View>
@@ -957,6 +960,9 @@ export default function ChatScreen() {
             {status === "IN_PROGRESS" && isOwner && (
               <View style={{ gap: 8 }}>
                 <View style={[card.infoBanner, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                  <Text style={[card.infoBannerText, { color: colors.foreground, fontFamily: "Inter_600SemiBold", marginBottom: 3 }]}>
+                    Handoff completed
+                  </Text>
                   <Text style={[card.infoBannerText, { color: colors.mutedForeground }]}>
                     The item is with the borrower. You'll be notified when they initiate a return.
                   </Text>

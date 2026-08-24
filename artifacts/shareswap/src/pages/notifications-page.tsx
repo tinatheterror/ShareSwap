@@ -129,6 +129,10 @@ export default function NotificationsPage() {
         return <Clock className="h-5 w-5 text-orange-500" />;
       case 'return_reminder_overdue':
         return <AlertCircle className="h-5 w-5 text-red-600" />;
+      case 'return_reminder_overdue_restricted':
+        return <AlertCircle className="h-5 w-5 text-red-600" />;
+      case 'return_reminder_serious_overdue':
+        return <ShieldAlert className="h-5 w-5 text-red-700" />;
       case 'sharecoin_earned':
         return <Coins className="h-5 w-5 text-yellow-500" />;
       case 'milestone_achieved':

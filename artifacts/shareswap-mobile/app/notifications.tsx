@@ -41,6 +41,8 @@ function timeAgo(dateStr: string): string {
 type LucideIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 function notifIcon(type: string): { Icon: LucideIcon; color: string } {
   if (type === "return_reminder_overdue")                                      return { Icon: AlertCircle,    color: "#ef4444" };
+  if (type === "return_reminder_overdue_restricted")                           return { Icon: AlertCircle,    color: "#dc2626" };
+  if (type === "return_reminder_serious_overdue")                              return { Icon: ShieldAlert,    color: "#b91c1c" };
   if (type === "return_reminder_today")                                         return { Icon: Clock,          color: "#f97316" };
   if (type === "return_reminder_tomorrow")                                      return { Icon: Clock,          color: "#fbbf24" };
   if (type === "return_delay_notified" || type === "return_delay_follow_up")     return { Icon: AlertTriangle,  color: "#f59e0b" };

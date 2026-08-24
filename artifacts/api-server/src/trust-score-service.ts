@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
-import { users, reputationActivities } from "@workspace/db";
-import { eq, and, gte, like } from "drizzle-orm";
+import { users, reputationActivities, itemRequests } from "@workspace/db";
+import { eq, and, gte, like, sql } from "drizzle-orm";
 
 export const TRUST_POINTS = {
   MAJOR: {
@@ -31,6 +31,7 @@ export const TRUST_POINTS = {
     LATE_RETURN_MODERATE: -20,    // 3-6 days late
     LATE_RETURN_SEVERE: -40,      // 7-13 days late
     LATE_RETURN_CRITICAL: -60,    // 14+ days late
+    SERIOUS_OVERDUE: -60,         // 15+ days overdue while still active
     // Other medium penalties
     CANCEL_AFTER_ACCEPTANCE: -20,
     IGNORING_MESSAGES: -18,
@@ -62,6 +63,7 @@ export type TrustActivityType =
   | "borrow_return_late_moderate"  // 3-6 days late (−20; effective after soften from 7-13 with notify-delay)
   | "borrow_return_late_severe"    // 7-13 days late (−40; effective after soften from 14+ with notify-delay)
   | "borrow_return_late_critical"  // 14+ days late (−60)
+  | "borrow_overdue_serious"        // 15+ days overdue before return (−60)
   | "borrow_return_damaged"
   | "lending_smooth"
   | "swap_completed"
@@ -286,7 +288,11 @@ export async function awardBorrowReturnPoints(
   conditionRating: number,
   daysLate: number,
   notifyDelayUsed: boolean,
-): Promise<{ borrowerPoints: number; activityType: TrustActivityType }> {
+): Promise<{
+  borrowerPoints: number;
+  activityType: TrustActivityType;
+  penaltyAlreadyApplied: boolean;
+}> {
   // ── Idempotency guard ──────────────────────────────────────────────────────
   // Prevent double-application if confirm-return is called more than once
   // (e.g. network retry or bug). We check for any borrow_return_* activity
@@ -311,12 +317,29 @@ export async function awardBorrowReturnPoints(
     // Return the previously recorded values without touching the score again.
     // We don't have the original points handy here, so return 0 to signal
     // the caller that nothing was applied this time.
-    return { borrowerPoints: 0, activityType: existingActivities[0].activityType as TrustActivityType };
+    return {
+      borrowerPoints: 0,
+      activityType: existingActivities[0].activityType as TrustActivityType,
+      penaltyAlreadyApplied: false,
+    };
   }
   // ──────────────────────────────────────────────────────────────────────────
 
+  const [seriousOverdueActivity] = await db
+    .select({ id: reputationActivities.id })
+    .from(reputationActivities)
+    .where(
+      and(
+        eq(reputationActivities.userId, borrowerId),
+        eq(reputationActivities.requestId, requestId),
+        eq(reputationActivities.activityType, "borrow_overdue_serious"),
+      ),
+    )
+    .limit(1);
+
   let borrowerPoints: number;
   let borrowerActivityType: TrustActivityType;
+  let penaltyAlreadyApplied = false;
   const lenderPoints = TRUST_POINTS.MAJOR.LENDING_SMOOTH;
 
   if (conditionRating < 3) {
@@ -332,6 +355,13 @@ export async function awardBorrowReturnPoints(
       borrowerPoints = TRUST_POINTS.MAJOR.BORROW_RETURN_GOOD;    // +25
       borrowerActivityType = "borrow_return_good";
     }
+  } else if (seriousOverdueActivity) {
+    // The serious-overdue policy already applied the critical penalty while
+    // the item was still active. Keep a return activity for idempotency and
+    // reporting, but do not charge the borrower a second time.
+    borrowerPoints = 0;
+    borrowerActivityType = "borrow_return_late_critical";
+    penaltyAlreadyApplied = true;
   } else {
     // Late return — tier determined by daysLate, softened by notify-delay
     const tier = lateTier(daysLate, notifyDelayUsed);
@@ -370,7 +400,92 @@ export async function awardBorrowReturnPoints(
     });
   }
 
-  return { borrowerPoints, activityType: borrowerActivityType };
+  return { borrowerPoints, activityType: borrowerActivityType, penaltyAlreadyApplied };
+}
+
+/**
+ * Apply the serious-overdue penalty once when an active borrow reaches the
+ * threshold. The reputation activity unique index makes this safe when both
+ * parties trigger the reminder check concurrently.
+ */
+export async function applySeriousOverduePenalty(
+  borrowerId: number,
+  lenderId: number,
+  requestId: number,
+  itemId: number,
+  daysOverdue: number,
+): Promise<{ pointsAwarded: number }> {
+  return db.transaction(async (tx) => {
+    // Share the lifecycle row lock with return confirmation. Once a return has
+    // won the lock and completed the request, this check becomes a no-op; when
+    // the overdue policy wins, the return scorer observes this activity and
+    // does not apply its own critical late-return penalty.
+    await tx.execute(sql`
+      SELECT 1 FROM ${itemRequests}
+      WHERE ${itemRequests.id} = ${requestId}
+      FOR UPDATE
+    `);
+
+    const [activeBorrow] = await tx
+      .select({ id: itemRequests.id })
+      .from(itemRequests)
+      .where(
+        and(
+          eq(itemRequests.id, requestId),
+          eq(itemRequests.requestType, "BORROW"),
+          eq(itemRequests.requesterId, borrowerId),
+          sql`${itemRequests.status} IN ('IN_PROGRESS', 'RETURN_REQUESTED')`,
+        ),
+      )
+      .limit(1);
+
+    if (!activeBorrow) return { pointsAwarded: 0 };
+
+    const [borrower] = await tx
+      .select({ reputationScore: users.reputationScore })
+      .from(users)
+      .where(eq(users.id, borrowerId))
+      .limit(1);
+    if (!borrower) throw new Error(`User ${borrowerId} not found`);
+
+    const pointsAwarded = scaleTrustPoints(
+      borrower.reputationScore || 0,
+      TRUST_POINTS.PENALTIES.SERIOUS_OVERDUE,
+    );
+
+    const inserted = await tx
+      .insert(reputationActivities)
+      .values({
+        userId: borrowerId,
+        activityType: "borrow_overdue_serious",
+        points: pointsAwarded,
+        description: buildActivityDescription("borrow_overdue_serious", {
+          requestId,
+          itemId,
+          daysLate: daysOverdue,
+          counterpartyId: lenderId,
+        }),
+        itemId,
+        requestId,
+        createdAt: new Date(),
+      })
+      .onConflictDoNothing()
+      .returning({ id: reputationActivities.id });
+
+    if (inserted.length === 0) return { pointsAwarded: 0 };
+
+    await tx
+      .update(users)
+      .set({
+        reputationScore: Math.max(
+          TRUST_SCORE_FLOOR,
+          (borrower.reputationScore || 0) + pointsAwarded,
+        ),
+      })
+      .where(eq(users.id, borrowerId));
+
+    return { pointsAwarded };
+  });
 }
 
 export async function awardSwapCompletionPoints(

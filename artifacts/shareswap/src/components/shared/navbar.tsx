@@ -38,6 +38,8 @@ interface Notification {
 
 function getNotificationIcon(type: string) {
   if (type === "return_reminder_overdue") return <AlertCircle className="h-4 w-4 text-red-500" />;
+  if (type === "return_reminder_overdue_restricted") return <AlertCircle className="h-4 w-4 text-red-600" />;
+  if (type === "return_reminder_serious_overdue") return <ShieldAlert className="h-4 w-4 text-red-700" />;
   if (type === "return_reminder_today") return <Clock className="h-4 w-4 text-orange-500" />;
   if (type === "return_reminder_tomorrow") return <Clock className="h-4 w-4 text-amber-400" />;
   if (type === "wishlist_match") return <Heart className="h-4 w-4 text-pink-500" />;

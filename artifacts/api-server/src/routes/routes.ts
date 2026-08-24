@@ -73,12 +73,57 @@ import {
   awardFeedbackPoints, 
   TRUST_POINTS,
   daysLateAgainstDueDate,
+  applySeriousOverduePenalty,
   applyCancellationPenalty,
   applyDepositClaimedPenalty,
   applyLowReviewPenalty
 } from "../trust-score-service";
 import { calculateAIValuation, getTierBand, type ItemValuationInput } from "../ai-valuation";
 import { calculateReplacementValueAndTier } from "../replacement-value";
+import {
+  daysOverdueAgainstDueDate,
+  isBorrowingRestricted,
+  isSeriousOverdue,
+} from "../overdue-policy";
+
+const ACTIVE_OVERDUE_BORROW_STATUSES = ["IN_PROGRESS", "RETURN_REQUESTED"];
+
+async function getBlockingOverdueBorrow(borrowerId: number, now = new Date()) {
+  const activeBorrows = await db
+    .select({
+      requestId: itemRequests.id,
+      endDate: itemRequests.endDate,
+      itemName: items.name,
+    })
+    .from(itemRequests)
+    .innerJoin(items, eq(items.id, itemRequests.itemId))
+    .where(
+      and(
+        eq(itemRequests.requesterId, borrowerId),
+        eq(itemRequests.requestType, "BORROW"),
+        inArray(itemRequests.status, ACTIVE_OVERDUE_BORROW_STATUSES),
+        isNotNull(itemRequests.endDate),
+      ),
+    );
+
+  return activeBorrows
+    .map((borrow) => ({
+      ...borrow,
+      daysOverdue: daysOverdueAgainstDueDate(now, borrow.endDate),
+    }))
+    .find((borrow) => isBorrowingRestricted(borrow.daysOverdue));
+}
+
+function overdueBorrowRestrictionResponse(
+  blockedBorrow: Awaited<ReturnType<typeof getBlockingOverdueBorrow>>,
+) {
+  return {
+    code: "OVERDUE_BORROW_RESTRICTED",
+    error: `You can’t start another borrow until you return "${blockedBorrow!.itemName}", which is ${blockedBorrow!.daysOverdue} days overdue.`,
+    requestId: blockedBorrow!.requestId,
+    daysOverdue: blockedBorrow!.daysOverdue,
+  };
+}
 
 // Helper function to award ShareCoins with first-time bonus handling
 async function awardShareCoinsWithFirstTimeBonus(
@@ -5028,6 +5073,11 @@ Respond with ONLY the category name, nothing else.`
 
     // Enforce Free tier borrow limit (max 2 borrows per 30-day window)
     if (requestType === "BORROW") {
+      const blockedBorrow = await getBlockingOverdueBorrow(req.user.id);
+      if (blockedBorrow) {
+        return res.status(403).json(overdueBorrowRestrictionResponse(blockedBorrow));
+      }
+
       const [borrowerRecord] = await db
         .select({
           subscriptionTier: users.subscriptionTier,
@@ -5526,6 +5576,11 @@ Respond with ONLY the category name, nothing else.`
     // ShareCoin requirement on the server so an owner cannot accept a request
     // whose borrower cannot afford the final date range.
     if (status === "ACCEPTED" && request.item_requests.requestType === "BORROW") {
+      const blockedBorrow = await getBlockingOverdueBorrow(request.item_requests.requesterId);
+      if (blockedBorrow) {
+        return res.status(403).json(overdueBorrowRestrictionResponse(blockedBorrow));
+      }
+
       const weeklyPrice = parseFloat(request.items.shareCoinPrice?.toString() ?? "0") || 5;
       const startDate = request.item_requests.counterStartDate || request.item_requests.startDate;
       const endDate = request.item_requests.counterEndDate || request.item_requests.endDate;
@@ -6085,6 +6140,11 @@ Respond with ONLY the category name, nothing else.`
       // The requester pays the ShareCoin cost for BORROW requests, regardless
       // of whether the requester or owner clicks Accept on these final terms.
       if (request.item_requests.requestType === "BORROW") {
+        const blockedBorrow = await getBlockingOverdueBorrow(request.item_requests.requesterId);
+        if (blockedBorrow) {
+          return res.status(403).json(overdueBorrowRestrictionResponse(blockedBorrow));
+        }
+
         const weeklyPrice = parseFloat(request.items.shareCoinPrice?.toString() ?? "0") || 5;
         const days = finalStartDate && finalEndDate
           ? Math.max(1, Math.ceil((new Date(finalEndDate).getTime() - new Date(finalStartDate).getTime()) / 86_400_000))
@@ -9510,22 +9570,30 @@ Respond with ONLY the category name, nothing else.`
         // Build notification message from the unified result
         const borrowerPts = returnResult.borrowerPoints;
         let borrowerMsg: string;
-        switch (returnResult.activityType) {
-          case "borrow_return_perfect":    borrowerMsg = "On-time return, great condition +40"; break;
-          case "borrow_return_good":       borrowerMsg = "On-time return +25"; break;
-          case "borrow_return_late_minor": borrowerMsg = daysLate <= 2 ? "1-2 day late return +5" : "Late return +5"; break;
-          case "borrow_return_late_moderate": borrowerMsg = "Late return −20"; break;
-          case "borrow_return_late_severe":   borrowerMsg = "Late return −40"; break;
-          case "borrow_return_late_critical": borrowerMsg = "Late return −60"; break;
-          case "borrow_return_damaged":    borrowerMsg = "Damage confirmed −45"; break;
-          default:                         borrowerMsg = "Return processed";
+        if (returnResult.penaltyAlreadyApplied) {
+          borrowerMsg = "Serious overdue penalty was already applied when this item reached 15 days overdue.";
+        } else {
+          switch (returnResult.activityType) {
+            case "borrow_return_perfect":    borrowerMsg = "On-time return, great condition +40"; break;
+            case "borrow_return_good":       borrowerMsg = "On-time return +25"; break;
+            case "borrow_return_late_minor": borrowerMsg = daysLate <= 2 ? "1-2 day late return +5" : "Late return +5"; break;
+            case "borrow_return_late_moderate": borrowerMsg = "Late return −20"; break;
+            case "borrow_return_late_severe":   borrowerMsg = "Late return −40"; break;
+            case "borrow_return_late_critical": borrowerMsg = "Late return −60"; break;
+            case "borrow_return_damaged":    borrowerMsg = "Damage confirmed −45"; break;
+            default:                         borrowerMsg = "Return processed";
+          }
         }
         const lenderPts = 20;
         await db.insert(notifications).values([
           {
             userId: request.item_requests.requesterId,
             type: "trust_score_changed",
-            title: borrowerPts > 0 ? `Trust score +${borrowerPts}` : `Trust score −${Math.abs(borrowerPts)}`,
+            title: returnResult.penaltyAlreadyApplied
+              ? "Trust score already updated"
+              : borrowerPts > 0
+                ? `Trust score +${borrowerPts}`
+                : `Trust score −${Math.abs(borrowerPts)}`,
             message: borrowerMsg,
             itemId: request.items.id,
             requestId,
@@ -10465,20 +10533,22 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // Check and generate return reminders for active borrows/rentals
-  app.post("/api/notifications/check-return-reminders", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const userId = req.user.id;
+  // Check and generate return reminders for active borrows/rentals.
+  // Supplying a user ID scopes the work to their items/borrows; the server-side
+  // sweep deliberately evaluates every active transaction.
+  async function processReturnReminders(userId?: number): Promise<{ remindersCreated: number }> {
       const now = new Date();
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
       const twoDaysFromNow = new Date(now);
       twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
-      
-      // Only check items due within next 2 days or already overdue
-      // This reduces DB load significantly
+      const userScope = userId === undefined
+        ? sql`TRUE`
+        : or(
+            eq(itemRequests.requesterId, userId),
+            eq(items.ownerId, userId),
+          );
+
       const activeRequests = await db
         .select({
           request: itemRequests,
@@ -10490,110 +10560,210 @@ Respond with ONLY the category name, nothing else.`
         .innerJoin(users, eq(items.ownerId, users.id))
         .where(
           and(
-            eq(itemRequests.requesterId, userId),
-            eq(itemRequests.status, "IN_PROGRESS"),
+            userScope,
             or(
-              eq(itemRequests.requestType, "BORROW"),
-              eq(itemRequests.requestType, "RENT")
+              and(
+                eq(itemRequests.requestType, "BORROW"),
+                inArray(itemRequests.status, ACTIVE_OVERDUE_BORROW_STATUSES),
+              ),
+              and(
+                eq(itemRequests.requestType, "RENT"),
+                eq(itemRequests.status, "IN_PROGRESS"),
+              ),
             ),
-            // Only check items with endDate within next 2 days or overdue
-            sql`${itemRequests.endDate} IS NOT NULL AND ${itemRequests.endDate} <= ${twoDaysFromNow}`
-          )
+            sql`${itemRequests.endDate} IS NOT NULL AND ${itemRequests.endDate} <= ${twoDaysFromNow}`,
+          ),
         );
 
       let remindersCreated = 0;
 
+      const createReminder = async (
+        recipientId: number,
+        requestId: number,
+        itemId: number,
+        type: string,
+        title: string,
+        message: string,
+      ) => {
+        const existingNotification = await db
+          .select({ id: notifications.id })
+          .from(notifications)
+          .where(
+            and(
+              eq(notifications.userId, recipientId),
+              eq(notifications.requestId, requestId),
+              eq(notifications.type, type),
+              gte(notifications.createdAt, todayStart),
+            ),
+          )
+          .limit(1);
+
+        if (existingNotification.length > 0) return;
+
+        await db.insert(notifications).values({
+          userId: recipientId,
+          type,
+          title,
+          message,
+          itemId,
+          requestId,
+          isRead: false,
+        });
+        remindersCreated++;
+
+        sendPushToUser(recipientId, {
+          title,
+          body: message,
+          data: { screen: "notifications", requestId, itemId },
+        }, "requests").catch((err) =>
+          console.error("[push] return-reminder push failed:", err),
+        );
+      };
+
       for (const { request, item, owner } of activeRequests) {
-        const returnDate = request.endDate;
-        if (!returnDate) continue;
+        if (!request.endDate) continue;
 
-        const returnDateObj = new Date(returnDate);
-        returnDateObj.setHours(0, 0, 0, 0);
-        
-        const nowDate = new Date(now);
-        nowDate.setHours(0, 0, 0, 0);
+        const daysOverdue = daysOverdueAgainstDueDate(now, request.endDate);
+        const daysUntilReturn = daysOverdue > 0
+          ? -daysOverdue
+          : Math.ceil((new Date(request.endDate).getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
 
-        const daysUntilReturn = Math.ceil((returnDateObj.getTime() - nowDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        let notificationType = "";
-        let title = "";
-        let message = "";
+        if (
+          request.requestType === "BORROW" &&
+          isBorrowingRestricted(daysOverdue)
+        ) {
+          const [borrower] = await db
+            .select({ displayName: users.displayName, username: users.username })
+            .from(users)
+            .where(eq(users.id, request.requesterId))
+            .limit(1);
+          const borrowerName = borrower?.displayName || borrower?.username || "the borrower";
+          const serious = isSeriousOverdue(daysOverdue);
+          const reminderType = serious
+            ? "return_reminder_serious_overdue"
+            : "return_reminder_overdue_restricted";
+          const title = serious
+            ? `Serious overdue: ${daysOverdue}d`
+            : `Return overdue by ${daysOverdue}d`;
 
-        // Determine if reminder is needed
-        if (daysUntilReturn === 1) {
-          // Tomorrow
-          notificationType = "return_reminder_tomorrow";
-          title = "Return due tomorrow";
-          message = `"${item.name}" is due back to ${owner.displayName || owner.username} tomorrow.`;
-        } else if (daysUntilReturn === 0) {
-          // Today
-          notificationType = "return_reminder_today";
-          title = "Return due today";
-          message = `"${item.name}" must be returned to ${owner.displayName || owner.username} today.`;
-        } else if (daysUntilReturn < 0) {
-          // Overdue
-          const daysOverdue = Math.abs(daysUntilReturn);
-          notificationType = "return_reminder_overdue";
-          title = `Return overdue by ${daysOverdue}d`;
-          message = `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue. Return to ${owner.displayName || owner.username} now.`;
-        }
-
-        if (notificationType) {
-          // More robust duplicate check: check if notification exists for this exact scenario
-          // Using try-catch to handle race conditions gracefully
-          try {
-            const todayStart = new Date(now);
-            todayStart.setHours(0, 0, 0, 0);
-
-            const existingNotification = await db
-              .select()
-              .from(notifications)
-              .where(
-                and(
-                  eq(notifications.userId, userId),
-                  eq(notifications.requestId, request.id),
-                  eq(notifications.type, notificationType),
-                  gte(notifications.createdAt, todayStart)
-                )
-              )
-              .limit(1);
-
-            if (existingNotification.length === 0) {
-              // Create the in-app notification
+          if (serious) {
+            const penalty = await applySeriousOverduePenalty(
+              request.requesterId,
+              owner.id,
+              request.id,
+              item.id,
+              daysOverdue,
+            );
+            if (penalty.pointsAwarded !== 0) {
+              const penaltyTitle = `Trust score −${Math.abs(penalty.pointsAwarded)}`;
+              const penaltyMessage = `"${item.name}" is ${daysOverdue} days overdue. A serious overdue penalty was applied.`;
               await db.insert(notifications).values({
-                userId,
-                type: notificationType,
-                title,
-                message,
+                userId: request.requesterId,
+                type: "trust_score_changed",
+                title: penaltyTitle,
+                message: penaltyMessage,
                 itemId: item.id,
                 requestId: request.id,
                 isRead: false,
               });
-              remindersCreated++;
-
-              // Fire a push notification so the alert arrives even when the
-              // app is closed.  Tapping it deep-links to the notifications tab.
-              sendPushToUser(userId, {
-                title,
-                body: message,
+              sendPushToUser(request.requesterId, {
+                title: penaltyTitle,
+                body: penaltyMessage,
                 data: { screen: "notifications", requestId: request.id, itemId: item.id },
-              }, "requests").catch((err) =>
-                console.error("[push] return-reminder push failed:", err)
-              );
+              }, "requests").catch(() => {});
             }
-          } catch (insertError) {
-            // Silently handle duplicate insert errors from race conditions
-            console.error("Error creating notification (may be duplicate):", insertError);
           }
+
+          await Promise.all([
+            createReminder(
+              request.requesterId,
+              request.id,
+              item.id,
+              reminderType,
+              title,
+              serious
+                ? `"${item.name}" is seriously overdue. Return it to ${owner.displayName || owner.username} immediately.`
+                : `"${item.name}" is ${daysOverdue} days overdue. Return it now before starting another borrow.`,
+            ),
+            createReminder(
+              owner.id,
+              request.id,
+              item.id,
+              reminderType,
+              title,
+              serious
+                ? `"${item.name}" is seriously overdue with ${borrowerName}. Please coordinate an immediate return.`
+                : `"${item.name}" is ${daysOverdue} days overdue with ${borrowerName}. Please arrange its return.`,
+            ),
+          ]);
+          continue;
+        }
+
+        // Keep the existing due-tomorrow, due-today, and ordinary overdue
+        // reminders for the borrower. Owners receive the new two-party
+        // escalation only after the 7-day threshold.
+        if (userId !== undefined && request.requesterId !== userId) continue;
+
+        if (daysUntilReturn === 1) {
+          await createReminder(
+            request.requesterId,
+            request.id,
+            item.id,
+            "return_reminder_tomorrow",
+            "Return due tomorrow",
+            `"${item.name}" is due back to ${owner.displayName || owner.username} tomorrow.`,
+          );
+        } else if (daysUntilReturn === 0) {
+          await createReminder(
+            request.requesterId,
+            request.id,
+            item.id,
+            "return_reminder_today",
+            "Return due today",
+            `"${item.name}" must be returned to ${owner.displayName || owner.username} today.`,
+          );
+        } else if (daysOverdue > 0) {
+          await createReminder(
+            request.requesterId,
+            request.id,
+            item.id,
+            "return_reminder_overdue",
+            `Return overdue by ${daysOverdue}d`,
+            `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? "s" : ""} overdue. Return to ${owner.displayName || owner.username} now.`,
+          );
         }
       }
 
-      res.json({ remindersCreated });
+      return { remindersCreated };
+  }
+
+  // At 7+ days overdue, BORROW reminders escalate to both parties; at 15+
+  // they are treated as serious overdue and apply the one-time penalty.
+  app.post("/api/notifications/check-return-reminders", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      res.json(await processReturnReminders(req.user.id));
     } catch (error) {
       console.error("Error checking return reminders:", error);
       res.status(500).json({ error: "Failed to check return reminders" });
     }
   });
+
+  // Client checks make reminders appear promptly on app launch/resume. This
+  // server sweep guarantees the restriction, escalation, and 15-day penalty
+  // are still evaluated when neither party opens a client.
+  const runOverdueReminderSweep = () => {
+    processReturnReminders().catch((error) =>
+      console.error("Error running overdue reminder sweep:", error),
+    );
+  };
+  setTimeout(() => {
+    runOverdueReminderSweep();
+    setInterval(runOverdueReminderSweep, 6 * 60 * 60 * 1000);
+  }, 30 * 1000);
 
   // Get statistics for public display
   app.get("/api/stats", async (req, res) => {

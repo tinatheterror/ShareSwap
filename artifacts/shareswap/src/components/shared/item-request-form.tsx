@@ -226,6 +226,12 @@ export function ItemRequestForm({
             </ToastAction>
           ),
         });
+      } else if ((error as any).code === "OVERDUE_BORROW_RESTRICTED") {
+        toast({
+          title: "Return overdue item first",
+          description: error.message,
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Failed to send request",

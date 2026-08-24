@@ -42,6 +42,7 @@ const COIN_TYPES = new Set([
 const SYSTEM_TYPES = new Set([
   "wishlist_match", "swap_match", "referral_joined",
   "return_reminder_tomorrow", "return_reminder_today", "return_reminder_overdue",
+  "return_reminder_overdue_restricted", "return_reminder_serious_overdue",
   "verification_failed", "verification_approved",
 ]);
 
@@ -98,6 +99,10 @@ function getIcon(type: string) {
     case "return_confirmed": return <CheckCircle2 className={`${cls} text-green-600`} />;
     case "return_reminder_tomorrow": case "return_reminder_today": case "return_reminder_overdue":
       return <Clock className={`${cls} text-amber-500`} />;
+    case "return_reminder_overdue_restricted":
+      return <AlertCircle className={`${cls} text-red-500`} />;
+    case "return_reminder_serious_overdue":
+      return <ShieldAlert className={`${cls} text-red-600`} />;
     case "dispute_resolved": return <Shield className={`${cls} text-green-600`} />;
     case "sharecoin_earned": return <Coins className={`${cls} text-yellow-500`} />;
     case "milestone_achieved": return <Trophy className={`${cls} text-amber-500`} />;

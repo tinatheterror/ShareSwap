@@ -540,7 +540,15 @@ export function ChatWidget() {
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to accept request");
+        const error = new Error(body.error || "Failed to accept request") as Error & {
+          code?: string;
+          required?: number;
+          payerIsRequester?: boolean;
+        };
+        error.code = body.code;
+        error.required = body.required;
+        error.payerIsRequester = body.payerIsRequester;
+        throw error;
       }
       return response.json();
     },
@@ -564,6 +572,12 @@ export function ChatWidget() {
           setInsufficientCoinsRequired(required);
           setShowInsufficientCoinsModal(true);
         }
+      } else if (error?.code === "OVERDUE_BORROW_RESTRICTED") {
+        toast({
+          title: "Borrower must return an overdue item",
+          description: error.message,
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Error",

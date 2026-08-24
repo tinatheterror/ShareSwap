@@ -317,6 +317,11 @@ export default function ChatScreen() {
           setEarnContext("swap");
           setShowEarnModal(true);
         }
+      } else if (e?.code === "OVERDUE_BORROW_RESTRICTED") {
+        Alert.alert(
+          "Borrower must return an overdue item",
+          e.message || "The borrower must return their overdue item before starting another borrow.",
+        );
       } else {
         Alert.alert("Error", e.message || "Failed to accept request");
       }
@@ -393,6 +398,11 @@ export default function ChatScreen() {
         } else {
           Alert.alert("Borrower needs more ShareCoins", e.message || "The borrower cannot afford these dates yet.");
         }
+      } else if (e?.code === "OVERDUE_BORROW_RESTRICTED") {
+        Alert.alert(
+          "Borrower must return an overdue item",
+          e.message || "The borrower must return their overdue item before starting another borrow.",
+        );
       } else {
         Alert.alert("Error", e.message || "Failed to accept counter");
       }

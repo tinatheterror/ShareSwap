@@ -260,6 +260,13 @@ export default function ItemDetailScreen() {
         );
         return;
       }
+      if (e.code === "OVERDUE_BORROW_RESTRICTED") {
+        Alert.alert(
+          "Return overdue item first",
+          e.message || "Return your overdue item before starting another borrow.",
+        );
+        return;
+      }
       if (e.code === "INSUFFICIENT_SHARECOINS") {
         const required = e.required ?? 0;
         setEarnRequired(required);

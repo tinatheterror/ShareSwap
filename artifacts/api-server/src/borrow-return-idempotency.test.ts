@@ -20,7 +20,12 @@ import assert from "node:assert/strict";
 import { pool, db } from "@workspace/db";
 import { users, items, itemRequests, reputationActivities } from "@workspace/db";
 import { eq, and, like } from "drizzle-orm";
-import { awardBorrowReturnPoints, awardTrustPoints, TRUST_POINTS } from "./trust-score-service.js";
+import {
+  applySeriousOverduePenalty,
+  awardBorrowReturnPoints,
+  awardTrustPoints,
+  TRUST_POINTS,
+} from "./trust-score-service.js";
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
 
@@ -33,6 +38,8 @@ let requestId: number;
 let concurrentRequestId: number;
 /** Used by the DB-constraint barrier test (awardTrustPoints called directly). */
 let barrierRequestId: number;
+/** Used to verify the serious-overdue penalty is not charged again on return. */
+let seriousOverdueRequestId: number;
 
 const UNIQUE = `test-idempotency-${Date.now()}`;
 
@@ -96,11 +103,23 @@ before(async () => {
 
   const [barReq] = await insertReq();
   barrierRequestId = barReq.id;
+
+  const [seriousReq] = await db
+    .insert(itemRequests)
+    .values({
+      itemId,
+      requesterId: borrowerId,
+      requestType: "BORROW",
+      status: "IN_PROGRESS",
+      endDate: new Date("2026-08-01T12:00:00.000Z"),
+    })
+    .returning({ id: itemRequests.id });
+  seriousOverdueRequestId = seriousReq.id;
 });
 
 after(async () => {
   // Remove in FK-safe order
-  for (const rid of [requestId, concurrentRequestId, barrierRequestId]) {
+  for (const rid of [requestId, concurrentRequestId, barrierRequestId, seriousOverdueRequestId]) {
     await db
       .delete(reputationActivities)
       .where(eq(reputationActivities.requestId, rid));
@@ -320,5 +339,66 @@ test("DB unique constraint prevents double-insert when both concurrent calls byp
     delta,
     penaltyPoints, // −40
     `score should have changed by exactly −40 (one penalty), but changed by ${delta}`,
+  );
+});
+
+test("a serious-overdue penalty is applied once and is not charged again at final return", async () => {
+  const [before] = await db
+    .select({ reputationScore: users.reputationScore })
+    .from(users)
+    .where(eq(users.id, borrowerId));
+  const scoreBefore = before.reputationScore ?? 0;
+
+  const firstPenalty = await applySeriousOverduePenalty(
+    borrowerId,
+    lenderId,
+    seriousOverdueRequestId,
+    itemId,
+    15,
+  );
+  const repeatedPenalty = await applySeriousOverduePenalty(
+    borrowerId,
+    lenderId,
+    seriousOverdueRequestId,
+    itemId,
+    15,
+  );
+  const returnAward = await awardBorrowReturnPoints(
+    borrowerId,
+    lenderId,
+    seriousOverdueRequestId,
+    itemId,
+    4,
+    15,
+    false,
+  );
+
+  assert.equal(firstPenalty.pointsAwarded, TRUST_POINTS.PENALTIES.SERIOUS_OVERDUE);
+  assert.equal(repeatedPenalty.pointsAwarded, 0, "the serious penalty must be idempotent");
+  assert.equal(returnAward.penaltyAlreadyApplied, true);
+  assert.equal(returnAward.borrowerPoints, 0, "return scoring must not add a second critical penalty");
+
+  const [after] = await db
+    .select({ reputationScore: users.reputationScore })
+    .from(users)
+    .where(eq(users.id, borrowerId));
+  assert.equal(
+    (after.reputationScore ?? 0) - scoreBefore,
+    TRUST_POINTS.PENALTIES.SERIOUS_OVERDUE,
+    "the borrower should receive only the active serious-overdue penalty",
+  );
+
+  const activities = await db
+    .select({ activityType: reputationActivities.activityType })
+    .from(reputationActivities)
+    .where(
+      and(
+        eq(reputationActivities.userId, borrowerId),
+        eq(reputationActivities.requestId, seriousOverdueRequestId),
+      ),
+    );
+  assert.deepEqual(
+    activities.map((activity) => activity.activityType).sort(),
+    ["borrow_overdue_serious", "borrow_return_late_critical"],
   );
 });

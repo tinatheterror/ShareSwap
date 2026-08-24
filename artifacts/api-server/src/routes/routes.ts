@@ -88,7 +88,7 @@ import {
 
 const ACTIVE_OVERDUE_BORROW_STATUSES = ["IN_PROGRESS", "RETURN_REQUESTED"];
 
-async function getBlockingOverdueBorrow(borrowerId: number, now = new Date()) {
+export async function getBlockingOverdueBorrow(borrowerId: number, now = new Date()) {
   const activeBorrows = await db
     .select({
       requestId: itemRequests.id,
@@ -10752,9 +10752,8 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // Client checks make reminders appear promptly on app launch/resume. This
-  // server sweep guarantees the restriction, escalation, and 15-day penalty
-  // are still evaluated when neither party opens a client.
+  // Native clients check on launch, resume, and while active. This sweep also
+  // enforces overdue escalation when neither borrower nor owner opens the app.
   const runOverdueReminderSweep = () => {
     processReturnReminders().catch((error) =>
       console.error("Error running overdue reminder sweep:", error),

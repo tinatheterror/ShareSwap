@@ -101,9 +101,11 @@ export type PenaltyType =
 interface TrustActivityMetadata {
   requestId?: number;
   itemId?: number;
+  itemName?: string | null;
   counterpartyId?: number;
   conditionRating?: number;
   daysLate?: number;
+  rating?: number;
   feedbackTags?: string[];
   responseTimeMs?: number;
   originalPenaltyType?: string;
@@ -185,62 +187,88 @@ export async function awardTrustPoints(
   return { newScore, pointsAwarded: scaledPoints };
 }
 
+export function formatReputationActivityDescription(
+  activityType: string,
+  {
+    itemName,
+    daysLate,
+    rating,
+    existingDescription,
+  }: Pick<TrustActivityMetadata, "itemName" | "daysLate" | "rating"> & {
+    existingDescription?: string | null;
+  } = {},
+): string {
+  const item = itemName ? `"${itemName}"` : null;
+  const onItem = item ? ` on ${item}` : "";
+  const normalizedType = activityType.toLowerCase();
+  const parsedRating = rating ?? Number(existingDescription?.match(/(\d)-star review/i)?.[1]);
+
+  switch (normalizedType) {
+    case "borrow_overdue_serious":
+      return item
+        ? `${item} is ${Math.max(0, daysLate ?? 0)} days overdue.`
+        : `A borrowed item is ${Math.max(0, daysLate ?? 0)} days overdue.`;
+    case "lending_smooth":
+      return `Lending completed${onItem}`;
+    case "receive_review":
+      return Number.isFinite(parsedRating) && parsedRating > 0
+        ? `Received a ${parsedRating}-star review${onItem}`
+        : `Received a review${onItem}`;
+    case "positive_feedback":
+      return `Received positive feedback${onItem}`;
+    case "borrow_return_perfect":
+    case "borrow_return_good":
+      return `Borrow return completed${onItem}`;
+    case "borrow_return_late_minor":
+    case "borrow_return_late_moderate":
+    case "borrow_return_late_severe":
+    case "borrow_return_late_critical":
+      return daysLate && daysLate > 0
+        ? `Borrow return completed ${daysLate} day${daysLate === 1 ? "" : "s"} late${onItem}`
+        : `Borrow return completed${onItem}`;
+    case "borrow_return_damaged":
+      return item ? `${item} was returned with damage.` : "A borrowed item was returned with damage.";
+    case "swap_completed":
+      return `Swap completed${onItem}`;
+    case "timely_communication":
+      return "Responded promptly to a neighbour.";
+    case "rental_dispute_free":
+      return `Rental completed without a dispute${onItem}`;
+    case "gifting_completed":
+      return `Gift completed${onItem}`;
+    case "verification_approved":
+      return "Identity verification completed.";
+    case "item_not_returned":
+      return item ? `${item} was not returned.` : "A borrowed item was not returned.";
+    case "damage_confirmed":
+      return item ? `Damage was confirmed for ${item}.` : "Item damage was confirmed.";
+    case "deposit_claimed":
+      return item ? `The deposit was claimed for ${item}.` : "A security deposit was claimed.";
+    case "fraud_abuse":
+      return "A trust and safety violation was confirmed.";
+    case "repeated_no_shows":
+      return "Repeated missed handoffs were recorded.";
+    case "cancel_after_acceptance":
+      return `An accepted request was cancelled${onItem}`;
+    case "ignoring_messages":
+      return "Repeated messages from a neighbour went unanswered.";
+    case "low_review_one_star":
+    case "low_review_two_star":
+      return `Received low-rating feedback${onItem}`;
+    case "grace_pass_warning":
+      return "A first-time trust penalty was waived.";
+    default:
+      return existingDescription === "Your trust score was adjusted based on this transaction."
+        ? "Trust score updated."
+        : existingDescription || "Trust score updated.";
+  }
+}
+
 function buildActivityDescription(
   activityType: TrustActivityType,
   metadata: TrustActivityMetadata,
 ): string {
-  // Use neutral wording for all activities
-  switch (activityType) {
-    // Positive activities
-    case "borrow_return_perfect":
-      return "Your trust score was adjusted based on this transaction.";
-    case "borrow_return_good":
-      return "Your trust score was adjusted based on this transaction.";
-    case "borrow_return_late_minor":
-      return "Your trust score was adjusted based on this transaction.";
-    case "borrow_return_late_moderate":
-      return "Your trust score was adjusted based on this transaction.";
-    case "borrow_return_late_severe":
-      return "Your trust score was adjusted based on this transaction.";
-    case "borrow_return_late_critical":
-      return "Your trust score was adjusted based on this transaction.";
-    case "borrow_return_damaged":
-      return "Your trust score was adjusted based on this transaction.";
-    case "lending_smooth":
-      return "Your trust score was adjusted based on this transaction.";
-    case "swap_completed":
-      return "Your trust score was adjusted based on this transaction.";
-    case "timely_communication":
-      return "Your trust score was adjusted based on this transaction.";
-    case "positive_feedback":
-      return "Your trust score was adjusted based on this transaction.";
-    case "rental_dispute_free":
-      return "Your trust score was adjusted based on this transaction.";
-    case "gifting_completed":
-      return "Your trust score was adjusted based on this transaction.";
-    case "verification_approved":
-      return "Your trust score was adjusted based on this transaction.";
-    // Penalty activities - same neutral wording
-    case "item_not_returned":
-      return "Your trust score was adjusted based on this transaction.";
-    case "damage_confirmed":
-      return "Your trust score was adjusted based on this transaction.";
-    case "deposit_claimed":
-      return "Your trust score was adjusted based on this transaction.";
-    case "fraud_abuse":
-      return "Your trust score was adjusted based on this transaction.";
-    case "repeated_no_shows":
-      return "Your trust score was adjusted based on this transaction.";
-    case "cancel_after_acceptance":
-      return "Your trust score was adjusted based on this transaction.";
-    case "ignoring_messages":
-      return "Your trust score was adjusted based on this transaction.";
-    // Grace pass
-    case "grace_pass_warning":
-      return "Your trust score was adjusted based on this transaction.";
-    default:
-      return "Your trust score was adjusted based on this transaction.";
-  }
+  return formatReputationActivityDescription(activityType, metadata);
 }
 
 /**

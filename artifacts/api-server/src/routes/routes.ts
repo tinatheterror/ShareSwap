@@ -76,7 +76,8 @@ import {
   applySeriousOverduePenalty,
   applyCancellationPenalty,
   applyDepositClaimedPenalty,
-  applyLowReviewPenalty
+  applyLowReviewPenalty,
+  formatReputationActivityDescription,
 } from "../trust-score-service";
 import { calculateAIValuation, getTierBand, type ItemValuationInput } from "../ai-valuation";
 import { calculateReplacementValueAndTier } from "../replacement-value";
@@ -12874,11 +12875,46 @@ Respond with ONLY the category name, nothing else.`
 
     // Get recent reputation activities
     const activities = await db
-      .select()
+      .select({
+        id: reputationActivities.id,
+        userId: reputationActivities.userId,
+        activityType: reputationActivities.activityType,
+        points: reputationActivities.points,
+        itemId: reputationActivities.itemId,
+        requestId: reputationActivities.requestId,
+        description: reputationActivities.description,
+        createdAt: reputationActivities.createdAt,
+        itemName: items.name,
+        requestEndDate: itemRequests.endDate,
+      })
       .from(reputationActivities)
+      .leftJoin(itemRequests, eq(itemRequests.id, reputationActivities.requestId))
+      .leftJoin(
+        items,
+        or(
+          eq(items.id, reputationActivities.itemId),
+          eq(items.id, itemRequests.itemId),
+        ),
+      )
       .where(eq(reputationActivities.userId, userId))
       .orderBy(desc(reputationActivities.createdAt))
       .limit(10);
+
+    const formattedActivities = activities.map((activity) => {
+      const activityDate = activity.createdAt ?? new Date();
+      const daysLate = activity.requestEndDate
+        ? daysOverdueAgainstDueDate(activityDate, new Date(activity.requestEndDate))
+        : undefined;
+
+      return {
+        ...activity,
+        description: formatReputationActivityDescription(activity.activityType, {
+          itemName: activity.itemName,
+          daysLate,
+          existingDescription: activity.description,
+        }),
+      };
+    });
 
     // Get user reviews
     const reviews = await db
@@ -12902,7 +12938,7 @@ Respond with ONLY the category name, nothing else.`
 
     res.json({
       ...user,
-      recentActivities: activities,
+      recentActivities: formattedActivities,
       reviews,
     });
   });
@@ -13032,7 +13068,8 @@ Respond with ONLY the category name, nothing else.`
           activityType: "RECEIVE_REVIEW",
           points: reviewPoints,
           itemId: transaction.items.id,
-          description: `Received a ${rating}-star review`,
+          requestId: transaction.itemRequests.id,
+          description: `Received a ${rating}-star review on "${transaction.items.name}"`,
         });
       }
       if (feedbackTagPoints > 0) {
@@ -13040,7 +13077,9 @@ Respond with ONLY the category name, nothing else.`
           userId: reviewedUserId,
           activityType: "positive_feedback" as any,
           points: feedbackTagPoints,
-          description: `Positive feedback tags: ${positiveTagsAwarded.join(", ")}`,
+          itemId: transaction.items.id,
+          requestId: transaction.itemRequests.id,
+          description: `Received positive feedback on "${transaction.items.name}": ${positiveTagsAwarded.join(", ")}`,
         });
       }
       if (negativeTagDeduction < 0) {
@@ -13048,7 +13087,9 @@ Respond with ONLY the category name, nothing else.`
           userId: reviewedUserId,
           activityType: "low_review_two_star" as any,
           points: negativeTagDeduction,
-          description: `Negative feedback tags: ${negativeTagsSelected.join(", ")}`,
+          itemId: transaction.items.id,
+          requestId: transaction.itemRequests.id,
+          description: `Received negative feedback on "${transaction.items.name}": ${negativeTagsSelected.join(", ")}`,
         });
       }
 

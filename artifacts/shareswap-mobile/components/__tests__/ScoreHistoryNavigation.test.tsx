@@ -17,7 +17,7 @@ let mockReputationData: {
     activityType: string;
     points: number;
     description: string;
-    createdAt: string;
+      createdAt?: string | null;
   }>;
 } = {
   reputationScore: 142,
@@ -185,6 +185,50 @@ describe("native score history navigation", () => {
     expect(text).toContain("+12");
     expect(text).toContain("−7");
     expect(text).not.toContain("Updated your profile");
+  });
+
+  it.each([
+    ["America/Los_Angeles", "2025-06-15T00:30:00.000Z", "Jun 15, 2025"],
+    ["Pacific/Auckland", "2025-06-14T23:30:00.000Z", "Jun 14, 2025"],
+  ] as [string, string, string][])(
+    "keeps the UTC calendar date at a date boundary in %s",
+    (timeZone: string, createdAt: string, expectedDate: string) => {
+    const originalTimeZone = process.env.TZ;
+    process.env.TZ = timeZone;
+
+    try {
+      mockReputationData = {
+        ...mockReputationData,
+        recentActivities: [{ ...mockReputationData.recentActivities[0], createdAt }],
+      };
+
+      const instance = renderScreen(<ScoreHistoryScreen />);
+
+      expect(renderedText(instance)).toContain(expectedDate);
+    } finally {
+      if (originalTimeZone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = originalTimeZone;
+      }
+    }
+    },
+  );
+
+  it("shows an en dash instead of a misleading date for invalid or missing timestamps", () => {
+    mockReputationData = {
+      ...mockReputationData,
+      recentActivities: [
+        { ...mockReputationData.recentActivities[0], createdAt: "not-a-date" },
+        { ...mockReputationData.recentActivities[1], createdAt: undefined },
+      ],
+    };
+
+    const text = renderedText(renderScreen(<ScoreHistoryScreen />));
+
+    expect(text).toContain("–");
+    expect(text).not.toContain("Invalid Date");
+    expect(text).not.toContain("Jan 1, 1970");
   });
 
   it("returns to Achievements from the history back control", () => {

@@ -42,6 +42,30 @@ export function fmtDate(
 }
 
 /**
+ * Format a score history timestamp as its UTC calendar day.
+ * Score history uses the date the activity was recorded, rather than shifting
+ * that day into the member's local timezone. Returns "–" for missing/invalid
+ * values so malformed API data is never shown as a misleading date.
+ */
+export function fmtScoreHistoryDate(d: string | null | undefined): string {
+  if (!d) return "–";
+
+  // Keep date-only values stable on runtimes where bare ISO dates are parsed
+  // inconsistently, while full timestamps retain their recorded instant.
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(d)
+    ? new Date(`${d}T00:00:00.000Z`)
+    : safeDate(d);
+  if (isNaN(parsed.getTime())) return "–";
+
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/**
  * Format a timestamp string for inbox/activity feed display.
  * Shows time (HH:MM) if the date is today, otherwise shows "Mon DD".
  * Returns "–" for null/undefined/invalid inputs.

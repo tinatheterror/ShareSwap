@@ -15,13 +15,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { safeDate } from "@/lib/dateUtils";
+import { fmtScoreHistoryDate } from "@/lib/dateUtils";
 
 interface ReputationActivity {
   activityType: string;
   points: number;
   description: string;
-  createdAt: string;
+  createdAt?: string | null;
 }
 
 interface ReputationData {
@@ -103,11 +103,7 @@ export default function ScoreHistoryScreen() {
           ) : activities.length > 0 ? (
             activities.map((activity, index) => {
               const isPositive = activity.points > 0;
-              const dateStr = safeDate(activity.createdAt).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              });
+              const dateStr = fmtScoreHistoryDate(activity.createdAt);
               return (
                 <View
                   key={`${activity.createdAt}-${activity.activityType}-${index}`}

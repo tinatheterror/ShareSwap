@@ -1,4 +1,4 @@
-import { safeDate, fmtCalendarDate, fmtDate, formatTime } from "../dateUtils";
+import { safeDate, fmtCalendarDate, fmtDate, fmtScoreHistoryDate, formatTime } from "../dateUtils";
 
 describe("safeDate", () => {
   it("parses a bare YYYY-MM-DD string without returning Invalid Date", () => {
@@ -76,6 +76,40 @@ describe("fmtCalendarDate", () => {
   it("returns '–' for malformed date-only input", () => {
     expect(fmtCalendarDate("garbage-input")).toBe("–");
   });
+});
+
+describe("fmtScoreHistoryDate", () => {
+  it.each([
+    ["America/Los_Angeles", "2025-06-15T00:30:00.000Z", "Jun 15, 2025"],
+    ["Pacific/Auckland", "2025-06-14T23:30:00.000Z", "Jun 14, 2025"],
+  ] as [string, string, string][])(
+    "keeps the UTC calendar date at a date boundary in %s",
+    (timeZone: string, timestamp: string, expected: string) => {
+    const originalTimeZone = process.env.TZ;
+    process.env.TZ = timeZone;
+
+    try {
+      expect(fmtScoreHistoryDate(timestamp)).toBe(expected);
+    } finally {
+      if (originalTimeZone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = originalTimeZone;
+      }
+    }
+    },
+  );
+
+  it("preserves a bare ISO calendar date", () => {
+    expect(fmtScoreHistoryDate("2025-06-15")).toBe("Jun 15, 2025");
+  });
+
+  it.each([null, undefined, "", "not-a-date", "2025-99-99"])(
+    "returns an en dash for missing or invalid input (%s)",
+    (value: string | null | undefined) => {
+      expect(fmtScoreHistoryDate(value)).toBe("–");
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------

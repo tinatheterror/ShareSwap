@@ -170,6 +170,56 @@ describe("web score history navigation", () => {
     expect(screen.queryByText("Updated your profile")).not.toBeInTheDocument();
   });
 
+  it.each([
+    ["America/Los_Angeles", "2025-06-15T00:30:00.000Z", "Jun 15, 2025"],
+    ["Pacific/Auckland", "2025-06-14T23:30:00.000Z", "Jun 14, 2025"],
+  ] as [string, string, string][])(
+    "keeps the UTC calendar date at a date boundary in %s",
+    (timeZone: string, createdAt: string, expectedDate: string) => {
+    const originalTimeZone = process.env.TZ;
+    process.env.TZ = timeZone;
+
+    try {
+      mocks.useQuery.mockReturnValue({
+        data: {
+          ...populatedReputation,
+          recentActivities: [{ ...populatedReputation.recentActivities[0], createdAt }],
+        },
+        isLoading: false,
+      });
+
+      render(<ScoreHistoryPage />);
+
+      expect(screen.getByText(expectedDate)).toBeInTheDocument();
+    } finally {
+      if (originalTimeZone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = originalTimeZone;
+      }
+    }
+    },
+  );
+
+  it("shows an en dash instead of a misleading date for invalid or missing timestamps", () => {
+    mocks.useQuery.mockReturnValue({
+      data: {
+        ...populatedReputation,
+        recentActivities: [
+          { ...populatedReputation.recentActivities[0], createdAt: "not-a-date" },
+          { ...populatedReputation.recentActivities[1], createdAt: undefined },
+        ],
+      },
+      isLoading: false,
+    });
+
+    render(<ScoreHistoryPage />);
+
+    expect(screen.getAllByText("–")).toHaveLength(2);
+    expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
+    expect(screen.queryByText("Jan 1, 1970")).not.toBeInTheDocument();
+  });
+
   it("returns to Achievements from the history back control", () => {
     render(<ScoreHistoryPage />);
 

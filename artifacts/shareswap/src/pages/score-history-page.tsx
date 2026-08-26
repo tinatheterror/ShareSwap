@@ -9,13 +9,27 @@ interface ReputationActivity {
   activityType: string;
   points: number;
   description: string;
-  createdAt: string;
+  createdAt?: string | null;
 }
 
 interface ReputationData {
   reputationScore: number;
   reputationLevel: string;
   recentActivities: ReputationActivity[];
+}
+
+function formatScoreHistoryDate(dateString: string | null | undefined): string {
+  if (!dateString) return "–";
+
+  const parsedDate = new Date(dateString);
+  if (Number.isNaN(parsedDate.getTime())) return "–";
+
+  return parsedDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 export default function ScoreHistoryPage() {
@@ -80,7 +94,7 @@ export default function ScoreHistoryPage() {
                         <p className="text-sm font-medium text-slate-800">{activity.description}</p>
                         <p className="text-xs text-slate-500 mt-1 inline-flex items-center gap-1">
                           <Clock className="h-3 w-3" aria-hidden="true" />
-                          {new Date(activity.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          {formatScoreHistoryDate(activity.createdAt)}
                         </p>
                       </div>
                       <span className={`text-sm font-bold shrink-0 ${isPositive ? "text-emerald-600" : "text-red-600"}`}>

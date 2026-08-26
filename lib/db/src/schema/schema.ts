@@ -338,6 +338,13 @@ export const itemRequests = pgTable("item_requests", {
   depositPaymentIntentId: text("deposit_payment_intent_id"), // Stripe payment intent ID for the authorization hold
   depositAuthorizedAt: timestamp("deposit_authorized_at"),
   depositReleasedAt: timestamp("deposit_released_at"),
+  // Tracks the most recent deposit-hold PaymentIntent created by /api/rentals/create-payment-hold,
+  // before it's confirmed (depositPaymentIntentId above is only set on successful confirmation).
+  // depositHoldAttemptNum increments each time a prior attempt's PI is found to be terminally
+  // cancelled, so the create-payment-hold idempotency key can change and Stripe will issue a
+  // fresh authorization instead of forever returning the same dead PaymentIntent.
+  depositHoldAttemptId: text("deposit_hold_attempt_id"),
+  depositHoldAttemptNum: integer("deposit_hold_attempt_num").default(0),
   platformFeeChargeId: text("platform_fee_charge_id"), // Stripe charge ID for the immediately-captured platform fee
   
   // ShareCoin tracking for borrow

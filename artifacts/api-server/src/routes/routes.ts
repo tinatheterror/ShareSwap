@@ -934,6 +934,513 @@ async function requireFullVerification(req: any, res: any, next: any) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+type RentalPaymentHoldStripeClient = {
+  customers: { create: typeof stripe.customers.create };
+  paymentIntents: {
+    create: typeof stripe.paymentIntents.create;
+    retrieve: typeof stripe.paymentIntents.retrieve;
+  };
+};
+
+/**
+ * Core logic behind POST /api/rentals/create-payment-hold, pulled out of the route
+ * handler so it can be exercised directly in tests with an injected Stripe client
+ * instead of a live network call. Returns an HTTP-shaped { status, body } pair —
+ * the route handler is a thin wrapper mapping this onto res.status(...).json(...).
+ *
+ * Creates a manual-capture ("hold") PaymentIntent for the deposit amount ONLY. The
+ * rental amount + processing fee are charged later, as a separate PaymentIntent,
+ * once the deposit hold is confirmed (see confirmRentalDeposit below) — this keeps
+ * the deposit an authorization the borrower's card can be released from without
+ * ever having been charged.
+ */
+export async function createRentalPaymentHold({
+  requestId,
+  userId,
+  confirmIfSaved,
+  stripeClient = stripe,
+}: {
+  requestId: number;
+  userId: number;
+  confirmIfSaved?: boolean;
+  stripeClient?: RentalPaymentHoldStripeClient;
+}): Promise<{ status: number; body: any }> {
+  // Lock the request row for the whole read-check-record sequence so two concurrent
+  // create-payment-hold calls for the same request can't race on the attempt counter
+  // below and each think they need a fresh PaymentIntent.
+  const attemptInfo = await db.transaction(async (tx) => {
+    await tx.execute(sql`
+      SELECT 1 FROM ${itemRequests}
+      WHERE ${itemRequests.id} = ${requestId}
+      FOR UPDATE
+    `);
+
+    const [requestRow] = await tx
+      .select()
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(eq(itemRequests.id, requestId))
+      .limit(1);
+
+    if (!requestRow || requestRow.item_requests.requesterId !== userId) {
+      return { status: 403 as const, error: "Unauthorized" };
+    }
+    const request = requestRow.item_requests;
+
+    if (request.status !== "ACCEPTED") {
+      return { status: 400 as const, error: "Request is not in accepted state" };
+    }
+
+    // Never trust client-submitted dollar amounts for what gets charged — a caller could
+    // otherwise create a valid-looking deposit hold with a falsified (e.g. zero) rental
+    // amount from the very start. Compute the authoritative deposit/rental/processing-fee
+    // figures server-side from the item's own pricing fields and the request's finalized
+    // date range; these are the only values ever used for PaymentIntent amounts, metadata,
+    // and downstream bookkeeping.
+    const pricing = computeAuthoritativeRentalPricing(requestRow.items, request.startDate, request.endDate);
+    if (!pricing) {
+      console.error("Could not compute valid rental pricing for request", requestId);
+      return { status: 400 as const, error: "Could not determine rental pricing for this request" };
+    }
+
+    // The deterministic idempotency key used to create the deposit PI must change once a
+    // prior attempt is terminally dead (cancelled — e.g. because the rental/fee charge
+    // failed after this hold was authorized), or Stripe would forever hand back that same
+    // dead PaymentIntent and the borrower could never actually pay for this request again.
+    // Reuse the same attempt number (and thus the same PI) while a prior attempt is still
+    // open, so an accidental resubmission (refresh, double-tap) doesn't open a second hold.
+    let attemptNum = request.depositHoldAttemptNum || 0;
+    let reuseExistingPI: string | null = null;
+    if (request.depositHoldAttemptId) {
+      try {
+        const priorPI = await stripeClient.paymentIntents.retrieve(request.depositHoldAttemptId);
+        if (priorPI.status === "canceled") {
+          attemptNum += 1;
+        } else {
+          reuseExistingPI = priorPI.id;
+        }
+      } catch (_) {
+        // Prior PI is unretrievable (e.g. deleted test-mode data) — treat as dead and move on.
+        attemptNum += 1;
+      }
+    }
+
+    return { status: 200 as const, request, pricing, attemptNum, reuseExistingPI };
+  });
+
+  if (attemptInfo.status !== 200) {
+    return { status: attemptInfo.status, body: { error: attemptInfo.error } };
+  }
+  const { request, pricing, attemptNum, reuseExistingPI } = attemptInfo;
+  const { depositAmount, rentalAmount, processingFee } = pricing;
+  const platformFee = 0;
+
+  // If a still-open PaymentIntent already exists for this exact attempt, just return it
+  // instead of calling Stripe again — avoids any ambiguity about which idempotency key
+  // to reuse and guarantees the borrower keeps paying against the same authorization.
+  if (reuseExistingPI) {
+    const existing = await stripeClient.paymentIntents.retrieve(reuseExistingPI);
+    const hasSavedCardExisting = !!existing.payment_method;
+    return {
+      status: 200,
+      body: {
+        clientSecret: existing.client_secret,
+        paymentIntentId: existing.id,
+        hasSavedCard: hasSavedCardExisting,
+        alreadyConfirmed: existing.status === "succeeded" || existing.status === "requires_capture",
+        depositAmount,
+        rentalAmount,
+        totalHoldAmount: rentalAmount + depositAmount + processingFee,
+      },
+    };
+  }
+
+  // Only the deposit is authorized (held) here — it is captured later via the same
+  // release/dispute flow used by the dedicated deposit-hold endpoint. The rental amount
+  // and processing fee are captured immediately, but as a SEPARATE PaymentIntent created
+  // right after this hold is confirmed (see /confirm-rental-deposit), so a declined
+  // authorization never results in a charge, and the deposit hold stays open independent
+  // of the rental charge.
+  const totalChargeAmount = rentalAmount + depositAmount + processingFee;
+
+  // Look up user's saved payment method from verification
+  const [userRecord] = await db
+    .select({
+      stripeCustomerId: users.stripeCustomerId,
+      stripePaymentMethodId: users.stripePaymentMethodId,
+      email: users.email,
+      fullName: users.fullName,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  const hasSavedCard = !!(userRecord?.stripeCustomerId && userRecord?.stripePaymentMethodId);
+
+  // Ensure a Stripe customer exists so a freshly-entered card can be reused off-session
+  // for the rental+fee charge immediately after this deposit hold is confirmed.
+  let customerId = userRecord?.stripeCustomerId;
+  if (!customerId) {
+    const customer = await stripeClient.customers.create({
+      email: userRecord?.email || undefined,
+      name: userRecord?.fullName || undefined,
+      metadata: { userId: userId.toString() },
+    });
+    customerId = customer.id;
+    await db.update(users).set({ stripeCustomerId: customerId }).where(eq(users.id, userId));
+  }
+
+  const paymentIntentParams: any = {
+    amount: Math.round(depositAmount * 100),
+    currency: "usd",
+    capture_method: "manual",
+    customer: customerId,
+    metadata: {
+      type: "rental_payment_deposit",
+      requestId: requestId.toString(),
+      userId: userId.toString(),
+      depositAmount: depositAmount.toString(),
+      rentalAmount: (rentalAmount || 0).toString(),
+      processingFee: (processingFee || 0).toString(),
+      platformFee: (platformFee || 0).toString(),
+    },
+  };
+
+  if (hasSavedCard) {
+    // Attach saved card — user won't need to enter card details
+    paymentIntentParams.payment_method = userRecord!.stripePaymentMethodId;
+    // Native app path: confirm immediately off-session so no Stripe UI is needed.
+    if (confirmIfSaved) {
+      paymentIntentParams.confirm = true;
+      paymentIntentParams.off_session = true;
+    }
+  } else {
+    // Card is being entered fresh via Stripe Elements — mark it reusable off-session so
+    // the rental+fee PaymentIntent can be charged immediately after this hold is confirmed.
+    paymentIntentParams.setup_future_usage = "off_session";
+  }
+
+  const paymentIntent = await stripeClient.paymentIntents.create(paymentIntentParams, {
+    // Deterministic key scoped to this attempt: resubmitting the same hold request within
+    // the same attempt (e.g. a page refresh before the user finishes paying) reuses the
+    // same PaymentIntent instead of opening a second authorization on the borrower's card.
+    // `attemptNum` only advances once a prior attempt's PI is found to be terminally
+    // cancelled (see the lock/lookup above), so a genuinely new attempt gets a fresh PI
+    // instead of Stripe forever returning the dead one.
+    idempotencyKey: `deposit-hold-${requestId}-${attemptNum}-${Math.round(depositAmount * 100)}-${Math.round((rentalAmount || 0) * 100)}-${Math.round((processingFee || 0) * 100)}`,
+  });
+
+  // Record this attempt so a future create-payment-hold call for this request (e.g. after
+  // a failed off-session rental charge cancels this PI) can tell it needs a fresh attempt.
+  await db
+    .update(itemRequests)
+    .set({ depositHoldAttemptId: paymentIntent.id, depositHoldAttemptNum: attemptNum })
+    .where(eq(itemRequests.id, requestId));
+
+  const alreadyConfirmed =
+    hasSavedCard &&
+    !!confirmIfSaved &&
+    (paymentIntent.status === "succeeded" || paymentIntent.status === "requires_capture");
+
+  return {
+    status: 200,
+    body: {
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+      hasSavedCard,
+      alreadyConfirmed,
+      depositAmount,
+      rentalAmount,
+      totalHoldAmount: totalChargeAmount,
+    },
+  };
+}
+
+type ConfirmRentalDepositStripeClient = {
+  paymentIntents: {
+    retrieve: typeof stripe.paymentIntents.retrieve;
+    create: typeof stripe.paymentIntents.create;
+    cancel: typeof stripe.paymentIntents.cancel;
+  };
+};
+
+/**
+ * Core logic behind POST /api/requests/:requestId/confirm-rental-deposit, pulled out
+ * of the route handler so it can be exercised directly in tests with an injected
+ * Stripe client. Verifies the deposit hold PaymentIntent, then charges the rental
+ * amount + processing fee as a SEPARATE automatic-capture PaymentIntent using the
+ * same payment method. If that second charge fails, the deposit hold is released
+ * (cancelled) and the request is never marked DEPOSIT_CONFIRMED — a failed rental
+ * charge must never leave the borrower's card authorized for an unpaid booking.
+ */
+export async function confirmRentalDeposit({
+  requestId,
+  userId,
+  paymentIntentId,
+  stripeClient = stripe,
+}: {
+  requestId: number;
+  userId: number;
+  paymentIntentId: string;
+  stripeClient?: ConfirmRentalDepositStripeClient;
+}): Promise<{ status: number; body: any }> {
+  // The whole verify-charge-and-record sequence runs under the request row's lock so a
+  // duplicate submission (client retry, double-tap, two tabs) cannot charge the rental
+  // fee or create the escrow payout more than once for the same request.
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`
+      SELECT 1 FROM ${itemRequests}
+      WHERE ${itemRequests.id} = ${requestId}
+      FOR UPDATE
+    `);
+
+    const [request] = await tx
+      .select()
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(eq(itemRequests.id, requestId))
+      .limit(1);
+
+    if (!request) {
+      return { status: 404, error: "Request not found" };
+    }
+
+    if (request.item_requests.requesterId !== userId) {
+      return { status: 403, error: "Unauthorized" };
+    }
+
+    if (request.item_requests.status !== "ACCEPTED") {
+      // A previous call already confirmed this exact deposit — treat a same-PI retry as
+      // already handled instead of erroring, so a slow response or client retry after a
+      // timeout doesn't look broken (and, crucially, can never re-charge the renter).
+      if (request.item_requests.status === "DEPOSIT_CONFIRMED" && request.item_requests.depositPaymentIntentId === paymentIntentId) {
+        return { status: 200, request: request.item_requests, alreadyConfirmed: true };
+      }
+      return { status: 400, error: "Request is not in accepted state" };
+    }
+
+    // Verify the PaymentIntent with Stripe
+    const paymentIntent = await stripeClient.paymentIntents.retrieve(paymentIntentId);
+
+    // Verify payment intent is in the correct state (succeeded = charged, or requires_capture = manual hold)
+    if (paymentIntent.status !== "succeeded" && paymentIntent.status !== "requires_capture") {
+      return { status: 400, error: "Payment has not been completed correctly", stripeStatus: paymentIntent.status };
+    }
+
+    // Verify the payment intent belongs to this request
+    if (paymentIntent.metadata.requestId !== requestId.toString()) {
+      return { status: 400, error: "Payment intent does not match this request" };
+    }
+
+    // Verify the payment intent belongs to this user
+    if (paymentIntent.metadata.userId !== userId.toString()) {
+      return { status: 403, error: "Payment intent does not belong to this user" };
+    }
+
+    // Never trust amounts from this request's body for money movement or bookkeeping —
+    // a client could submit a different rentalAmount/processingFee/depositAmount here than
+    // what was actually authorized when the hold was created (e.g. rentalAmount: 0 to skip
+    // the rental charge while still confirming the booking). Instead, derive every dollar
+    // figure from the PI's metadata, which create-payment-hold set once at creation time
+    // and which a client has no way to rewrite afterward.
+    const depositAmount = parseFloat(paymentIntent.metadata.depositAmount || "0") || 0;
+    const rentalAmount = parseFloat(paymentIntent.metadata.rentalAmount || "0") || 0;
+    const processingFee = parseFloat(paymentIntent.metadata.processingFee || "0") || 0;
+    const platformFee = parseFloat(paymentIntent.metadata.platformFee || "0") || 0;
+
+    // Belt-and-suspenders: for a live manual-capture hold (the new split flow), the PI's
+    // own authorized `amount` must equal the deposit metadata exactly — Stripe itself
+    // enforces this, so any mismatch means the metadata was tampered with or corrupted.
+    if (paymentIntent.status === "requires_capture" && paymentIntent.amount !== Math.round(depositAmount * 100)) {
+      console.error("Deposit PaymentIntent amount does not match its own metadata", paymentIntentId, paymentIntent.amount, depositAmount);
+      return { status: 400, error: "Deposit amount could not be verified" };
+    }
+
+    // The deposit is only authorized (requires_capture) at this point — it is charged later
+    // via the same release/dispute flow as the dedicated deposit-hold endpoint. Charge the
+    // rental amount + processing fee now, as a separate PaymentIntent, using the payment
+    // method that was just attached to the deposit hold. ("succeeded" means this payment
+    // intent predates this split and already charged everything in one go — nothing more to do.)
+    let rentalPaymentIntentId: string | null = null;
+    const rentalChargeAmount = rentalAmount + processingFee;
+    if (paymentIntent.status === "requires_capture" && rentalChargeAmount > 0) {
+      const depositCustomer = typeof paymentIntent.customer === "string" ? paymentIntent.customer : paymentIntent.customer?.id;
+      const depositPaymentMethod = typeof paymentIntent.payment_method === "string" ? paymentIntent.payment_method : paymentIntent.payment_method?.id;
+
+      if (!depositCustomer || !depositPaymentMethod) {
+        console.error("Deposit PaymentIntent is missing customer/payment_method", paymentIntentId);
+        return { status: 500, error: "Payment method could not be verified. Please try again." };
+      }
+
+      try {
+        const rentalPI = await stripeClient.paymentIntents.create({
+          amount: Math.round(rentalChargeAmount * 100),
+          currency: "usd",
+          customer: depositCustomer,
+          payment_method: depositPaymentMethod,
+          confirm: true,
+          off_session: true,
+          metadata: {
+            type: "rental_payment",
+            requestId: requestId.toString(),
+            userId: userId.toString(),
+            depositPaymentIntentId: paymentIntentId,
+            rentalAmount: (rentalAmount || 0).toString(),
+            processingFee: (processingFee || 0).toString(),
+          },
+          description: `Rental payment for ShareSwap request #${requestId}`,
+        }, {
+          // Deterministic key: retrying this exact confirmation (same deposit hold, same
+          // request) must never create a second rental charge — even if our own
+          // transaction fails to commit after Stripe has already accepted the charge.
+          idempotencyKey: `rental-charge-${requestId}-${paymentIntentId}`,
+        });
+
+        // An off-session confirmation can come back without throwing yet still not have
+        // actually collected the money — e.g. `requires_action` when the card requires
+        // SCA/3DS authentication that off-session can't complete. Only "succeeded" means
+        // the rental fee was actually charged; anything else must not be treated as paid.
+        if (rentalPI.status !== "succeeded") {
+          console.error("Rental PaymentIntent did not succeed after off-session confirmation:", paymentIntentId, rentalPI.id, rentalPI.status);
+          try { await stripeClient.paymentIntents.cancel(rentalPI.id); } catch (_) {}
+          try { await stripeClient.paymentIntents.cancel(paymentIntentId); } catch (_) {}
+          return {
+            status: 402,
+            error: rentalPI.status === "requires_action"
+              ? "Your card requires additional authentication to complete this payment. Please try again from the app so you can confirm it."
+              : "Failed to charge the rental fee: payment was not completed.",
+            stripeStatus: rentalPI.status,
+            depositReleased: true,
+          };
+        }
+
+        rentalPaymentIntentId = rentalPI.id;
+      } catch (chargeError: any) {
+        console.error("Error charging rental fee after deposit hold:", chargeError);
+        // Release the deposit hold since the rental charge failed — don't leave the
+        // borrower's card authorized for a booking that was never actually paid for.
+        try { await stripeClient.paymentIntents.cancel(paymentIntentId); } catch (_) {}
+        return { status: 402, error: "Failed to charge the rental fee: " + chargeError.message, depositReleased: true };
+      }
+    }
+
+    // Atomically claim the confirmation. The row lock above already serializes concurrent
+    // callers, so this WHERE clause is a belt-and-suspenders guard against acting twice.
+    const [updated] = await tx
+      .update(itemRequests)
+      .set({
+        status: "DEPOSIT_CONFIRMED",
+        depositPaymentIntentId: paymentIntentId,
+        trustDepositAmount: depositAmount?.toString(),
+        depositStatus: "authorized",
+        depositAuthorizedAt: new Date(),
+        rentalAmount: rentalAmount?.toString(),
+        rentalProcessingFee: processingFee?.toString(),
+        rentalPlatformFee: platformFee?.toString(),
+      })
+      .where(and(eq(itemRequests.id, requestId), eq(itemRequests.status, "ACCEPTED")))
+      .returning();
+
+    if (!updated) {
+      throw Object.assign(new Error("Request was already confirmed."), { status: 409 });
+    }
+
+    // Create escrow record for rental earnings (held until return confirmed).
+    // Commission split: 5% to platform Stripe account, 95% to owner pending balance.
+    // First 3 transactions per requester are free — owner receives 100%.
+    // The Stripe processing fee (~2.9% + $0.30) is absorbed by the platform from its 5% cut,
+    // so it is never deducted from the owner's share.
+    if (rentalAmount && rentalAmount > 0) {
+      const actualRentalAmount = rentalAmount;
+      const [{ count: rentalTxCount }] = await tx
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(itemRequests)
+        .where(and(
+          eq(itemRequests.requesterId, request.item_requests.requesterId),
+          inArray(itemRequests.status, ["ACTIVE", "RETURNED", "COMPLETED"]),
+        ));
+      // Check renter's subscription tier — Pro gets reduced 2% platform fee
+      const [renterSubRecord] = await tx
+        .select({ subscriptionTier: users.subscriptionTier })
+        .from(users)
+        .where(eq(users.id, request.item_requests.requesterId))
+        .limit(1);
+      const renterTier = (renterSubRecord as any)?.subscriptionTier || 'free';
+      const commissionRate = renterTier === 'pro' ? 0.04 : 0.05;
+
+      const freeCommissionPeriod = Number(rentalTxCount) < 3;
+      const actualPlatformFee = freeCommissionPeriod
+        ? 0                                    // free period — no platform cut
+        : parseFloat((actualRentalAmount * commissionRate).toFixed(2));
+      const netAmount = parseFloat((actualRentalAmount - actualPlatformFee).toFixed(2));
+
+      if (freeCommissionPeriod) {
+        console.log(`🎉 Platform fee waived (first 3 transactions free) — owner receives full $${netAmount.toFixed(2)}`);
+      } else {
+        console.log(`💰 Platform fee $${actualPlatformFee.toFixed(2)} (${renterTier === 'pro' ? '2% Pro rate' : '5% standard'}) — owner receives $${netAmount.toFixed(2)}`);
+      }
+
+      // Create held payout record for the owner
+      await tx.insert(rentalPayouts).values({
+        userId: request.items.ownerId!,
+        requestId: requestId,
+        amount: actualRentalAmount.toString(),
+        rentalAmount: actualRentalAmount.toString(),
+        platformFee: actualPlatformFee.toFixed(2),
+        processingFee: "0.00",
+        netAmount: netAmount.toFixed(2),
+        status: 'held',
+        stripePaymentIntentId: rentalPaymentIntentId ?? paymentIntentId,
+        holdUntil: request.item_requests.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      });
+
+      // Add to owner's pending balance
+      await tx
+        .update(users)
+        .set({
+          pendingRentalBalance: sql`COALESCE(${users.pendingRentalBalance}, 0) + ${netAmount.toFixed(2)}`,
+        })
+        .where(eq(users.id, request.items.ownerId!));
+
+      console.log(`Created escrow for $${netAmount.toFixed(2)} rental earnings (held until return) for owner ${request.items.ownerId}`);
+    }
+
+    // Notify both parties that the deposit authorization is in place
+    await tx.insert(messages).values({
+      content: "🔒 Security deposit authorized — your card is not charged unless damage is reported.",
+      senderId: request.items.ownerId!,
+      receiverId: request.item_requests.requesterId,
+      messageType: "system",
+      requestId,
+    });
+
+    return { status: 200, request: updated };
+  });
+
+  if (result.status !== 200) {
+    return {
+      status: result.status,
+      body: {
+        error: result.error,
+        ...(result.stripeStatus ? { status: result.stripeStatus } : {}),
+        ...(result.depositReleased ? { depositReleased: true } : {}),
+      },
+    };
+  }
+
+  return {
+    status: 200,
+    body: {
+      success: true,
+      request: result.request,
+      nextStep: "await_handoff",
+      message: result.alreadyConfirmed
+        ? "Rental deposit was already confirmed."
+        : "Rental deposit authorized successfully. Payment secured.",
+    },
+  };
+}
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -7195,189 +7702,8 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Invalid request parameters" });
       }
 
-      // Lock the request row for the whole read-check-record sequence so two concurrent
-      // create-payment-hold calls for the same request can't race on the attempt counter
-      // below and each think they need a fresh PaymentIntent.
-      const attemptInfo = await db.transaction(async (tx) => {
-        await tx.execute(sql`
-          SELECT 1 FROM ${itemRequests}
-          WHERE ${itemRequests.id} = ${requestId}
-          FOR UPDATE
-        `);
-
-        const [requestRow] = await tx
-          .select()
-          .from(itemRequests)
-          .innerJoin(items, eq(items.id, itemRequests.itemId))
-          .where(eq(itemRequests.id, requestId))
-          .limit(1);
-
-        if (!requestRow || requestRow.item_requests.requesterId !== req.user.id) {
-          return { status: 403 as const, error: "Unauthorized" };
-        }
-        const request = requestRow.item_requests;
-
-        if (request.status !== "ACCEPTED") {
-          return { status: 400 as const, error: "Request is not in accepted state" };
-        }
-
-        // Never trust client-submitted dollar amounts for what gets charged — a caller could
-        // otherwise create a valid-looking deposit hold with a falsified (e.g. zero) rental
-        // amount from the very start. Compute the authoritative deposit/rental/processing-fee
-        // figures server-side from the item's own pricing fields and the request's finalized
-        // date range; these are the only values ever used for PaymentIntent amounts, metadata,
-        // and downstream bookkeeping.
-        const pricing = computeAuthoritativeRentalPricing(requestRow.items, request.startDate, request.endDate);
-        if (!pricing) {
-          console.error("Could not compute valid rental pricing for request", requestId);
-          return { status: 400 as const, error: "Could not determine rental pricing for this request" };
-        }
-
-        // The deterministic idempotency key used to create the deposit PI must change once a
-        // prior attempt is terminally dead (cancelled — e.g. because the rental/fee charge
-        // failed after this hold was authorized), or Stripe would forever hand back that same
-        // dead PaymentIntent and the borrower could never actually pay for this request again.
-        // Reuse the same attempt number (and thus the same PI) while a prior attempt is still
-        // open, so an accidental resubmission (refresh, double-tap) doesn't open a second hold.
-        let attemptNum = request.depositHoldAttemptNum || 0;
-        let reuseExistingPI: string | null = null;
-        if (request.depositHoldAttemptId) {
-          try {
-            const priorPI = await stripe.paymentIntents.retrieve(request.depositHoldAttemptId);
-            if (priorPI.status === "canceled") {
-              attemptNum += 1;
-            } else {
-              reuseExistingPI = priorPI.id;
-            }
-          } catch (_) {
-            // Prior PI is unretrievable (e.g. deleted test-mode data) — treat as dead and move on.
-            attemptNum += 1;
-          }
-        }
-
-        return { status: 200 as const, request, pricing, attemptNum, reuseExistingPI };
-      });
-
-      if (attemptInfo.status !== 200) {
-        return res.status(attemptInfo.status).json({ error: attemptInfo.error });
-      }
-      const { request, pricing, attemptNum, reuseExistingPI } = attemptInfo;
-      const { depositAmount, rentalAmount, processingFee } = pricing;
-      const platformFee = 0;
-
-      // If a still-open PaymentIntent already exists for this exact attempt, just return it
-      // instead of calling Stripe again — avoids any ambiguity about which idempotency key
-      // to reuse and guarantees the borrower keeps paying against the same authorization.
-      if (reuseExistingPI) {
-        const existing = await stripe.paymentIntents.retrieve(reuseExistingPI);
-        const hasSavedCardExisting = !!existing.payment_method;
-        return res.json({
-          clientSecret: existing.client_secret,
-          paymentIntentId: existing.id,
-          hasSavedCard: hasSavedCardExisting,
-          alreadyConfirmed: existing.status === "succeeded" || existing.status === "requires_capture",
-          depositAmount,
-          rentalAmount,
-          totalHoldAmount: rentalAmount + depositAmount + processingFee,
-        });
-      }
-
-      // Only the deposit is authorized (held) here — it is captured later via the same
-      // release/dispute flow used by the dedicated deposit-hold endpoint. The rental amount
-      // and processing fee are captured immediately, but as a SEPARATE PaymentIntent created
-      // right after this hold is confirmed (see /confirm-rental-deposit), so a declined
-      // authorization never results in a charge, and the deposit hold stays open independent
-      // of the rental charge.
-      const totalChargeAmount = rentalAmount + depositAmount + processingFee;
-
-      // Look up user's saved payment method from verification
-      const [userRecord] = await db
-        .select({
-          stripeCustomerId: users.stripeCustomerId,
-          stripePaymentMethodId: users.stripePaymentMethodId,
-          email: users.email,
-          fullName: users.fullName,
-        })
-        .from(users)
-        .where(eq(users.id, req.user.id))
-        .limit(1);
-
-      const hasSavedCard = !!(userRecord?.stripeCustomerId && userRecord?.stripePaymentMethodId);
-
-      // Ensure a Stripe customer exists so a freshly-entered card can be reused off-session
-      // for the rental+fee charge immediately after this deposit hold is confirmed.
-      let customerId = userRecord?.stripeCustomerId;
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          email: userRecord?.email || undefined,
-          name: userRecord?.fullName || undefined,
-          metadata: { userId: req.user.id.toString() },
-        });
-        customerId = customer.id;
-        await db.update(users).set({ stripeCustomerId: customerId }).where(eq(users.id, req.user.id));
-      }
-
-      const paymentIntentParams: any = {
-        amount: Math.round(depositAmount * 100),
-        currency: "usd",
-        capture_method: "manual",
-        customer: customerId,
-        metadata: {
-          type: "rental_payment_deposit",
-          requestId: requestId.toString(),
-          userId: req.user.id.toString(),
-          depositAmount: depositAmount.toString(),
-          rentalAmount: (rentalAmount || 0).toString(),
-          processingFee: (processingFee || 0).toString(),
-          platformFee: (platformFee || 0).toString(),
-        },
-      };
-
-      if (hasSavedCard) {
-        // Attach saved card — user won't need to enter card details
-        paymentIntentParams.payment_method = userRecord.stripePaymentMethodId;
-        // Native app path: confirm immediately off-session so no Stripe UI is needed.
-        if (confirmIfSaved) {
-          paymentIntentParams.confirm = true;
-          paymentIntentParams.off_session = true;
-        }
-      } else {
-        // Card is being entered fresh via Stripe Elements — mark it reusable off-session so
-        // the rental+fee PaymentIntent can be charged immediately after this hold is confirmed.
-        paymentIntentParams.setup_future_usage = "off_session";
-      }
-
-      const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams, {
-        // Deterministic key scoped to this attempt: resubmitting the same hold request within
-        // the same attempt (e.g. a page refresh before the user finishes paying) reuses the
-        // same PaymentIntent instead of opening a second authorization on the borrower's card.
-        // `attemptNum` only advances once a prior attempt's PI is found to be terminally
-        // cancelled (see the lock/lookup above), so a genuinely new attempt gets a fresh PI
-        // instead of Stripe forever returning the dead one.
-        idempotencyKey: `deposit-hold-${requestId}-${attemptNum}-${Math.round(depositAmount * 100)}-${Math.round((rentalAmount || 0) * 100)}-${Math.round((processingFee || 0) * 100)}`,
-      });
-
-      // Record this attempt so a future create-payment-hold call for this request (e.g. after
-      // a failed off-session rental charge cancels this PI) can tell it needs a fresh attempt.
-      await db
-        .update(itemRequests)
-        .set({ depositHoldAttemptId: paymentIntent.id, depositHoldAttemptNum: attemptNum })
-        .where(eq(itemRequests.id, requestId));
-
-      const alreadyConfirmed =
-        hasSavedCard &&
-        !!confirmIfSaved &&
-        (paymentIntent.status === "succeeded" || paymentIntent.status === "requires_capture");
-
-      res.json({
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-        hasSavedCard,
-        alreadyConfirmed,
-        depositAmount,
-        rentalAmount,
-        totalHoldAmount: totalChargeAmount,
-      });
+      const result = await createRentalPaymentHold({ requestId, userId: req.user.id, confirmIfSaved });
+      return res.status(result.status).json(result.body);
     } catch (error: any) {
       console.error("Error creating rental payment hold:", error);
       res.status(500).json({ error: "Failed to create rental payment: " + error.message });
@@ -7398,255 +7724,8 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Payment intent ID is required" });
       }
 
-      // The whole verify-charge-and-record sequence runs under the request row's lock so a
-      // duplicate submission (client retry, double-tap, two tabs) cannot charge the rental
-      // fee or create the escrow payout more than once for the same request.
-      const result = await db.transaction(async (tx) => {
-        await tx.execute(sql`
-          SELECT 1 FROM ${itemRequests}
-          WHERE ${itemRequests.id} = ${requestId}
-          FOR UPDATE
-        `);
-
-        const [request] = await tx
-          .select()
-          .from(itemRequests)
-          .innerJoin(items, eq(items.id, itemRequests.itemId))
-          .where(eq(itemRequests.id, requestId))
-          .limit(1);
-
-        if (!request) {
-          return { status: 404, error: "Request not found" };
-        }
-
-        if (request.item_requests.requesterId !== req.user.id) {
-          return { status: 403, error: "Unauthorized" };
-        }
-
-        if (request.item_requests.status !== "ACCEPTED") {
-          // A previous call already confirmed this exact deposit — treat a same-PI retry as
-          // already handled instead of erroring, so a slow response or client retry after a
-          // timeout doesn't look broken (and, crucially, can never re-charge the renter).
-          if (request.item_requests.status === "DEPOSIT_CONFIRMED" && request.item_requests.depositPaymentIntentId === paymentIntentId) {
-            return { status: 200, request: request.item_requests, alreadyConfirmed: true };
-          }
-          return { status: 400, error: "Request is not in accepted state" };
-        }
-
-        // Verify the PaymentIntent with Stripe
-        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-        // Verify payment intent is in the correct state (succeeded = charged, or requires_capture = manual hold)
-        if (paymentIntent.status !== "succeeded" && paymentIntent.status !== "requires_capture") {
-          return { status: 400, error: "Payment has not been completed correctly", stripeStatus: paymentIntent.status };
-        }
-
-        // Verify the payment intent belongs to this request
-        if (paymentIntent.metadata.requestId !== requestId.toString()) {
-          return { status: 400, error: "Payment intent does not match this request" };
-        }
-
-        // Verify the payment intent belongs to this user
-        if (paymentIntent.metadata.userId !== req.user.id.toString()) {
-          return { status: 403, error: "Payment intent does not belong to this user" };
-        }
-
-        // Never trust amounts from this request's body for money movement or bookkeeping —
-        // a client could submit a different rentalAmount/processingFee/depositAmount here than
-        // what was actually authorized when the hold was created (e.g. rentalAmount: 0 to skip
-        // the rental charge while still confirming the booking). Instead, derive every dollar
-        // figure from the PI's metadata, which create-payment-hold set once at creation time
-        // and which a client has no way to rewrite afterward.
-        const depositAmount = parseFloat(paymentIntent.metadata.depositAmount || "0") || 0;
-        const rentalAmount = parseFloat(paymentIntent.metadata.rentalAmount || "0") || 0;
-        const processingFee = parseFloat(paymentIntent.metadata.processingFee || "0") || 0;
-        const platformFee = parseFloat(paymentIntent.metadata.platformFee || "0") || 0;
-
-        // Belt-and-suspenders: for a live manual-capture hold (the new split flow), the PI's
-        // own authorized `amount` must equal the deposit metadata exactly — Stripe itself
-        // enforces this, so any mismatch means the metadata was tampered with or corrupted.
-        if (paymentIntent.status === "requires_capture" && paymentIntent.amount !== Math.round(depositAmount * 100)) {
-          console.error("Deposit PaymentIntent amount does not match its own metadata", paymentIntentId, paymentIntent.amount, depositAmount);
-          return { status: 400, error: "Deposit amount could not be verified" };
-        }
-
-        // The deposit is only authorized (requires_capture) at this point — it is charged later
-        // via the same release/dispute flow as the dedicated deposit-hold endpoint. Charge the
-        // rental amount + processing fee now, as a separate PaymentIntent, using the payment
-        // method that was just attached to the deposit hold. ("succeeded" means this payment
-        // intent predates this split and already charged everything in one go — nothing more to do.)
-        let rentalPaymentIntentId: string | null = null;
-        const rentalChargeAmount = rentalAmount + processingFee;
-        if (paymentIntent.status === "requires_capture" && rentalChargeAmount > 0) {
-          const depositCustomer = typeof paymentIntent.customer === "string" ? paymentIntent.customer : paymentIntent.customer?.id;
-          const depositPaymentMethod = typeof paymentIntent.payment_method === "string" ? paymentIntent.payment_method : paymentIntent.payment_method?.id;
-
-          if (!depositCustomer || !depositPaymentMethod) {
-            console.error("Deposit PaymentIntent is missing customer/payment_method", paymentIntentId);
-            return { status: 500, error: "Payment method could not be verified. Please try again." };
-          }
-
-          try {
-            const rentalPI = await stripe.paymentIntents.create({
-              amount: Math.round(rentalChargeAmount * 100),
-              currency: "usd",
-              customer: depositCustomer,
-              payment_method: depositPaymentMethod,
-              confirm: true,
-              off_session: true,
-              metadata: {
-                type: "rental_payment",
-                requestId: requestId.toString(),
-                userId: req.user.id.toString(),
-                depositPaymentIntentId: paymentIntentId,
-                rentalAmount: (rentalAmount || 0).toString(),
-                processingFee: (processingFee || 0).toString(),
-              },
-              description: `Rental payment for ShareSwap request #${requestId}`,
-            }, {
-              // Deterministic key: retrying this exact confirmation (same deposit hold, same
-              // request) must never create a second rental charge — even if our own
-              // transaction fails to commit after Stripe has already accepted the charge.
-              idempotencyKey: `rental-charge-${requestId}-${paymentIntentId}`,
-            });
-
-            // An off-session confirmation can come back without throwing yet still not have
-            // actually collected the money — e.g. `requires_action` when the card requires
-            // SCA/3DS authentication that off-session can't complete. Only "succeeded" means
-            // the rental fee was actually charged; anything else must not be treated as paid.
-            if (rentalPI.status !== "succeeded") {
-              console.error("Rental PaymentIntent did not succeed after off-session confirmation:", paymentIntentId, rentalPI.id, rentalPI.status);
-              try { await stripe.paymentIntents.cancel(rentalPI.id); } catch (_) {}
-              try { await stripe.paymentIntents.cancel(paymentIntentId); } catch (_) {}
-              return {
-                status: 402,
-                error: rentalPI.status === "requires_action"
-                  ? "Your card requires additional authentication to complete this payment. Please try again from the app so you can confirm it."
-                  : "Failed to charge the rental fee: payment was not completed.",
-                stripeStatus: rentalPI.status,
-                depositReleased: true,
-              };
-            }
-
-            rentalPaymentIntentId = rentalPI.id;
-          } catch (chargeError: any) {
-            console.error("Error charging rental fee after deposit hold:", chargeError);
-            // Release the deposit hold since the rental charge failed — don't leave the
-            // borrower's card authorized for a booking that was never actually paid for.
-            try { await stripe.paymentIntents.cancel(paymentIntentId); } catch (_) {}
-            return { status: 402, error: "Failed to charge the rental fee: " + chargeError.message, depositReleased: true };
-          }
-        }
-
-        // Atomically claim the confirmation. The row lock above already serializes concurrent
-        // callers, so this WHERE clause is a belt-and-suspenders guard against acting twice.
-        const [updated] = await tx
-          .update(itemRequests)
-          .set({
-            status: "DEPOSIT_CONFIRMED",
-            depositPaymentIntentId: paymentIntentId,
-            trustDepositAmount: depositAmount?.toString(),
-            depositStatus: "authorized",
-            depositAuthorizedAt: new Date(),
-            rentalAmount: rentalAmount?.toString(),
-            rentalProcessingFee: processingFee?.toString(),
-            rentalPlatformFee: platformFee?.toString(),
-          })
-          .where(and(eq(itemRequests.id, requestId), eq(itemRequests.status, "ACCEPTED")))
-          .returning();
-
-        if (!updated) {
-          throw Object.assign(new Error("Request was already confirmed."), { status: 409 });
-        }
-
-        // Create escrow record for rental earnings (held until return confirmed).
-        // Commission split: 5% to platform Stripe account, 95% to owner pending balance.
-        // First 3 transactions per requester are free — owner receives 100%.
-        // The Stripe processing fee (~2.9% + $0.30) is absorbed by the platform from its 5% cut,
-        // so it is never deducted from the owner's share.
-        if (rentalAmount && rentalAmount > 0) {
-          const actualRentalAmount = rentalAmount;
-          const [{ count: rentalTxCount }] = await tx
-            .select({ count: sql<number>`COUNT(*)` })
-            .from(itemRequests)
-            .where(and(
-              eq(itemRequests.requesterId, request.item_requests.requesterId),
-              inArray(itemRequests.status, ["ACTIVE", "RETURNED", "COMPLETED"]),
-            ));
-          // Check renter's subscription tier — Pro gets reduced 2% platform fee
-          const [renterSubRecord] = await tx
-            .select({ subscriptionTier: users.subscriptionTier })
-            .from(users)
-            .where(eq(users.id, request.item_requests.requesterId))
-            .limit(1);
-          const renterTier = (renterSubRecord as any)?.subscriptionTier || 'free';
-          const commissionRate = renterTier === 'pro' ? 0.04 : 0.05;
-
-          const freeCommissionPeriod = Number(rentalTxCount) < 3;
-          const actualPlatformFee = freeCommissionPeriod
-            ? 0                                    // free period — no platform cut
-            : parseFloat((actualRentalAmount * commissionRate).toFixed(2));
-          const netAmount = parseFloat((actualRentalAmount - actualPlatformFee).toFixed(2));
-
-          if (freeCommissionPeriod) {
-            console.log(`🎉 Platform fee waived (first 3 transactions free) — owner receives full $${netAmount.toFixed(2)}`);
-          } else {
-            console.log(`💰 Platform fee $${actualPlatformFee.toFixed(2)} (${renterTier === 'pro' ? '2% Pro rate' : '5% standard'}) — owner receives $${netAmount.toFixed(2)}`);
-          }
-
-          // Create held payout record for the owner
-          await tx.insert(rentalPayouts).values({
-            userId: request.items.ownerId!,
-            requestId: requestId,
-            amount: actualRentalAmount.toString(),
-            rentalAmount: actualRentalAmount.toString(),
-            platformFee: actualPlatformFee.toFixed(2),
-            processingFee: "0.00",
-            netAmount: netAmount.toFixed(2),
-            status: 'held',
-            stripePaymentIntentId: rentalPaymentIntentId ?? paymentIntentId,
-            holdUntil: request.item_requests.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          });
-
-          // Add to owner's pending balance
-          await tx
-            .update(users)
-            .set({
-              pendingRentalBalance: sql`COALESCE(${users.pendingRentalBalance}, 0) + ${netAmount.toFixed(2)}`,
-            })
-            .where(eq(users.id, request.items.ownerId!));
-
-          console.log(`Created escrow for $${netAmount.toFixed(2)} rental earnings (held until return) for owner ${request.items.ownerId}`);
-        }
-
-        // Notify both parties that the deposit authorization is in place
-        await tx.insert(messages).values({
-          content: "🔒 Security deposit authorized — your card is not charged unless damage is reported.",
-          senderId: request.items.ownerId!,
-          receiverId: request.item_requests.requesterId,
-          messageType: "system",
-          requestId,
-        });
-
-        return { status: 200, request: updated };
-      });
-
-      if (result.status !== 200) {
-        return res.status(result.status).json({
-          error: result.error,
-          ...(result.stripeStatus ? { status: result.stripeStatus } : {}),
-          ...(result.depositReleased ? { depositReleased: true } : {}),
-        });
-      }
-
-      res.json({
-        success: true,
-        request: result.request,
-        nextStep: "await_handoff",
-        message: result.alreadyConfirmed
-          ? "Rental deposit was already confirmed."
-          : "Rental deposit authorized successfully. Payment secured.",
-      });
+      const result = await confirmRentalDeposit({ requestId, userId: req.user.id, paymentIntentId });
+      return res.status(result.status).json(result.body);
     } catch (error: any) {
       if (error?.status) {
         return res.status(error.status).json({ error: error.message });

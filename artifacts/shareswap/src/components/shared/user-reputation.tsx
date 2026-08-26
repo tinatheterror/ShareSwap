@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Star, Award, Clock } from "lucide-react";
 import { format } from "date-fns";
+import { formatUtcCalendarDate } from "@/lib/utils";
 
 type ReputationActivity = {
   activityType: string;
   points: number;
   description: string;
-  createdAt: string;
+  createdAt?: string | null;
 };
 
 type UserReview = {
@@ -73,16 +74,16 @@ export function UserReputation({ userId }: Props) {
           <CardTitle>Recent Activities</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {reputation.recentActivities.map((activity: ReputationActivity) => (
+          {reputation.recentActivities.map((activity: ReputationActivity, index: number) => (
             <div
-              key={activity.createdAt}
+              key={`${activity.createdAt ?? "unknown"}-${index}`}
               className="flex items-center justify-between"
             >
               <div>
                 <p className="font-medium">{activity.description}</p>
                 <p className="text-sm text-muted-foreground">
                   <Clock className="w-3 h-3 inline mr-1" />
-                  {format(new Date(activity.createdAt), "MMM d, yyyy")}
+                  {formatUtcCalendarDate(activity.createdAt)}
                 </p>
               </div>
               <Badge variant="secondary">+{activity.points} points</Badge>

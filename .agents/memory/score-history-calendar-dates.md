@@ -8,3 +8,5 @@ Score-history activity is displayed using its **UTC calendar day** (`Mon DD, YYY
 **Why:** A recorded activity near UTC midnight must retain one stable calendar date across web and native clients, regardless of the member's local timezone.
 
 **How to apply:** Reuse this rule for score-history and reputation-activity date displays that represent the recorded activity day. Do not apply it to interfaces intended to show the member's local time of day.
+
+A shared `formatUtcCalendarDate` helper lives in `artifacts/shareswap/src/lib/utils.ts` — reuse it instead of re-deriving the UTC-day/en-dash logic per component. The reputation panel's "Recent Reviews" dates still use local-timezone formatting (not activity dates), tracked as a separate follow-up.

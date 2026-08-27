@@ -337,6 +337,19 @@ export const itemRequests = pgTable("item_requests", {
   depositStatus: text("deposit_status"), // 'pending' | 'authorized' | 'held' | 'released' | 'captured' | 'failed'
   depositPaymentIntentId: text("deposit_payment_intent_id"), // Stripe payment intent ID for the authorization hold
   depositAuthorizedAt: timestamp("deposit_authorized_at"),
+  // Stripe reports the exact card-network authorization deadline on the latest
+  // charge. Renewal state is persisted so web/native clients can surface an
+  // actionable warning and background retries remain safe across restarts.
+  depositAuthorizationExpiresAt: timestamp("deposit_authorization_expires_at"),
+  depositRenewalStatus: text("deposit_renewal_status"), // null | 'healthy' | 'failed'
+  depositRenewalAttemptedAt: timestamp("deposit_renewal_attempted_at"),
+  depositRenewalError: text("deposit_renewal_error"),
+  depositRenewalCount: integer("deposit_renewal_count").default(0),
+  // Kept until the replaced hold is successfully cancelled. A later sweep can
+  // finish cleanup without ever losing the reference to the live new hold.
+  depositPreviousPaymentIntentId: text("deposit_previous_payment_intent_id"),
+  depositOperationToken: text("deposit_operation_token"),
+  depositOperationType: text("deposit_operation_type"),
   depositReleasedAt: timestamp("deposit_released_at"),
   // Tracks the most recent deposit-hold PaymentIntent created by /api/rentals/create-payment-hold,
   // before it's confirmed (depositPaymentIntentId above is only set on successful confirmation).

@@ -8,3 +8,4 @@
 - [Borrow lifecycle transaction locking](borrow-lifecycle-transaction-locking.md) — serialize extension and follow-up state changes on the request row so concurrent actions cannot split due dates, credits, or alerts.
 - [Score-history calendar dates](score-history-calendar-dates.md) — score activity uses the recorded UTC calendar day on web and native, never the viewer’s local date.
 - [Stripe deposit-hold vs charge split](stripe-deposit-vs-charge-split.md) — use two PaymentIntents (manual-capture hold + off-session auto-charge) instead of partial capture to hold a deposit and charge a fee together.
+- [Stripe hold renewal safety](stripe-hold-renewal-safety.md) — claim renewal before Stripe work, require exact capture deadlines, and never orphan an old hold whose cancellation is still pending.

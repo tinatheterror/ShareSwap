@@ -5,6 +5,7 @@ import { setupStorageRoutes } from "./storage";
 import { initializeSampleGames } from "./init-games";
 import { initializeAchievements, initializeSubscriptionPlans } from "./init-achievements";
 import { startRateLimitCleanup } from "./auth";
+import { applyStartupMigrations } from "./startup-migrations";
 
 const rawPort = process.env["PORT"];
 
@@ -18,14 +19,14 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-// Setup storage routes
-setupStorageRoutes(app);
+async function start() {
+  // Apply idempotent SQL before any route or background worker can access new
+  // columns. This also covers deployed instances where drizzle-kit is absent.
+  await applyStartupMigrations();
 
-// Register all app routes (returns HTTP server with WebSocket support)
-const httpServer = registerRoutes(app);
+  setupStorageRoutes(app);
+  const httpServer = registerRoutes(app);
 
-// Initialize features
-(async () => {
   try {
     await initializeSampleGames();
     await initializeAchievements();
@@ -34,14 +35,19 @@ const httpServer = registerRoutes(app);
   } catch (err) {
     logger.error({ err }, "Failed to initialize features");
   }
-})();
 
-httpServer.listen(port, "0.0.0.0", () => {
-  logger.info({ port }, "Server listening");
-  startRateLimitCleanup();
-});
+  httpServer.listen(port, "0.0.0.0", () => {
+    logger.info({ port }, "Server listening");
+    startRateLimitCleanup();
+  });
 
-httpServer.on("error", (err: NodeJS.ErrnoException) => {
-  logger.error({ err }, "Server error");
+  httpServer.on("error", (err: NodeJS.ErrnoException) => {
+    logger.error({ err }, "Server error");
+    process.exit(1);
+  });
+}
+
+start().catch((err) => {
+  logger.error({ err }, "Failed to apply startup database migrations");
   process.exit(1);
 });

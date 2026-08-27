@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import {
   MessageCircle,
   Send,
@@ -37,6 +38,7 @@ import {
   Zap,
   Coins,
   ArrowLeftRight,
+  AlertTriangle,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -159,6 +161,10 @@ interface ItemRequest {
   trustDiscountPercentage: number | null;
   shareCoinAmount: string | null;
   depositStatus: string | null;
+  depositRenewalStatus: string | null;
+  depositRenewalAttemptedAt: string | null;
+  depositRenewalError: string | null;
+  depositAuthorizationExpiresAt: string | null;
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
   returnDisputeTriggered: boolean | null;
@@ -585,6 +591,51 @@ export function ChatWidget() {
           variant: "destructive",
         });
       }
+    },
+  });
+
+  const renewDepositMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const response = await apiRequest("POST", `/api/requests/${requestId}/renew-deposit`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+
+      if (data.status === "failed") {
+        toast({
+          title: "Renewal failed",
+          description: data.error || "Please update your payment method.",
+          variant: "destructive",
+          action: (
+            <ToastAction altText="Update Payment Method" onClick={() => navigate("/payment-methods")}>
+              Update
+            </ToastAction>
+          ),
+        });
+      } else if (data.status === "renewed") {
+        toast({
+          title: "Deposit renewed",
+          description: "Your security deposit hold has been extended successfully.",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Deposit status updated.",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to renew deposit hold",
+        variant: "destructive",
+        action: (
+          <ToastAction altText="Update Payment Method" onClick={() => navigate("/payment-methods")}>
+            Update
+          </ToastAction>
+        ),
+      });
     },
   });
 
@@ -1309,6 +1360,35 @@ export function ChatWidget() {
             </div>
           </div>
         </button>
+
+        {/* Payment Warning Blocks */}
+        {request.depositRenewalStatus === "failed" && !["COMPLETED", "CANCELLED", "DECLINED"].includes(request.status) && (
+          <div className="mt-2 mb-2 p-2 bg-red-50 border border-red-200 rounded-md">
+            {isBorrower ? (
+              <>
+                <p className="text-xs font-medium text-red-800 mb-2">
+                  <AlertTriangle className="h-3 w-3 inline mr-1" />
+                  The deposit hold could not be renewed automatically.
+                </p>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="w-full h-8 text-xs"
+                  onClick={(e) => { e.stopPropagation(); renewDepositMutation.mutate(request.id); }}
+                  disabled={renewDepositMutation.isPending}
+                >
+                  <RotateCcw className="h-3 w-3 mr-1.5" />
+                  Retry Deposit Hold
+                </Button>
+              </>
+            ) : (
+              <p className="text-xs font-medium text-red-800">
+                <AlertTriangle className="h-3 w-3 inline mr-1" />
+                The renter's deposit hold could not be renewed. They have been asked to update payment.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Action buttons */}
         <div className="flex flex-wrap gap-2 mt-3">

@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { Shield, Coins, Calendar, CreditCard } from "lucide-react-native";
+import { Shield, Coins, Calendar, CreditCard, ShieldAlert } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiPatch, photoUrl } from "@/lib/api";
 import { fmtCalendarDate, fmtDate as fmtDateUtil, safeDate } from "@/lib/dateUtils";
@@ -101,6 +101,10 @@ interface ItemRequest {
   actualHandoffAt: string | null;
   returnDelayNotifiedAt: string | null;
   returnDelayFollowUpNotifiedAt: string | null;
+  depositRenewalStatus: string | null;
+  depositRenewalAttemptedAt: string | null;
+  depositRenewalError: string | null;
+  depositAuthorizationExpiresAt: string | null;
   // Co-confirmation fields returned by GET /api/requests (routes.ts:5173-5174)
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
@@ -487,6 +491,35 @@ export default function ChatScreen() {
       Alert.alert("Error", e.message || "Could not respond to extension"),
   });
 
+  const renewDepositMutation = useMutation({
+    mutationFn: () => apiPost<{ status: string; error?: string }>(`/api/requests/${requestId}/renew-deposit`, {}),
+    onSuccess: (data) => {
+      if (data.status === "failed") {
+        Alert.alert(
+          "Renewal Failed",
+          data.error || "Could not renew deposit. Please update your payment method.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Update Payment", onPress: () => router.push("/payment-methods" as never) },
+          ]
+        );
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        invalidateAll();
+      }
+    },
+    onError: (e: any) => {
+      Alert.alert(
+        "Renewal Failed",
+        e.message || "Could not renew deposit. Please update your payment method.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Update Payment", onPress: () => router.push("/payment-methods" as never) },
+        ]
+      );
+    },
+  });
+
   const notifyDelayMutation = useMutation({
     mutationFn: () =>
       apiPost(`/api/requests/${requestId}/notify-delay`, {}),
@@ -623,6 +656,40 @@ export default function ChatScreen() {
             )}
           </View>
         </View>
+
+        {request.depositRenewalStatus === "failed" && (
+          <View style={[card.counterBanner, { backgroundColor: "#fef2f2", borderColor: "#fecaca", margin: 12, marginTop: 0 }]}>
+             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                <ShieldAlert size={16} color="#dc2626" />
+                <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#991b1b" }}>
+                  Deposit Hold Needs Attention
+                </Text>
+             </View>
+             {isBorrower ? (
+               <View>
+                 <Text style={{ fontSize: 13, color: "#991b1b", marginBottom: 8, lineHeight: 18 }}>
+                   We couldn't renew the security deposit hold. Please retry or update your payment method.
+                 </Text>
+                 <Pressable
+                   style={[card.btn, { backgroundColor: "#ef4444", borderColor: "#ef4444" }]}
+                   onPress={() => renewDepositMutation.mutate()}
+                   disabled={renewDepositMutation.isPending}
+                   accessibilityLabel="Retry Deposit Hold"
+                 >
+                   {renewDepositMutation.isPending ? (
+                     <ActivityIndicator color="#fff" size="small" />
+                   ) : (
+                     <Text style={[card.btnLabel, { color: "#fff" }]}>Retry Deposit Hold</Text>
+                   )}
+                 </Pressable>
+               </View>
+             ) : (
+               <Text style={{ fontSize: 13, color: "#991b1b", lineHeight: 18 }}>
+                 The borrower's deposit hold renewal failed. They have been notified to fix it.
+               </Text>
+             )}
+          </View>
+        )}
 
         {/* ── Actions ── */}
         {!isTerminal && (

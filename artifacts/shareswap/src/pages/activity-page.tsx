@@ -6,7 +6,7 @@ import { useLocation } from "wouter";
 import {
   Bell, Package, Heart, AlertCircle, CheckCircle2, ArrowLeftRight, Shield,
   Trophy, TrendingUp, Coins, Clock, Flag, Truck, Gift, FileText, Star,
-  RotateCcw, Users, Unlock, DollarSign, ShieldAlert, Zap, ChevronRight,
+  RotateCcw, Users, Unlock, DollarSign, ShieldAlert, Zap, ChevronRight, AlertTriangle,
 } from "lucide-react";
 import type { SelectNotification } from "@db/schema";
 import { useState } from "react";
@@ -28,6 +28,7 @@ const TRANSACTION_TYPES = new Set([
   "dispute_opened", "dispute_resolved",
   "delivery_confirmed", "courier_issue",
   "gift_handoff_pending", "gift_completed",
+  "deposit_renewal_failed",
 ]);
 
 const TRUST_TYPES = new Set([
@@ -85,6 +86,7 @@ function getIcon(type: string) {
     case "request_accepted": case "terms_accepted": return <CheckCircle2 className={`${cls} text-green-600`} />;
     case "request_declined": case "terms_declined": return <AlertCircle className={`${cls} text-red-500`} />;
     case "request_cancelled": return <AlertCircle className={`${cls} text-red-500`} />;
+    case "deposit_renewal_failed": return <AlertTriangle className={`${cls} text-red-500`} />;
     case "terms_counter_proposed": return <FileText className={`${cls} text-amber-500`} />;
     case "wishlist_match": return <Heart className={`${cls} text-pink-500`} />;
     case "swap_match": return <ArrowLeftRight className={`${cls} text-teal-500`} />;

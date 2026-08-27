@@ -40,6 +40,14 @@ import { platformConfig, calculateCommission } from "../platform-config";
 import { AntiFarmingSystem } from "../anti-farming-system";
 import { sendPushToUser, sendPushToUsers } from "../push-notifications";
 import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChangeAlertEmail } from "../sendgrid";
+import {
+  claimDepositTerminalAction,
+  getPaymentIntentCaptureBefore,
+  processExpiringDepositHolds,
+  releaseDepositTerminalClaim,
+  resolveClaimedDepositIntents,
+  renewDepositHold,
+} from "../deposit-renewal-service";
 
 // Notify all availability subscribers that an item is back
 async function notifyAvailabilitySubscribers(itemId: number, itemName: string) {
@@ -1220,7 +1228,9 @@ export async function confirmRentalDeposit({
     }
 
     // Verify the PaymentIntent with Stripe
-    const paymentIntent = await stripeClient.paymentIntents.retrieve(paymentIntentId);
+    const paymentIntent = await stripeClient.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["latest_charge"],
+    });
 
     // Verify payment intent is in the correct state (succeeded = charged, or requires_capture = manual hold)
     if (paymentIntent.status !== "succeeded" && paymentIntent.status !== "requires_capture") {
@@ -1334,6 +1344,9 @@ export async function confirmRentalDeposit({
         trustDepositAmount: depositAmount?.toString(),
         depositStatus: "authorized",
         depositAuthorizedAt: new Date(),
+        depositAuthorizationExpiresAt: getPaymentIntentCaptureBefore(paymentIntent),
+        depositRenewalStatus: "healthy",
+        depositRenewalError: null,
         rentalAmount: rentalAmount?.toString(),
         rentalProcessingFee: processingFee?.toString(),
         rentalPlatformFee: platformFee?.toString(),
@@ -5838,6 +5851,10 @@ Respond with ONLY the category name, nothing else.`
         trustDiscountPercentage: itemRequests.trustDiscountPercentage,
         shareCoinAmount: itemRequests.shareCoinAmount,
         depositStatus: itemRequests.depositStatus,
+        depositAuthorizationExpiresAt: itemRequests.depositAuthorizationExpiresAt,
+        depositRenewalStatus: itemRequests.depositRenewalStatus,
+        depositRenewalAttemptedAt: itemRequests.depositRenewalAttemptedAt,
+        depositRenewalError: itemRequests.depositRenewalError,
         // Negotiation / counter-proposal
         negotiationStatus: itemRequests.negotiationStatus,
         counterDeliveryMethod: itemRequests.counterDeliveryMethod,
@@ -5931,6 +5948,10 @@ Respond with ONLY the category name, nothing else.`
       trustDiscountPercentage: r.trustDiscountPercentage,
       shareCoinAmount: r.shareCoinAmount,
       depositStatus: r.depositStatus,
+      depositAuthorizationExpiresAt: r.depositAuthorizationExpiresAt,
+      depositRenewalStatus: r.depositRenewalStatus,
+      depositRenewalAttemptedAt: r.depositRenewalAttemptedAt,
+      depositRenewalError: r.depositRenewalError,
       negotiationStatus: r.negotiationStatus,
       counterDeliveryMethod: r.counterDeliveryMethod,
       counterDepositMethod: r.counterDepositMethod,
@@ -7187,21 +7208,54 @@ Respond with ONLY the category name, nothing else.`
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
+    return res.status(410).json({
+      error: "Direct deposit capture is disabled. Resolve deposits through the request dispute workflow.",
+    });
 
+    /* Legacy implementation retained temporarily for response-shape reference.
     try {
-      const { paymentIntentId, reason, amount, requestId } = req.body;
+      const { paymentIntentId, reason, requestId } = req.body;
 
-      if (!paymentIntentId) {
-        return res.status(400).json({ error: "Payment intent ID required" });
+      if (!paymentIntentId || !requestId) {
+        return res.status(400).json({ error: "Payment intent ID and request ID required" });
       }
-
-      // Capture the payment (charge the customer)
-      const capturedPayment = await stripe.paymentIntents.capture(paymentIntentId, {
-        amount_to_capture: amount ? Math.round(amount * 100) : undefined,
-      });
+      const requestNumber = parseInt(requestId);
+      const [authorizedRequest] = await db.select({
+        requesterId: itemRequests.requesterId,
+        ownerId: items.ownerId,
+      }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestNumber)).limit(1);
+      if (!authorizedRequest) return res.status(404).json({ error: "Request not found" });
+      if (![authorizedRequest.requesterId, authorizedRequest.ownerId].includes(req.user.id)) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      const terminalClaim = await claimDepositTerminalAction(requestNumber, "capture");
+      if (terminalClaim.status !== "claimed") {
+        return res.status(409).json({ error: terminalClaim.reason });
+      }
+      if (terminalClaim.request.depositPaymentIntentId !== paymentIntentId) {
+        await releaseDepositTerminalClaim(terminalClaim);
+        return res.status(409).json({ error: "Deposit authorization changed; refresh and retry" });
+      }
+      await resolveClaimedDepositIntents(terminalClaim, stripe as any, "capture");
+      const [capturedPayment] = await Promise.all([
+        stripe.paymentIntents.retrieve(paymentIntentId),
+        db.update(itemRequests).set({
+          depositStatus: "captured",
+          depositPreviousPaymentIntentId: null,
+          depositRenewalStatus: null,
+          depositOperationToken: null,
+          depositOperationType: null,
+        }).where(and(
+          eq(itemRequests.id, requestNumber),
+          eq(itemRequests.depositPaymentIntentId, paymentIntentId),
+          eq(itemRequests.depositRenewalStatus, "terminal_action"),
+          eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+        )),
+      ]);
 
       // Apply deposit claimed penalty to the borrower/renter
-      if (capturedPayment.status === "succeeded" && requestId) {
+      if (capturedPayment.status === "succeeded") {
         try {
           const [request] = await db
             .select()
@@ -7234,6 +7288,7 @@ Respond with ONLY the category name, nothing else.`
       console.error("Error capturing deposit:", error);
       res.status(500).json({ error: "Failed to capture deposit: " + error.message });
     }
+    */
   });
 
   // Cancel deposit hold (refund on safe return)
@@ -7241,16 +7296,50 @@ Respond with ONLY the category name, nothing else.`
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
+    return res.status(410).json({
+      error: "Direct deposit cancellation is disabled. Release deposits through the request return or cancellation workflow.",
+    });
 
+    /* Legacy implementation retained temporarily for response-shape reference.
     try {
-      const { paymentIntentId } = req.body;
+      const { paymentIntentId, requestId } = req.body;
 
-      if (!paymentIntentId) {
-        return res.status(400).json({ error: "Payment intent ID required" });
+      if (!paymentIntentId || !requestId) {
+        return res.status(400).json({ error: "Payment intent ID and request ID required" });
       }
-
-      // Cancel the payment intent (release the hold)
-      const canceledPayment = await stripe.paymentIntents.cancel(paymentIntentId);
+      const requestNumber = parseInt(requestId);
+      const [authorizedRequest] = await db.select({
+        requesterId: itemRequests.requesterId,
+        ownerId: items.ownerId,
+      }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestNumber)).limit(1);
+      if (!authorizedRequest) return res.status(404).json({ error: "Request not found" });
+      if (![authorizedRequest.requesterId, authorizedRequest.ownerId].includes(req.user.id)) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      const terminalClaim = await claimDepositTerminalAction(requestNumber, "cancel");
+      if (terminalClaim.status !== "claimed") {
+        return res.status(409).json({ error: terminalClaim.reason });
+      }
+      if (terminalClaim.request.depositPaymentIntentId !== paymentIntentId) {
+        await releaseDepositTerminalClaim(terminalClaim);
+        return res.status(409).json({ error: "Deposit authorization changed; refresh and retry" });
+      }
+      await resolveClaimedDepositIntents(terminalClaim, stripe as any, "cancel");
+      await db.update(itemRequests).set({
+        depositStatus: "released",
+        depositReleasedAt: new Date(),
+        depositPreviousPaymentIntentId: null,
+        depositRenewalStatus: null,
+        depositOperationToken: null,
+        depositOperationType: null,
+      }).where(and(
+        eq(itemRequests.id, requestNumber),
+        eq(itemRequests.depositPaymentIntentId, paymentIntentId),
+        eq(itemRequests.depositRenewalStatus, "terminal_action"),
+        eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+      ));
+      const canceledPayment = await stripe.paymentIntents.retrieve(paymentIntentId);
 
       res.json({
         success: true,
@@ -7261,6 +7350,7 @@ Respond with ONLY the category name, nothing else.`
       console.error("Error canceling deposit:", error);
       res.status(500).json({ error: "Failed to cancel deposit: " + error.message });
     }
+    */
   });
 
   // =====================================
@@ -7735,6 +7825,41 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Renter-initiated retry for an expiring or previously failed card-deposit
+  // renewal. The service re-verifies all payment details directly with Stripe.
+  app.post("/api/requests/:requestId/renew-deposit", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requestId = parseInt(req.params.requestId);
+      if (!Number.isInteger(requestId)) {
+        return res.status(400).json({ error: "Invalid request ID" });
+      }
+
+      const [request] = await db
+        .select({ requesterId: itemRequests.requesterId })
+        .from(itemRequests)
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+      if (!request) return res.status(404).json({ error: "Request not found" });
+      if (request.requesterId !== req.user.id) {
+        return res.status(403).json({ error: "Only the renter can renew this deposit authorization" });
+      }
+
+      const result = await renewDepositHold({
+        requestId,
+        stripeClient: stripe,
+        force: true,
+      });
+      if (result.status === "failed") {
+        return res.status(402).json(result);
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Error retrying deposit renewal:", error);
+      res.status(500).json({ error: "Failed to retry the deposit authorization" });
+    }
+  });
+
   // =====================================
   // BORROW TRANSACTION LIFECYCLE ENDPOINTS
   // =====================================
@@ -7848,6 +7973,24 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
+      // Read the exact card-network authorization deadline from Stripe. The
+      // renewal sweep uses this instead of assuming all holds last seven days.
+      let depositAuthorizationExpiresAt: Date | null = null;
+      if (paymentIntentId) {
+        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+          expand: ["latest_charge"],
+        });
+        if (paymentIntent.status !== "requires_capture") {
+          return res.status(400).json({ error: "Deposit authorization is not active" });
+        }
+        const requestMetadataId = paymentIntent.metadata.requestId ?? paymentIntent.metadata.request_id;
+        const userMetadataId = paymentIntent.metadata.userId ?? paymentIntent.metadata.user_id;
+        if (requestMetadataId !== requestId.toString() || userMetadataId !== req.user.id.toString()) {
+          return res.status(400).json({ error: "Deposit authorization does not match this request" });
+        }
+        depositAuthorizationExpiresAt = getPaymentIntentCaptureBefore(paymentIntent);
+      }
+
       // Update request with deposit info
       const [updated] = await db
         .update(itemRequests)
@@ -7860,6 +8003,9 @@ Respond with ONLY the category name, nothing else.`
           depositStatus: "authorized",
           depositPaymentIntentId: paymentIntentId,
           depositAuthorizedAt: new Date(),
+          depositAuthorizationExpiresAt,
+          depositRenewalStatus: paymentIntentId ? "healthy" : null,
+          depositRenewalError: null,
           platformFeeChargeId: platformFeeChargeId ?? null,
           shareCoinAmount: shareCoinAmount?.toString(),
         })
@@ -7982,14 +8128,26 @@ Respond with ONLY the category name, nothing else.`
         });
       }
 
-      // Release any held deposit via Stripe before cancelling
-      if (request.item_requests.depositPaymentIntentId) {
-        try {
-          await stripe.paymentIntents.cancel(request.item_requests.depositPaymentIntentId);
-        } catch (stripeError: any) {
-          console.error("Error releasing deposit on cancel:", stripeError);
-          // Continue with cancellation even if Stripe fails
-        }
+      const terminalClaim = await claimDepositTerminalAction(requestId, "cancel");
+      if (terminalClaim.status !== "claimed") {
+        return res.status(409).json({ error: terminalClaim.reason });
+      }
+      const currentRequest = terminalClaim.request;
+      if (!cancelableStatuses.includes(currentRequest.status)) {
+        await releaseDepositTerminalClaim(terminalClaim);
+        return res.status(409).json({ error: "Request changed before cancellation could complete" });
+      }
+      try {
+        await resolveClaimedDepositIntents(terminalClaim, stripe as any, "cancel");
+      } catch (stripeError: any) {
+        console.error("Error releasing deposit on cancel:", stripeError);
+        await db.update(itemRequests).set({ depositRenewalStatus: "failed" }).where(and(
+          eq(itemRequests.id, requestId),
+          eq(itemRequests.depositRenewalStatus, "terminal_action"),
+          eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+          eq(itemRequests.depositOperationType, terminalClaim.operationType),
+        ));
+        return res.status(502).json({ error: "Could not release the deposit hold. Please retry." });
       }
 
       // Update request status to CANCELLED
@@ -7997,14 +8155,28 @@ Respond with ONLY the category name, nothing else.`
         .update(itemRequests)
         .set({
           status: "CANCELLED",
-          depositStatus: request.item_requests.depositPaymentIntentId ? "released" : null,
-          depositReleasedAt: request.item_requests.depositPaymentIntentId ? new Date() : null,
+          depositStatus: currentRequest.depositPaymentIntentId ? "released" : null,
+          depositReleasedAt: currentRequest.depositPaymentIntentId ? new Date() : null,
+          depositPreviousPaymentIntentId: null,
+          depositRenewalStatus: null,
+          depositOperationToken: null,
+          depositOperationType: null,
           // Keep the cancelled thread in the active inbox until the other
           // party reads the cancellation event.
           unarchivedAt: new Date(),
         })
-        .where(eq(itemRequests.id, requestId))
+        .where(and(
+          eq(itemRequests.id, requestId),
+          eq(itemRequests.depositRenewalStatus, "terminal_action"),
+          eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+          currentRequest.depositPaymentIntentId
+            ? eq(itemRequests.depositPaymentIntentId, currentRequest.depositPaymentIntentId)
+            : isNull(itemRequests.depositPaymentIntentId),
+        ))
         .returning();
+      if (!updated) {
+        return res.status(409).json({ error: "Deposit changed before cancellation could complete" });
+      }
 
       // Make item available again
       await db
@@ -9359,21 +9531,47 @@ Respond with ONLY the category name, nothing else.`
         const ownerId2 = row.items.ownerId!;
         const requesterId2 = row.item_requests.requesterId;
 
-        // Release any Stripe deposit hold
-        if (row.item_requests.depositPaymentIntentId) {
-          try {
-            await stripe.paymentIntents.cancel(row.item_requests.depositPaymentIntentId);
-          } catch (_) {}
+        const terminalClaim = await claimDepositTerminalAction(reqId, "cancel", now);
+        if (terminalClaim.status !== "claimed") continue;
+        const currentRequest = terminalClaim.request;
+        if (currentRequest.status !== "AWAITING_HANDOFF_CONFIRM") {
+          await releaseDepositTerminalClaim(terminalClaim);
+          continue;
+        }
+        try {
+          await resolveClaimedDepositIntents(terminalClaim, stripe as any, "cancel");
+        } catch (stripeError) {
+          console.error("Error releasing deposit on handoff timeout:", stripeError);
+          await db.update(itemRequests).set({ depositRenewalStatus: "failed" }).where(and(
+            eq(itemRequests.id, reqId),
+            eq(itemRequests.depositRenewalStatus, "terminal_action"),
+            eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+            eq(itemRequests.depositOperationType, terminalClaim.operationType),
+          ));
+          continue;
         }
 
-        await db.update(itemRequests)
+        const [finalizedTimeout] = await db.update(itemRequests)
           .set({
             status: "CANCELLED",
             unarchivedAt: new Date(),
-            depositStatus: row.item_requests.depositPaymentIntentId ? "released" : null,
-            depositReleasedAt: row.item_requests.depositPaymentIntentId ? now : null,
+            depositStatus: currentRequest.depositPaymentIntentId ? "released" : null,
+            depositReleasedAt: currentRequest.depositPaymentIntentId ? now : null,
+            depositPreviousPaymentIntentId: null,
+            depositRenewalStatus: null,
+            depositOperationToken: null,
+            depositOperationType: null,
           })
-          .where(eq(itemRequests.id, reqId));
+          .where(and(
+            eq(itemRequests.id, reqId),
+            eq(itemRequests.depositRenewalStatus, "terminal_action"),
+            eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+            currentRequest.depositPaymentIntentId
+              ? eq(itemRequests.depositPaymentIntentId, currentRequest.depositPaymentIntentId)
+              : isNull(itemRequests.depositPaymentIntentId),
+          ))
+          .returning({ id: itemRequests.id });
+        if (!finalizedTimeout) continue;
 
         await db.update(items)
           .set({ isAvailable: true, updatedAt: new Date() })
@@ -9739,6 +9937,18 @@ Respond with ONLY the category name, nothing else.`
       if (request.item_requests.status !== "RETURN_REQUESTED") {
         return res.status(400).json({ error: "No return pending" });
       }
+      const terminalClaim = await claimDepositTerminalAction(
+        requestId,
+        triggerDispute ? "dispute" : "cancel",
+      );
+      if (terminalClaim.status !== "claimed") {
+        return res.status(409).json({ error: terminalClaim.reason });
+      }
+      const currentRequest = terminalClaim.request;
+      if (currentRequest.status !== "RETURN_REQUESTED") {
+        await releaseDepositTerminalClaim(terminalClaim);
+        return res.status(409).json({ error: "Request changed before the return could complete" });
+      }
 
       // Handle dispute if owner reports damage
       if (triggerDispute) {
@@ -9754,9 +9964,22 @@ Respond with ONLY the category name, nothing else.`
             returnDisputeReason: conditionNotes || "Item returned in damaged condition",
             returnDisputePhotoUrl: disputePhotoUrl || null,
             depositStatus: "disputed",
+            depositRenewalStatus: "healthy",
+            depositOperationToken: null,
+            depositOperationType: null,
           })
-          .where(eq(itemRequests.id, requestId))
+          .where(and(
+            eq(itemRequests.id, requestId),
+            eq(itemRequests.depositRenewalStatus, "terminal_action"),
+            eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+            currentRequest.depositPaymentIntentId
+              ? eq(itemRequests.depositPaymentIntentId, currentRequest.depositPaymentIntentId)
+              : isNull(itemRequests.depositPaymentIntentId),
+          ))
           .returning();
+        if (!disputed) {
+          return res.status(409).json({ error: "Deposit changed before the dispute could open" });
+        }
 
         // Mark item as unavailable until dispute resolved
         await db
@@ -9792,10 +10015,10 @@ Respond with ONLY the category name, nothing else.`
         });
       }
 
-      // Release the deposit via Stripe
-      if (request.item_requests.depositPaymentIntentId) {
+      // Release all deposit authorizations claimed for this request.
+      if (currentRequest.depositPaymentIntentId || currentRequest.depositPreviousPaymentIntentId) {
         try {
-          await stripe.paymentIntents.cancel(request.item_requests.depositPaymentIntentId);
+          await resolveClaimedDepositIntents(terminalClaim, stripe as any, "cancel");
           // Notify borrower their deposit hold has been lifted
           await db.insert(notifications).values({
             userId: request.item_requests.requesterId,
@@ -9808,7 +10031,13 @@ Respond with ONLY the category name, nothing else.`
           });
         } catch (stripeError: any) {
           console.error("Error releasing deposit:", stripeError);
-          // Continue even if Stripe fails - we don't want to block the return
+          await db.update(itemRequests).set({ depositRenewalStatus: "failed" }).where(and(
+            eq(itemRequests.id, requestId),
+            eq(itemRequests.depositRenewalStatus, "terminal_action"),
+            eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+            eq(itemRequests.depositOperationType, terminalClaim.operationType),
+          ));
+          return res.status(502).json({ error: "Could not release the deposit hold. Please retry." });
         }
       }
 
@@ -9827,9 +10056,23 @@ Respond with ONLY the category name, nothing else.`
           returnConditionNotes: conditionNotes,
           depositStatus: "released",
           depositReleasedAt: returnNow,
+          depositPreviousPaymentIntentId: null,
+          depositRenewalStatus: null,
+          depositOperationToken: null,
+          depositOperationType: null,
         })
-        .where(eq(itemRequests.id, requestId))
+        .where(and(
+          eq(itemRequests.id, requestId),
+          eq(itemRequests.depositRenewalStatus, "terminal_action"),
+          eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+          currentRequest.depositPaymentIntentId
+            ? eq(itemRequests.depositPaymentIntentId, currentRequest.depositPaymentIntentId)
+            : isNull(itemRequests.depositPaymentIntentId),
+        ))
         .returning();
+      if (!updated) {
+        return res.status(409).json({ error: "Deposit changed before the return could complete" });
+      }
 
       // Mark item as available again
       await db
@@ -11073,6 +11316,9 @@ Respond with ONLY the category name, nothing else.`
   const runOverdueReminderSweep = () => {
     processReturnReminders().catch((error) =>
       console.error("Error running overdue reminder sweep:", error),
+    );
+    processExpiringDepositHolds({ stripeClient: stripe }).catch((error) =>
+      console.error("Error running deposit renewal sweep:", error),
     );
   };
   setTimeout(() => {
@@ -12861,17 +13107,68 @@ Respond with ONLY the category name, nothing else.`
       if (!request) return res.status(404).json({ message: "Transaction not found" });
 
       if (action === "complete") {
-        await db.update(itemRequests).set({ status: "COMPLETED" }).where(eq(itemRequests.id, requestId));
+        const terminalClaim = await claimDepositTerminalAction(requestId, "cancel");
+        if (terminalClaim.status !== "claimed") return res.status(409).json({ message: terminalClaim.reason });
+        await resolveClaimedDepositIntents(terminalClaim, stripe as any, "cancel");
+        const [finalized] = await db.update(itemRequests).set({
+          status: "COMPLETED",
+          depositStatus: terminalClaim.request.depositPaymentIntentId ? "released" : terminalClaim.request.depositStatus,
+          depositReleasedAt: terminalClaim.request.depositPaymentIntentId ? new Date() : terminalClaim.request.depositReleasedAt,
+          depositPreviousPaymentIntentId: null,
+          depositRenewalStatus: null,
+          depositOperationToken: null,
+          depositOperationType: null,
+        }).where(and(
+          eq(itemRequests.id, requestId),
+          eq(itemRequests.depositRenewalStatus, "terminal_action"),
+          eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+          terminalClaim.request.depositPaymentIntentId
+            ? eq(itemRequests.depositPaymentIntentId, terminalClaim.request.depositPaymentIntentId)
+            : isNull(itemRequests.depositPaymentIntentId),
+        )).returning({ id: itemRequests.id });
+        if (!finalized) return res.status(409).json({ message: "Deposit operation was superseded" });
         await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.item_requests.itemId));
         notifyAvailabilitySubscribers(request.item_requests.itemId, request.items.name).catch(() => {});
       } else if (action === "release_deposit") {
-        const pi = request.item_requests.depositPaymentIntentId;
-        if (pi) { try { await stripe.paymentIntents.cancel(pi); } catch (_) {} }
-        await db.update(itemRequests).set({ depositStatus: "released", depositReleasedAt: new Date() }).where(eq(itemRequests.id, requestId));
+        const terminalClaim = await claimDepositTerminalAction(requestId, "cancel");
+        if (terminalClaim.status !== "claimed") return res.status(409).json({ message: terminalClaim.reason });
+        await resolveClaimedDepositIntents(terminalClaim, stripe as any, "cancel");
+        const [finalized] = await db.update(itemRequests).set({
+          depositStatus: "released",
+          depositReleasedAt: new Date(),
+          depositPreviousPaymentIntentId: null,
+          depositRenewalStatus: null,
+          depositOperationToken: null,
+          depositOperationType: null,
+        }).where(and(
+          eq(itemRequests.id, requestId),
+          eq(itemRequests.depositRenewalStatus, "terminal_action"),
+          eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+          terminalClaim.request.depositPaymentIntentId
+            ? eq(itemRequests.depositPaymentIntentId, terminalClaim.request.depositPaymentIntentId)
+            : isNull(itemRequests.depositPaymentIntentId),
+        )).returning({ id: itemRequests.id });
+        if (!finalized) return res.status(409).json({ message: "Deposit operation was superseded" });
       } else if (action === "cancel") {
-        const pi = request.item_requests.depositPaymentIntentId;
-        if (pi) { try { await stripe.paymentIntents.cancel(pi); } catch (_) {} }
-        await db.update(itemRequests).set({ status: "DECLINED", depositStatus: request.item_requests.depositStatus === "held" ? "released" : request.item_requests.depositStatus ?? undefined }).where(eq(itemRequests.id, requestId));
+        const terminalClaim = await claimDepositTerminalAction(requestId, "cancel");
+        if (terminalClaim.status !== "claimed") return res.status(409).json({ message: terminalClaim.reason });
+        await resolveClaimedDepositIntents(terminalClaim, stripe as any, "cancel");
+        const [finalized] = await db.update(itemRequests).set({
+          status: "DECLINED",
+          depositStatus: terminalClaim.request.depositPaymentIntentId ? "released" : terminalClaim.request.depositStatus ?? undefined,
+          depositPreviousPaymentIntentId: null,
+          depositRenewalStatus: null,
+          depositOperationToken: null,
+          depositOperationType: null,
+        }).where(and(
+          eq(itemRequests.id, requestId),
+          eq(itemRequests.depositRenewalStatus, "terminal_action"),
+          eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+          terminalClaim.request.depositPaymentIntentId
+            ? eq(itemRequests.depositPaymentIntentId, terminalClaim.request.depositPaymentIntentId)
+            : isNull(itemRequests.depositPaymentIntentId),
+        )).returning({ id: itemRequests.id });
+        if (!finalized) return res.status(409).json({ message: "Deposit operation was superseded" });
         await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.item_requests.itemId));
         notifyAvailabilitySubscribers(request.item_requests.itemId, request.items.name).catch(() => {});
       } else {
@@ -12957,18 +13254,39 @@ Respond with ONLY the category name, nothing else.`
 
       const ownerId = request.items.ownerId!;
       const borrowerId = request.item_requests.requesterId;
-      const paymentIntentId = request.item_requests.depositPaymentIntentId;
+      const terminalClaim = await claimDepositTerminalAction(
+        requestId,
+        decision === "owner" ? "capture" : "cancel",
+      );
+      if (terminalClaim.status !== "claimed") {
+        return res.status(409).json({ error: terminalClaim.reason });
+      }
+      if (terminalClaim.request.status !== "DISPUTED") {
+        await releaseDepositTerminalClaim(terminalClaim);
+        return res.status(409).json({ error: "Dispute changed before it could be resolved" });
+      }
+      const paymentIntentId = terminalClaim.request.depositPaymentIntentId;
 
       if (decision === "borrower") {
         // Release deposit back to borrower
-        if (paymentIntentId) {
-          try { await stripe.paymentIntents.cancel(paymentIntentId); } catch (_) {}
-        }
-        await db.update(itemRequests).set({
+        await resolveClaimedDepositIntents(terminalClaim, stripe as any, "cancel");
+        const [finalized] = await db.update(itemRequests).set({
           status: "COMPLETED",
           depositStatus: "released",
           depositReleasedAt: new Date(),
-        }).where(eq(itemRequests.id, requestId));
+          depositPreviousPaymentIntentId: null,
+          depositRenewalStatus: null,
+          depositOperationToken: null,
+          depositOperationType: null,
+        }).where(and(
+          eq(itemRequests.id, requestId),
+          eq(itemRequests.depositRenewalStatus, "terminal_action"),
+          eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+          terminalClaim.request.depositPaymentIntentId
+            ? eq(itemRequests.depositPaymentIntentId, terminalClaim.request.depositPaymentIntentId)
+            : isNull(itemRequests.depositPaymentIntentId),
+        )).returning({ id: itemRequests.id });
+        if (!finalized) return res.status(409).json({ error: "Deposit operation was superseded" });
         await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.items.id));
         notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
         // Notify both parties
@@ -12978,13 +13296,23 @@ Respond with ONLY the category name, nothing else.`
         ]);
       } else {
         // Capture deposit in favour of owner (damage confirmed)
-        if (paymentIntentId) {
-          try { await stripe.paymentIntents.capture(paymentIntentId); } catch (_) {}
-        }
-        await db.update(itemRequests).set({
+        await resolveClaimedDepositIntents(terminalClaim, stripe as any, "capture");
+        const [finalized] = await db.update(itemRequests).set({
           status: "COMPLETED",
           depositStatus: "captured",
-        }).where(eq(itemRequests.id, requestId));
+          depositPreviousPaymentIntentId: null,
+          depositRenewalStatus: null,
+          depositOperationToken: null,
+          depositOperationType: null,
+        }).where(and(
+          eq(itemRequests.id, requestId),
+          eq(itemRequests.depositRenewalStatus, "terminal_action"),
+          eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+          terminalClaim.request.depositPaymentIntentId
+            ? eq(itemRequests.depositPaymentIntentId, terminalClaim.request.depositPaymentIntentId)
+            : isNull(itemRequests.depositPaymentIntentId),
+        )).returning({ id: itemRequests.id });
+        if (!finalized) return res.status(409).json({ error: "Deposit operation was superseded" });
         await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.items.id));
         notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
 

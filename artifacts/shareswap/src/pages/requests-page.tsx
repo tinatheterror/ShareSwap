@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { useState } from "react";
 import { CelebrationAnimation } from "@/components/celebration-animation";
+import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDisplayName } from "@/lib/utils";
@@ -48,6 +49,10 @@ interface ItemRequest {
   trustDiscountPercentage: number | null;
   shareCoinAmount: string | null;
   depositStatus: string | null;
+  depositRenewalStatus: string | null;
+  depositRenewalAttemptedAt: string | null;
+  depositRenewalError: string | null;
+  depositAuthorizationExpiresAt: string | null;
   negotiationStatus: string | null;
   counterDeliveryMethod: string | null;
   counterDepositMethod: string | null;
@@ -324,6 +329,51 @@ export default function RequestsPage() {
           variant: "destructive",
         });
       }
+    },
+  });
+
+  const renewDepositMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const response = await apiRequest("POST", `/api/requests/${requestId}/renew-deposit`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+
+      if (data.status === "failed") {
+        toast({
+          title: "Renewal failed",
+          description: data.error || "Please update your payment method.",
+          variant: "destructive",
+          action: (
+            <ToastAction altText="Update Payment Method" onClick={() => navigate("/payment-methods")}>
+              Update
+            </ToastAction>
+          ),
+        });
+      } else if (data.status === "renewed") {
+        toast({
+          title: "Deposit renewed",
+          description: "Your security deposit hold has been extended successfully.",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Deposit status updated.",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to renew deposit hold",
+        variant: "destructive",
+        action: (
+          <ToastAction altText="Update Payment Method" onClick={() => navigate("/payment-methods")}>
+            Update
+          </ToastAction>
+        ),
+      });
     },
   });
 
@@ -660,6 +710,16 @@ export default function RequestsPage() {
                           </div>
                         )}
 
+                        {/* Payment warning for owner */}
+                        {request.depositRenewalStatus === "failed" && !["COMPLETED", "CANCELLED", "DECLINED"].includes(request.status) && (
+                          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-sm font-medium text-red-800">
+                              <AlertTriangle className="h-4 w-4 inline mr-1" />
+                              The renter's security deposit hold could not be renewed. They have been notified to update their payment method.
+                            </p>
+                          </div>
+                        )}
+
                         {/* Show terms accepted notification */}
                         {request.negotiationStatus === "terms_accepted" && (
                           <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -851,6 +911,29 @@ export default function RequestsPage() {
                                 Decline
                               </Button>
                             </div>
+                          </div>
+                        )}
+
+                        {/* Payment warning for requester */}
+                        {request.depositRenewalStatus === "failed" && !["COMPLETED", "CANCELLED", "DECLINED"].includes(request.status) && (
+                          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-sm font-medium text-red-800 mb-2">
+                              <AlertTriangle className="h-4 w-4 inline mr-1" />
+                              Your security deposit hold could not be renewed automatically.
+                              {request.depositRenewalError && (
+                                <span className="block mt-1 text-xs text-red-600 opacity-80">{request.depositRenewalError}</span>
+                              )}
+                            </p>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="w-full sm:w-auto"
+                              onClick={() => renewDepositMutation.mutate(request.id)}
+                              disabled={renewDepositMutation.isPending}
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Retry Deposit Hold
+                            </Button>
                           </div>
                         )}
 

@@ -53,6 +53,7 @@ interface FakePaymentIntent {
   payment_method: string | null;
   metadata: Record<string, string>;
   capture_method: string;
+  latest_charge: { payment_method_details: { card: { capture_before: number } } };
 }
 
 function createFakeStripe(options?: {
@@ -106,6 +107,11 @@ function createFakeStripe(options?: {
           payment_method: params.payment_method ?? null,
           metadata: params.metadata || {},
           capture_method: params.capture_method || "automatic",
+          latest_charge: {
+            // A real confirmed card authorization returns this exact deadline.
+            // Keep it comfortably past the short fixture's protected return.
+            payment_method_details: { card: { capture_before: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60 } },
+          },
         };
         store.set(id, pi);
         return pi as any;
@@ -172,8 +178,8 @@ async function makeAcceptedRequest() {
       requesterId: renter.id,
       requestType: "RENT",
       status: "ACCEPTED",
-      startDate: new Date("2026-09-01T00:00:00Z"),
-      endDate: new Date("2026-09-07T00:00:00Z"), // 7 days -> no discount tier
+      startDate: new Date(Date.now() + 60 * 60 * 1000),
+      endDate: new Date(Date.now() + 25 * 60 * 60 * 1000), // two inclusive days
     })
     .returning({ id: itemRequests.id });
 
@@ -196,8 +202,8 @@ before(async () => {
 
   // Fixed pricing so every test can assert on exact dollar amounts:
   //   deposit = securityDeposit override = $50
-  //   weekly rate override = $70 -> 7 days, no discount tier -> rentalAmount = $70
-  //   processingFee = round((70 + 50) * 0.03, 2) = $3.60
+  //   weekly rate override = $70 -> two days -> rentalAmount = $20
+  //   processingFee = round((20 + 50) * 0.03, 2) = $2.10
   const [item] = await db
     .insert(items)
     .values({
@@ -250,8 +256,8 @@ test("createRentalPaymentHold creates a manual-capture PaymentIntent for the dep
     // The response must surface the deposit/rental amounts separately — never a single
     // combined "amount charged" figure that could be mistaken for an immediate charge.
     assert.equal(result.body.depositAmount, 50);
-    assert.equal(result.body.rentalAmount, 70);
-    assert.equal(result.body.totalHoldAmount, 123.6);
+    assert.equal(result.body.rentalAmount, 20);
+    assert.equal(result.body.totalHoldAmount, 72.1);
 
     // The PI Stripe actually created must itself be an uncaptured hold, not a charge.
     const createdPI = fakeStripe.store.get(result.body.paymentIntentId)!;
@@ -293,7 +299,7 @@ test("confirmRentalDeposit charges rentalAmount + processingFee as a SEPARATE au
 
     assert.notEqual(rentalChargeCall.capture_method, "manual", "rental+fee charge must NOT be a manual hold");
     assert.equal(rentalChargeCall.confirm, true, "rental+fee charge must be confirmed immediately (charged, not held)");
-    assert.equal(rentalChargeCall.amount, 7360, "rental+fee charge amount must equal rentalAmount ($70) + processingFee ($3.60) = $73.60, in cents");
+    assert.equal(rentalChargeCall.amount, 2210, "rental+fee charge amount must equal rentalAmount ($20) + processingFee ($2.10) = $22.10, in cents");
     assert.equal(rentalChargeCall.metadata.type, "rental_payment");
     assert.equal(rentalChargeCall.metadata.depositPaymentIntentId, depositPaymentIntentId);
 

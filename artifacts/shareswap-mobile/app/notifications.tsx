@@ -69,7 +69,7 @@ function notifIcon(type: string): { Icon: LucideIcon; color: string } {
   if (type === "referral_joined")                                               return { Icon: Users,          color: "#14b8a6" };
   if (type === "security_deposit_released")                                     return { Icon: Unlock,         color: "#22c55e" };
   if (type === "payment_received")                                              return { Icon: DollarSign,     color: "#22c55e" };
-  if (type === "verification_failed" || type === "deposit_renewal_failed")      return { Icon: ShieldAlert,    color: "#ef4444" };
+  if (type === "verification_failed")                                            return { Icon: ShieldAlert,    color: "#ef4444" };
   if (type === "terms_accepted")                                                return { Icon: UserCheck,      color: "#14b8a6" };
   return { Icon: Bell, color: "#0DCEA1" };
 }

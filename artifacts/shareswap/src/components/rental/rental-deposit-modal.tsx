@@ -17,6 +17,7 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import { getStripePromise } from "@/lib/stripe-client";
 
 const stripePromise = getStripePromise();
+type DepositConsent = { consentMessage: string; depositAmount: number; consentEndpoint: string };
 
 interface RentalDepositModalProps {
   isOpen: boolean;
@@ -54,13 +55,41 @@ interface FormProps {
   days: number;
 }
 
+function RefundablePaymentAuthentication({ clientSecret, onAuthenticated, onCancel }: { clientSecret: string; onAuthenticated: () => void; onCancel: () => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!stripe || !elements) return;
+    setIsProcessing(true);
+    const { error, paymentIntent } = await stripe.confirmPayment({ elements, redirect: "if_required" });
+    if (error || paymentIntent?.status !== "succeeded") {
+      toast({ title: "Authentication required", description: error?.message || "The refundable payment was not completed.", variant: "destructive" });
+      setIsProcessing(false);
+      return;
+    }
+    onAuthenticated();
+  };
+  return <form onSubmit={handleSubmit} className="space-y-4" data-testid="form-rental-refundable-authentication">
+    <PaymentElement />
+    <div className="flex gap-2">
+      <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1" data-testid="button-cancel-rental-refundable-authentication">Cancel</Button>
+      <Button type="submit" disabled={!stripe || isProcessing} className="flex-1 bg-green-600 hover:bg-green-700" data-testid="button-authenticate-rental-refundable-payment">
+        {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Confirming…</> : "Confirm refundable payment"}
+      </Button>
+    </div>
+  </form>;
+}
+
 // Form shown when user has a saved card on file — no card input needed
 function SavedCardConfirmForm(props: FormProps) {
   const stripe = useStripe();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const { clientSecret, onSuccess, onCancel, rentalPrice, depositAmount, processingFee, deliveryFee, rentalSubtotal, discountPct, discountAmount, days } = props;
-  const totalDueNow = rentalPrice + depositAmount + processingFee + deliveryFee;
+  const totalChargedToday = rentalPrice + processingFee + deliveryFee;
 
   const handleConfirm = async () => {
     if (!stripe) return;
@@ -86,18 +115,18 @@ function SavedCardConfirmForm(props: FormProps) {
         <Info className="h-3.5 w-3.5 shrink-0 text-blue-500" />
         <span>
           The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is an <span className="font-medium">authorization hold</span> — your card is not charged. The hold is lifted automatically when you return the item in good condition.
-          The <span className="font-medium">${rentalPrice.toFixed(2)} rental fee</span> is the only amount actually charged.
+          The <span className="font-medium">${totalChargedToday.toFixed(2)} rental and fee total</span> is charged today.
         </span>
       </div>
       <div className="flex gap-2 pt-1">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1">Cancel</Button>
-        <Button onClick={handleConfirm} disabled={isProcessing} className="flex-1 bg-green-600 hover:bg-green-700 text-white flex-col h-auto py-2">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1" data-testid="button-cancel-rental-payment">Cancel</Button>
+        <Button onClick={handleConfirm} disabled={isProcessing} className="flex-1 bg-green-600 hover:bg-green-700 text-white flex-col h-auto py-2" data-testid="button-confirm-rental-authorization">
           {isProcessing ? (
             <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</>
           ) : (
             <>
-              <span className="flex items-center gap-1.5 leading-none"><CreditCard className="h-4 w-4" />Pay ${totalDueNow.toFixed(2)}</span>
-              <span className="text-[10px] opacity-75 font-normal leading-none -mt-0.5">Authorizing card on file</span>
+              <span className="flex items-center gap-1.5 leading-none"><CreditCard className="h-4 w-4" />Pay ${totalChargedToday.toFixed(2)}</span>
+              <span className="text-[10px] opacity-75 font-normal leading-none -mt-0.5">Plus a separate authorization hold</span>
             </>
           )}
         </Button>
@@ -113,7 +142,7 @@ function BreakdownRows({ rentalPrice, rentalSubtotal, discountPct, discountAmoun
 }) {
   const dailyRate = days > 0 ? rentalSubtotal / days : 0;
   const discountLabel = getDiscountLabel(days);
-  const totalDueNow = rentalPrice + depositAmount + processingFee + deliveryFee;
+  const totalChargedToday = rentalPrice + processingFee + deliveryFee;
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1.5 text-sm">
       {/* Rental line with daily rate */}
@@ -172,8 +201,8 @@ function BreakdownRows({ rentalPrice, rentalSubtotal, discountPct, discountAmoun
 
       {/* Total */}
       <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5 mt-0.5">
-        <span className="text-gray-900">Total due today</span>
-        <span className="text-gray-900 text-base font-bold">${totalDueNow.toFixed(2)}</span>
+        <span className="text-gray-900">Charged today</span>
+        <span className="text-gray-900 text-base font-bold">${totalChargedToday.toFixed(2)}</span>
       </div>
     </div>
   );
@@ -197,8 +226,6 @@ function PayAndConfirmForm({
   const elements = useElements();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const totalDueNow = rentalPrice + depositAmount + processingFee + deliveryFee;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -238,14 +265,14 @@ function PayAndConfirmForm({
         <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-500" />
         <span>
           The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is an <span className="font-medium">authorization hold</span> — your card is not charged. The hold is lifted automatically when you return the item in good condition.
-          The <span className="font-medium">${rentalPrice.toFixed(2)} rental fee</span> is the only amount actually charged.
+          The <span className="font-medium">${(rentalPrice + processingFee + deliveryFee).toFixed(2)} rental and fee total</span> is charged today.
         </span>
       </div>
       <PaymentElement />
       <div className="flex gap-2 pt-1">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1">Cancel</Button>
-        <Button type="submit" disabled={!stripe || isProcessing} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
-          {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : <><CreditCard className="h-4 w-4 mr-2" />Pay & Confirm Booking</>}
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1" data-testid="button-cancel-rental-payment">Cancel</Button>
+        <Button type="submit" disabled={!stripe || isProcessing} className="flex-1 bg-green-600 hover:bg-green-700 text-white" data-testid="button-pay-rental-and-authorize-deposit">
+          {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : <><CreditCard className="h-4 w-4 mr-2" />Pay rental & authorize deposit</>}
         </Button>
       </div>
     </form>
@@ -264,6 +291,8 @@ export function RentalDepositModal({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [hasSavedCard, setHasSavedCard] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const [consent, setConsent] = useState<DepositConsent | null>(null);
+  const [authenticationClientSecret, setAuthenticationClientSecret] = useState<string | null>(null);
 
   const itemValue = item.replacementValue || 100;
   const depositCalc = calculateRentalDeposit(itemValue, item.tier || 2);
@@ -307,7 +336,31 @@ export function RentalDepositModal({
       }
     },
     onError: (error: any) => {
+      if (error?.status === 409 && error?.consentRequired && error?.consentEndpoint) {
+        setConsent({ consentMessage: error.consentMessage, depositAmount: Number(error.depositAmount), consentEndpoint: error.consentEndpoint });
+        setInitError(null);
+        return;
+      }
       setInitError(error.message || "Failed to initialize payment");
+    },
+  });
+
+  const confirmRefundableMutation = useMutation({
+    mutationFn: async () => {
+      if (!consent) throw new Error("Refundable payment consent is unavailable.");
+      return (await apiRequest("POST", consent.consentEndpoint, {})).json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+      toast({ title: "Booking confirmed!", description: "Your refundable deposit payment and rental have been secured." });
+      onSuccess(data.nextStep || "await_handoff");
+    },
+    onError: (error: any) => {
+      if (error?.status === 402 && error?.requiresAction && error?.clientSecret) {
+        setAuthenticationClientSecret(error.clientSecret);
+        return;
+      }
+      toast({ title: "Refundable payment failed", description: error.message || "Unable to complete the refundable payment.", variant: "destructive" });
     },
   });
 
@@ -325,7 +378,7 @@ export function RentalDepositModal({
     onSuccess: (data) => {
       toast({
         title: "Booking confirmed!",
-        description: "Your rental and deposit have been secured.",
+        description: "Your rental payment is confirmed and your deposit authorization hold is secured.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       onSuccess(data.nextStep || "await_handoff");
@@ -340,7 +393,7 @@ export function RentalDepositModal({
   });
 
   useEffect(() => {
-    if (isOpen && !clientSecret && !createPaymentHoldMutation.isPending) {
+    if (isOpen && !clientSecret && !consent && !createPaymentHoldMutation.isPending) {
       createPaymentHoldMutation.mutate();
     }
   }, [isOpen]);
@@ -349,6 +402,8 @@ export function RentalDepositModal({
     setClientSecret(null);
     setHasSavedCard(false);
     setInitError(null);
+    setConsent(null);
+    setAuthenticationClientSecret(null);
     onClose();
   };
 
@@ -366,7 +421,28 @@ export function RentalDepositModal({
         </DialogHeader>
 
         <div className="py-2">
-          {createPaymentHoldMutation.isPending || (!clientSecret && !initError) ? (
+          {consent ? (
+            <div data-testid="screen-rental-refundable-deposit-consent">
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 mb-4" data-testid="text-rental-refundable-consent-message">{consent.consentMessage}</div>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 flex justify-between text-sm">
+                <span className="text-gray-600">Refundable deposit payment</span>
+                <span className="font-semibold">${consent.depositAmount.toFixed(2)}</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">This is a refundable payment, not an authorization hold. It is returned after a safe return.</p>
+              {authenticationClientSecret ? (
+                <Elements stripe={stripePromise} options={{ clientSecret: authenticationClientSecret }}>
+                  <RefundablePaymentAuthentication clientSecret={authenticationClientSecret} onAuthenticated={() => confirmRefundableMutation.mutate()} onCancel={handleClose} />
+                </Elements>
+              ) : (
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={handleClose} disabled={confirmRefundableMutation.isPending} data-testid="button-cancel-rental-refundable-payment">Cancel</Button>
+                  <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => confirmRefundableMutation.mutate()} disabled={confirmRefundableMutation.isPending} data-testid="button-confirm-rental-refundable-payment">
+                    {confirmRefundableMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : `Confirm refundable payment of $${consent.depositAmount.toFixed(2)}`}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : createPaymentHoldMutation.isPending || (!clientSecret && !initError) ? (
             <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
               <Loader2 className="h-6 w-6 animate-spin text-green-600" />
               <span className="text-sm">Setting up payment…</span>
@@ -374,7 +450,7 @@ export function RentalDepositModal({
           ) : initError ? (
             <div className="flex flex-col items-center gap-3 py-8">
               <p className="text-sm text-destructive text-center">{initError}</p>
-              <Button variant="outline" size="sm" onClick={() => createPaymentHoldMutation.mutate()}>
+              <Button variant="outline" size="sm" onClick={() => createPaymentHoldMutation.mutate()} data-testid="button-retry-rental-payment-setup">
                 <RefreshCw className="h-3.5 w-3.5 mr-2" />
                 Try again
               </Button>

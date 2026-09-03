@@ -25,6 +25,7 @@ export type DepositRenewalStripeClient = {
     cancel: Stripe["paymentIntents"]["cancel"];
     capture?: Stripe["paymentIntents"]["capture"];
   };
+  refunds?: { create: Stripe["refunds"]["create"] };
 };
 
 export type DepositTerminalClaim =
@@ -105,6 +106,15 @@ export async function resolveClaimedDepositIntents(
     await assertClaimOwnership();
     const intent = await stripeClient.paymentIntents.retrieve(paymentIntentId);
     if (intent.status === "succeeded") {
+      // A refundable deposit is intentionally an already-captured charge. Its
+      // release is a Stripe refund, never a second implicit money movement.
+      if (request.depositMode === "refundable_charge") {
+        if (!stripeClient.refunds) throw new Error("Stripe refunds are unavailable");
+        await stripeClient.refunds.create({ payment_intent: paymentIntentId }, {
+          idempotencyKey: `refundable-deposit-release-${request.id}-${paymentIntentId}`,
+        });
+        return;
+      }
       throw new Error("Deposit authorization was already captured and cannot be released");
     }
     if (intent.status === "canceled") return;
@@ -117,6 +127,9 @@ export async function resolveClaimedDepositIntents(
   }
   if (!request.depositPaymentIntentId) return;
   if (action === "capture") {
+    // The refundable charge was collected only after explicit consent. A
+    // terminal claim approval retains it; there is no PI capture to perform.
+    if (request.depositMode === "refundable_charge") return;
     if (!stripeClient.paymentIntents.capture) {
       throw new Error("Stripe capture is unavailable");
     }
@@ -333,6 +346,11 @@ export async function renewDepositHold({
   now?: Date;
   renewalWindowMs?: number;
 }): Promise<DepositRenewalResult> {
+  // Authorization renewal is permanently disabled. Keeping this exported
+  // no-op briefly avoids breaking older workers during a rolling deploy; it
+  // must never contact Stripe or create a replacement authorization.
+  return { status: "skipped", requestId, reason: "Authorization renewal is disabled; obtain refundable-deposit consent instead" };
+  /*
   const joined: any = await db.transaction(async (tx) => {
     await tx.execute(sql`
       SELECT 1 FROM ${itemRequests}
@@ -584,6 +602,7 @@ export async function renewDepositHold({
     newPaymentIntentId: replacement.id,
     expiresAt: replacementExpiresAt,
   };
+  */
 }
 
 export async function processExpiringDepositHolds({
@@ -593,6 +612,10 @@ export async function processExpiringDepositHolds({
   stripeClient: DepositRenewalStripeClient;
   now?: Date;
 }) {
+  // Intentionally no sweep: expiration is not a settlement event and can
+  // never create a new authorization or capture/retain a deposit.
+  return { checked: 0, renewed: 0, failed: 0, results: [] as DepositRenewalResult[] };
+  /*
   const candidates = await db
     .select({ id: itemRequests.id })
     .from(itemRequests)
@@ -616,4 +639,5 @@ export async function processExpiringDepositHolds({
     failed: results.filter((result) => result.status === "failed").length,
     results,
   };
+  */
 }

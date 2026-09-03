@@ -21,12 +21,24 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import { Shield, Lock, Coins, CheckCircle } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { apiPost, apiGet } from "@/lib/api";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 
 const PRIMARY = "#0d9488";
+
+type PaymentApiError = Error & {
+  status?: number;
+  selectionState?: string;
+  consentRequired?: boolean;
+  consentMessage?: string;
+  consentEndpoint?: string;
+  depositAmount?: number;
+  requiresAction?: boolean;
+  stripeStatus?: string;
+};
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -81,10 +93,16 @@ export function PayDepositSheet({
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
+  const router = useRouter();
 
   const [processing, setProcessing] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refundableConsent, setRefundableConsent] = useState<{
+    message: string;
+    endpoint: string;
+    amount: number;
+  } | null>(null);
 
   // ── Calculations ─────────────────────────────────────────────────────────────
 
@@ -126,7 +144,14 @@ export function PayDepositSheet({
     setProcessing(true);
     setError(null);
     try {
-      // Step 1: Charge platform fee (may be waived; backend handles it)
+      // Prepare the hold first. The API can require an explicit confirmation
+      // before changing this into a refundable charge.
+      const holdData = await apiPost<{ paymentIntentId: string }>(
+        "/api/stripe/create-deposit-hold",
+        { depositAmount, requestId },
+      );
+
+      // Charge the platform fee only after the chosen deposit mode is prepared.
       let chargeId: string | null = null;
       if (platformFee > 0) {
         const feeData = await apiPost<{ chargeId: string | null; waived?: boolean }>(
@@ -136,13 +161,7 @@ export function PayDepositSheet({
         chargeId = feeData.chargeId;
       }
 
-      // Step 2: Create authorization hold on saved card (off-session)
-      const holdData = await apiPost<{ paymentIntentId: string }>(
-        "/api/stripe/create-deposit-hold",
-        { depositAmount, requestId },
-      );
-
-      // Step 3: Record everything and advance status to DEPOSIT_CONFIRMED
+      // Record the authorization hold and advance to DEPOSIT_CONFIRMED.
       await apiPost(`/api/requests/${requestId}/pay-deposit`, {
         depositAmount,
         processingFee: platformFee,
@@ -159,7 +178,28 @@ export function PayDepositSheet({
       setSucceeded(true);
       onSuccess();
     } catch (e: unknown) {
-      const msg = (e as Error).message ?? "";
+      const paymentError = e as PaymentApiError;
+      if (
+        paymentError.selectionState === "consent_required" &&
+        paymentError.consentRequired &&
+        paymentError.consentEndpoint
+      ) {
+        setRefundableConsent({
+          message: paymentError.consentMessage || "This deposit needs to be collected as a refundable payment.",
+          endpoint: paymentError.consentEndpoint,
+          amount: Number(paymentError.depositAmount ?? depositAmount),
+        });
+        return;
+      }
+      if (paymentError.selectionState === "payment_pending" || paymentError.requiresAction) {
+        setError(
+          paymentError.requiresAction
+            ? "Your card needs additional authentication. Update or authenticate your card in Payment Settings, then try again."
+            : "Your refundable deposit payment is still pending. Check Payment Settings and try again once it is complete.",
+        );
+        return;
+      }
+      const msg = paymentError.message ?? "";
       if (msg.toLowerCase().includes("payment method") || msg.toLowerCase().includes("no card")) {
         setError("No payment card on file. Please add a card in the Settings tab first, then try again.");
       } else if (msg.toLowerCase().includes("sharecoins") || msg.toLowerCase().includes("insufficient")) {
@@ -172,12 +212,50 @@ export function PayDepositSheet({
     }
   }, [platformFee, depositAmount, requestId, depositCalc, trustScore, shareCoins, qc, onSuccess]);
 
+  const handleConfirmRefundablePayment = useCallback(async () => {
+    if (!refundableConsent) return;
+    setProcessing(true);
+    setError(null);
+    try {
+      const result = await apiPost<{ selectionState?: string; requiresAction?: boolean }>(
+        refundableConsent.endpoint,
+        {},
+      );
+      if (result.selectionState === "payment_pending" || result.requiresAction) {
+        setError(
+          result.requiresAction
+            ? "Your card needs additional authentication. Update or authenticate your card in Payment Settings, then try again."
+            : "Your refundable deposit payment is still pending. Check Payment Settings and try again once it is complete.",
+        );
+        return;
+      }
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      setRefundableConsent(null);
+      setSucceeded(true);
+      onSuccess();
+    } catch (e: unknown) {
+      const paymentError = e as PaymentApiError;
+      if (paymentError.selectionState === "payment_pending" || paymentError.requiresAction) {
+        setError(
+          paymentError.requiresAction
+            ? "Your card needs additional authentication. Update or authenticate your card in Payment Settings, then try again."
+            : "Your refundable deposit payment is still pending. Check Payment Settings and try again once it is complete.",
+        );
+      } else {
+        setError(paymentError.message || "The refundable deposit payment could not be completed.");
+      }
+    } finally {
+      setProcessing(false);
+    }
+  }, [refundableConsent, qc, onSuccess]);
+
   // ── Reset on close ────────────────────────────────────────────────────────────
 
   const handleClose = useCallback(() => {
     if (processing) return;
     setSucceeded(false);
     setError(null);
+    setRefundableConsent(null);
     onClose();
   }, [processing, onClose]);
 
@@ -236,6 +314,40 @@ export function PayDepositSheet({
 
               <Pressable style={[s.primaryBtn, { backgroundColor: PRIMARY }]} onPress={handleClose}>
                 <Text style={s.primaryBtnText}>Done</Text>
+              </Pressable>
+            </View>
+          ) : refundableConsent ? (
+            <View style={s.content}>
+              <Text style={[s.subtitle, { color: PRIMARY }]}>Refundable payment confirmation</Text>
+              <Text style={[s.title, { color: colors.foreground }]}>Confirm refundable deposit</Text>
+              <View style={[s.breakdownBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <View style={s.breakdownRow}>
+                  <Text style={[s.breakdownLabel, { color: colors.foreground, fontFamily: "Inter_500Medium" }]}>
+                    Refundable security deposit
+                  </Text>
+                  <Text style={[s.breakdownValue, { color: colors.foreground }]}>
+                    ${refundableConsent.amount.toFixed(2)}
+                  </Text>
+                </View>
+                <Text style={[s.breakdownNote, { color: colors.mutedForeground }]}>
+                  {refundableConsent.message}
+                </Text>
+              </View>
+              {error && <View style={s.errorBox}><Text style={s.errorText}>{error}</Text></View>}
+              <Pressable
+                style={[s.primaryBtn, { backgroundColor: PRIMARY, opacity: processing ? 0.7 : 1 }]}
+                onPress={handleConfirmRefundablePayment}
+                disabled={processing}
+              >
+                {processing ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.primaryBtnText}>Confirm refundable payment</Text>}
+              </Pressable>
+              {error && (
+                <Pressable style={[s.primaryBtn, { backgroundColor: colors.muted }]} onPress={() => router.push("/payment-methods" as never)} disabled={processing}>
+                  <Text style={[s.primaryBtnText, { color: colors.foreground }]}>Open Payment Settings</Text>
+                </Pressable>
+              )}
+              <Pressable style={s.cancelBtn} onPress={handleClose} disabled={processing}>
+                <Text style={[s.cancelBtnText, { color: colors.mutedForeground }]}>Cancel</Text>
               </Pressable>
             </View>
           ) : (

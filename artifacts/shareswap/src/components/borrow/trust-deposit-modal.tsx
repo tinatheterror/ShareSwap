@@ -8,6 +8,40 @@ import { apiRequest } from "@/lib/queryClient";
 import { Lock, Loader2, MessageCircle, Coins } from "lucide-react";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 import { format } from "date-fns";
+import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import { getStripePromise } from "@/lib/stripe-client";
+
+const stripePromise = getStripePromise();
+
+type DepositConsent = { consentMessage: string; depositAmount: number; consentEndpoint: string };
+
+function RefundablePaymentAuthentication({ clientSecret, onAuthenticated, onCancel }: { clientSecret: string; onAuthenticated: () => void; onCancel: () => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { toast } = useToast();
+  const confirm = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!stripe || !elements) return;
+    setIsProcessing(true);
+    const { error, paymentIntent } = await stripe.confirmPayment({ elements, redirect: "if_required" });
+    if (error || !paymentIntent || paymentIntent.status !== "succeeded") {
+      toast({ title: "Authentication required", description: error?.message || "The refundable payment was not completed.", variant: "destructive" });
+      setIsProcessing(false);
+      return;
+    }
+    onAuthenticated();
+  };
+  return <form onSubmit={confirm} className="space-y-4" data-testid="form-refundable-payment-authentication">
+    <PaymentElement />
+    <div className="flex gap-2">
+      <Button type="button" variant="outline" className="flex-1" onClick={onCancel} disabled={isProcessing} data-testid="button-cancel-refundable-authentication">Cancel</Button>
+      <Button type="submit" className="flex-1 bg-teal-600 hover:bg-teal-700" disabled={!stripe || isProcessing} data-testid="button-authenticate-refundable-payment">
+        {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Confirming…</> : "Confirm refundable payment"}
+      </Button>
+    </div>
+  </form>;
+}
 
 function parseLocalDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split("T")[0].split("-").map(Number);
@@ -54,6 +88,8 @@ export function TrustDepositModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
   const [successData, setSuccessData] = useState<{ nextStep: string } | null>(null);
+  const [consent, setConsent] = useState<DepositConsent | null>(null);
+  const [authenticationClientSecret, setAuthenticationClientSecret] = useState<string | null>(null);
 
   const depositCalc = calculateSecurityDeposit(
     item.tier || 2,
@@ -93,24 +129,19 @@ export function TrustDepositModal({
   const payDepositMutation = useMutation({
     mutationFn: async () => {
       setIsProcessing(true);
-
-      // Step 1: Charge the platform fee immediately (real charge)
-      const feeRes = await apiRequest("POST", "/api/stripe/charge-platform-fee", {
-        platformFeeAmount: platformFee,
-        requestId: request.id,
-      });
-      const feeData = await feeRes.json();
-      if (!feeData.chargeId) throw new Error(feeData.error || "Failed to charge platform fee");
-
-      // Step 2: Create the authorization hold using saved card (off-session)
+      // Establish the deposit mode first. A 409 requires visible consent before
+      // any fee endpoint is called.
       const holdRes = await apiRequest("POST", "/api/stripe/create-deposit-hold", {
-        depositAmount,
         requestId: request.id,
       });
       const holdData = await holdRes.json();
       if (!holdData.paymentIntentId) throw new Error(holdData.error || "Failed to create deposit hold");
-
-      // Step 3: Record everything in the database
+      let feeData: { chargeId?: string | null; waived?: boolean } = { waived: true };
+      if (platformFee > 0) {
+        const feeRes = await apiRequest("POST", "/api/stripe/charge-platform-fee", { platformFeeAmount: platformFee, requestId: request.id });
+        feeData = await feeRes.json();
+        if (!feeData.chargeId && !feeData.waived) throw new Error("Failed to charge platform fee");
+      }
       const response = await apiRequest(
         "POST",
         `/api/requests/${request.id}/pay-deposit`,
@@ -136,11 +167,37 @@ export function TrustDepositModal({
     },
     onError: (error: any) => {
       setIsProcessing(false);
+      if (error?.status === 409 && error?.consentRequired && error?.consentEndpoint) {
+        setConsent({ consentMessage: error.consentMessage, depositAmount: Number(error.depositAmount), consentEndpoint: error.consentEndpoint });
+        return;
+      }
       toast({
         title: "Payment failed",
         description: error.message || "Failed to process deposit",
         variant: "destructive",
       });
+    },
+  });
+
+  const confirmRefundableMutation = useMutation({
+    mutationFn: async () => {
+      if (!consent) throw new Error("Refundable payment consent is unavailable.");
+      setIsProcessing(true);
+      return (await apiRequest("POST", consent.consentEndpoint, {})).json();
+    },
+    onSuccess: (data) => {
+      setIsProcessing(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+      setSuccessData({ nextStep: data.nextStep || "await_handoff" });
+      setSucceeded(true);
+    },
+    onError: (error: any) => {
+      setIsProcessing(false);
+      if (error?.status === 402 && error?.requiresAction && error?.clientSecret) {
+        setAuthenticationClientSecret(error.clientSecret);
+        return;
+      }
+      toast({ title: "Refundable payment failed", description: error.message || "Unable to complete the refundable payment.", variant: "destructive" });
     },
   });
 
@@ -169,7 +226,7 @@ export function TrustDepositModal({
           /* ── Success screen ── */
           <div className="flex flex-col px-7 pt-8 pb-7 text-center">
             <p className="text-3xl mb-2">✅</p>
-            <p className="text-lg font-bold text-gray-900 mb-1">Deposit secured</p>
+            <p className="text-lg font-bold text-gray-900 mb-1" data-testid="text-deposit-success">Deposit secured</p>
             <p className="text-sm text-gray-400 mb-6">{isRental ? "Your rental is confirmed for" : "Your borrow is confirmed for"}</p>
 
             <p className={`text-base font-semibold text-gray-900 ${request.startDate && request.endDate ? "mb-1" : "mb-6"}`}>{item.name}</p>
@@ -179,7 +236,7 @@ export function TrustDepositModal({
               </p>
             )}
 
-            <div className="bg-gray-50 rounded-xl p-4 text-left mb-6 space-y-1.5">
+            <div className="bg-gray-50 rounded-xl p-4 text-left mb-6 space-y-1.5" data-testid="breakdown-deposit-success">
               <div className="flex justify-between text-sm text-gray-500">
                 <span>{platformFeeLabel}</span>
                 {PLATFORM_FEE_WAIVED
@@ -189,9 +246,9 @@ export function TrustDepositModal({
               </div>
               <div className="flex justify-between text-sm text-gray-500">
                 <span>{isRental ? "Security deposit" : "Trust deposit"}</span>
-                <span className="font-medium text-gray-800">${depositAmount.toFixed(2)} <span className="text-xs font-normal text-blue-500">hold</span></span>
+                <span className="font-medium text-gray-800">${depositAmount.toFixed(2)} <span className="text-xs font-normal text-blue-500">{consent ? "refundable payment" : "authorization hold"}</span></span>
               </div>
-              <p className="text-xs text-gray-400 italic pt-1 border-t border-gray-200">Deposit hold lifted automatically on safe return</p>
+              <p className="text-xs text-gray-400 italic pt-1 border-t border-gray-200">{consent ? "Refundable payment returned after a safe return" : "Authorization hold lifted automatically on safe return"}</p>
             </div>
 
             <div className="text-left mb-6">
@@ -208,6 +265,7 @@ export function TrustDepositModal({
 
             <Button
               onClick={handleMessageLender}
+              data-testid="button-message-owner"
               className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white text-base font-medium rounded-xl mb-3"
             >
               <MessageCircle className="h-4 w-4 mr-2" />
@@ -215,10 +273,33 @@ export function TrustDepositModal({
             </Button>
             <button
               onClick={handleViewRequest}
+              data-testid="button-view-request"
               className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
             >
               View request
             </button>
+          </div>
+        ) : consent ? (
+          <div className="flex flex-col px-7 pt-8 pb-7" data-testid="screen-refundable-deposit-consent">
+            <div className="text-center mb-6">
+              <p className="text-xs font-semibold uppercase tracking-widest text-teal-500 mb-1">Refundable deposit required</p>
+              <p className="text-lg font-bold text-gray-900">{item.name}</p>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900 mb-4" data-testid="text-refundable-consent-message">{consent.consentMessage}</div>
+            <div className="bg-gray-50 rounded-xl p-4 mb-4 flex justify-between text-sm">
+              <span className="text-gray-600">Refundable deposit payment</span><span className="font-semibold">${consent.depositAmount.toFixed(2)}</span>
+            </div>
+            <p className="text-xs text-gray-500 text-center mb-4">This is a payment, not an authorization hold. It is refundable after the item is returned safely.</p>
+            {authenticationClientSecret ? (
+              <Elements stripe={stripePromise} options={{ clientSecret: authenticationClientSecret }}>
+                <RefundablePaymentAuthentication clientSecret={authenticationClientSecret} onAuthenticated={() => confirmRefundableMutation.mutate()} onCancel={onClose} />
+              </Elements>
+            ) : <>
+              <Button onClick={() => confirmRefundableMutation.mutate()} disabled={isProcessing} className="w-full h-12 bg-teal-600 hover:bg-teal-700 rounded-xl" data-testid="button-confirm-refundable-payment">
+                {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : `Confirm refundable payment of $${consent.depositAmount.toFixed(2)}`}
+              </Button>
+              <Button variant="ghost" onClick={onClose} disabled={isProcessing} className="mt-2" data-testid="button-cancel-refundable-payment">Cancel</Button>
+            </>}
           </div>
         ) : (
           /* ── Payment screen ── */
@@ -269,6 +350,7 @@ export function TrustDepositModal({
             <Button
               onClick={() => payDepositMutation.mutate()}
               disabled={isProcessing}
+              data-testid="button-authorize-deposit"
               className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white text-base font-medium rounded-xl mb-2"
             >
               {isProcessing ? (
@@ -292,6 +374,7 @@ export function TrustDepositModal({
               variant="ghost"
               onClick={onClose}
               disabled={isProcessing}
+              data-testid="button-cancel-deposit"
               className="w-full text-sm text-gray-400 hover:text-gray-600"
             >
               Cancel

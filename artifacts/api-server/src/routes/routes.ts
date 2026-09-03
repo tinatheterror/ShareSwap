@@ -43,10 +43,8 @@ import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChang
 import {
   claimDepositTerminalAction,
   getPaymentIntentCaptureBefore,
-  processExpiringDepositHolds,
   releaseDepositTerminalClaim,
   resolveClaimedDepositIntents,
-  renewDepositHold,
 } from "../deposit-renewal-service";
 
 // Notify all availability subscribers that an item is back
@@ -717,6 +715,12 @@ const stripe = {
       return s.paymentMethods.detach(...args);
     },
   },
+  refunds: {
+    create: async (...args: Parameters<Stripe["refunds"]["create"]>) => {
+      const s = await getStripe();
+      return s.refunds.create(...args);
+    },
+  },
   checkout: {
     sessions: {
       create: async (...args: Parameters<Stripe['checkout']['sessions']['create']>) => {
@@ -947,8 +951,50 @@ type RentalPaymentHoldStripeClient = {
   paymentIntents: {
     create: typeof stripe.paymentIntents.create;
     retrieve: typeof stripe.paymentIntents.retrieve;
+    cancel: typeof stripe.paymentIntents.cancel;
   };
 };
+
+// Conservative defaults: one day to process the return plus three days to
+// initiate/review a claim. Both are deployment-configurable.
+const RETURN_PROCESSING_BUFFER_HOURS = Math.max(0, Number(process.env.DEPOSIT_RETURN_PROCESSING_BUFFER_HOURS ?? 24));
+const CLAIM_REVIEW_BUFFER_HOURS = Math.max(0, Number(process.env.DEPOSIT_CLAIM_REVIEW_BUFFER_HOURS ?? 72));
+// Extended authorization is opt-in.  Without an explicit provider configuration
+// we only use the ordinary, conservative authorization window for preselection.
+const configuredAuthorizationHours = Number(process.env.STRIPE_EXTENDED_AUTHORIZATION_WINDOW_HOURS);
+const PRECHECK_AUTHORIZATION_WINDOW_HOURS =
+  Number.isFinite(configuredAuthorizationHours) && configuredAuthorizationHours > 0
+    ? configuredAuthorizationHours
+    : 7 * 24;
+
+function requiredDepositProtectionEnd(endDate: Date | null): Date | null {
+  if (!endDate) return null;
+  return new Date(endDate.getTime() + (RETURN_PROCESSING_BUFFER_HOURS + CLAIM_REVIEW_BUFFER_HOURS) * 60 * 60 * 1000);
+}
+
+function refundableConsentBody(requestId: number, depositAmount: number, requiredProtectionEnd: Date | null, reason: string) {
+  return {
+    depositMode: "refundable_charge",
+    selectionState: "consent_required",
+    selectionReason: reason,
+    depositAmount,
+    requiredProtectionEnd: requiredProtectionEnd?.toISOString() ?? null,
+    consentRequired: true,
+    consentMessage: `Your security deposit requires a refundable payment of $${depositAmount.toFixed(2)} because your card’s authorization window doesn’t provide enough coverage for this rental.`,
+    consentEndpoint: `/api/requests/${requestId}/confirm-refundable-deposit`,
+  };
+}
+
+function computeAuthoritativeBorrowDeposit(item: any, reputationScore: number | null) {
+  const valueMap: Record<string, number> = { "Under $50": 25, "$50–$199": 125, "$200–$499": 350, "$500–$2,000": 1250, "$50–$150": 100, "$150–$300": 225, "$300–$1,000": 650, "$300+": 500 };
+  const pct: Record<number, number> = { 1: .10, 2: .20, 3: .30, 4: .40 };
+  const value = valueMap[item.originalValue || ""] ?? (Number(item.replacementValue) || 100);
+  const base = Math.max(5, Math.round(value * (pct[item.tier || 2] ?? .20)));
+  const trust = Math.min(100, Math.round(((reputationScore || 0) / 500) * 100) + 50);
+  const discount = trust >= 90 ? 60 : trust >= 70 ? 40 : trust >= 50 ? 20 : 0;
+  const amount = base <= 5 ? 5 : Math.max(5, Math.round(base * (1 - discount / 100)));
+  return { amount, base, discount: amount === 5 && base * (1 - discount / 100) < 5 ? 0 : discount, trust };
+}
 
 /**
  * Core logic behind POST /api/rentals/create-payment-hold, pulled out of the route
@@ -1010,6 +1056,22 @@ export async function createRentalPaymentHold({
       console.error("Could not compute valid rental pricing for request", requestId);
       return { status: 400 as const, error: "Could not determine rental pricing for this request" };
     }
+    const requiredProtectionEnd = requiredDepositProtectionEnd(request.endDate);
+    // A request beyond even our configured authorization capability must not
+    // create a speculative hold. The UI must obtain explicit refundable-charge
+    // consent instead.
+    if (requiredProtectionEnd && requiredProtectionEnd.getTime() > Date.now() + PRECHECK_AUTHORIZATION_WINDOW_HOURS * 60 * 60 * 1000) {
+      await tx.update(itemRequests).set({
+        depositMode: "refundable_charge",
+        depositSelectionState: "consent_required",
+        depositSelectionReason: "request_exceeds_authorization_window",
+        depositRequiredProtectionEnd: requiredProtectionEnd,
+      }).where(eq(itemRequests.id, requestId));
+      return {
+        status: 409 as const,
+        consent: refundableConsentBody(requestId, pricing.depositAmount, requiredProtectionEnd, "request_exceeds_authorization_window"),
+      };
+    }
 
     // The deterministic idempotency key used to create the deposit PI must change once a
     // prior attempt is terminally dead (cancelled — e.g. because the rental/fee charge
@@ -1033,13 +1095,13 @@ export async function createRentalPaymentHold({
       }
     }
 
-    return { status: 200 as const, request, pricing, attemptNum, reuseExistingPI };
+    return { status: 200 as const, request, pricing, attemptNum, reuseExistingPI, requiredProtectionEnd };
   });
 
   if (attemptInfo.status !== 200) {
-    return { status: attemptInfo.status, body: { error: attemptInfo.error } };
+    return { status: attemptInfo.status, body: attemptInfo.consent ?? { error: attemptInfo.error } };
   }
-  const { request, pricing, attemptNum, reuseExistingPI } = attemptInfo;
+  const { request, pricing, attemptNum, reuseExistingPI, requiredProtectionEnd } = attemptInfo;
   const { depositAmount, rentalAmount, processingFee } = pricing;
   const platformFee = 0;
 
@@ -1142,13 +1204,37 @@ export async function createRentalPaymentHold({
   // a failed off-session rental charge cancels this PI) can tell it needs a fresh attempt.
   await db
     .update(itemRequests)
-    .set({ depositHoldAttemptId: paymentIntent.id, depositHoldAttemptNum: attemptNum })
+    .set({
+      depositHoldAttemptId: paymentIntent.id,
+      depositHoldAttemptNum: attemptNum,
+      depositMode: "authorization",
+      depositSelectionState: "hold_attempted",
+      depositSelectionReason: null,
+      depositRequiredProtectionEnd: requiredProtectionEnd,
+    })
     .where(eq(itemRequests.id, requestId));
 
   const alreadyConfirmed =
     hasSavedCard &&
     !!confirmIfSaved &&
     (paymentIntent.status === "succeeded" || paymentIntent.status === "requires_capture");
+
+  // A confirmed hold exposes the card network's actual deadline immediately.
+  // Never guess it: cancel an insufficient hold and require visible consent.
+  if (paymentIntent.status === "requires_capture") {
+    const captureBefore = getPaymentIntentCaptureBefore(paymentIntent);
+    if (!captureBefore || (requiredProtectionEnd && captureBefore < requiredProtectionEnd)) {
+      await stripeClient.paymentIntents.cancel(paymentIntent.id);
+      await db.update(itemRequests).set({
+        depositHoldAttemptId: paymentIntent.id,
+        depositMode: "refundable_charge",
+        depositSelectionState: "consent_required",
+        depositSelectionReason: "authorization_window_insufficient",
+        depositRequiredProtectionEnd: requiredProtectionEnd,
+      }).where(eq(itemRequests.id, requestId));
+      return { status: 409, body: refundableConsentBody(requestId, depositAmount, requiredProtectionEnd, "authorization_window_insufficient") };
+    }
+  }
 
   return {
     status: 200,
@@ -1162,6 +1248,101 @@ export async function createRentalPaymentHold({
       totalHoldAmount: totalChargeAmount,
     },
   };
+}
+
+/**
+ * This is deliberately separate from hold creation: callers reach it only
+ * after displaying refundableConsentBody.consentMessage and collecting an
+ * affirmative UI action. Amount and dates are recomputed on the server.
+ */
+export async function confirmRefundableDeposit({
+  requestId, userId, stripeClient = stripe,
+}: { requestId: number; userId: number; stripeClient?: any }): Promise<{ status: number; body: any }> {
+  const outcome = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);
+    const [row] = await tx.select({ item_requests: itemRequests, items, reputationScore: users.reputationScore }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).innerJoin(users, eq(users.id, itemRequests.requesterId))
+      .where(eq(itemRequests.id, requestId)).limit(1);
+    if (!row) return { status: 404, body: { error: "Request not found" } };
+    const request = row.item_requests;
+    if (request.requesterId !== userId) return { status: 403, body: { error: "Unauthorized" } };
+    if (request.status !== "ACCEPTED") return { status: 400, body: { error: "Request is not in accepted state" } };
+    const pricing = request.requestType === "BORROW"
+      ? (() => { const borrow = computeAuthoritativeBorrowDeposit(row.items, row.reputationScore); return { depositAmount: borrow.amount, borrow }; })()
+      : computeAuthoritativeRentalPricing(row.items, request.startDate, request.endDate);
+    if (!pricing) return { status: 400, body: { error: "Could not determine deposit for this request" } };
+    const requiredProtectionEnd = requiredDepositProtectionEnd(request.endDate);
+    if (request.depositSelectionState !== "consent_required" && request.depositMode !== "refundable_charge") {
+      return { status: 409, body: { error: "Refundable deposit consent is not required for this request" } };
+    }
+    if (request.depositPaymentIntentId) {
+      const existing = await stripeClient.paymentIntents.retrieve(request.depositPaymentIntentId);
+      if (existing.status !== "succeeded") return {
+        status: existing.status === "succeeded" ? 200 : 402,
+        body: {
+          depositMode: "refundable_charge", selectionState: existing.status === "succeeded" ? "confirmed" : "payment_pending",
+          paymentIntentId: existing.id, clientSecret: existing.client_secret,
+          stripeStatus: existing.status, requiresAction: existing.status === "requires_action",
+        },
+      };
+      // Continue below so a timeout after deposit collection finishes ancillary
+      // charges/finalization instead of treating the PI alone as completion.
+      return { status: 200, body: { paymentIntentId: existing.id, depositAmount: pricing.depositAmount, resume: true } };
+    }
+    const [payer] = await tx.select({ customerId: users.stripeCustomerId, paymentMethodId: users.stripePaymentMethodId, shareCoins: users.shareCoins })
+      .from(users).where(eq(users.id, userId)).limit(1);
+    if (!payer?.customerId || !payer.paymentMethodId) {
+      return { status: 400, body: { error: "No payment method on file. Please add a card in Settings." } };
+    }
+    const borrowShareCoins = request.requestType === "BORROW"
+      ? Math.max(1, Math.ceil(((parseFloat(row.items.shareCoinPrice || "0") || 5) / 7) * Math.max(1,
+          Math.ceil(((request.endDate?.getTime() || Date.now()) - (request.startDate?.getTime() || Date.now())) / 86400000))))
+      : null;
+    if (borrowShareCoins != null && parseFloat(payer.shareCoins || "0") < borrowShareCoins) {
+      return { status: 400, body: { error: "insufficient_sharecoins", required: borrowShareCoins, balance: Math.floor(parseFloat(payer.shareCoins || "0")) } };
+    }
+    const intent = await stripeClient.paymentIntents.create({
+      amount: Math.round(pricing.depositAmount * 100), currency: "usd",
+      customer: payer.customerId, payment_method: payer.paymentMethodId, confirm: true, off_session: true,
+      metadata: {
+        type: "refundable_security_deposit", requestId: String(requestId), userId: String(userId),
+        depositAmount: String(pricing.depositAmount), requiredProtectionEnd: requiredProtectionEnd?.toISOString() ?? "",
+        rentalAmount: String((pricing as any).rentalAmount || 0), processingFee: String((pricing as any).processingFee || 0),
+      },
+      description: `Refundable security deposit for ShareSwap request #${requestId}`,
+    }, { idempotencyKey: `refundable-deposit-${requestId}-${Math.round(pricing.depositAmount * 100)}` });
+    if (intent.status !== "succeeded") {
+      return {
+        status: 402,
+        body: { depositMode: "refundable_charge", selectionState: "payment_pending", paymentIntentId: intent.id,
+          clientSecret: intent.client_secret, stripeStatus: intent.status, requiresAction: intent.status === "requires_action",
+          error: intent.status === "requires_action" ? "Your card requires additional authentication." : "The refundable deposit payment was not completed." },
+      };
+    }
+    await tx.update(itemRequests).set({
+      depositPaymentIntentId: intent.id, trustDepositAmount: String(pricing.depositAmount),
+      depositMode: "refundable_charge", depositSelectionState: "confirmed",
+      depositSelectionReason: request.depositSelectionReason, depositRequiredProtectionEnd: requiredProtectionEnd,
+      depositConsentAt: new Date(), depositStatus: "held", depositAuthorizedAt: new Date(),
+      shareCoinAmount: borrowShareCoins?.toString() ?? request.shareCoinAmount,
+    }).where(and(eq(itemRequests.id, requestId), isNull(itemRequests.depositPaymentIntentId)));
+    return { status: 200, body: { paymentIntentId: intent.id, depositAmount: pricing.depositAmount, resume: true } };
+  });
+  if (outcome.status !== 200 || !outcome.body?.resume) return outcome;
+  if (requestId && outcome.body.paymentIntentId) {
+    // Reuse the battle-tested split confirmation path. It treats the refundable
+    // PI as the deposit and creates the rental charge with deterministic keys.
+    if ((await db.select({ type: itemRequests.requestType }).from(itemRequests).where(eq(itemRequests.id, requestId)).limit(1))[0]?.type === "RENT") {
+      const finalized = await confirmRentalDeposit({ requestId, userId, paymentIntentId: outcome.body.paymentIntentId, stripeClient });
+      if (finalized.status !== 200) {
+        if (stripeClient.refunds) await stripeClient.refunds.create({ payment_intent: outcome.body.paymentIntentId }, { idempotencyKey: `refundable-deposit-ancillary-failure-${requestId}-${outcome.body.paymentIntentId}` });
+        return { status: finalized.status, body: { error: finalized.error ?? "Rental payment failed; refundable deposit was refunded.", selectionState: "payment_failed" } };
+      }
+    } else {
+      await db.update(itemRequests).set({ status: "DEPOSIT_CONFIRMED", depositSelectionState: "confirmed" })
+        .where(and(eq(itemRequests.id, requestId), eq(itemRequests.status, "ACCEPTED")));
+    }
+  }
+  return { status: 200, body: { success: true, nextStep: "await_handoff", depositMode: "refundable_charge", selectionState: "confirmed", paymentIntentId: outcome.body.paymentIntentId, depositAmount: outcome.body.depositAmount } };
 }
 
 type ConfirmRentalDepositStripeClient = {
@@ -1257,6 +1438,21 @@ export async function confirmRentalDeposit({
     const rentalAmount = parseFloat(paymentIntent.metadata.rentalAmount || "0") || 0;
     const processingFee = parseFloat(paymentIntent.metadata.processingFee || "0") || 0;
     const platformFee = parseFloat(paymentIntent.metadata.platformFee || "0") || 0;
+    const requiredProtectionEnd = requiredDepositProtectionEnd(request.item_requests.endDate);
+    if (paymentIntent.status === "requires_capture") {
+      const captureBefore = getPaymentIntentCaptureBefore(paymentIntent);
+      if (!captureBefore || (requiredProtectionEnd && captureBefore < requiredProtectionEnd)) {
+        await stripeClient.paymentIntents.cancel(paymentIntentId);
+        await tx.update(itemRequests).set({
+          depositMode: "refundable_charge",
+          depositSelectionState: "consent_required",
+          depositSelectionReason: "authorization_window_insufficient",
+          depositRequiredProtectionEnd: requiredProtectionEnd,
+          depositHoldAttemptId: paymentIntentId,
+        }).where(eq(itemRequests.id, requestId));
+        return { status: 409, ...refundableConsentBody(requestId, depositAmount, requiredProtectionEnd, "authorization_window_insufficient") };
+      }
+    }
 
     // Belt-and-suspenders: for a live manual-capture hold (the new split flow), the PI's
     // own authorized `amount` must equal the deposit metadata exactly — Stripe itself
@@ -1273,7 +1469,7 @@ export async function confirmRentalDeposit({
     // intent predates this split and already charged everything in one go — nothing more to do.)
     let rentalPaymentIntentId: string | null = null;
     const rentalChargeAmount = rentalAmount + processingFee;
-    if (paymentIntent.status === "requires_capture" && rentalChargeAmount > 0) {
+    if ((paymentIntent.status === "requires_capture" || paymentIntent.metadata.type === "refundable_security_deposit") && rentalChargeAmount > 0) {
       const depositCustomer = typeof paymentIntent.customer === "string" ? paymentIntent.customer : paymentIntent.customer?.id;
       const depositPaymentMethod = typeof paymentIntent.payment_method === "string" ? paymentIntent.payment_method : paymentIntent.payment_method?.id;
 
@@ -1345,8 +1541,9 @@ export async function confirmRentalDeposit({
         depositStatus: "authorized",
         depositAuthorizedAt: new Date(),
         depositAuthorizationExpiresAt: getPaymentIntentCaptureBefore(paymentIntent),
-        depositRenewalStatus: "healthy",
-        depositRenewalError: null,
+        depositMode: paymentIntent.metadata.type === "refundable_security_deposit" ? "refundable_charge" : "authorization",
+        depositSelectionState: "confirmed",
+        depositRequiredProtectionEnd: requiredProtectionEnd,
         rentalAmount: rentalAmount?.toString(),
         rentalProcessingFee: processingFee?.toString(),
         rentalPlatformFee: platformFee?.toString(),
@@ -7105,25 +7302,28 @@ Respond with ONLY the category name, nothing else.`
   app.post("/api/stripe/create-deposit-hold", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const { depositAmount, requestId } = req.body;
-      if (!depositAmount || depositAmount <= 0) {
-        return res.status(400).json({ error: "Invalid deposit amount" });
+      const requestId = Number(req.body?.requestId);
+      if (!Number.isInteger(requestId)) return res.status(400).json({ error: "Invalid request ID" });
+      const [row] = await db.select({ request: itemRequests, item: items, reputation: users.reputationScore })
+        .from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).innerJoin(users, eq(users.id, itemRequests.requesterId))
+        .where(eq(itemRequests.id, requestId)).limit(1);
+      if (!row) return res.status(404).json({ error: "Request not found" });
+      if (row.request.requesterId !== req.user.id || row.request.requestType !== "BORROW" || row.request.status !== "ACCEPTED") {
+        return res.status(403).json({ error: "Only the accepted borrower may prepare this deposit" });
       }
-
-      // Look up saved payment method
-      const [userRecord] = await db
-        .select({ stripeCustomerId: users.stripeCustomerId, stripePaymentMethodId: users.stripePaymentMethodId })
-        .from(users)
-        .where(eq(users.id, req.user.id))
-        .limit(1);
-
-      if (!userRecord?.stripeCustomerId || !userRecord?.stripePaymentMethodId) {
+      const calculation = computeAuthoritativeBorrowDeposit(row.item, row.reputation);
+      const protectionEnd = requiredDepositProtectionEnd(row.request.endDate);
+      if (protectionEnd && protectionEnd.getTime() > Date.now() + PRECHECK_AUTHORIZATION_WINDOW_HOURS * 3600000) {
+        await db.update(itemRequests).set({ depositMode: "refundable_charge", depositSelectionState: "consent_required", depositSelectionReason: "request_exceeds_authorization_window", depositRequiredProtectionEnd: protectionEnd }).where(eq(itemRequests.id, requestId));
+        return res.status(409).json(refundableConsentBody(requestId, calculation.amount, protectionEnd, "request_exceeds_authorization_window"));
+      }
+      const [userRecord] = await db.select({ stripeCustomerId: users.stripeCustomerId, stripePaymentMethodId: users.stripePaymentMethodId })
+        .from(users).where(eq(users.id, req.user.id)).limit(1);
+      if (!userRecord?.stripeCustomerId || !userRecord.stripePaymentMethodId) {
         return res.status(400).json({ error: "No payment method on file. Please add a card in Settings." });
       }
-
-      // Create authorization hold for deposit only (platform fee charged separately)
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(depositAmount * 100),
+        amount: calculation.amount * 100,
         currency: "usd",
         capture_method: "manual",
         customer: userRecord.stripeCustomerId,
@@ -7131,15 +7331,19 @@ Respond with ONLY the category name, nothing else.`
         confirm: true,
         off_session: true,
         metadata: {
-          type: "security_deposit",
-          request_id: requestId.toString(),
-          user_id: req.user.id.toString(),
-          deposit_amount: depositAmount.toString(),
+          type: "borrow_security_deposit", requestId: String(requestId), userId: String(req.user.id),
+          depositAmount: String(calculation.amount),
         },
         description: `Security deposit hold for ShareSwap request #${requestId}`,
-      });
-
-      res.json({ paymentIntentId: paymentIntent.id, depositAmount });
+      }, { idempotencyKey: `borrow-deposit-hold-${requestId}-${calculation.amount * 100}` });
+      const captureBefore = getPaymentIntentCaptureBefore(paymentIntent);
+      if (paymentIntent.status !== "requires_capture" || !captureBefore || (protectionEnd && captureBefore < protectionEnd)) {
+        if (paymentIntent.status === "requires_capture") await stripe.paymentIntents.cancel(paymentIntent.id);
+        await db.update(itemRequests).set({ depositMode: "refundable_charge", depositSelectionState: "consent_required", depositSelectionReason: "authorization_window_insufficient", depositRequiredProtectionEnd: protectionEnd }).where(eq(itemRequests.id, requestId));
+        return res.status(409).json(refundableConsentBody(requestId, calculation.amount, protectionEnd, "authorization_window_insufficient"));
+      }
+      await db.update(itemRequests).set({ depositHoldAttemptId: paymentIntent.id, depositMode: "authorization", depositSelectionState: "hold_attempted", depositRequiredProtectionEnd: protectionEnd }).where(eq(itemRequests.id, requestId));
+      res.json({ paymentIntentId: paymentIntent.id, depositAmount: calculation.amount, baseDepositAmount: calculation.base, discountPercentage: calculation.discount, trustScore: calculation.trust, depositMode: "authorization", captureBefore: captureBefore.toISOString() });
     } catch (error: any) {
       console.error("Error creating deposit hold:", error);
       res.status(500).json({ error: "Failed to create deposit hold: " + error.message });
@@ -7815,7 +8019,9 @@ Respond with ONLY the category name, nothing else.`
       }
 
       const result = await confirmRentalDeposit({ requestId, userId: req.user.id, paymentIntentId });
-      return res.status(result.status).json(result.body);
+      // Older core outcomes use top-level error fields; hybrid consent uses an
+      // explicit body. Preserve both while clients migrate to the new contract.
+      return res.status(result.status).json(result.body ?? result);
     } catch (error: any) {
       if (error?.status) {
         return res.status(error.status).json({ error: error.message });
@@ -7825,38 +8031,20 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // Renter-initiated retry for an expiring or previously failed card-deposit
-  // renewal. The service re-verifies all payment details directly with Stripe.
-  app.post("/api/requests/:requestId/renew-deposit", csrfProtection, async (req, res) => {
+  // Called only after the requester affirmatively accepts the refundable-deposit
+  // disclosure returned by create-payment-hold.
+  app.post("/api/requests/:requestId/confirm-refundable-deposit", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const requestId = parseInt(req.params.requestId);
       if (!Number.isInteger(requestId)) {
         return res.status(400).json({ error: "Invalid request ID" });
       }
-
-      const [request] = await db
-        .select({ requesterId: itemRequests.requesterId })
-        .from(itemRequests)
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-      if (!request) return res.status(404).json({ error: "Request not found" });
-      if (request.requesterId !== req.user.id) {
-        return res.status(403).json({ error: "Only the renter can renew this deposit authorization" });
-      }
-
-      const result = await renewDepositHold({
-        requestId,
-        stripeClient: stripe,
-        force: true,
-      });
-      if (result.status === "failed") {
-        return res.status(402).json(result);
-      }
-      res.json(result);
-    } catch (error) {
-      console.error("Error retrying deposit renewal:", error);
-      res.status(500).json({ error: "Failed to retry the deposit authorization" });
+      const result = await confirmRefundableDeposit({ requestId, userId: req.user.id });
+      return res.status(result.status).json(result.body);
+    } catch (error: any) {
+      console.error("Error confirming refundable deposit:", error);
+      return res.status(500).json({ error: "Failed to confirm refundable deposit" });
     }
   });
 
@@ -7937,6 +8125,7 @@ Respond with ONLY the category name, nothing else.`
         .select()
         .from(itemRequests)
         .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .innerJoin(users, eq(users.id, itemRequests.requesterId))
         .where(eq(itemRequests.id, requestId))
         .limit(1);
 
@@ -7952,6 +8141,12 @@ Respond with ONLY the category name, nothing else.`
       // Request must be ACCEPTED
       if (request.item_requests.status !== "ACCEPTED") {
         return res.status(400).json({ error: "Request must be accepted before paying deposit" });
+      }
+      const borrowCalculation = request.item_requests.requestType === "BORROW"
+        ? computeAuthoritativeBorrowDeposit(request.items, request.users?.reputationScore ?? null)
+        : null;
+      if (borrowCalculation && Number(depositAmount) !== borrowCalculation.amount) {
+        return res.status(400).json({ error: "Deposit amount does not match the server-calculated amount" });
       }
 
       // For BORROW requests, verify the requester has enough ShareCoins
@@ -7989,6 +8184,11 @@ Respond with ONLY the category name, nothing else.`
           return res.status(400).json({ error: "Deposit authorization does not match this request" });
         }
         depositAuthorizationExpiresAt = getPaymentIntentCaptureBefore(paymentIntent);
+        const protectionEnd = requiredDepositProtectionEnd(request.item_requests.endDate);
+        if (!depositAuthorizationExpiresAt || (protectionEnd && depositAuthorizationExpiresAt < protectionEnd)) {
+          await stripe.paymentIntents.cancel(paymentIntentId);
+          return res.status(409).json(refundableConsentBody(requestId, borrowCalculation?.amount ?? Number(depositAmount), protectionEnd, "authorization_window_insufficient"));
+        }
       }
 
       // Update request with deposit info
@@ -7996,14 +8196,16 @@ Respond with ONLY the category name, nothing else.`
         .update(itemRequests)
         .set({
           status: "DEPOSIT_CONFIRMED",
-          trustDepositAmount: depositAmount.toString(),
-          trustDepositBaseAmount: baseDepositAmount?.toString(),
-          trustDiscountPercentage: discountPercentage,
-          requesterTrustScoreSnapshot: trustScore,
+          trustDepositAmount: (borrowCalculation?.amount ?? depositAmount).toString(),
+          trustDepositBaseAmount: (borrowCalculation?.base ?? baseDepositAmount)?.toString(),
+          trustDiscountPercentage: borrowCalculation?.discount ?? discountPercentage,
+          requesterTrustScoreSnapshot: borrowCalculation?.trust ?? trustScore,
           depositStatus: "authorized",
           depositPaymentIntentId: paymentIntentId,
           depositAuthorizedAt: new Date(),
           depositAuthorizationExpiresAt,
+          depositMode: "authorization",
+          depositSelectionState: "confirmed",
           depositRenewalStatus: paymentIntentId ? "healthy" : null,
           depositRenewalError: null,
           platformFeeChargeId: platformFeeChargeId ?? null,
@@ -11311,14 +11513,11 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // Native clients check on launch, resume, and while active. This sweep also
-  // enforces overdue escalation when neither borrower nor owner opens the app.
+    // Native clients check on launch, resume, and while active. This sweep only
+    // sends reminders; overdue status must never capture or renew a deposit.
   const runOverdueReminderSweep = () => {
     processReturnReminders().catch((error) =>
       console.error("Error running overdue reminder sweep:", error),
-    );
-    processExpiringDepositHolds({ stripeClient: stripe }).catch((error) =>
-      console.error("Error running deposit renewal sweep:", error),
     );
   };
   setTimeout(() => {

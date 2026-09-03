@@ -19,11 +19,15 @@ async function throwIfNotOk(res: Response) {
       code?: string;
       required?: number;
       missing?: Record<string, unknown>;
-    };
+    } & Record<string, unknown>;
     err.status = res.status;
     if (parsed?.code) err.code = parsed.code as string;
     if (parsed?.required !== undefined) err.required = parsed.required as number;
     if (parsed?.missing) err.missing = parsed.missing as Record<string, unknown>;
+    // Some payment preparation responses intentionally use a non-2xx status to
+    // require an explicit next step. Preserve that structured response so callers
+    // can render the server-provided disclosure rather than parsing its message.
+    if (parsed) Object.assign(err, parsed);
     throw err;
   }
 }

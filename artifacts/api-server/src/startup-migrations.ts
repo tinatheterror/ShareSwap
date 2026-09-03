@@ -2,9 +2,12 @@ import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import { pool } from "@workspace/db";
 
-const migrationRelativePath = "lib/db/scripts/0002_deposit_renewal_columns.sql";
+const migrationRelativePaths = [
+  "lib/db/scripts/0002_deposit_renewal_columns.sql",
+  "lib/db/scripts/0003_hybrid_security_deposit.sql",
+];
 
-async function findMigrationPath() {
+async function findMigrationPath(migrationRelativePath: string) {
   const candidates = [
     path.resolve(process.cwd(), migrationRelativePath),
     path.resolve(process.cwd(), "../..", migrationRelativePath),
@@ -21,7 +24,9 @@ async function findMigrationPath() {
 }
 
 export async function applyStartupMigrations() {
-  const migrationPath = await findMigrationPath();
-  const migrationSql = await readFile(migrationPath, "utf8");
-  await pool.query(migrationSql);
+  for (const relativePath of migrationRelativePaths) {
+    const migrationPath = await findMigrationPath(relativePath);
+    const migrationSql = await readFile(migrationPath, "utf8");
+    await pool.query(migrationSql);
+  }
 }

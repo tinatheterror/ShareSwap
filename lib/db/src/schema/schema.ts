@@ -337,9 +337,8 @@ export const itemRequests = pgTable("item_requests", {
   depositStatus: text("deposit_status"), // 'pending' | 'authorized' | 'held' | 'released' | 'captured' | 'failed'
   depositPaymentIntentId: text("deposit_payment_intent_id"), // Stripe payment intent ID for the authorization hold
   depositAuthorizedAt: timestamp("deposit_authorized_at"),
-  // Stripe reports the exact card-network authorization deadline on the latest
-  // charge. Renewal state is persisted so web/native clients can surface an
-  // actionable warning and background retries remain safe across restarts.
+  // Exact card-network deadline reported by Stripe for a manual authorization.
+  // It is informative only: authorization holds are never renewed by a timer.
   depositAuthorizationExpiresAt: timestamp("deposit_authorization_expires_at"),
   depositRenewalStatus: text("deposit_renewal_status"), // null | 'healthy' | 'failed'
   depositRenewalAttemptedAt: timestamp("deposit_renewal_attempted_at"),
@@ -358,6 +357,13 @@ export const itemRequests = pgTable("item_requests", {
   // fresh authorization instead of forever returning the same dead PaymentIntent.
   depositHoldAttemptId: text("deposit_hold_attempt_id"),
   depositHoldAttemptNum: integer("deposit_hold_attempt_num").default(0),
+  // Immutable selection made at payment/handoff. A refundable charge is only
+  // created after the requester explicitly consents to it.
+  depositMode: text("deposit_mode"), // 'authorization' | 'refundable_charge'
+  depositSelectionState: text("deposit_selection_state"), // 'pending' | 'hold_attempted' | 'consent_required' | 'confirmed'
+  depositSelectionReason: text("deposit_selection_reason"),
+  depositRequiredProtectionEnd: timestamp("deposit_required_protection_end"),
+  depositConsentAt: timestamp("deposit_consent_at"),
   platformFeeChargeId: text("platform_fee_charge_id"), // Stripe charge ID for the immediately-captured platform fee
   
   // ShareCoin tracking for borrow

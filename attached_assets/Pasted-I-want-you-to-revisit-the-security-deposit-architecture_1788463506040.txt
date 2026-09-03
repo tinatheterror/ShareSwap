@@ -1,0 +1,33 @@
+I want you to revisit the security-deposit architecture before we replace authorization holds with captured refundable deposits.
+
+Your audit correctly identified that a standard Stripe card authorization cannot simply remain open for a 6-month rental. However, I do NOT want to automatically switch ShareSwap to captured security deposits without first evaluating whether authorization holds can remain the preferred mechanism for shorter-duration transactions.
+
+The customer experience of an authorization hold is preferable to an actual security-deposit charge whenever Stripe supports it: the customer's funds are not actually transferred to ShareSwap and the deposit can simply be released when the transaction ends.
+
+Design a Stripe-compliant hybrid architecture for ShareSwap:
+
+1. Determine the maximum duration for which ShareSwap can legitimately maintain a security-deposit authorization using Stripe.
+2. Determine whether Stripe provides any extended-authorization capability that could apply to ShareSwap's marketplace model, and whether ShareSwap would actually qualify for it.
+3. Do NOT assume that because hotels or car-rental companies use extended authorization, ShareSwap automatically qualifies.
+4. For durations that can safely be covered by an authorization hold, use an authorization hold as the preferred deposit mechanism.
+5. For durations that cannot safely be covered by an authorization, design the appropriate alternative rather than repeatedly reauthorizing the customer's card.
+6. Compare authorization holds versus captured refundable deposits specifically for:
+
+   * customer experience
+   * Stripe compliance
+   * backend complexity
+   * payment failures
+   * expiration risk
+   * refunds
+   * disputes/chargebacks
+   * damage/loss claims
+   * cancellations
+   * overdue rentals
+   * 1-day through 6-month durations
+7. Keep the security deposit completely separate from rental charges and overdue charges.
+8. Do not automatically treat an overdue rental as permission to capture the security deposit.
+9. Do not implement or modify code yet.
+
+Produce a recommended payment architecture and state machine showing exactly what happens to the security deposit at each stage of a ShareSwap transaction.
+
+The goal is NOT simply to choose "authorization" or "captured deposit." The goal is to use an authorization hold whenever Stripe legitimately supports it and use a different mechanism only when the rental duration exceeds what Stripe can reliably support.

@@ -1,0 +1,125 @@
+This architecture looks directionally correct. Before implementing it, I want one final design clarification and audit.
+
+The core product principle is:
+
+**Authorization holds are preferred for the customer whenever Stripe can legitimately provide sufficient authorization coverage. Captured refundable deposits are the fallback for durations where authorization coverage cannot reliably protect the transaction.**
+
+Do NOT simplify this into a fixed rule such as “1–7 days = hold” or “8+ days = refundable deposit.” The mechanism must ultimately be determined by Stripe-supported authorization capability and the actual `capture_before` deadline.
+
+Please refine the architecture around the following:
+
+### 1. Deposit mechanism selection must happen at the correct point
+
+Determine exactly when ShareSwap should select the deposit mechanism relative to:
+
+* request acceptance
+* payment-method collection
+* item handoff
+* authorization
+* rental start
+* expected return
+
+The system should avoid authorizing a deposit unnecessarily early because doing so consumes the authorization window before the item is actually in the borrower's possession.
+
+### 2. Define the pre-authorization decision
+
+Before attempting an authorization hold, ShareSwap should determine whether an authorization is potentially appropriate based on:
+
+* expected return time
+* return-processing buffer
+* claim-review buffer
+* Stripe account eligibility for extended authorization
+* transaction/card/network constraints where known
+
+Then authorize the deposit and retrieve the actual Stripe `capture_before`.
+
+The actual `capture_before` must remain the authoritative deadline.
+
+### 3. Define what happens if the resulting `capture_before` is insufficient
+
+This is critical.
+
+If ShareSwap attempts an authorization and the resulting `capture_before` does NOT safely cover the required protection window, do not:
+
+* create a replacement authorization
+* leave the transaction falsely marked as fully secured
+* wait until expiration and hope to capture it
+* automatically convert the existing authorization into a different mechanism without a clearly defined flow
+
+Instead, define exactly how the transaction transitions to the captured-refundable-deposit path.
+
+Preferably, the system should avoid this situation through pre-authorization eligibility checks, but the architecture must still safely handle it if it occurs.
+
+### 4. Clarify extended authorization
+
+Do not assume ShareSwap qualifies merely because Stripe supports extended authorizations for certain businesses.
+
+Document:
+
+* what ShareSwap must confirm with Stripe
+* whether the relevant Stripe account is eligible
+* what merchant category/account configuration matters
+* which payment methods/networks may qualify
+* whether extended authorization can actually be used for ShareSwap's marketplace structure
+* how the application detects the actual resulting authorization deadline
+
+Treat extended authorization as an optimization, not a guaranteed capability.
+
+### 5. Preserve the customer-experience priority
+
+Where a valid authorization hold can safely cover the transaction, prefer it over a captured refundable deposit because:
+
+* the customer's funds are not actually transferred
+* no refund is necessary on successful completion
+* the deposit is simply released
+* the customer experiences less payment movement
+
+However, do not sacrifice payment reliability or deposit protection merely to avoid a refund.
+
+### 6. Keep the two financial concepts completely separate
+
+Rental/borrow charges and security deposits must remain separate.
+
+The deposit must not be:
+
+* rental revenue
+* an overdue fee
+* an automatic non-return penalty
+* automatically captured because a rental becomes overdue
+
+The overdue state and claim state must remain independent of deposit settlement.
+
+### 7. Long-term transactions
+
+For rentals/borrows where the required protection window exceeds what Stripe can reliably authorize, use the captured refundable deposit from the beginning.
+
+For example, a six-month rental should never depend on authorization renewal.
+
+Do not create a six-month series of authorization holds.
+
+### 8. Implementation readiness
+
+Before writing code, provide:
+
+* final deposit state machine
+* final request/rental state machine
+* mechanism-selection decision tree
+* Stripe object lifecycle
+* database entities/constraints
+* webhook events
+* idempotency strategy
+* failure/retry behavior
+* cancellation behavior
+* return behavior
+* damage claim behavior
+* non-return behavior
+* overdue behavior
+* refund behavior
+* administrative override behavior
+* reconciliation behavior
+
+Also identify any remaining Stripe-specific assumptions that must be confirmed directly with Stripe before implementation.
+
+**Do not modify code yet.**
+
+The goal is to produce the final architecture first, with no ambiguity about when ShareSwap uses an authorization hold versus a captured refundable deposit.

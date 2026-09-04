@@ -10113,6 +10113,19 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Upload security-claim evidence to private object storage.
+  app.post("/api/uploads/claim-evidence", csrfProtection, upload.single("photo"), async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.file) return res.status(400).json({ error: "No photo provided" });
+    try {
+      const url = await uploadToStorage(req.file.buffer, req.file.originalname);
+      res.json({ url });
+    } catch (err) {
+      console.error("Claim evidence upload error:", err);
+      res.status(500).json({ error: "Failed to upload evidence photo" });
+    }
+  });
+
   app.post("/api/requests/:requestId/confirm-return", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);

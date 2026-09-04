@@ -62,18 +62,13 @@ export async function claimDepositTerminalAction(
     if (claimIsFresh) {
       return { status: "busy", reason: "A deposit update is already in progress" };
     }
-    if (
-      request.depositRenewalStatus === "terminal_action" &&
-      request.depositOperationType !== operationType
-    ) {
-      return { status: "busy", reason: "A different deposit resolution is already in progress" };
-    }
-    if (
-      request.depositRenewalStatus === "terminal_action" &&
-      request.depositRenewalAttemptedAt &&
-      request.depositRenewalAttemptedAt.getTime() > now.getTime() - 15 * 60 * 1000
-    ) {
-      return { status: "busy", reason: "This deposit resolution is already in progress" };
+    if (request.depositRenewalStatus === "terminal_action" || request.depositOperationToken) {
+      return {
+        status: "busy",
+        reason: request.depositOperationType === operationType
+          ? "This deposit resolution is already in progress; reconcile its persisted operation"
+          : "A different deposit resolution is already in progress",
+      };
     }
 
     const operationToken = randomUUID();

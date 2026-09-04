@@ -25,7 +25,7 @@ const TRANSACTION_TYPES = new Set([
   "handoff_pending", "handoff_confirmed", "handoff_auto_advanced",
   "handoff_dispute", "handoff_disputed", "handoff_flagged",
   "return_initiated", "return_confirmed", "return_initiated",
-  "dispute_opened", "dispute_resolved",
+  "dispute_opened", "dispute_resolved", "security_claim_opened", "claim_decided", "claim_settled",
   "delivery_confirmed", "courier_issue",
   "gift_handoff_pending", "gift_completed",
 ]);
@@ -43,6 +43,7 @@ const SYSTEM_TYPES = new Set([
   "wishlist_match", "swap_match", "referral_joined",
   "return_reminder_tomorrow", "return_reminder_today", "return_reminder_overdue",
   "return_reminder_overdue_restricted", "return_reminder_serious_overdue",
+  "return_due", "overdue_grace", "overdue", "seriously_overdue", "non_return_review",
   "verification_failed", "verification_approved",
 ]);
 
@@ -66,7 +67,7 @@ export function getNotificationRoute(n: SelectNotification): { type: "chat"; req
   }
   if (n.type === "sharecoin_earned") return { type: "url", url: "/wallet" };
   if (n.type === "new_review_received") return { type: "url", url: "/profile#reviews" };
-  if (n.type === "dispute_resolved" || n.type === "security_deposit_released" || n.type === "payment_received") {
+  if (n.type === "dispute_resolved" || n.type === "security_deposit_released" || n.type === "payment_received" || n.type === "claim_settled") {
     return { type: "url", url: "/my-balance" };
   }
   if (n.type === "wishlist_match" && n.itemId) return { type: "url", url: `/items/${n.itemId}` };
@@ -91,6 +92,8 @@ function getIcon(type: string) {
     case "handoff_confirmed": case "handoff_auto_advanced": return <CheckCircle2 className={`${cls} text-green-600`} />;
     case "handoff_pending": return <Clock className={`${cls} text-amber-500`} />;
     case "handoff_dispute": case "handoff_disputed": case "dispute_opened": return <AlertCircle className={`${cls} text-red-500`} />;
+    case "security_claim_opened": case "claim_decided": return <ShieldAlert className={`${cls} text-red-600`} />;
+    case "claim_settled": return <Shield className={`${cls} text-green-600`} />;
     case "handoff_flagged": return <Flag className={`${cls} text-orange-500`} />;
     case "gift_handoff_pending": case "gift_completed": return <Gift className={`${cls} text-pink-500`} />;
     case "delivery_confirmed": return <Truck className={`${cls} text-green-600`} />;
@@ -102,6 +105,10 @@ function getIcon(type: string) {
     case "return_reminder_overdue_restricted":
       return <AlertCircle className={`${cls} text-red-500`} />;
     case "return_reminder_serious_overdue":
+      return <ShieldAlert className={`${cls} text-red-600`} />;
+    case "return_due": case "overdue_grace": case "overdue":
+      return <Clock className={`${cls} text-amber-500`} />;
+    case "seriously_overdue": case "non_return_review":
       return <ShieldAlert className={`${cls} text-red-600`} />;
     case "dispute_resolved": return <Shield className={`${cls} text-green-600`} />;
     case "sharecoin_earned": return <Coins className={`${cls} text-yellow-500`} />;

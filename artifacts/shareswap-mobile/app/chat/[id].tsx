@@ -32,6 +32,7 @@ import { ReturnConfirmationSheet } from "@/components/ReturnConfirmationSheet";
 import { PostReturnReviewSheet } from "@/components/PostReturnReviewSheet";
 import CounterProposalSheet, { type CounterPayload } from "@/components/CounterProposalSheet";
 import ExtensionSheet from "@/components/ExtensionSheet";
+import { ClaimSheet } from "@/components/ClaimSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Message {
@@ -117,6 +118,37 @@ interface ExtensionRequest {
   status: string;
   message: string | null;
 }
+interface SecurityClaim {
+  id: number;
+  claimType: string;
+  reason: string;
+  evidence: string[] | null;
+  requestedAmount: string | number;
+  approvedAmount: string | number | null;
+  status: string;
+  settlementStatus: string | null;
+  responseDeadlineAt: string | null;
+  borrowerResponse: string | null;
+  decisionReason: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+}
+interface Lifecycle {
+  requestId: number;
+  stage: string;
+  deadline: string | null;
+  lateHours: number;
+  role: "owner" | "borrower";
+  actions: string[];
+  deposit: {
+    mode: string | null;
+    status: string | null;
+    amount: string | number | null;
+    expiresAt: string | null;
+    protectionReviewRequired: boolean;
+  };
+}
+interface LifecycleData { lifecycle: Lifecycle; claims: SecurityClaim[]; events: unknown[]; }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getActiveStatus(lastActiveAt: string | null): { label: string; isNow: boolean } | null {
@@ -170,6 +202,10 @@ function getStatusInfo(status: string): StatusInfo {
 
 const PRIMARY = "#0DCEA1";
 const TERMINAL = ["COMPLETED", "COMPLETED_EARLY", "DECLINED", "CANCELLED", "DISPUTED"];
+function formatLateHours(hours: number): string | null {
+  if (hours <= 0) return null;
+  return hours < 24 ? `${hours} hour${hours === 1 ? "" : "s"}` : `${Math.floor(hours / 24)} day${Math.floor(hours / 24) === 1 ? "" : "s"}${hours % 24 ? ` ${hours % 24}h` : ""}`;
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function ChatScreen() {
@@ -204,6 +240,8 @@ export default function ChatScreen() {
 
   // Extension sheet
   const [showExtensionSheet, setShowExtensionSheet] = useState(false);
+  const [showClaimSheet, setShowClaimSheet] = useState(false);
+  const [claimResponse, setClaimResponse] = useState("");
 
 
   // ── Queries ──────────────────────────────────────────────────────────────────
@@ -233,10 +271,16 @@ export default function ChatScreen() {
 
   const reqId = requestId ? parseInt(requestId) : null;
   const request = reqId ? (allRequests?.find((r) => r.id === reqId) ?? null) : null;
+  const { data: lifecycle, isLoading: lifecycleLoading, error: lifecycleError } = useQuery<LifecycleData>({
+    queryKey: [`/api/requests/${requestId}/lifecycle`],
+    queryFn: () => apiGet<LifecycleData>(`/api/requests/${requestId}/lifecycle`),
+    enabled: !!requestId,
+    refetchInterval: 8000,
+  });
 
   // Extension queries — only active during an in-progress borrow
   const isInProgressBorrow =
-    request?.status === "IN_PROGRESS" && request?.requestType === "BORROW";
+    ["IN_PROGRESS", "RETURN_DUE", "OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE"].includes(request?.status ?? "") && request?.requestType === "BORROW";
 
   const { data: pendingExtension } = useQuery<ExtensionRequest | null>({
     queryKey: [`/api/requests/${requestId}/extension`],
@@ -256,7 +300,7 @@ export default function ChatScreen() {
   const hasAcceptedExtension = !!(
     reqId && activeExtensions?.some((e) => e.requestId === reqId && e.status === "accepted")
   );
-  const isOverdue = !!(request?.endDate && new Date() > new Date(request.endDate));
+  const allowsPreDueExtension = lifecycle?.lifecycle.stage === "ACTIVE";
 
   // Auto-show review sheet on first transition to COMPLETED/COMPLETED_EARLY
   const prevStatusRef = useRef<string | null>(null);
@@ -296,6 +340,7 @@ export default function ChatScreen() {
     // immediately — matching web's chat-widget.tsx invalidation pattern.
     qc.invalidateQueries({ queryKey: ["/api/inbox"] });
     qc.invalidateQueries({ queryKey: ["/api/inbox/archived"] });
+    qc.invalidateQueries({ queryKey: [`/api/requests/${requestId}/lifecycle`] });
   }
 
   // ── Mutations ─────────────────────────────────────────────────────────────────
@@ -500,6 +545,21 @@ export default function ChatScreen() {
       Alert.alert("Could not update owner", e.message || "Could not send follow-up notice");
     },
   });
+  const openClaimMutation = useMutation({
+    mutationFn: (payload: { claimType: string; reason: string; requestedAmount: number; evidence: string[] }) =>
+      apiPost(`/api/requests/${requestId}/claims`, payload),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowClaimSheet(false);
+      invalidateAll();
+    },
+    onError: (e: Error) => Alert.alert("Could not open claim", e.message),
+  });
+  const respondClaimMutation = useMutation({
+    mutationFn: ({ claimId, response }: { claimId: number; response: string }) => apiPost(`/api/claims/${claimId}/respond`, { response }),
+    onSuccess: () => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); invalidateAll(); },
+    onError: (e: Error) => Alert.alert("Could not submit response", e.message),
+  });
 
   // ── Request card ─────────────────────────────────────────────────────────────
   function renderRequestCard() {
@@ -511,6 +571,25 @@ export default function ChatScreen() {
     const itemPhoto = request.item?.photos?.[0] ?? null;
     const isBorrowType = request.requestType === "BORROW";
     const isTerminal = TERMINAL.includes(status);
+    const lifecycleDetails = lifecycle?.lifecycle;
+    // Lifecycle is the single authority for return stage and deadline. Do not
+    // infer an overdue state from the older request status/end-date fields.
+    const overdueStage = lifecycleDetails?.stage ?? "";
+    const returnDeadline = lifecycleDetails?.deadline ?? null;
+    const lateBy = lifecycleDetails ? formatLateHours(lifecycleDetails.lateHours) : null;
+    const claim = lifecycle?.claims?.[0] ?? null;
+    const isReturnLifecycle = ["RETURN_DUE", "OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW", "RETURNED_PENDING_REVIEW"].includes(overdueStage);
+    const mayOpenClaim = isOwner && !claim && !!lifecycleDetails?.actions.includes("open_claim");
+    const mayRespondToClaim = isBorrower && !!lifecycleDetails?.actions.includes("respond_to_claim");
+    const lifecycleCopy: Record<string, { title: string; borrower: string; owner: string; color: string; bg: string }> = {
+      RETURN_DUE: { title: "Return due", borrower: "Your item is due back now. Please arrange the return.", owner: "The item is due back. Contact the borrower to arrange return.", color: "#b45309", bg: "#fffbeb" },
+      OVERDUE_GRACE: { title: "Overdue grace", borrower: "Please arrange return or request an eligible extension.", owner: "The item has not yet been returned. Contact the borrower to arrange return.", color: "#b45309", bg: "#fffbeb" },
+      OVERDUE: { title: "Overdue", borrower: "Please arrange return. You may request an eligible extension.", owner: "The item remains overdue. Request return or arrange a handoff.", color: "#c2410c", bg: "#fff7ed" },
+      SERIOUSLY_OVERDUE: { title: "Final return warning", borrower: "Return the item now. The owner may open a non-return claim if it is not returned.", owner: "The item is seriously overdue. You may report an issue for review.", color: "#b91c1c", bg: "#fef2f2" },
+      NON_RETURN_REVIEW: { title: "Non-return review", borrower: "This is not a charge. Return the item or respond if a claim is opened.", owner: "The return is under review. You may report an issue / open a claim.", color: "#b91c1c", bg: "#fef2f2" },
+      RETURNED_PENDING_REVIEW: { title: "Returned — pending review", borrower: "The return is awaiting owner review. Lateness alone never settles your deposit.", owner: "Review the returned item. Report an issue if there is damage or loss.", color: "#0369a1", bg: "#eff6ff" },
+    };
+    const stageInfo = lifecycleCopy[overdueStage];
 
     const depositAmt = request.trustDepositAmount;
     const depositBase = request.trustDepositBaseAmount;
@@ -625,9 +704,90 @@ export default function ChatScreen() {
           </View>
         </View>
 
+        {lifecycleLoading && <View style={card.lifecycleLoading}><ActivityIndicator size="small" color={colors.primary} /></View>}
+        {lifecycleError && <Text style={[card.lifecycleError, { color: colors.mutedForeground }]}>Return details are temporarily unavailable.</Text>}
+        {stageInfo && (
+          <View style={[card.lifecycle, { backgroundColor: stageInfo.bg, borderColor: stageInfo.color + "55" }]}>
+            <View style={card.lifecycleTitleRow}>
+              <Feather name={overdueStage === "RETURNED_PENDING_REVIEW" ? "check-circle" : "alert-circle"} size={15} color={stageInfo.color} />
+              <Text style={[card.lifecycleTitle, { color: stageInfo.color }]}>{stageInfo.title}</Text>
+            </View>
+            <Text style={[card.lifecycleText, { color: stageInfo.color }]}>{isBorrower ? stageInfo.borrower : stageInfo.owner}</Text>
+            {returnDeadline && <Text style={[card.lifecycleText, { color: stageInfo.color }]}>Return deadline: {fmtDate(returnDeadline)}{lateBy ? ` · ${lateBy} late` : ""}</Text>}
+            <Text style={[card.lifecycleText, { color: stageInfo.color, fontFamily: "Inter_500Medium" }]}>A late return never automatically settles a security deposit.</Text>
+          </View>
+        )}
+        {lifecycleDetails?.deposit.status && (
+          <View style={[card.depositLifecycle, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+            <Shield size={14} color={colors.mutedForeground} />
+            <View style={{ flex: 1 }}>
+              <Text style={[card.lifecycleTitle, { color: colors.foreground }]}>Security deposit · {String(lifecycleDetails.deposit.status).replace(/_/g, " ")}</Text>
+              <Text style={[card.depositText, { color: colors.mutedForeground }]}>
+                {lifecycleDetails.deposit.mode ? `${lifecycleDetails.deposit.mode.replace(/_/g, " ")} · ` : ""}${Number(lifecycleDetails.deposit.amount ?? 0).toFixed(2)}
+                {lifecycleDetails.deposit.expiresAt ? ` · authorization until ${fmtDate(lifecycleDetails.deposit.expiresAt)}` : ""}
+              </Text>
+              {lifecycleDetails.deposit.protectionReviewRequired && <Text style={[card.depositText, { color: "#b45309" }]}>Protection review required</Text>}
+            </View>
+          </View>
+        )}
+        {claim && (
+          <View style={[card.claim, { borderColor: "#c7d2fe", backgroundColor: "#eef2ff" }]}>
+            <Text style={[card.lifecycleTitle, { color: "#3730a3" }]}>Claim #{claim.id} · {claim.status.replace(/_/g, " ")}</Text>
+            <Text style={[card.lifecycleText, { color: "#4338ca" }]}>{claim.claimType.replace(/_/g, " ")} · Requested ${Number(claim.requestedAmount).toFixed(2)}{claim.approvedAmount != null ? ` · Approved $${Number(claim.approvedAmount).toFixed(2)}` : ""}</Text>
+            <Text style={[card.lifecycleText, { color: "#4338ca" }]}>{claim.reason}</Text>
+            {claim.responseDeadlineAt && claim.status === "CUSTOMER_RESPONSE_PENDING" && <Text style={[card.lifecycleText, { color: "#4338ca" }]}>Respond by {fmtDate(claim.responseDeadlineAt)}</Text>}
+            {claim.decisionReason && <Text style={[card.lifecycleText, { color: "#4338ca" }]}>Decision note: {claim.decisionReason}</Text>}
+            {claim.settlementStatus && <Text style={[card.lifecycleText, { color: "#4338ca" }]}>Settlement: {claim.settlementStatus.replace(/_/g, " ")}</Text>}
+            {mayRespondToClaim && claim.status === "CUSTOMER_RESPONSE_PENDING" && (
+              <View style={{ gap: 7, marginTop: 3 }}>
+                <TextInput testID="claim-response" value={claimResponse} onChangeText={setClaimResponse} multiline placeholder="Add your response…" placeholderTextColor="#6366f1"
+                  style={[card.claimInput, { color: colors.foreground, borderColor: "#c7d2fe", backgroundColor: colors.card }]} />
+                <Pressable testID="submit-claim-response" disabled={!claimResponse.trim() || respondClaimMutation.isPending} onPress={() => respondClaimMutation.mutate({ claimId: claim.id, response: claimResponse.trim() })}
+                  style={[card.btn, { backgroundColor: "#4f46e5", borderColor: "#4f46e5", opacity: claimResponse.trim() ? 1 : .55 }]}>
+                  {respondClaimMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={[card.btnLabel, { color: "#fff" }]}>Submit claim response</Text>}
+                </Pressable>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* ── Actions ── */}
         {!isTerminal && (
           <View style={[card.actionsWrap, { borderTopColor: colors.border }]}>
+            {isReturnLifecycle && (
+              <View style={{ gap: 8 }}>
+                {isOwner && hasPendingExtension && pendingExtension && (
+                  <View style={[card.counterBanner, { backgroundColor: "#fffbeb", borderColor: "#fcd34d" }]}>
+                    <Text style={[card.counterBannerTitle, { color: "#92400e" }]}>Extension requested</Text>
+                    <Text style={[card.counterBannerText, { color: "#78350f" }]}>Requested return: {fmtDate(pendingExtension.requestedEndDate)}</Text>
+                    <View style={[card.btnRow, { marginTop: 5 }]}>
+                      <Pressable testID="approve-overdue-extension" style={[card.btn, { flex: 1, backgroundColor: PRIMARY, borderColor: PRIMARY }]} disabled={respondExtensionMutation.isPending} onPress={() => respondExtensionMutation.mutate("accept")}>
+                        <Text style={[card.btnLabel, { color: "#fff" }]}>Approve</Text>
+                      </Pressable>
+                      <Pressable testID="decline-overdue-extension" style={[card.btn, { flex: 1, borderColor: colors.border }]} disabled={respondExtensionMutation.isPending} onPress={() => respondExtensionMutation.mutate("decline")}>
+                        <Text style={[card.btnLabel, { color: colors.foreground }]}>Decline</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
+                <Pressable testID="arrange-return" style={[card.btn, { borderColor: colors.border }]} onPress={() => setText(isBorrower ? "I'd like to arrange the return. What time works for handoff?" : "Please arrange return of the item. What time can you hand it back?")}>
+                  <Feather name="message-circle" size={14} color={colors.foreground} /><Text style={[card.btnLabel, { color: colors.foreground }]}>{isBorrower ? "Contact owner / arrange return" : "Contact borrower / request return"}</Text>
+                </Pressable>
+                {isBorrower && overdueStage !== "RETURNED_PENDING_REVIEW" && (
+                  <Pressable testID="overdue-return" style={[card.btn, { backgroundColor: "#2563eb", borderColor: "#2563eb" }]} onPress={() => setShowReturnSheet(true)}>
+                    <Feather name="rotate-ccw" size={14} color="#fff" /><Text style={[card.btnLabel, { color: "#fff" }]}>Confirm / request return</Text>
+                  </Pressable>
+                )}
+                {isBorrower && ["OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE"].includes(overdueStage) && !hasPendingExtension && !hasAcceptedExtension && (
+                  <Pressable testID="overdue-extension" style={[card.btn, { borderColor: colors.border }]} onPress={() => setShowExtensionSheet(true)}>
+                    <Feather name="clock" size={14} color={colors.foreground} /><Text style={[card.btnLabel, { color: colors.foreground }]}>Request eligible extension</Text>
+                  </Pressable>
+                )}
+                {mayOpenClaim && <Pressable testID="open-claim" style={[card.btn, { backgroundColor: "#dc2626", borderColor: "#dc2626" }]} onPress={() => setShowClaimSheet(true)}>
+                  <Feather name="flag" size={14} color="#fff" /><Text style={[card.btnLabel, { color: "#fff" }]}>Report an issue / Open a claim</Text>
+                </Pressable>}
+              </View>
+            )}
 
             {/* Counter-proposal received: Accept or Decline counter */}
             {hasPendingCounter && (
@@ -871,7 +1031,7 @@ export default function ChatScreen() {
             )}
 
             {/* IN_PROGRESS — borrower */}
-            {status === "IN_PROGRESS" && isBorrower && (
+            {status === "IN_PROGRESS" && isBorrower && !isReturnLifecycle && (
               <View style={{ gap: 8 }}>
                 <Pressable
                   style={[card.btn, { backgroundColor: "#2563eb", borderColor: "#2563eb" }]}
@@ -884,7 +1044,7 @@ export default function ChatScreen() {
 
                 {/* The extension request is the initial advance communication.
                     After approval, its revised date becomes the due date. */}
-                {!isOverdue && (
+                {allowsPreDueExtension && (
                   <>
                     <Pressable
                       style={[
@@ -968,7 +1128,7 @@ export default function ChatScreen() {
             )}
 
             {/* IN_PROGRESS — owner */}
-            {status === "IN_PROGRESS" && isOwner && (
+            {status === "IN_PROGRESS" && isOwner && !isReturnLifecycle && (
               <View style={{ gap: 8 }}>
                 <View style={[card.infoBanner, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                   <Text style={[card.infoBannerText, { color: colors.foreground, fontFamily: "Inter_600SemiBold", marginBottom: 3 }]}>
@@ -1527,6 +1687,15 @@ export default function ChatScreen() {
           itemName={request.item?.name ?? "Item"}
         />
       )}
+      {request && (
+        <ClaimSheet
+          visible={showClaimSheet}
+          onClose={() => setShowClaimSheet(false)}
+          onSubmit={(payload) => openClaimMutation.mutate(payload)}
+          isPending={openClaimMutation.isPending}
+          depositAmount={lifecycle?.lifecycle.deposit.amount != null ? Number(lifecycle.lifecycle.deposit.amount) : request.trustDepositAmount}
+        />
+      )}
 
 
       {/* BORROW in_app deposit payment sheet */}
@@ -1647,6 +1816,16 @@ const card = StyleSheet.create({
   },
   infoBannerTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   infoBannerText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  lifecycleLoading: { paddingVertical: 8, alignItems: "center" },
+  lifecycleError: { fontSize: 11, paddingHorizontal: 12, paddingBottom: 6 },
+  lifecycle: { marginHorizontal: 12, marginBottom: 10, padding: 10, borderRadius: 9, borderWidth: 1, gap: 4 },
+  lifecycleTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  lifecycleTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", textTransform: "capitalize" },
+  lifecycleText: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  depositLifecycle: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginHorizontal: 12, marginBottom: 10, padding: 10, borderWidth: 1, borderRadius: 9 },
+  depositText: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2, textTransform: "capitalize" },
+  claim: { marginHorizontal: 12, marginBottom: 10, padding: 10, borderRadius: 9, borderWidth: 1, gap: 4 },
+  claimInput: { minHeight: 56, borderWidth: 1, borderRadius: 8, padding: 8, fontSize: 12, textAlignVertical: "top" },
   pinDisplay: {
     borderWidth: 1,
     borderRadius: 10,

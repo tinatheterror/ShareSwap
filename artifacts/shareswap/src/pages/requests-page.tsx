@@ -23,6 +23,7 @@ import { ReturnConfirmationModal } from "@/components/borrow/return-confirmation
 import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sharecoins-modal";
 import { useVerification } from "@/hooks/use-verification";
 import { getStripePromise } from "@/lib/stripe-client";
+import { RequestLifecyclePanel } from "@/components/request-lifecycle-panel";
 
 const stripePromise = getStripePromise();
 
@@ -1024,6 +1025,14 @@ export default function RequestsPage() {
                                 Awaiting owner confirmation
                               </Badge>
                             )}
+                            {["IN_PROGRESS", "RETURN_REQUESTED", "RETURNED_PENDING_REVIEW", "DISPUTED"].includes(request.status) && (
+                              <RequestLifecyclePanel
+                                requestId={request.id}
+                                onContact={() => window.dispatchEvent(new CustomEvent("open-chat-request", { detail: { requestId: request.id } }))}
+                                onReturn={() => { setSelectedRequest(request); setShowReturnModal(true); }}
+                                onExtension={() => { setExtendRequest(request); setExtendDays(null); setShowExtendDialog(true); }}
+                              />
+                            )}
 
                             {request.status === "DISPUTED" && (
                               <div className="w-full mt-2 space-y-3">
@@ -1077,7 +1086,7 @@ export default function RequestsPage() {
         </div>
 
         {/* Active Transactions as Owner */}
-        {requests.filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED", "DISPUTED"].includes(r.status)).length > 0 && (
+        {requests.filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_DUE", "OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW", "RETURNED_PENDING_REVIEW", "RETURN_REQUESTED", "DISPUTED"].includes(r.status)).length > 0 && (
           <div className="mt-8">
             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <Package className="h-6 w-6 text-teal-600" />
@@ -1085,7 +1094,7 @@ export default function RequestsPage() {
             </h2>
             <div className="space-y-4">
               {requests
-                .filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED", "DISPUTED"].includes(r.status))
+                .filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_DUE", "OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW", "RETURNED_PENDING_REVIEW", "RETURN_REQUESTED", "DISPUTED"].includes(r.status))
                 .map((request) => (
                   <Card key={request.id} className="bg-white border-2 border-teal-200">
                     <CardContent className="p-6">
@@ -1200,6 +1209,12 @@ export default function RequestsPage() {
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 Confirm Return
                               </Button>
+                            )}
+                            {["IN_PROGRESS", "RETURN_REQUESTED", "RETURNED_PENDING_REVIEW", "DISPUTED"].includes(request.status) && (
+                              <RequestLifecyclePanel
+                                requestId={request.id}
+                                onContact={() => window.dispatchEvent(new CustomEvent("open-chat-request", { detail: { requestId: request.id } }))}
+                              />
                             )}
 
                             {request.status === "DISPUTED" && (

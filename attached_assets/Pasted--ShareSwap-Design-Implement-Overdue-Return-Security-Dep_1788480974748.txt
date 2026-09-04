@@ -1,0 +1,906 @@
+# ShareSwap — Design & Implement Overdue Return + Security Deposit Capture System
+
+We need to design and implement the complete backend and UX logic for **overdue returns, presumed non-return, claims, and security-deposit settlement**.
+
+This must integrate with the security-deposit architecture we already established.
+
+## Core principle
+
+**NEVER automatically capture a security deposit merely because an item is overdue.**
+
+Overdue status, late fees, damage/loss claims, and security-deposit capture are separate concepts.
+
+The security deposit exists to protect against:
+
+* damage
+* loss
+* non-return
+* other explicitly covered claim situations
+
+An overdue item should first go through a graduated overdue process. Deposit capture should happen **only after an eligible claim has been opened, reviewed, and approved.**
+
+---
+
+# 1. Separate the three financial concepts
+
+Treat these as completely separate:
+
+### A. Rental / Borrow charge
+
+The original amount paid for the agreed rental/borrow period.
+
+### B. Overdue / late fee
+
+Optional compensation for keeping the item beyond the agreed return date.
+
+This must follow ShareSwap's configured terms and should NOT automatically come out of the security deposit.
+
+### C. Security deposit
+
+A protection mechanism against an approved damage, loss, or non-return claim.
+
+Never use:
+
+`overdue = capture deposit`
+
+Instead:
+
+`overdue → escalation → non-return review → claim → approval → deposit settlement`
+
+---
+
+# 2. Create a configurable overdue escalation system
+
+Do NOT hardcode one universal overdue period.
+
+The system must support configurable thresholds based on factors such as:
+
+* transaction type: borrow vs rental
+* original duration
+* item category
+* item value
+* owner-configured settings, if applicable
+* ShareSwap platform policy
+
+The system should support thresholds such as:
+
+### Stage 0 — RETURN DUE
+
+At the agreed return date/time:
+
+`ACTIVE → RETURN_DUE`
+
+Actions:
+
+* notify borrower that the item is due
+* notify owner as appropriate
+* show exact return deadline
+* provide return/handoff instructions
+
+No deposit capture.
+
+---
+
+### Stage 1 — OVERDUE GRACE
+
+After the configured grace period:
+
+`RETURN_DUE → OVERDUE_GRACE`
+
+Actions:
+
+* notify borrower that the item is overdue
+* clearly display how late the item is
+* provide an easy way to arrange return
+* optionally provide an extension request
+* notify owner that the item has not yet been returned
+
+Do NOT capture the deposit.
+
+Do NOT automatically classify the item as lost.
+
+---
+
+### Stage 2 — OVERDUE
+
+If the borrower remains overdue:
+
+`OVERDUE_GRACE → OVERDUE`
+
+Actions:
+
+* stronger borrower notification
+* owner notification
+* show overdue duration
+* allow/request an extension where permitted
+* apply any configured overdue fee according to the transaction terms
+* restrict new borrowing/renting if ShareSwap policy requires it
+
+Still:
+
+**DO NOT CAPTURE THE SECURITY DEPOSIT.**
+
+Being late is not automatically proof of non-return.
+
+---
+
+### Stage 3 — SERIOUSLY OVERDUE
+
+After the configured serious-overdue threshold:
+
+`OVERDUE → SERIOUSLY_OVERDUE`
+
+Actions:
+
+* send prominent warning to borrower
+* notify owner
+* clearly explain that failure to return may result in a non-return claim
+* provide a final opportunity to arrange return
+* allow owner to initiate a non-return/damage claim where appropriate
+* potentially restrict the borrower's ability to create new transactions
+* preserve all transaction, communication, and timestamp records
+
+Still do NOT automatically capture the deposit.
+
+---
+
+# 3. Presumed non-return review
+
+Once the serious-overdue threshold has passed:
+
+`SERIOUSLY_OVERDUE → NON_RETURN_REVIEW`
+
+This is a review state, NOT an automatic financial settlement.
+
+The system should determine whether the situation qualifies for a non-return claim under ShareSwap's policy.
+
+The owner should be able to initiate a claim for:
+
+* item not returned
+* item lost
+* item damaged
+* item returned with missing components
+* other covered loss/damage
+
+The borrower must be notified that a claim has been opened.
+
+---
+
+# 4. Claims must be separate from the transaction state
+
+Create/use a dedicated claim entity rather than putting all claim logic directly onto the transaction.
+
+Suggested claim states:
+
+`NONE`
+
+→ `OPEN`
+
+→ `CUSTOMER_RESPONSE_PENDING`
+
+→ `UNDER_REVIEW`
+
+→ `APPROVED`
+
+or
+
+→ `REJECTED`
+
+→ `SETTLED`
+
+The claim should store at minimum:
+
+* claim ID
+* transaction ID
+* owner ID
+* borrower ID
+* claim type
+* reason
+* evidence
+* timestamps
+* requested amount
+* approved amount
+* reviewer/system decision
+* decision reason
+* borrower notification status
+* settlement status
+* associated deposit ID
+* Stripe references where applicable
+
+---
+
+# 5. NEVER make the claim amount automatically equal to the deposit
+
+Example:
+
+Security deposit = $300
+
+Owner claims $250 for an approved loss/damage.
+
+Approved claim = $250
+
+The system should settle:
+
+* $250 captured/retained toward the approved claim
+* $50 released/refunded
+
+NOT:
+
+* automatically capture the entire $300
+
+The approved claim amount is authoritative.
+
+The deposit is only the maximum available protection.
+
+---
+
+# 6. Authorization-hold settlement
+
+For a deposit secured using a Stripe authorization:
+
+Example:
+
+Deposit:
+
+`$300`
+
+Stripe authorization:
+
+`$300`
+
+Approved claim:
+
+`$250`
+
+If the authorization is still valid and capturable:
+
+1. Capture exactly `$250`
+2. Release the remaining `$50`
+3. Mark the deposit appropriately
+4. Record the Stripe PaymentIntent/capture
+5. Record the claim settlement
+6. Notify both parties
+
+Do NOT capture the full authorization unless the approved claim amount is actually the full amount.
+
+---
+
+# 7. Refundable-deposit settlement
+
+For a captured-but-refundable deposit:
+
+Example:
+
+Deposit:
+
+`$300`
+
+Approved claim:
+
+`$250`
+
+The system should:
+
+1. retain/settle `$250` toward the approved claim
+2. refund `$50`
+3. mark the deposit as settled
+4. mark the claim as settled
+5. record all Stripe references
+6. notify both parties
+
+Again, the claim amount controls the settlement.
+
+---
+
+# 8. Authorization expiration is critical
+
+The system must NEVER wait until the Stripe authorization's final expiration moment before starting claim review.
+
+Every authorization deposit has an actual Stripe-derived:
+
+`capture_before`
+
+Create an internal:
+
+`claim_decision_deadline`
+
+that occurs sufficiently BEFORE `capture_before`.
+
+Example:
+
+`capture_before = June 20`
+
+Internal claim decision deadline:
+
+`June 17`
+
+This gives ShareSwap time to:
+
+* receive the owner's claim
+* notify the borrower
+* collect evidence
+* allow borrower response
+* review the claim
+* approve/reject
+* execute settlement
+
+If the claim is unresolved by the internal deadline, the system must recognize that the authorization can no longer be relied upon indefinitely.
+
+**Do not renew the authorization.**
+
+**Do not create replacement authorization holds simply to keep an old deposit alive.**
+
+Instead, transition the deposit to an appropriate expired/unsecured state and use a separate claim-payment path where legally/technically permitted.
+
+---
+
+# 9. Never use timer-based deposit reauthorization
+
+This is extremely important.
+
+Do NOT implement:
+
+"every X hours/days, renew the security deposit authorization."
+
+There must be no automatic rolling authorization system intended to keep a card hold alive for months.
+
+The previously established security-deposit architecture remains authoritative:
+
+### Short enough + sufficiently covered:
+
+Use authorization hold.
+
+### Authorization insufficient for required protection window:
+
+Use captured-but-refundable deposit.
+
+### Extended authorization:
+
+Only use if Stripe has explicitly confirmed that the specific ShareSwap payment setup, account structure, card/payment-method situation, and transaction qualifies.
+
+Keep extended authorization behind a server-side capability/configuration flag.
+
+---
+
+# 10. Extension logic
+
+Borrowers may request an extension before or during an overdue period.
+
+An approved extension must:
+
+1. create a new authoritative return deadline
+2. record who approved it
+3. record when it was approved
+4. record the previous deadline
+5. recalculate overdue thresholds
+6. recalculate the required protection window if necessary
+
+Do NOT simply mutate the original deadline without preserving the history.
+
+If the extension causes the required protection window to exceed the current deposit mechanism's protection period:
+
+Flag the deposit for review according to the existing deposit architecture.
+
+Do NOT automatically renew an authorization hold.
+
+---
+
+# 11. Return after becoming overdue
+
+If the borrower returns the item while overdue:
+
+`OVERDUE_* → RETURNED_PENDING_REVIEW`
+
+The system should then determine:
+
+* whether an overdue fee applies
+* whether there is damage
+* whether anything is missing
+* whether the owner accepts the return
+
+If there is no approved claim:
+
+Release/refund the security deposit according to the existing deposit mechanism.
+
+The fact that the item was late does NOT automatically mean the security deposit should be captured.
+
+---
+
+# 12. Damage discovered after return
+
+A returned item can still generate a claim.
+
+Example:
+
+`ACTIVE → RETURNED_PENDING_REVIEW`
+
+Owner discovers damage.
+
+Create:
+
+`CLAIM_OPEN`
+
+The claim then follows the same:
+
+`OPEN → CUSTOMER_RESPONSE_PENDING → UNDER_REVIEW → APPROVED/REJECTED → SETTLED`
+
+flow.
+
+The security deposit should be settled only according to the approved claim amount.
+
+---
+
+# 13. Suggested transaction state machine
+
+Implement/align the transaction state machine as:
+
+`REQUESTED`
+
+→ `ACCEPTED`
+
+→ `PAYMENT_SETUP_PENDING`
+
+→ `DEPOSIT_PENDING`
+
+→ `HANDOFF_READY`
+
+→ `ACTIVE`
+
+→ `RETURN_DUE`
+
+→ `OVERDUE_GRACE`
+
+→ `OVERDUE`
+
+→ `SERIOUSLY_OVERDUE`
+
+→ `NON_RETURN_REVIEW`
+
+→ `NON_RETURN_CLAIM`
+
+→ `CLAIM_SETTLEMENT`
+
+Possible branches:
+
+`ACTIVE → RETURNED_PENDING_REVIEW`
+
+`OVERDUE_* → RETURNED_PENDING_REVIEW`
+
+`SERIOUSLY_OVERDUE → EXTENSION_APPROVED → ACTIVE`
+
+`NON_RETURN_REVIEW → RETURNED_PENDING_REVIEW`
+
+`CLAIM → REJECTED → RESOLVED`
+
+`CLAIM → APPROVED → CLAIM_SETTLEMENT`
+
+Do not create unnecessary duplicate transaction states if the existing database architecture already has equivalent states. Adapt the naming to the existing implementation while preserving the same business meaning.
+
+---
+
+# 14. Deposit state must remain independent
+
+Do not make the deposit state simply mirror the transaction state.
+
+For authorization deposits:
+
+`REQUIRED`
+
+→ `PAYMENT_METHOD_READY`
+
+→ `SECURING`
+
+→ `AUTHORIZED`
+
+→ `RELEASE_PENDING`
+
+→ `RELEASED`
+
+or:
+
+`AUTHORIZED`
+
+→ `CLAIM_OPEN`
+
+→ `CLAIM_APPROVED`
+
+→ `CAPTURE_PENDING`
+
+→ `CAPTURED`
+
+If authorization expires:
+
+`AUTHORIZED → EXPIRED_UNSECURED`
+
+For refundable deposits:
+
+`REQUIRED`
+
+→ `REFUNDABLE_CHARGE_PENDING`
+
+→ `SECURED_REFUNDABLE`
+
+→ `REFUND_PENDING`
+
+→ `REFUNDED`
+
+or:
+
+`SECURED_REFUNDABLE`
+
+→ `CLAIM_OPEN`
+
+→ `CLAIM_APPROVED`
+
+→ `CLAIM_SETTLEMENT`
+
+→ retain approved amount + refund remainder
+
+---
+
+# 15. Capture invariant
+
+Before ANY security deposit capture, the backend must verify all of the following server-side:
+
+```text
+claim.status == APPROVED
+AND
+claim.approved_amount > 0
+AND
+claim.approved_amount <= deposit.original_amount
+AND
+claim has required evidence/reason
+AND
+borrower has been properly notified
+AND
+deposit belongs to this transaction
+AND
+deposit has not already been settled
+AND
+deposit is still capturable
+AND
+authorization.capture_before > current_time
+```
+
+Only after all applicable conditions pass may the system attempt the capture.
+
+Use Stripe's actual PaymentIntent state as the source of truth for whether the payment can still be captured.
+
+Never rely only on our local database status.
+
+---
+
+# 16. Idempotency and race-condition protection
+
+Capture/release/refund operations must be safe if:
+
+* a webhook arrives simultaneously
+* an admin retries an action
+* a background job retries
+* the borrower returns the item while a claim is being reviewed
+* two workers process the same claim
+* Stripe responds slowly
+* our server crashes during settlement
+
+Use:
+
+* deterministic Stripe idempotency keys
+* database transactions where appropriate
+* row/request locks or equivalent concurrency controls
+* fencing/version tokens where appropriate
+* webhook deduplication
+* conditional state transitions
+
+A claim must never result in two captures.
+
+A deposit must never be settled twice.
+
+---
+
+# 17. Background jobs
+
+Implement durable scheduled processing for:
+
+### Return reminders
+
+* before due
+* at due
+* after due
+
+### Overdue escalation
+
+* grace threshold
+* overdue threshold
+* serious-overdue threshold
+* non-return review threshold
+
+### Claim deadlines
+
+* borrower response deadline
+* internal review deadline
+* authorization capture deadline
+
+### Deposit reconciliation
+
+Continuously reconcile our database state with Stripe webhook/payment state.
+
+Do NOT rely on in-memory timers for payment correctness.
+
+Jobs must be safe to retry.
+
+---
+
+# 18. Owner and borrower UX
+
+Borrower should see something like:
+
+**Return due**
+"Your item is due back today."
+
+Then:
+
+**Overdue**
+"Your return is overdue by 1 day. Please arrange the return."
+
+Then:
+
+**Final return warning**
+"Your item is significantly overdue. If it isn't returned, the owner may open a non-return claim."
+
+Only once an actual claim is opened:
+
+**Claim opened**
+"The owner has reported that this item has not been returned. You can respond to this claim before it is reviewed."
+
+If approved:
+
+**Claim approved**
+"Your claim has been approved for $250."
+
+Do NOT tell the borrower:
+
+"We captured your deposit because you were late."
+
+unless an actual approved claim and settlement occurred.
+
+---
+
+# 19. Owner UX
+
+Owner should be able to:
+
+* see that the item is overdue
+* contact/request return
+* approve/request an extension where applicable
+* report non-return
+* report damage
+* submit evidence
+* submit a requested claim amount
+* see claim status
+* see approved settlement amount
+* see settlement status
+
+The owner should NOT have a simple button saying:
+
+"Capture deposit"
+
+Instead, the action should be:
+
+**Report an issue / Open a claim**
+
+The claim system determines whether and how much of the deposit can ultimately be settled.
+
+---
+
+# 20. Do not allow automatic financial punishment
+
+Never implement rules such as:
+
+```text
+if overdue:
+    capture_deposit()
+```
+
+or:
+
+```text
+if overdue > X:
+    capture_full_deposit()
+```
+
+or:
+
+```text
+if borrower does not respond:
+    capture_full_deposit()
+```
+
+or:
+
+```text
+if authorization is expiring:
+    create_new_authorization()
+```
+
+These are explicitly prohibited.
+
+---
+
+# 21. Audit trail
+
+Every important event must be recorded.
+
+At minimum:
+
+* original return deadline
+* extension requests
+* approved extensions
+* overdue transitions
+* notifications
+* owner reports
+* claim creation
+* evidence submission
+* borrower response
+* claim decisions
+* approved amount
+* deposit settlement attempt
+* Stripe PaymentIntent ID
+* Stripe charge/capture ID where applicable
+* Stripe event IDs
+* authorization `capture_before`
+* deposit expiration
+* refunds/releases
+* failures/retries
+* administrator actions
+
+The audit trail should be immutable or append-only where practical.
+
+---
+
+# 22. Configuration
+
+Create a centralized configuration layer for:
+
+* grace period
+* overdue threshold
+* serious-overdue threshold
+* non-return review threshold
+* borrower response period
+* claim review deadline
+* claim decision buffer before `capture_before`
+* overdue fee rules
+* maximum extension duration
+* account restrictions
+* notification timing
+
+Do not scatter these values throughout the codebase.
+
+Avoid hardcoded assumptions such as "48 hours always means non-return."
+
+---
+
+# 23. Important distinction: overdue does not equal non-return
+
+The entire system should follow this hierarchy:
+
+**Late**
+
+↓
+
+**Overdue**
+
+↓
+
+**Seriously overdue**
+
+↓
+
+**Possible non-return**
+
+↓
+
+**Claim**
+
+↓
+
+**Review**
+
+↓
+
+**Approved claim**
+
+↓
+
+**Security deposit settlement**
+
+This distinction must be reflected in:
+
+* backend states
+* database models
+* Stripe logic
+* notifications
+* UI
+* admin tools
+* audit logs
+
+---
+
+# 24. Implementation requirements
+
+Before writing code:
+
+1. Inspect the existing ShareSwap transaction, rental, borrow, deposit, Stripe, webhook, notification, and background-job architecture.
+2. Identify what already exists.
+3. Do NOT duplicate existing models or payment logic.
+4. Map the existing implementation to this architecture.
+5. Identify conflicts or missing pieces.
+6. Propose the required schema/state/API changes.
+7. Only then implement.
+
+Do not replace the previously established security-deposit architecture.
+
+The existing principle remains:
+
+**Authorization hold when the actual Stripe authorization provides sufficient protection. Captured-but-refundable deposit when it does not. No rolling authorization renewals.**
+
+---
+
+# 25. Acceptance criteria
+
+The implementation is complete only if these scenarios work correctly:
+
+### Scenario A — Returned on time
+
+Item returned → no claim → deposit released/refunded.
+
+### Scenario B — Returned 1 day late, no damage
+
+Item returned → overdue fee handled according to policy → deposit released/refunded.
+
+### Scenario C — Returned late with damage
+
+Item returned → owner opens damage claim → claim reviewed → approved amount settled against deposit → remainder released/refunded.
+
+### Scenario D — Item never returned
+
+Overdue escalation → non-return review → owner opens claim → borrower notified → claim reviewed → approved claim settled.
+
+### Scenario E — Claim is less than deposit
+
+$300 deposit + $200 approved claim → settle $200 → release/refund $100.
+
+### Scenario F — Claim equals deposit
+
+$300 deposit + $300 approved claim → settle full $300.
+
+### Scenario G — Claim rejected
+
+Deposit remains protected → deposit released/refunded → no capture.
+
+### Scenario H — Authorization expires before claim settlement
+
+Do NOT renew authorization → mark authorization expired/unsecured → use separate permitted claim-payment path if available.
+
+### Scenario I — Borrower returns item during claim process
+
+Stop non-return escalation → move to return review → continue damage/loss claim if applicable.
+
+### Scenario J — Approved extension
+
+New return deadline recorded → overdue thresholds recalculated → deposit protection checked using the existing architecture.
+
+### Scenario K — Duplicate processing
+
+Multiple workers/webhooks cannot produce duplicate capture/refund/release.
+
+---
+
+## Final principle
+
+Build ShareSwap so that the security deposit is a **protection mechanism, not an automatic penalty mechanism**.
+
+The system should be:
+
+**fair to borrowers, protective of owners, auditable, Stripe-safe, idempotent, and resilient to long-duration transactions.**
+
+Do not begin by coding individual overdue timers. First map the existing architecture, then implement the state machine, claim system, settlement logic, and durable background processing as one coherent system.

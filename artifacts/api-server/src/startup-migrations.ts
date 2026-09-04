@@ -5,6 +5,7 @@ import { pool } from "@workspace/db";
 const migrationRelativePaths = [
   "lib/db/scripts/0002_deposit_renewal_columns.sql",
   "lib/db/scripts/0003_hybrid_security_deposit.sql",
+    "lib/db/scripts/0004_overdue_claim_settlement.sql",
 ];
 
 async function findMigrationPath(migrationRelativePath: string) {

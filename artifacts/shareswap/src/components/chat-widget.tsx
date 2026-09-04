@@ -61,6 +61,7 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 import { getStripePromise } from "@/lib/stripe-client";
+import { RequestLifecyclePanel } from "@/components/request-lifecycle-panel";
 
 const stripePromise = getStripePromise();
 
@@ -453,6 +454,19 @@ export function ChatWidget() {
     queryKey: ["/api/requests"],
     enabled: !!user,
     refetchInterval: 20_000,
+  });
+  const overdueExtensionMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/extension`, { days: 1 });
+      if (!res.ok) throw new Error((await res.json()).error || "Could not request an extension");
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/extensions/active"] });
+      toast({ title: "Extension requested", description: "The owner has been notified of your one-day extension request." });
+    },
+    onError: (error: Error) => toast({ title: "Could not request extension", description: error.message, variant: "destructive" }),
   });
 
   // Detect when a request transitions to COMPLETED → prompt review
@@ -1782,7 +1796,9 @@ export function ChatWidget() {
                 <ScrollArea className="flex-1 p-3" ref={scrollRef}>
                   {/* Request card pinned at top of thread */}
                   {(() => {
-                    const partnerRequest = requests.find((r) =>
+                    const partnerRequest = activeConversationRequestId
+                      ? requests.find((r) => r.id === activeConversationRequestId)
+                      : requests.find((r) =>
                       (r.item.ownerId === user?.id && r.requesterId === selectedConversation) ||
                       (r.requesterId === user?.id && r.item.ownerId === selectedConversation)
                     );
@@ -1790,6 +1806,14 @@ export function ChatWidget() {
                     return (
                       <div className="mb-3">
                         {renderRequestCard(partnerRequest)}
+                        {["IN_PROGRESS", "RETURN_REQUESTED", "RETURNED_PENDING_REVIEW", "DISPUTED"].includes(partnerRequest.status) && (
+                          <RequestLifecyclePanel
+                            requestId={partnerRequest.id}
+                            onContact={() => messageInputRef.current?.focus()}
+                            onReturn={partnerRequest.requesterId === user?.id ? () => { setSelectedRequest(partnerRequest); setShowReturnModal(true); } : undefined}
+                            onExtension={partnerRequest.requesterId === user?.id ? () => overdueExtensionMutation.mutate(partnerRequest.id) : undefined}
+                          />
+                        )}
                       </div>
                     );
                   })()}

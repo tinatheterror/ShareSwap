@@ -2,6 +2,9 @@ import { AdminLayout } from "@/components/admin/admin-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +39,12 @@ interface Dispute {
   ownerId: number;
   requesterId: number;
 }
+interface SecurityClaim {
+  id: number; requestId: number; claimType: string; reason: string; evidence: string[];
+  requestedAmount: string; approvedAmount: string | null; status: string; settlementStatus: string | null;
+  decisionReason: string | null; responseDeadlineAt: string | null; depositAmount: string | null;
+  depositStatus: string | null;
+}
 
 function StarRating({ rating }: { rating: number | null }) {
   if (!rating) return <span className="text-muted-foreground text-sm">—</span>;
@@ -55,9 +64,30 @@ function StarRating({ rating }: { rating: number | null }) {
 export default function AdminDisputesPage() {
   const { toast } = useToast();
   const [resolving, setResolving] = useState<{ id: number; decision: "owner" | "borrower" } | null>(null);
+  const [deciding, setDeciding] = useState<SecurityClaim | null>(null);
+  const [decision, setDecision] = useState<"approve" | "reject">("approve");
+  const [approvedAmount, setApprovedAmount] = useState("");
+  const [decisionReason, setDecisionReason] = useState("");
 
   const { data: disputes = [], isLoading } = useQuery<Dispute[]>({
     queryKey: ["/api/admin/disputes"],
+  });
+  const { data: claims = [], isLoading: isLoadingClaims } = useQuery<SecurityClaim[]>({ queryKey: ["/api/admin/claims"] });
+  const decisionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/admin/claims/${deciding!.id}/decision`, {
+        decision, approvedAmount: decision === "approve" ? Number(approvedAmount) : undefined, reason: decisionReason,
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Could not record decision");
+      return res.json();
+    },
+    onSuccess: () => { toast({ title: "Claim decision recorded", description: "Settlement remains a separate explicit step." }); queryClient.invalidateQueries({ queryKey: ["/api/admin/claims"] }); setDeciding(null); },
+    onError: (e: Error) => toast({ title: "Could not decide claim", description: e.message, variant: "destructive" }),
+  });
+  const settleMutation = useMutation({
+    mutationFn: async (id: number) => { const res = await apiRequest("POST", `/api/admin/claims/${id}/settle`, {}); if (!res.ok) throw new Error((await res.json()).error || "Could not settle claim"); return res.json(); },
+    onSuccess: () => { toast({ title: "Approved claim settlement started" }); queryClient.invalidateQueries({ queryKey: ["/api/admin/claims"] }); },
+    onError: (e: Error) => toast({ title: "Settlement needs review", description: e.message, variant: "destructive" }),
   });
 
   const resolveMutation = useMutation({
@@ -89,13 +119,30 @@ export default function AdminDisputesPage() {
           <div>
             <h1 className="text-2xl font-bold">Return Disputes</h1>
             <p className="text-sm text-muted-foreground">
-              Review damage claims and release or capture security deposits.
+              Review legacy disputes and dedicated security claims. Lateness never automatically settles a deposit.
             </p>
           </div>
           <Badge className="ml-auto bg-amber-100 text-amber-800 text-sm">
             {disputes.length} open
           </Badge>
         </div>
+        <section className="space-y-4 mb-8">
+          <h2 className="font-semibold text-lg">Security claims</h2>
+          {isLoadingClaims ? <div data-testid="claims-loading" className="text-sm text-muted-foreground">Loading claims…</div> : claims.length === 0 ? <Card><CardContent className="py-6 text-sm text-muted-foreground" data-testid="claims-empty">No security claims awaiting review.</CardContent></Card> : claims.map((claim) => {
+            const deposit = Number(claim.depositAmount || 0);
+            const canDecide = ["OPEN", "CUSTOMER_RESPONSE_PENDING", "UNDER_REVIEW"].includes(claim.status);
+            return <Card key={claim.id} data-testid={`claim-review-${claim.id}`} className="border-amber-200"><CardContent className="p-5 space-y-3">
+              <div className="flex justify-between gap-2"><div><p className="font-semibold">Claim #{claim.id} · {claim.claimType.replaceAll("_", " ")}</p><p className="text-sm text-muted-foreground">Request #{claim.requestId}</p></div><Badge>{claim.status.replaceAll("_", " ")}</Badge></div>
+              <p className="text-sm">{claim.reason}</p>
+              {claim.evidence?.length > 0 && <p className="text-xs text-muted-foreground">Evidence: {claim.evidence.join(", ")}</p>}
+              <div className="text-sm">Requested: <b>${Number(claim.requestedAmount).toFixed(2)}</b> · Deposit protection: ${deposit.toFixed(2)} · Deposit: {claim.depositStatus || "unknown"}</div>
+              {claim.responseDeadlineAt && <p className="text-xs text-muted-foreground">Borrower response deadline: {format(new Date(claim.responseDeadlineAt), "MMM d, yyyy p")}</p>}
+              <p className="text-xs text-muted-foreground">Settlement: {claim.settlementStatus || "not settled"}{["MANUAL_REVIEW", "EXPIRED_UNSECURED"].includes(claim.settlementStatus || "") && " — authorization cannot be relied on; manual review required."}</p>
+              {claim.approvedAmount && <p className="text-sm">Approved amount: <b>${Number(claim.approvedAmount).toFixed(2)}</b>{claim.decisionReason ? ` · ${claim.decisionReason}` : ""}</p>}
+              <div className="flex flex-wrap gap-2">{canDecide && <Button data-testid={`button-decide-claim-${claim.id}`} onClick={() => { setDeciding(claim); setDecision("approve"); setApprovedAmount(claim.requestedAmount); setDecisionReason(""); }}>Review decision</Button>}{claim.status === "APPROVED" && <Button data-testid={`button-settle-claim-${claim.id}`} variant="outline" disabled={settleMutation.isPending} onClick={() => settleMutation.mutate(claim.id)}>Settle approved claim</Button>}</div>
+            </CardContent></Card>;
+          })}
+        </section>
 
         {isLoading && (
           <div className="space-y-4">
@@ -270,6 +317,11 @@ export default function AdminDisputesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={!!deciding} onOpenChange={(open) => !open && setDeciding(null)}><DialogContent><DialogHeader><DialogTitle>Review claim #{deciding?.id}</DialogTitle><DialogDescription>Deciding a claim does not settle it. Use the separate settlement action after approval.</DialogDescription></DialogHeader>
+        <Label className="text-sm font-medium">Decision<select data-testid="select-claim-decision" className="mt-1 w-full h-10 border rounded px-2" value={decision} onChange={e => setDecision(e.target.value as "approve" | "reject")}><option value="approve">Approve</option><option value="reject">Reject</option></select></Label>
+        {decision === "approve" && <Label className="text-sm font-medium">Approved amount (maximum ${Number(deciding?.depositAmount || 0).toFixed(2)})<Input data-testid="input-approved-amount" type="number" min="0.01" max={Number(deciding?.depositAmount || 0)} step="0.01" value={approvedAmount} onChange={e => setApprovedAmount(e.target.value)} /></Label>}
+        <Label className="text-sm font-medium">Decision reason<Textarea data-testid="input-decision-reason" value={decisionReason} onChange={e => setDecisionReason(e.target.value)} /></Label>
+        <DialogFooter><Button variant="outline" onClick={() => setDeciding(null)}>Cancel</Button><Button data-testid="button-confirm-claim-decision" disabled={!decisionReason.trim() || (decision === "approve" && (!approvedAmount || Number(approvedAmount) > Number(deciding?.depositAmount || 0))) || decisionMutation.isPending} onClick={() => decisionMutation.mutate()}>{decisionMutation.isPending ? "Saving…" : "Record decision"}</Button></DialogFooter></DialogContent></Dialog>
     </AdminLayout>
   );
 }

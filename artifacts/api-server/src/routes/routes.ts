@@ -25,7 +25,7 @@ import { itemConditionVerifications } from "@workspace/db";
 import { matchCatalog } from "../lib/lib/baby-catalog";
 import { sponsoredGames, gameSessions } from "@workspace/db";
 import { communityChallenges, challengeParticipants } from "@workspace/db";
-import { itemRequests, deliveryArrangements, extensionRequests } from "@workspace/db";
+import { itemRequests, deliveryArrangements, extensionRequests, securityClaims, requestLifecycleEvents, depositSettlementOperations } from "@workspace/db";
 import { reputationActivities, userReviews } from "@workspace/db";
 import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, wishlistOffers, referrals, rentalPayouts, achievements, userAchievements, itemAvailabilitySubscribers, userNotificationPrefs, userPushTokens } from "@workspace/db";
 import session from "express-session";
@@ -46,6 +46,7 @@ import {
   releaseDepositTerminalClaim,
   resolveClaimedDepositIntents,
 } from "../deposit-renewal-service";
+import { reconcileClaimDeadlines, reconcileSettlementOperation, releaseRejectedClaim, settleApprovedClaim } from "../security-claims-service";
 
 // Notify all availability subscribers that an item is back
 async function notifyAvailabilitySubscribers(itemId: number, itemName: string) {
@@ -89,9 +90,11 @@ import {
 import { calculateAIValuation, getTierBand, type ItemValuationInput } from "../ai-valuation";
 import { calculateReplacementValueAndTier } from "../replacement-value";
 import {
+  OVERDUE_POLICY,
   daysOverdueAgainstDueDate,
   isBorrowingRestricted,
   isSeriousOverdue,
+  overdueStageAt,
 } from "../overdue-policy";
 
 const ACTIVE_OVERDUE_BORROW_STATUSES = ["IN_PROGRESS", "RETURN_REQUESTED"];
@@ -10139,6 +10142,22 @@ Respond with ONLY the category name, nothing else.`
       if (request.item_requests.status !== "RETURN_REQUESTED") {
         return res.status(400).json({ error: "No return pending" });
       }
+      // A physical return stops overdue/non-return escalation, but an existing
+      // damage/loss claim remains protected for review. Do not race it with a
+      // terminal cancel/refund operation.
+      const activeClaim = await db.transaction(async tx => {
+        await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);
+        const [claim] = await tx.select({ id: securityClaims.id }).from(securityClaims)
+          .where(and(eq(securityClaims.requestId, requestId), inArray(securityClaims.status, ["OPEN", "CUSTOMER_RESPONSE_PENDING", "UNDER_REVIEW", "APPROVED", "PROCESSING"]))).limit(1);
+        if (claim) {
+          await tx.update(itemRequests).set({ overdueStage: "RETURNED_PENDING_REVIEW", overdueStageChangedAt: new Date(), actualReturnAt: new Date() })
+            .where(eq(itemRequests.id, requestId));
+        }
+        return claim;
+      });
+      if (activeClaim) {
+        return res.json({ success: true, returnedPendingReview: true, message: "Return recorded. The existing claim remains under review; deposit protection was not released." });
+      }
       const terminalClaim = await claimDepositTerminalAction(
         requestId,
         triggerDispute ? "dispute" : "cancel",
@@ -10182,6 +10201,19 @@ Respond with ONLY the category name, nothing else.`
         if (!disputed) {
           return res.status(409).json({ error: "Deposit changed before the dispute could open" });
         }
+          // Keep legacy DISPUTED visibility while making the report an actual
+          // claim; only a later admin decision can make it settlement-eligible.
+          const requestedAmount = Number(currentRequest.trustDepositAmount || 0);
+          if (requestedAmount > 0) {
+            await db.insert(securityClaims).values({
+              requestId, ownerId: request.items.ownerId!, borrowerId: request.item_requests.requesterId,
+              claimType: "damage", reason: conditionNotes || "Item returned in damaged condition",
+              evidence: disputePhotoUrl ? [disputePhotoUrl] : [], requestedAmount: requestedAmount.toFixed(2),
+              depositPaymentIntentId: currentRequest.depositPaymentIntentId,
+              status: "CUSTOMER_RESPONSE_PENDING", borrowerNotifiedAt: new Date(),
+              responseDeadlineAt: new Date(Date.now() + 72 * 3_600_000),
+            });
+          }
 
         // Mark item as unavailable until dispute resolved
         await db
@@ -10221,6 +10253,15 @@ Respond with ONLY the category name, nothing else.`
       if (currentRequest.depositPaymentIntentId || currentRequest.depositPreviousPaymentIntentId) {
         try {
           await resolveClaimedDepositIntents(terminalClaim, stripe as any, "cancel");
+          // An unconditional return release is itself auditable and idempotent;
+          // it is never a capture, including for a late return.
+          await db.insert(depositSettlementOperations).values({
+            requestId, operationKey: `return-release-${requestId}-${currentRequest.depositPaymentIntentId || "none"}`,
+            status: "SETTLED", approvedAmount: "0", retainedAmount: "0",
+            releasedAmount: currentRequest.trustDepositAmount || "0",
+            stripePaymentIntentId: currentRequest.depositPaymentIntentId,
+            completedAt: new Date(),
+          }).onConflictDoNothing();
           // Notify borrower their deposit hold has been lifted
           await db.insert(notifications).values({
             userId: request.item_requests.requesterId,
@@ -10252,6 +10293,8 @@ Respond with ONLY the category name, nothing else.`
         .update(itemRequests)
         .set({
           status: isEarlyReturn ? "COMPLETED_EARLY" : "COMPLETED",
+          overdueStage: "RETURNED_PENDING_REVIEW",
+          overdueStageChangedAt: returnNow,
           returnConfirmedAt: returnNow,
           actualReturnAt: returnNow,
           returnConditionRating: conditionRating || 5,
@@ -10914,6 +10957,161 @@ Respond with ONLY the category name, nothing else.`
 
   // ── Extension Requests ──────────────────────────────────────────────────────
 
+  // Claims deliberately use their own state machine; none of these endpoints
+  // capture, cancel, or refund a deposit.
+  app.get("/api/requests/:id/lifecycle", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const requestId = Number(req.params.id);
+    const [request] = await db.select({ request: itemRequests, ownerId: items.ownerId })
+      .from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(eq(itemRequests.id, requestId)).limit(1);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+    if (request.request.requesterId !== req.user.id && request.ownerId !== req.user.id && !(req.user as any).isAdmin) return res.sendStatus(403);
+    const [claims, events] = await Promise.all([
+      db.select().from(securityClaims).where(eq(securityClaims.requestId, requestId)),
+      db.select().from(requestLifecycleEvents).where(eq(requestLifecycleEvents.requestId, requestId)).orderBy(asc(requestLifecycleEvents.createdAt)),
+    ]);
+    const r = request.request;
+    const deadline = r.returnDeadlineAt || r.endDate;
+    const lateHours = deadline ? Math.max(0, Math.floor((Date.now() - new Date(deadline).getTime()) / 3_600_000)) : 0;
+    const role = request.ownerId === req.user.id ? "owner" : "borrower";
+    res.json({
+      lifecycle: {
+        requestId: r.id, stage: r.overdueStage || "ACTIVE", deadline, lateHours,
+        claimDecisionDeadlineAt: r.claimDecisionDeadlineAt,
+        settlementStartDeadlineAt: r.settlementStartDeadlineAt,
+        role, actions: role === "owner" ? ["open_claim", "arrange_return"] : ["respond_to_claim", "request_extension", "arrange_return"],
+        deposit: { mode: r.depositMode, status: r.depositStatus, amount: r.trustDepositAmount, expiresAt: r.depositAuthorizationExpiresAt, protectionReviewRequired: r.depositRenewalStatus === "protection_review_required" },
+      },
+      claims: claims.map(c => ({ id: c.id, claimType: c.claimType, status: c.status, reason: c.reason, evidence: c.evidence, borrowerResponse: c.borrowerResponse, requestedAmount: c.requestedAmount, approvedAmount: c.approvedAmount, decisionReason: c.decisionReason, responseDeadlineAt: c.responseDeadlineAt, settlementStatus: c.settlementStatus, createdAt: c.createdAt, decidedAt: c.decidedAt })),
+      events: events.map(e => ({ eventType: e.eventType, createdAt: e.createdAt })),
+    });
+  });
+
+  app.post("/api/requests/:id/claims", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const requestId = Number(req.params.id), requestedAmount = Number(req.body.requestedAmount);
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0 || typeof req.body.reason !== "string" || !req.body.reason.trim())
+      return res.status(400).json({ error: "reason and a positive requestedAmount are required" });
+    const claimType = String(req.body.claimType || "");
+    if (!["damage", "missing_components", "lost", "non_return", "other"].includes(claimType) || !Array.isArray(req.body.evidence) || req.body.evidence.length === 0)
+      return res.status(400).json({ error: "An allowlisted claimType and nonempty evidence are required" });
+    try {
+      const claim = await db.transaction(async tx => {
+        await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);
+        const [row] = await tx.select({ ownerId: items.ownerId, borrowerId: itemRequests.requesterId, deposit: itemRequests.trustDepositAmount, pi: itemRequests.depositPaymentIntentId, depositStatus: itemRequests.depositStatus, depositOperation: itemRequests.depositRenewalStatus, stage: itemRequests.overdueStage, expires: itemRequests.depositAuthorizationExpiresAt })
+          .from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(eq(itemRequests.id, requestId)).limit(1);
+        if (!row) throw Object.assign(new Error("Request not found"), { status: 404 });
+        if (row.ownerId !== req.user.id) throw Object.assign(new Error("Only the owner can open a claim"), { status: 403 });
+        if (!row.pi || row.depositOperation === "terminal_action" || !["authorized", "held", "disputed", "SECURED_REFUNDABLE", "secured_refundable"].includes(row.depositStatus || ""))
+          throw Object.assign(new Error("No secured unsettled platform deposit is available"), { status: 409 });
+        const nonReturn = ["non_return", "lost"].includes(claimType);
+        if (nonReturn && !["SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW"].includes(row.stage || ""))
+          throw Object.assign(new Error("Non-return claims require serious overdue review"), { status: 409 });
+        if (!nonReturn && !["RETURNED_PENDING_REVIEW", "SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW"].includes(row.stage || ""))
+          throw Object.assign(new Error("Damage/missing claims require return review or serious overdue"), { status: 409 });
+        if (requestedAmount > Number(row.deposit || 0)) throw Object.assign(new Error("Claim cannot exceed the security deposit"), { status: 400 });
+        const [existing] = await tx.select({ id: securityClaims.id }).from(securityClaims).where(and(eq(securityClaims.requestId, requestId), inArray(securityClaims.status, ["OPEN", "CUSTOMER_RESPONSE_PENDING", "UNDER_REVIEW", "APPROVED", "PROCESSING"]))).limit(1);
+        if (existing) throw Object.assign(new Error("An active claim already exists"), { status: 409 });
+        const now = new Date();
+        const [created] = await tx.insert(securityClaims).values({
+          requestId, ownerId: row.ownerId!, borrowerId: row.borrowerId, claimType, reason: req.body.reason.trim(), evidence: req.body.evidence,
+          requestedAmount: requestedAmount.toFixed(2), depositPaymentIntentId: row.pi, status: "CUSTOMER_RESPONSE_PENDING",
+          borrowerNotifiedAt: now, responseDeadlineAt: new Date(now.getTime() + 72 * 3600_000),
+        }).returning();
+        if (row.expires) {
+          const decisionDeadline = new Date(row.expires.getTime() - OVERDUE_POLICY.claimDecisionBufferHours * 3600_000);
+          await tx.update(itemRequests).set({
+            claimDecisionDeadlineAt: decisionDeadline,
+            settlementStartDeadlineAt: new Date(decisionDeadline.getTime() - OVERDUE_POLICY.CAPTURE_OPERATION_SAFETY_BUFFER_MINUTES * 60_000),
+          }).where(eq(itemRequests.id, requestId));
+        }
+        await tx.insert(notifications).values({ userId: row.borrowerId, type: "security_claim_opened", title: "Security claim opened", message: "The owner reported an issue. You can respond before it is reviewed.", requestId });
+        await tx.insert(requestLifecycleEvents).values({ requestId, eventType: "CLAIM_OPENED", actorId: req.user.id, idempotencyKey: `claim-opened-${created.id}`, details: { claimId: created.id } });
+        return created;
+      });
+      res.status(201).json(claim);
+    } catch (error: any) { res.status(error.status || 500).json({ error: error.message || "Could not open claim" }); }
+  });
+
+  app.post("/api/claims/:id/respond", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (typeof req.body.response !== "string") return res.status(400).json({ error: "response is required" });
+    const [claim] = await db.update(securityClaims).set({ borrowerResponse: req.body.response, borrowerRespondedAt: new Date(), status: "UNDER_REVIEW", updatedAt: new Date() })
+      .where(and(eq(securityClaims.id, Number(req.params.id)), eq(securityClaims.borrowerId, req.user.id), eq(securityClaims.status, "CUSTOMER_RESPONSE_PENDING"))).returning();
+    if (!claim) return res.status(409).json({ error: "Claim is not awaiting your response" });
+    await db.insert(requestLifecycleEvents).values({ requestId: claim.requestId, eventType: "CLAIM_RESPONSE", actorId: req.user.id, idempotencyKey: `claim-response-${claim.id}`, details: {} }).onConflictDoNothing();
+    res.json(claim);
+  });
+
+  // Dedicated claim queue. Deposit settlement is deliberately a separate,
+  // explicit admin action after a decision has been recorded.
+  app.get("/api/admin/claims", requireAdmin, async (_req, res) => {
+    const claims = await db.select({
+      claim: securityClaims,
+      depositAmount: itemRequests.trustDepositAmount,
+      depositStatus: itemRequests.depositStatus,
+      returnDeadline: itemRequests.endDate,
+    }).from(securityClaims)
+      .innerJoin(itemRequests, eq(itemRequests.id, securityClaims.requestId))
+      .orderBy(asc(securityClaims.createdAt));
+    res.json(claims.map(({ claim, ...request }) => ({ ...claim, ...request })));
+  });
+
+  app.post("/api/admin/claims/:id/decision", requireAdmin, csrfProtection, async (req, res) => {
+    const approved = req.body.decision === "approve", amount = Number(req.body.approvedAmount);
+    if (!["approve", "reject"].includes(req.body.decision) || (approved && (!Number.isFinite(amount) || amount <= 0)) || typeof req.body.reason !== "string")
+      return res.status(400).json({ error: "Valid decision, reason, and approvedAmount are required" });
+    // Never trust a client-side cap: the recorded deposit remains the maximum
+    // protection available to an approved claim.
+    if (approved) {
+      const [limit] = await db.select({ deposit: itemRequests.trustDepositAmount })
+        .from(securityClaims).innerJoin(itemRequests, eq(itemRequests.id, securityClaims.requestId))
+        .where(eq(securityClaims.id, Number(req.params.id))).limit(1);
+      if (!limit) return res.status(404).json({ error: "Claim not found" });
+      if (amount > Number(limit.deposit || 0)) return res.status(400).json({ error: "Approved amount cannot exceed the security deposit" });
+    }
+    let claim: typeof securityClaims.$inferSelect | undefined;
+    try {
+      claim = await db.transaction(async tx => {
+        const now = new Date();
+        await tx.execute(sql`SELECT 1 FROM ${securityClaims} WHERE ${securityClaims.id} = ${Number(req.params.id)} FOR UPDATE`);
+        const [current] = await tx.select().from(securityClaims).where(eq(securityClaims.id, Number(req.params.id))).limit(1);
+        if (!current || !["OPEN", "CUSTOMER_RESPONSE_PENDING", "UNDER_REVIEW"].includes(current.status)) throw Object.assign(new Error("Claim is not eligible for decision"), { status: 409 });
+        if (current.status === "OPEN") throw Object.assign(new Error("Claim must enter borrower response or review before a decision"), { status: 409 });
+        // A pending borrower response cannot be bypassed. Once its server-side
+        // deadline passes, explicitly move it to review before deciding.
+        if (current.status === "CUSTOMER_RESPONSE_PENDING" && (!current.responseDeadlineAt || current.responseDeadlineAt > now)) {
+          throw Object.assign(new Error("Borrower response period has not elapsed"), { status: 409 });
+        }
+        if (current.status === "CUSTOMER_RESPONSE_PENDING") await tx.update(securityClaims).set({ status: "UNDER_REVIEW", updatedAt: now }).where(eq(securityClaims.id, current.id));
+        const [request] = await tx.select({ deadline: itemRequests.claimDecisionDeadlineAt }).from(itemRequests).where(eq(itemRequests.id, current.requestId)).limit(1);
+        if (approved && request?.deadline && request.deadline <= now) {
+          await tx.update(itemRequests).set({ depositStatus: "EXPIRED_UNSECURED" }).where(eq(itemRequests.id, current.requestId));
+          await tx.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", updatedAt: now }).where(eq(securityClaims.id, current.id));
+          throw Object.assign(new Error("Claim decision deadline elapsed; manual review required"), { status: 409 });
+        }
+        const [updated] = await tx.update(securityClaims).set({ status: approved ? "APPROVED" : "REJECTED", approvedAmount: approved ? amount.toFixed(2) : null, decisionReason: req.body.reason, decidedBy: req.user.id, decidedAt: now, updatedAt: now })
+          .where(eq(securityClaims.id, current.id)).returning();
+        return updated;
+      });
+    } catch (error: any) { return res.status(error.status || 500).json({ error: error.message || "Could not decide claim" }); }
+    if (!claim) return res.status(409).json({ error: "Claim is not eligible for decision" });
+    if (!approved) {
+      try { await releaseRejectedClaim(claim.id, stripe as any); }
+      catch (error: any) { return res.status(409).json({ error: error.message || "Claim rejected but deposit release requires review" }); }
+    }
+    res.json(claim);
+  });
+
+  app.post("/api/admin/claims/:id/settle", requireAdmin, csrfProtection, async (req, res) => {
+    try { res.json(await settleApprovedClaim(Number(req.params.id), stripe as any)); }
+    catch (error: any) { res.status(409).json({ error: error.message || "Settlement could not be completed" }); }
+  });
+  app.post("/api/admin/settlement-operations/:id/reconcile", requireAdmin, csrfProtection, async (req, res) => {
+    try { res.json(await reconcileSettlementOperation(Number(req.params.id), stripe as any)); }
+    catch (error: any) { res.status(409).json({ error: error.message || "Settlement reconciliation is indeterminate" }); }
+  });
+
   // GET pending extension for a request
   app.get("/api/requests/:id/extension", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -10972,9 +11170,8 @@ Respond with ONLY the category name, nothing else.`
 
         if (!borrow) return { status: 404, error: "Request not found" };
         if (borrow.requesterId !== req.user.id) return { status: 403, error: "Not your borrow" };
-        if (borrow.status !== "IN_PROGRESS") return { status: 400, error: "Can only extend in-progress borrows" };
-        if (borrow.endDate && new Date() > borrow.endDate) {
-          return { status: 400, error: "Item is overdue — extensions no longer available" };
+        if (!["IN_PROGRESS", "RETURN_DUE", "OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE"].includes(borrow.status)) {
+          return { status: 400, error: "This transaction can no longer be extended" };
         }
 
         const [alreadyUsed] = await tx
@@ -11002,6 +11199,7 @@ Respond with ONLY the category name, nothing else.`
             borrowerId: req.user.id,
             ownerId: borrow.ownerId,
             requestedEndDate: newEnd,
+            previousEndDate: borrow.endDate,
             status: "pending",
             message: `+${addDays} day${addDays > 1 ? "s" : ""}`,
           })
@@ -11125,8 +11323,19 @@ Respond with ONLY the category name, nothing else.`
         if (action === "accept") {
           const [updatedRequest] = await tx
             .update(itemRequests)
-            .set({ endDate: pending.requestedEndDate })
-            .where(and(eq(itemRequests.id, requestId), eq(itemRequests.status, "IN_PROGRESS")))
+          .set({
+            endDate: pending.requestedEndDate,
+            returnDeadlineAt: pending.requestedEndDate,
+            status: "IN_PROGRESS",
+            overdueStage: "ACTIVE",
+            overdueStageChangedAt: new Date(),
+            // An extension must be reviewed if it outlives an authorization;
+            // it never creates/replaces a hold.
+            depositRenewalStatus: sql`CASE WHEN ${itemRequests.depositMode} = 'authorization'
+              AND ${itemRequests.depositAuthorizationExpiresAt} < ${pending.requestedEndDate}
+              THEN 'protection_review_required' ELSE ${itemRequests.depositRenewalStatus} END`,
+          })
+          .where(and(eq(itemRequests.id, requestId), inArray(itemRequests.status, ["IN_PROGRESS", "RETURN_DUE", "OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE"])))
             .returning({ id: itemRequests.id });
           if (!updatedRequest) {
             throw Object.assign(
@@ -11139,7 +11348,12 @@ Respond with ONLY the category name, nothing else.`
         const newStatus = action === "accept" ? "accepted" : "declined";
         const [updatedExtension] = await tx
           .update(extensionRequests)
-          .set({ status: newStatus, respondedAt: new Date() })
+          .set({
+            status: newStatus, respondedAt: new Date(),
+            approvedEndDate: action === "accept" ? pending.requestedEndDate : null,
+            approvedBy: action === "accept" ? req.user.id : null,
+            depositProtectionReviewRequired: action === "accept",
+          })
           .where(and(eq(extensionRequests.id, pending.id), eq(extensionRequests.status, "pending")))
           .returning({ id: extensionRequests.id });
         if (!updatedExtension) {
@@ -11299,6 +11513,9 @@ Respond with ONLY the category name, nothing else.`
   // sweep deliberately evaluates every active transaction.
   async function processReturnReminders(userId?: number): Promise<{ remindersCreated: number }> {
       const now = new Date();
+      // DB-only reconciliation of actual, previously persisted authorization
+      // deadlines. It cannot renew, capture, cancel, refund, or call Stripe.
+      await reconcileClaimDeadlines(now);
       const todayStart = new Date(now);
       todayStart.setHours(0, 0, 0, 0);
       const twoDaysFromNow = new Date(now);
@@ -11383,6 +11600,44 @@ Respond with ONLY the category name, nothing else.`
 
       for (const { request, item, owner } of activeRequests) {
         if (!request.endDate) continue;
+        // This sweep has no Stripe dependency and intentionally only records
+        // communications/lifecycle state. Financial settlement is reachable
+        // solely through an approved claim's explicit settlement endpoint.
+        const nextStage = overdueStageAt(new Date(request.returnDeadlineAt || request.endDate), now, {
+          requestType: request.requestType,
+          durationDays: request.startDate ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / 86_400_000) : undefined,
+        });
+        if (nextStage !== (request.overdueStage || "ACTIVE")) {
+          const transitionKey = `overdue-stage-${request.id}-${nextStage}-${new Date(request.returnDeadlineAt || request.endDate).toISOString()}`;
+          const transitioned = await db.transaction(async tx => {
+            const [updated] = await tx.update(itemRequests).set({
+              overdueStage: nextStage,
+              overdueStageChangedAt: now,
+              returnDeadlineAt: request.returnDeadlineAt || request.endDate,
+            }).where(and(eq(itemRequests.id, request.id), ne(itemRequests.overdueStage, nextStage))).returning({ id: itemRequests.id });
+            if (!updated) return false;
+            await tx.insert(requestLifecycleEvents).values({
+              requestId: request.id, eventType: `OVERDUE_${nextStage}`, idempotencyKey: transitionKey,
+              details: { from: request.overdueStage || "ACTIVE", to: nextStage, deadline: new Date(request.returnDeadlineAt || request.endDate).toISOString() },
+            }).onConflictDoNothing();
+            return true;
+          });
+          if (transitioned && nextStage !== "ACTIVE") {
+            const lateHours = Math.max(0, Math.floor((now.getTime() - new Date(request.endDate).getTime()) / 3_600_000));
+            const stageCopy: Record<string, { title: string; borrower: string; owner: string }> = {
+              RETURN_DUE: { title: "Return due", borrower: `"${item.name}" is due now. Please arrange return.`, owner: `"${item.name}" is due for return.` },
+              OVERDUE_GRACE: { title: "Return overdue", borrower: `"${item.name}" is overdue by ${lateHours} hours. Please arrange return.`, owner: `"${item.name}" has not yet been returned.` },
+              OVERDUE: { title: "Return overdue", borrower: `"${item.name}" is overdue. Arrange return or request an extension.`, owner: `"${item.name}" remains overdue.` },
+              SERIOUSLY_OVERDUE: { title: "Final return warning", borrower: `"${item.name}" is significantly overdue. The owner may open a non-return claim.`, owner: `"${item.name}" is significantly overdue; you may report an issue.` },
+              NON_RETURN_REVIEW: { title: "Non-return review", borrower: `"${item.name}" is under non-return review. This is not a charge; return it or respond to a claim.`, owner: `"${item.name}" is eligible for non-return review; you may open a claim.` },
+            };
+            const copy = stageCopy[nextStage];
+            if (copy) await Promise.all([
+              createReminder(request.requesterId, request.id, item.id, `return_stage_${nextStage.toLowerCase()}_borrower`, copy.title, copy.borrower),
+              createReminder(owner.id, request.id, item.id, `return_stage_${nextStage.toLowerCase()}_owner`, copy.title, copy.owner),
+            ]);
+          }
+        }
 
         const daysOverdue = daysOverdueAgainstDueDate(now, request.endDate);
         const daysUntilReturn = daysOverdue > 0
@@ -13449,6 +13704,14 @@ Respond with ONLY the category name, nothing else.`
       if (!request) return res.status(404).json({ error: "Request not found" });
       if (request.item_requests.status !== "DISPUTED") {
         return res.status(400).json({ error: "Request is not in DISPUTED status" });
+      }
+      // Legacy dispute resolution never authorizes a capture. A damage report
+      // must be represented by a security claim and receive an explicit
+      // approved amount before the settlement service can contact Stripe.
+      if (decision === "owner") {
+        return res.status(409).json({
+          error: "Open and approve a security claim before settlement; legacy dispute capture is disabled.",
+        });
       }
 
       const ownerId = request.items.ownerId!;

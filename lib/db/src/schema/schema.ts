@@ -1,6 +1,6 @@
 import { pgTable, text, serial, boolean, timestamp, integer, decimal, numeric, varchar, index, uniqueIndex, date, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -426,6 +426,13 @@ export const itemRequests = pgTable("item_requests", {
   // actualHandoffAt/actualReturnAt = when the physical exchange happened
   actualHandoffAt: timestamp("actual_handoff_at"),
   actualReturnAt: timestamp("actual_return_at"),
+  // This is intentionally independent of status: lateness must never turn
+  // into a financial action merely by advancing a transaction status.
+  overdueStage: text("overdue_stage").default("ACTIVE"),
+  overdueStageChangedAt: timestamp("overdue_stage_changed_at"),
+  returnDeadlineAt: timestamp("return_deadline_at"),
+  claimDecisionDeadlineAt: timestamp("claim_decision_deadline_at"),
+  settlementStartDeadlineAt: timestamp("settlement_start_deadline_at"),
 
   // Rental-specific fields
   rentalAmount: decimal("rental_amount", { precision: 10, scale: 2 }), // rental fee in dollars
@@ -865,6 +872,10 @@ export const extensionRequests = pgTable("extension_requests", {
   borrowerId: integer("borrower_id").notNull().references(() => users.id),
   ownerId: integer("owner_id").notNull().references(() => users.id),
   requestedEndDate: timestamp("requested_end_date").notNull(),
+  previousEndDate: timestamp("previous_end_date"),
+  approvedEndDate: timestamp("approved_end_date"),
+  approvedBy: integer("approved_by").references(() => users.id),
+  depositProtectionReviewRequired: boolean("deposit_protection_review_required").default(false).notNull(),
   status: text("status").default("pending").notNull(), // pending | accepted | declined
   message: text("message"),
   respondedAt: timestamp("responded_at"),
@@ -873,6 +884,67 @@ export const extensionRequests = pgTable("extension_requests", {
 
 export type InsertExtensionRequest = typeof extensionRequests.$inferInsert;
 export type SelectExtensionRequest = typeof extensionRequests.$inferSelect;
+
+/** Append-only record of overdue, claim, and settlement lifecycle events. */
+export const requestLifecycleEvents = pgTable("request_lifecycle_events", {
+  id: serial("id").primaryKey(),
+  requestId: integer("request_id").notNull().references(() => itemRequests.id),
+  eventType: text("event_type").notNull(),
+  actorId: integer("actor_id").references(() => users.id),
+  idempotencyKey: text("idempotency_key").notNull(),
+  details: jsonb("details"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  requestCreatedIdx: index("request_lifecycle_events_request_created_idx").on(table.requestId, table.createdAt),
+  idempotencyUniq: uniqueIndex("request_lifecycle_events_idempotency_uniq").on(table.idempotencyKey),
+}));
+
+export const securityClaims = pgTable("security_claims", {
+  id: serial("id").primaryKey(),
+  requestId: integer("request_id").notNull().references(() => itemRequests.id),
+  ownerId: integer("owner_id").notNull().references(() => users.id),
+  borrowerId: integer("borrower_id").notNull().references(() => users.id),
+  claimType: text("claim_type").notNull(),
+  status: text("status").notNull().default("OPEN"),
+  reason: text("reason").notNull(),
+  evidence: jsonb("evidence").notNull().default(sql`'[]'::jsonb`),
+  borrowerResponse: text("borrower_response"),
+  borrowerRespondedAt: timestamp("borrower_responded_at"),
+  borrowerNotifiedAt: timestamp("borrower_notified_at"),
+  responseDeadlineAt: timestamp("response_deadline_at"),
+  requestedAmount: decimal("requested_amount", { precision: 10, scale: 2 }).notNull(),
+  approvedAmount: decimal("approved_amount", { precision: 10, scale: 2 }),
+  decisionReason: text("decision_reason"),
+  decidedBy: integer("decided_by").references(() => users.id),
+  decidedAt: timestamp("decided_at"),
+  depositPaymentIntentId: text("deposit_payment_intent_id"),
+  settlementStatus: text("settlement_status").notNull().default("PENDING"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  requestIdx: index("security_claims_request_idx").on(table.requestId),
+  statusIdx: index("security_claims_status_idx").on(table.status),
+}));
+
+export const depositSettlementOperations = pgTable("deposit_settlement_operations", {
+  id: serial("id").primaryKey(),
+  claimId: integer("claim_id").references(() => securityClaims.id),
+  requestId: integer("request_id").notNull().references(() => itemRequests.id),
+  operationKey: text("operation_key").notNull(),
+  status: text("status").notNull().default("PENDING"),
+  approvedAmount: decimal("approved_amount", { precision: 10, scale: 2 }).notNull(),
+  retainedAmount: decimal("retained_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  releasedAmount: decimal("released_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeCaptureId: text("stripe_capture_id"),
+  stripeRefundId: text("stripe_refund_id"),
+  error: text("error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => ({
+  operationKeyUniq: uniqueIndex("deposit_settlement_operations_operation_key_uniq").on(table.operationKey),
+  requestIdx: index("deposit_settlement_operations_request_idx").on(table.requestId),
+}));
 
 export const itemAvailabilitySubscribers = pgTable("item_availability_subscribers", {
   id: serial("id").primaryKey(),

@@ -40,6 +40,20 @@ function timeAgo(dateStr: string): string {
 // ── Icon per notification type — exact match to web app ───────────────────
 type LucideIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 function notifIcon(type: string): { Icon: LucideIcon; color: string } {
+  // Return stages intentionally have their own visual severity. They deep-link
+  // to the request chat below, where the exact deadline and available action live.
+  if (type === "return_stage_return_due_borrower" || type === "return_stage_return_due_owner") return { Icon: Clock, color: "#f97316" };
+  if (type === "return_stage_overdue_grace_borrower" || type === "return_stage_overdue_grace_owner") return { Icon: AlertCircle, color: "#f59e0b" };
+  if (type === "return_stage_overdue_borrower" || type === "return_stage_overdue_owner") return { Icon: AlertTriangle, color: "#ea580c" };
+  if (type === "return_stage_seriously_overdue_borrower" || type === "return_stage_seriously_overdue_owner") return { Icon: ShieldAlert, color: "#b91c1c" };
+  if (type === "return_stage_non_return_review_borrower" || type === "return_stage_non_return_review_owner") return { Icon: Flag, color: "#b91c1c" };
+  if (type === "return_stage_returned_pending_review_borrower" || type === "return_stage_returned_pending_review_owner") return { Icon: ShieldCheck, color: "#2563eb" };
+  if (type === "security_claim_opened" || type === "claim_opened") return { Icon: ShieldAlert, color: "#dc2626" };
+  if (type === "security_claim_response" || type === "claim_response") return { Icon: AlertCircle, color: "#4f46e5" };
+  if (type === "security_claim_approved" || type === "claim_approved") return { Icon: ShieldCheck, color: "#16a34a" };
+  if (type === "security_claim_rejected" || type === "claim_rejected") return { Icon: Shield, color: "#64748b" };
+  if (type === "security_claim_settled" || type === "claim_settled") return { Icon: DollarSign, color: "#16a34a" };
+  if (type === "security_deposit_authorization_expired" || type === "deposit_authorization_expired") return { Icon: ShieldAlert, color: "#dc2626" };
   if (type === "return_reminder_overdue")                                      return { Icon: AlertCircle,    color: "#ef4444" };
   if (type === "return_reminder_overdue_restricted")                           return { Icon: AlertCircle,    color: "#dc2626" };
   if (type === "return_reminder_serious_overdue")                              return { Icon: ShieldAlert,    color: "#b91c1c" };

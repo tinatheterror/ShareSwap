@@ -64,9 +64,12 @@ export function RequestLifecyclePanel({ requestId, onContact, onReturn, onExtens
   const can = (action: string) => lifecycle.actions.includes(action);
   const eligibleToClaim = lifecycle.role === "owner" && can("open_claim") && !data.claims.some(c => !["REJECTED", "SETTLED"].includes(c.status));
   return <div data-testid={`lifecycle-panel-${requestId}`} className="space-y-2">
-    {stage && <div className={`rounded-lg border p-3 ${stage.tone}`}><p className="font-semibold text-sm flex gap-1.5 items-center"><AlertTriangle className="h-4 w-4" />{stage.title}</p>
-      {lifecycle.deadline && <p className="text-xs mt-1">Return deadline: {format(new Date(lifecycle.deadline), "MMM d, yyyy p")} {lifecycle.lateHours > 0 && `(${lifecycle.lateHours < 24 ? `${lifecycle.lateHours} hours` : formatDistanceToNowStrict(new Date(lifecycle.deadline))} late)`}</p>}
-      <p className="text-xs mt-1">{stage.description} Being overdue never automatically takes a security deposit.</p></div>}
+    {stage && <div className={`rounded-lg border p-3 ${stage.tone}`}>
+      <p className="flex items-center gap-1.5 text-base font-bold leading-tight"><AlertTriangle className="h-4 w-4 shrink-0" />{stage.title}</p>
+      <p className="mt-1.5 text-sm font-medium leading-snug">{stage.description}</p>
+      {lifecycle.deadline && <p className="mt-2 text-xs font-semibold tracking-wide">Return deadline: {format(new Date(lifecycle.deadline), "MMM d, yyyy p")} {lifecycle.lateHours > 0 && `· ${lifecycle.lateHours < 24 ? `${lifecycle.lateHours} hours` : formatDistanceToNowStrict(new Date(lifecycle.deadline))} late`}</p>}
+      <p className="mt-2 border-t border-current/15 pt-2 text-xs font-normal leading-relaxed opacity-75">A late return never automatically settles a security deposit.</p>
+    </div>}
     <div className="rounded-lg border bg-muted/30 p-2 text-xs"><span className="font-medium">Security deposit:</span> ${deposit.toFixed(2)} · {lifecycle.deposit.status || "status unavailable"}{lifecycle.deposit.mode ? ` · ${lifecycle.deposit.mode}` : ""} · settlement is independent of lateness.{lifecycle.deposit.expiresAt ? ` Capture deadline: ${format(new Date(lifecycle.deposit.expiresAt), "MMM d, yyyy p")}.` : ""}{lifecycle.deposit.protectionReviewRequired ? " Protection requires manual review." : ""}</div>
     {data.claims.map(claim => <div key={claim.id} data-testid={`claim-${claim.id}`} className="rounded-lg border border-red-100 bg-red-50 p-3 text-xs space-y-1"><p className="font-semibold">Claim #{claim.id}: {claim.status.replaceAll("_", " ")}</p><p>{claim.claimType}: {claim.reason}</p><p>Requested: ${Number(claim.requestedAmount).toFixed(2)}{claim.approvedAmount && ` · Approved: $${Number(claim.approvedAmount).toFixed(2)}`}</p>
       {claim.evidence?.length ? <p>Evidence: {claim.evidence.join(", ")}</p> : null}{claim.decisionReason && <p>Decision: {claim.decisionReason}</p>}{claim.responseDeadlineAt && <p>Response deadline: {format(new Date(claim.responseDeadlineAt), "MMM d, yyyy p")}</p>}

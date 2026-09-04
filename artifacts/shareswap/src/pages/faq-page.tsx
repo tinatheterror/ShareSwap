@@ -902,6 +902,35 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent className="pt-0">
             <Accordion type="single" collapsible className="w-full">
+              {/* Reporting Issues */}
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-2">
+                Reporting issues
+              </p>
+              <AccordionItem value="reporting-1">
+                <AccordionTrigger className="text-sm">
+                  Does an overdue return automatically settle the security deposit?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  No. An overdue return alone never settles a security deposit.
+                  The owner must report the issue and open a claim for ShareSwap
+                  to review. The borrower can respond, and no amount is settled
+                  unless the claim is reviewed and approved.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="reporting-2">
+                <AccordionTrigger className="text-sm">
+                  What does “maximum available protection” mean?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  Maximum available protection is the most that may be requested
+                  for an eligible claim. It is not an automatic payout. ShareSwap
+                  reviews the claim, evidence, and response, and may approve all,
+                  part, or none of the requested amount. Only the reviewed,
+                  approved amount—not the full security deposit—is what may be
+                  settled. Any remaining amount is released or refunded.
+                </AccordionContent>
+              </AccordionItem>
+
               {/* ShareCoin Questions */}
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-2">
                 ShareCoin Questions

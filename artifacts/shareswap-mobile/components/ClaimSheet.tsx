@@ -31,7 +31,7 @@ export function ClaimSheet({ visible, onClose, onSubmit, isPending, depositAmoun
       <View style={[styles.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 18 }]}>
         <View style={[styles.handle, { backgroundColor: colors.border }]} />
         <Text style={[styles.title, { color: colors.foreground }]}>Report an issue</Text>
-        <Text style={[styles.sub, { color: colors.mutedForeground }]}>Open a claim for review. An overdue return alone never settles a security deposit.</Text>
+        <Text style={[styles.sub, { color: colors.mutedForeground }]}>Tell us what happened with the item.</Text>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.form}>
           <Text style={[styles.label, { color: colors.foreground }]}>Issue type</Text>
           <View style={styles.types}>
@@ -43,12 +43,12 @@ export function ClaimSheet({ visible, onClose, onSubmit, isPending, depositAmoun
           <Text style={[styles.label, { color: colors.foreground }]}>What happened?</Text>
           <TextInput testID="claim-reason" multiline value={reason} onChangeText={setReason} placeholder="Describe the issue and relevant return details…" placeholderTextColor={colors.mutedForeground}
             style={[styles.input, styles.notes, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]} />
-          <Text style={[styles.label, { color: colors.foreground }]}>Requested amount</Text>
+          <Text style={[styles.label, { color: colors.foreground }]}>Amount requested</Text>
           <TextInput testID="claim-requested-amount" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder={`Up to $${maximum.toFixed(2)}`} placeholderTextColor={colors.mutedForeground}
             style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]} />
-          <Text style={[styles.help, { color: requested > maximum ? "#dc2626" : colors.mutedForeground }]}>Maximum available protection: ${maximum.toFixed(2)}. The reviewed approved amount—not the deposit—is what may be settled.</Text>
-          <Text style={[styles.label, { color: colors.foreground }]}>Evidence details or URLs (optional)</Text>
-          <TextInput testID="claim-evidence" multiline value={evidence} onChangeText={setEvidence} placeholder="Add links or details, one per line" placeholderTextColor={colors.mutedForeground}
+          <Text style={[styles.help, { color: requested > maximum ? "#dc2626" : colors.mutedForeground }]}>Maximum claim amount: ${maximum.toFixed(2)}</Text>
+          <Text style={[styles.label, { color: colors.foreground }]}>Evidence (optional)</Text>
+          <TextInput testID="claim-evidence" multiline value={evidence} onChangeText={setEvidence} placeholder="Photos, details, or links..." placeholderTextColor={colors.mutedForeground}
             style={[styles.input, styles.notes, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]} />
         </ScrollView>
         <View style={styles.buttons}>

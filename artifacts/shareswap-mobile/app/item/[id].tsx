@@ -246,7 +246,12 @@ export default function ItemDetailScreen() {
         return;
       }
       if (e.code === "EMAIL_NOT_VERIFIED") {
-        router.push("/verify-email-prompt" as never);
+        setActiveRequestType(null);
+        setShowBorrowSheet(false);
+        setShowSwapSelector(false);
+        // Close native modals before navigating or the verification screen opens
+        // behind them and the failed submission appears to do nothing.
+        setTimeout(() => router.push("/verify-email-prompt" as never), 300);
         return;
       }
       if (e.code === "BORROW_LIMIT_REACHED") {

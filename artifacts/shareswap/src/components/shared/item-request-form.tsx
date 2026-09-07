@@ -63,6 +63,13 @@ const formSchema = z.object({
   depositMethod: z.enum(["in_app", "in_person"]).default("in_app"),
 });
 
+function maximumBorrowEndDate(startDate?: string): string | undefined {
+  if (!startDate) return undefined;
+  const [year, month, day] = startDate.split("-").map(Number);
+  const maximum = new Date(year + 1, month - 1, day);
+  return maximum.toLocaleDateString("en-CA");
+}
+
 type Prefill = {
   startDate?: string | null;
   endDate?: string | null;
@@ -439,6 +446,15 @@ export function ItemRequestForm({
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit((data) => {
+                if (requestType === "BORROW" && data.startDate && data.endDate) {
+                  const maximumEnd = maximumBorrowEndDate(data.startDate);
+                  if (maximumEnd && data.endDate > maximumEnd) {
+                    form.setError("endDate", {
+                      message: "Borrowing is limited to 12 months.",
+                    });
+                    return;
+                  }
+                }
                 if (requestType === "BORROW" && onInsufficientCoins) {
                   const weeklyPrice =
                     parseFloat((item as any).shareCoinPrice || "0") || 5;
@@ -532,6 +548,11 @@ export function ItemRequestForm({
                               min={
                                 form.watch("startDate") ||
                                 new Date().toLocaleDateString("en-CA")
+                              }
+                              max={
+                                requestType === "BORROW"
+                                  ? maximumBorrowEndDate(form.watch("startDate"))
+                                  : undefined
                               }
                               className="border border-gray-200 rounded-xl h-12 px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-teal-500"
                             />

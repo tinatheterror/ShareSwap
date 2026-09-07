@@ -26,10 +26,22 @@ export function setCurrentUser(u: { id: number } | null | undefined) {
 // expo-notifications throws on web during module init — load it only on native.
 // We keep `import type` above for TypeScript types, and use require() at runtime.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Notifications = (Platform.OS !== "web" ? require("expo-notifications") : {}) as typeof NotificationsType;
+let Notifications: typeof NotificationsType | Record<string, never> = {};
+if (Platform.OS !== "web") {
+  try {
+    Notifications = require("expo-notifications");
+  } catch (err) {
+    console.warn(
+      "[push] expo-notifications native module unavailable — push disabled for this build:",
+      err,
+    );
+  }
+}
+const isPushAvailable =
+  Platform.OS !== "web" && Object.keys(Notifications).length > 0;
 
 // ── Notification presentation behaviour while the app is in the foreground ──
-if (Platform.OS !== "web") {
+if (isPushAvailable) {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -43,8 +55,8 @@ if (Platform.OS !== "web") {
 
 /** Registers for push and POSTs the Expo token to the server. Fire-and-forget. */
 export async function registerPushToken(): Promise<void> {
-  // Push notifications are not supported on web
-  if (Platform.OS === "web") return;
+  // Push notifications are not supported on web, or not linked into this build
+  if (!isPushAvailable) return;
 
   try {
     // Android requires a notification channel
@@ -59,7 +71,8 @@ export async function registerPushToken(): Promise<void> {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existingPerms = (await Notifications.getPermissionsAsync()) as any;
-    let granted: boolean = existingPerms.granted ?? existingPerms.status === "granted";
+    let granted: boolean =
+      existingPerms.granted ?? existingPerms.status === "granted";
 
     if (!granted) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -68,7 +81,9 @@ export async function registerPushToken(): Promise<void> {
     }
 
     if (!granted) {
-      console.log("[push] Permission not granted — skipping token registration");
+      console.log(
+        "[push] Permission not granted — skipping token registration",
+      );
       return;
     }
 
@@ -81,7 +96,7 @@ export async function registerPushToken(): Promise<void> {
     if (!projectId) {
       console.warn(
         "[push] No EAS project ID found. Set expo.extra.eas.projectId in app.json " +
-        "to enable Expo Push Notifications. Skipping token registration."
+          "to enable Expo Push Notifications. Skipping token registration.",
       );
       return;
     }
@@ -146,7 +161,11 @@ export function useReturnReminderCheck(isAuthenticated: boolean): void {
     const checkReminders = async () => {
       if (isCancelled || appStateRef.current !== "active") return;
       try {
-        await apiRequest("POST", "/api/notifications/check-return-reminders", {});
+        await apiRequest(
+          "POST",
+          "/api/notifications/check-return-reminders",
+          {},
+        );
       } catch (err) {
         // Reminder generation is best-effort and must not interrupt the app.
         console.error("[notifications] return reminder check failed:", err);
@@ -182,8 +201,11 @@ export function useReturnReminderCheck(isAuthenticated: boolean): void {
 let _killedStatePending: Record<string, unknown> | null = null;
 
 export function usePushNotificationNavigation() {
-  const notificationListener = useRef<NotificationsType.EventSubscription | null>(null);
-  const responseListener = useRef<NotificationsType.EventSubscription | null>(null);
+  const notificationListener =
+    useRef<NotificationsType.EventSubscription | null>(null);
+  const responseListener = useRef<NotificationsType.EventSubscription | null>(
+    null,
+  );
 
   // Flush any killed-state notification once the user is available.
   // _currentUser is set externally by RootLayoutNav via setCurrentUser().
@@ -195,8 +217,8 @@ export function usePushNotificationNavigation() {
   }, [_currentUser]);
 
   useEffect(() => {
-    // Push notification APIs are not available on web
-    if (Platform.OS === "web") return;
+    // Push notification APIs are not available on web, or not linked into this build
+    if (!isPushAvailable) return;
 
     // Foreground/background tap: router + session are already up, navigate immediately
     const handle = (data: Record<string, unknown>) =>
@@ -209,7 +231,10 @@ export function usePushNotificationNavigation() {
     // User tapped a notification (foreground or background)
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data as Record<string, unknown>;
+        const data = response.notification.request.content.data as Record<
+          string,
+          unknown
+        >;
         handle(data);
       });
 
@@ -219,7 +244,10 @@ export function usePushNotificationNavigation() {
     // retry with a live session.
     Notifications.getLastNotificationResponseAsync().then((response) => {
       if (!response?.notification?.request?.content?.data) return;
-      const data = response.notification.request.content.data as Record<string, unknown>;
+      const data = response.notification.request.content.data as Record<
+        string,
+        unknown
+      >;
       const chatUserId = data.chatUserId as string | number | undefined;
       if (chatUserId) {
         // Router needs ~300ms to mount after a cold start
@@ -247,7 +275,9 @@ export function usePushNotificationNavigation() {
  *  3. `itemId` present     → open the item detail page
  *  4. Fallback             → open the notifications list
  */
-async function navigateFromPushData(data: Record<string, unknown>): Promise<void> {
+async function navigateFromPushData(
+  data: Record<string, unknown>,
+): Promise<void> {
   if (!data) return;
 
   const screen = data.screen as string | undefined;
@@ -266,7 +296,9 @@ async function navigateFromPushData(data: Record<string, unknown>): Promise<void
     if (requestId) {
       try {
         const requests = await apiGet<any[]>("/api/requests");
-        const req = requests.find((r: any) => Number(r.id) === Number(requestId));
+        const req = requests.find(
+          (r: any) => Number(r.id) === Number(requestId),
+        );
         if (req) {
           const userId = _currentUser?.id;
           const partnerId =

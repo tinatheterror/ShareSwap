@@ -47,6 +47,7 @@ import {
   resolveClaimedDepositIntents,
 } from "../deposit-renewal-service";
 import { reconcileClaimDeadlines, reconcileSettlementOperation, releaseRejectedClaim, settleApprovedClaim } from "../security-claims-service";
+import { validateBorrowPeriod } from "../borrow-period";
 
 // Notify all availability subscribers that an item is back
 async function notifyAvailabilitySubscribers(itemId: number, itemName: string) {
@@ -5781,6 +5782,13 @@ Respond with ONLY the category name, nothing else.`
     const itemId = parseInt(req.params.itemId);
     const { requestType, message, startDate, endDate, deliveryMethod, depositMethod, swapOfferedItemIds, swapRequestedItemIds } = req.body;
 
+    if (requestType === "BORROW") {
+      const period = validateBorrowPeriod(startDate, endDate);
+      if (!period.valid) {
+        return res.status(400).json({ error: period.error, code: period.code });
+      }
+    }
+
     // BORROW and RENT require full verification (email + ID + payment)
     if ((requestType === "BORROW" || requestType === "RENT") && req.verificationLevel.level !== 'fully_verified') {
       return res.status(403).json({ 
@@ -6643,6 +6651,15 @@ Respond with ONLY the category name, nothing else.`
     const isOwner = req.user.id === request.items.ownerId;
     const isSwap = request.item_requests.requestType === "SWAP";
 
+    if (request.item_requests.requestType === "BORROW") {
+      const proposedStart = startDate ?? request.item_requests.startDate;
+      const proposedEnd = endDate ?? request.item_requests.endDate;
+      const period = validateBorrowPeriod(proposedStart, proposedEnd);
+      if (!period.valid) {
+        return res.status(400).json({ error: period.error, code: period.code });
+      }
+    }
+
     if (isRequester && request.item_requests.negotiationStatus !== "counter_proposed") {
       return res.status(400).json({ error: "No counter-proposal to respond to with your own counter" });
     }
@@ -6790,6 +6807,14 @@ Respond with ONLY the category name, nothing else.`
       }
 
       const newRound = currentRound + 1;
+      if (request.item_requests.requestType === "BORROW") {
+        const proposedStart = counter.startDate ?? request.item_requests.counterStartDate ?? request.item_requests.startDate;
+        const proposedEnd = counter.endDate ?? request.item_requests.counterEndDate ?? request.item_requests.endDate;
+        const period = validateBorrowPeriod(proposedStart, proposedEnd);
+        if (!period.valid) {
+          return res.status(400).json({ error: period.error, code: period.code });
+        }
+      }
       const swapCounterFields = isSwap ? {
         counterSwapOwnerItemIds: Array.isArray(counter.swapOwnerItemIds) ? counter.swapOwnerItemIds.map(Number) : (request.item_requests.counterSwapOwnerItemIds ?? []),
         counterSwapRequesterItemIds: Array.isArray(counter.swapRequesterItemIds) ? counter.swapRequesterItemIds.map(Number) : (request.item_requests.counterSwapRequesterItemIds ?? []),

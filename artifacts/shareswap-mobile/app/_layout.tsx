@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -25,7 +25,9 @@ import {
 import { ShareCoinAnimation } from "@/components/ShareCoinAnimation";
 import { LevelUpBanner } from "@/components/LevelUpBanner";
 
-SplashScreen.preventAutoHideAsync();
+if (Platform.OS !== "web") {
+  SplashScreen.preventAutoHideAsync();
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -181,10 +183,10 @@ export default function RootLayout() {
     return () => clearTimeout(timer);
   }, []);
 
-  const ready = fontsLoaded || fontError || timedOut;
+  const ready = Platform.OS === "web" || fontsLoaded || !!fontError || timedOut;
 
   useEffect(() => {
-    if (ready) {
+    if (ready && Platform.OS !== "web") {
       SplashScreen.hideAsync();
     }
   }, [ready]);
@@ -197,7 +199,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <SessionGuard />
-            <GestureHandlerRootView>
+            <GestureHandlerRootView style={{ flex: 1 }}>
               <KeyboardProvider>
                 <RootLayoutNav />
               </KeyboardProvider>

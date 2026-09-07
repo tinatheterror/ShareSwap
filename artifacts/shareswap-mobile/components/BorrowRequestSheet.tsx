@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -69,6 +70,10 @@ function toDisplayStr(d: Date): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function maximumBorrowEndDate(start: Date): Date {
+  return new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
+}
+
 function calcBorrowDaysFromDates(start: Date | null, end: Date | null): number {
   if (!start || !end) return 0;
   const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
@@ -111,10 +116,11 @@ const CAL_MONTHS = ["January","February","March","April","May","June","July","Au
 const CAL_DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
 function MiniCalendar({
-  value, minDate, onSelect, colors, primaryColor,
+  value, minDate, maxDate, onSelect, colors, primaryColor,
 }: {
   value: Date | null;
   minDate: Date;
+  maxDate?: Date;
   onSelect: (d: Date) => void;
   colors: ReturnType<typeof useColors>;
   primaryColor: string;
@@ -145,7 +151,8 @@ function MiniCalendar({
   const todayMs = (() => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
 
   function cellDisabled(day: number) {
-    return new Date(viewYear, viewMonth, day).getTime() < minDate.getTime();
+    const value = new Date(viewYear, viewMonth, day).getTime();
+    return value < minDate.getTime() || (maxDate ? value > maxDate.getTime() : false);
   }
   function cellSelected(day: number) {
     return !!value && value.getFullYear() === viewYear && value.getMonth() === viewMonth && value.getDate() === day;
@@ -274,14 +281,29 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
   );
   const hasDeposit = hasValidReplacementValue(targetItem.replacementValue);
   const processingFee = (depositCalc.finalDeposit * 0.03).toFixed(2);
-  const datesSelected = startDateObj !== null && endDateObj !== null;
-  const canSubmit = datesSelected && (!hasDeposit || replacementValueAcknowledged);
   const targetName = targetItem.name ?? (targetItem as any).title ?? "Item";
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   const balance = Number((user as any)?.shareCoins ?? 0);
 
   async function handleSend() {
+    if (!startDateObj || !endDateObj) {
+      Alert.alert("Choose borrow dates", "Select both a start date and a return date.");
+      return;
+    }
+    if (hasDeposit && !replacementValueAcknowledged) {
+      Alert.alert(
+        "Confirm the replacement value",
+        `Please confirm that you understand the maximum non-return charge of $${targetItem.replacementValue}.`,
+      );
+      return;
+    }
+    if (
+      endDateObj > maximumBorrowEndDate(startDateObj)
+    ) {
+      Alert.alert("Choose an earlier return date", "Items can be borrowed for a maximum of 12 months.");
+      return;
+    }
     if (balance < proratedCost && onInsufficientBalance) {
       // Close this sheet first so parent can open earn modal without stacking two native Modals
       onInsufficientBalance(proratedCost);
@@ -368,6 +390,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
                 <MiniCalendar
                   value={activePicker === "start" ? startDateObj : endDateObj}
                   minDate={activePicker === "start" ? today : (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today)}
+                  maxDate={activePicker === "end" && startDateObj ? maximumBorrowEndDate(startDateObj) : undefined}
                   onSelect={handleDaySelect}
                   colors={colors}
                   primaryColor={PRIMARY}
@@ -575,20 +598,21 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
           </Pressable>
           <Pressable
             style={[s.footerBtn, {
-              backgroundColor: canSubmit ? PRIMARY : colors.muted,
+              backgroundColor: PRIMARY,
               borderColor: "transparent",
               opacity: sending ? 0.7 : 1,
             }]}
             onPress={handleSend}
-            disabled={!canSubmit || sending}
+            disabled={sending}
+            accessibilityState={{ disabled: sending }}
           >
             {sending ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <>
-                <Feather name="send" size={14} color={canSubmit ? "#fff" : colors.mutedForeground} />
+                <Feather name="send" size={14} color="#fff" />
                 <Text style={[s.footerBtnLabel, {
-                  color: canSubmit ? "#fff" : colors.mutedForeground,
+                  color: "#fff",
                 }]}>Send Request</Text>
               </>
             )}

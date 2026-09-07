@@ -1655,7 +1655,10 @@ export async function confirmRentalDeposit({
   };
 }
 
-export function registerRoutes(app: Express): Server {
+export function registerRoutes(
+  app: Express,
+  options: { startBackgroundJobs?: boolean } = {},
+): Server {
   setupAuth(app);
 
   // Map of userId → WebSocket connection — shared by REST routes and the WS handler
@@ -11813,10 +11816,12 @@ Respond with ONLY the category name, nothing else.`
       console.error("Error running overdue reminder sweep:", error),
     );
   };
-  setTimeout(() => {
-    runOverdueReminderSweep();
-    setInterval(runOverdueReminderSweep, 6 * 60 * 60 * 1000);
-  }, 30 * 1000);
+  if (options.startBackgroundJobs !== false) {
+    setTimeout(() => {
+      runOverdueReminderSweep();
+      setInterval(runOverdueReminderSweep, 6 * 60 * 60 * 1000);
+    }, 30 * 1000);
+  }
 
   // Get statistics for public display
   app.get("/api/stats", async (req, res) => {

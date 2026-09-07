@@ -281,6 +281,8 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
   );
   const hasDeposit = hasValidReplacementValue(targetItem.replacementValue);
   const processingFee = (depositCalc.finalDeposit * 0.03).toFixed(2);
+  const datesSelected = startDateObj !== null && endDateObj !== null;
+  const canSubmit = datesSelected && (!hasDeposit || replacementValueAcknowledged);
   const targetName = targetItem.name ?? (targetItem as any).title ?? "Item";
 
   // ── Submit ─────────────────────────────────────────────────────────────────
@@ -298,9 +300,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
       );
       return;
     }
-    if (
-      endDateObj > maximumBorrowEndDate(startDateObj)
-    ) {
+    if (endDateObj > maximumBorrowEndDate(startDateObj)) {
       Alert.alert("Choose an earlier return date", "Items can be borrowed for a maximum of 12 months.");
       return;
     }
@@ -598,21 +598,20 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
           </Pressable>
           <Pressable
             style={[s.footerBtn, {
-              backgroundColor: PRIMARY,
+              backgroundColor: canSubmit ? PRIMARY : colors.muted,
               borderColor: "transparent",
               opacity: sending ? 0.7 : 1,
             }]}
             onPress={handleSend}
-            disabled={sending}
-            accessibilityState={{ disabled: sending }}
+            disabled={!canSubmit || sending}
           >
             {sending ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <>
-                <Feather name="send" size={14} color="#fff" />
+                <Feather name="send" size={14} color={canSubmit ? "#fff" : colors.mutedForeground} />
                 <Text style={[s.footerBtnLabel, {
-                  color: "#fff",
+                  color: canSubmit ? "#fff" : colors.mutedForeground,
                 }]}>Send Request</Text>
               </>
             )}

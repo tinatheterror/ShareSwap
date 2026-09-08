@@ -1777,11 +1777,12 @@ export function registerRoutes(
       });
     };
 
-    app.post("/api/e2e/owner-return-fixture", async (_req, res) => {
+    app.post("/api/e2e/owner-return-fixture", async (req, res) => {
       await cleanupOrphanedOwnerReturnFixtures();
       const fixtureId = randomBytes(8).toString("hex");
       const password = `OwnerReturn-${fixtureId}`;
       const passwordHash = await hashPassword(password);
+      const borrowerReturn = req.body?.flow === "borrower-return";
 
       const [owner, borrower] = await db
         .insert(users)
@@ -1830,7 +1831,7 @@ export function registerRoutes(
           itemId: item.id,
           requesterId: borrower.id,
           requestType: "BORROW",
-          status: "RETURN_REQUESTED",
+          status: borrowerReturn ? "IN_PROGRESS" : "RETURN_REQUESTED",
           message: "Could I borrow this?",
           startDate: new Date("2026-07-20T00:00:00.000Z"),
           endDate: new Date("2026-08-01T00:00:00.000Z"),
@@ -1842,8 +1843,8 @@ export function registerRoutes(
           depositStatus: "authorized",
           ownerConfirmedHandoff: true,
           borrowerConfirmedHandoff: true,
-          borrowerConfirmedReturn: true,
-          returnRequestedAt: new Date(),
+          borrowerConfirmedReturn: borrowerReturn ? false : true,
+          returnRequestedAt: borrowerReturn ? null : new Date(),
           overdueStage: "OVERDUE",
         })
         .returning({ id: itemRequests.id });
@@ -1857,6 +1858,7 @@ export function registerRoutes(
       res.json({
         fixtureId,
         owner: { username: owner.username, password },
+        borrower: { username: borrower.username, password },
         requestId: request.id,
       });
     });
@@ -10263,6 +10265,12 @@ Respond with ONLY the category name, nothing else.`
         }
         if (request.item_requests.status !== "IN_PROGRESS") {
           return { status: 400, error: "Request is not in progress" };
+        }
+        if (
+          process.env.E2E_TEST_MODE === "true" &&
+          req.get("x-e2e-simulate-failure") === "borrower-return-request"
+        ) {
+          return { status: 500, error: "Return request could not be saved" };
         }
 
         const endDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;

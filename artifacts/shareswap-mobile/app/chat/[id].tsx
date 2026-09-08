@@ -204,7 +204,19 @@ const PRIMARY = "#0DCEA1";
 const TERMINAL = ["COMPLETED", "COMPLETED_EARLY", "DECLINED", "CANCELLED", "DISPUTED"];
 function formatLateHours(hours: number): string | null {
   if (hours <= 0) return null;
-  return hours < 24 ? `${hours} hour${hours === 1 ? "" : "s"}` : `${Math.floor(hours / 24)} day${Math.floor(hours / 24) === 1 ? "" : "s"}${hours % 24 ? ` ${hours % 24}h` : ""}`;
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"}`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+function normalizeReturnSystemMessage(content: string): string {
+  if (content === "📦 Return initiated — awaiting owner's confirmation.") {
+    return "📦 Item marked as returned — owner confirmation required.";
+  }
+  if (content === "📦 EARLY RETURN INITIATED — awaiting owner's confirmation.") {
+    return "📦 Item marked as returned early — owner confirmation required.";
+  }
+  return content;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -319,8 +331,12 @@ export default function ChatScreen() {
     }
   }, [request?.status]);
 
-  const isOwner = !!(request && request.item?.ownerId === user?.id);
-  const isBorrower = !!(request && request.requesterId === user?.id);
+  const isOwner =
+    lifecycle?.lifecycle.role === "owner" ||
+    !!(request && request.item?.ownerId === user?.id);
+  const isBorrower =
+    lifecycle?.lifecycle.role === "borrower" ||
+    !!(request && request.requesterId === user?.id);
   // Counter proposed to ME (I must respond)
   const hasPendingCounter =
     request?.negotiationStatus === "counter_proposed" &&
@@ -581,12 +597,16 @@ export default function ChatScreen() {
     const isReturnLifecycle = ["RETURN_DUE", "OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW", "RETURNED_PENDING_REVIEW"].includes(overdueStage);
     const mayOpenClaim = isOwner && !claim && !!lifecycleDetails?.actions.includes("open_claim");
     const mayRespondToClaim = isBorrower && !!lifecycleDetails?.actions.includes("respond_to_claim");
+    const mayConfirmReturn =
+      isOwner &&
+      (lifecycleDetails?.actions.includes("confirm_return") ||
+        status === "RETURN_REQUESTED");
     const lifecycleCopy: Record<string, { title: string; borrower: string; owner: string; color: string; bg: string }> = {
       RETURN_DUE: { title: "Return due", borrower: "Your item is due back now. Please arrange the return.", owner: "The item is due back. Contact the borrower to arrange return.", color: "#b45309", bg: "#fffbeb" },
       OVERDUE_GRACE: { title: "Overdue grace", borrower: "Please arrange return or request an eligible extension.", owner: "The item has not yet been returned. Contact the borrower to arrange return.", color: "#b45309", bg: "#fffbeb" },
       OVERDUE: { title: "Overdue", borrower: "Please arrange return. You may request an eligible extension.", owner: "The item remains overdue. Request return or arrange a handoff.", color: "#c2410c", bg: "#fff7ed" },
       SERIOUSLY_OVERDUE: { title: "Final return warning", borrower: "Return the item now. The owner may open a non-return claim if it is not returned.", owner: "The item is seriously overdue. You may report an issue for review.", color: "#b91c1c", bg: "#fef2f2" },
-      NON_RETURN_REVIEW: { title: "Non-return review", borrower: "This is not a charge. Return the item or respond if a claim is opened.", owner: "The return is under review. You may report an issue / open a claim.", color: "#b91c1c", bg: "#fef2f2" },
+      NON_RETURN_REVIEW: { title: "Non-return review", borrower: "No charge has been made. Return the item or respond if a claim is opened.", owner: "The return is under review. You may report an issue / open a claim.", color: "#b91c1c", bg: "#fef2f2" },
       RETURNED_PENDING_REVIEW: { title: "Returned — pending review", borrower: "The return is awaiting owner review. Lateness alone never settles your deposit.", owner: "Review the returned item. Report an issue if there is damage or loss.", color: "#0369a1", bg: "#eff6ff" },
     };
     const stageInfo = lifecycleCopy[overdueStage];
@@ -714,7 +734,9 @@ export default function ChatScreen() {
             </View>
             <Text style={[card.lifecycleText, { color: stageInfo.color }]}>{isBorrower ? stageInfo.borrower : stageInfo.owner}</Text>
             {returnDeadline && <Text style={[card.lifecycleText, { color: stageInfo.color }]}>Return deadline: {fmtDate(returnDeadline)}{lateBy ? ` · ${lateBy} late` : ""}</Text>}
-            <Text style={[card.lifecycleText, { color: stageInfo.color, fontFamily: "Inter_500Medium" }]}>A late return never automatically settles a security deposit.</Text>
+            {overdueStage !== "NON_RETURN_REVIEW" && (
+              <Text style={[card.lifecycleText, { color: stageInfo.color, fontFamily: "Inter_500Medium" }]}>A late return never automatically settles a security deposit.</Text>
+            )}
           </View>
         )}
         {lifecycleDetails?.deposit.status && (
@@ -1173,7 +1195,7 @@ export default function ChatScreen() {
             )}
 
             {/* RETURN_REQUESTED */}
-            {status === "RETURN_REQUESTED" && isOwner && (
+            {mayConfirmReturn && (
               <Pressable
                 style={[card.btn, { backgroundColor: "#16a34a", borderColor: "#16a34a" }]}
                 onPress={() => setShowConfirmReturnSheet(true)}
@@ -1475,7 +1497,7 @@ export default function ChatScreen() {
             // ── System messages ───────────────────────────────────────────────
             if (msg.messageType === "system") {
               const myName = (user as any)?.displayName || (user as any)?.username || "";
-              const personalizedContent = msg.content.replace(
+              const personalizedContent = normalizeReturnSystemMessage(msg.content).replace(
                 new RegExp(`^${myName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s)`),
                 "You"
               );

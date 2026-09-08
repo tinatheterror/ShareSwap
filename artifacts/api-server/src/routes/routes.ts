@@ -106,6 +106,7 @@ export async function getBlockingOverdueBorrow(borrowerId: number, now = new Dat
       requestId: itemRequests.id,
       endDate: itemRequests.endDate,
       itemName: items.name,
+      ownerId: items.ownerId,
     })
     .from(itemRequests)
     .innerJoin(items, eq(items.id, itemRequests.itemId))
@@ -133,6 +134,8 @@ function overdueBorrowRestrictionResponse(
     code: "OVERDUE_BORROW_RESTRICTED",
     error: `You can’t start another borrow until you return "${blockedBorrow!.itemName}", which is ${blockedBorrow!.daysOverdue} days overdue.`,
     requestId: blockedBorrow!.requestId,
+    itemName: blockedBorrow!.itemName,
+    partnerId: blockedBorrow!.ownerId,
     daysOverdue: blockedBorrow!.daysOverdue,
   };
 }
@@ -10093,8 +10096,8 @@ Respond with ONLY the category name, nothing else.`
 
         const [returnMsg] = await tx.insert(messages).values({
           content: isEarlyReturn
-            ? `📦 EARLY RETURN INITIATED — awaiting owner's confirmation.`
-            : `📦 Return initiated — awaiting owner's confirmation.`,
+            ? `📦 Item marked as returned early — owner confirmation required.`
+            : `📦 Item marked as returned — owner confirmation required.`,
           senderId: request.item_requests.requesterId,
           receiverId: ownerId,
           messageType: "system",
@@ -10315,7 +10318,11 @@ Respond with ONLY the category name, nothing else.`
           });
         } catch (stripeError: any) {
           console.error("Error releasing deposit:", stripeError);
-          await db.update(itemRequests).set({ depositRenewalStatus: "failed" }).where(and(
+          await db.update(itemRequests).set({
+            depositRenewalStatus: "failed",
+            depositOperationToken: null,
+            depositOperationType: null,
+          }).where(and(
             eq(itemRequests.id, requestId),
             eq(itemRequests.depositRenewalStatus, "terminal_action"),
             eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
@@ -11015,12 +11022,18 @@ Respond with ONLY the category name, nothing else.`
     const deadline = r.returnDeadlineAt || r.endDate;
     const lateHours = deadline ? Math.max(0, Math.floor((Date.now() - new Date(deadline).getTime()) / 3_600_000)) : 0;
     const role = request.ownerId === req.user.id ? "owner" : "borrower";
+    const actions = role === "owner"
+      ? ["open_claim", "arrange_return"]
+      : ["respond_to_claim", "request_extension", "arrange_return"];
+    if (role === "owner" && r.status === "RETURN_REQUESTED") {
+      actions.unshift("confirm_return");
+    }
     res.json({
       lifecycle: {
         requestId: r.id, stage: r.overdueStage || "ACTIVE", deadline, lateHours,
         claimDecisionDeadlineAt: r.claimDecisionDeadlineAt,
         settlementStartDeadlineAt: r.settlementStartDeadlineAt,
-        role, actions: role === "owner" ? ["open_claim", "arrange_return"] : ["respond_to_claim", "request_extension", "arrange_return"],
+        role, actions,
         deposit: { mode: r.depositMode, status: r.depositStatus, amount: r.trustDepositAmount, expiresAt: r.depositAuthorizationExpiresAt, protectionReviewRequired: r.depositRenewalStatus === "protection_review_required" },
       },
       claims: claims.map(c => ({ id: c.id, claimType: c.claimType, status: c.status, reason: c.reason, evidence: c.evidence, borrowerResponse: c.borrowerResponse, requestedAmount: c.requestedAmount, approvedAmount: c.approvedAmount, decisionReason: c.decisionReason, responseDeadlineAt: c.responseDeadlineAt, settlementStatus: c.settlementStatus, createdAt: c.createdAt, decidedAt: c.decidedAt })),

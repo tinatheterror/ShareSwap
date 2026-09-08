@@ -10,3 +10,5 @@
 - [Stripe deposit-hold vs charge split](stripe-deposit-vs-charge-split.md) — use two PaymentIntents (manual-capture hold + off-session auto-charge) instead of partial capture to hold a deposit and charge a fee together.
 - [Hybrid Stripe deposits](stripe-hybrid-deposits.md) — use exact hold deadlines when coverage fits; otherwise require explicit consent before a captured refundable deposit.
 - [Expo SDK dependency alignment](expo-sdk-dependency-alignment.md) — keep native packages and Jest preset on the app’s Expo SDK major; cross-SDK versions can duplicate native modules and break launch.
+- [Expo web CSRF cookies](expo-web-csrf-cookies.md) — cross-host Expo web mutations require the CSRF cookie to use the same cross-site policy as the session cookie.
+- [Simulated deposit settlement](simulated-deposit-settlement.md) — simulated PaymentIntent IDs have no Stripe resource; terminal workflows must treat their external release as a no-op.

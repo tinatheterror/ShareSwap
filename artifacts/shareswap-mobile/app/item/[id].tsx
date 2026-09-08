@@ -235,6 +235,12 @@ export default function ItemDetailScreen() {
       ]);
     } catch (err: unknown) {
       const e = err as Error & { code?: string; required?: number; missing?: { idVerified?: boolean; paymentVerified?: boolean } };
+      // The borrow sheet renders server failures inline. Native alerts and
+      // stacked modals can be hidden behind the sheet, making a rejected
+      // request look like an unresponsive button.
+      if (type === "BORROW") {
+        throw e;
+      }
       if (e.code === "FULL_VERIFICATION_REQUIRED") {
         setVerifMissing(e.missing ?? {});
         setActiveRequestType(null);

@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { Calendar, Coins, Shield, MapPin } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -225,6 +226,7 @@ function MiniCalendar({
 // ── Component ─────────────────────────────────────────────────────────────────
 export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onInsufficientBalance }: Props) {
   const colors = useColors();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
@@ -236,6 +238,14 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
   const [replacementValueAcknowledged, setReplacementValueAcknowledged] = useState(false);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [submissionError, setSubmissionError] = useState<{
+    message: string;
+    itemName?: string;
+    requestId?: number;
+    partnerId?: number;
+    daysOverdue?: number;
+  } | null>(null);
+  const [errorLinkHovered, setErrorLinkHovered] = useState(false);
 
   const today = React.useMemo(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d;
@@ -250,6 +260,8 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
       setReplacementValueAcknowledged(false);
       setMessage("");
       setSending(false);
+      setSubmissionError(null);
+      setErrorLinkHovered(false);
     }
   }, [isOpen]);
 
@@ -281,8 +293,6 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
   );
   const hasDeposit = hasValidReplacementValue(targetItem.replacementValue);
   const processingFee = (depositCalc.finalDeposit * 0.03).toFixed(2);
-  const datesSelected = startDateObj !== null && endDateObj !== null;
-  const canSubmit = datesSelected && (!hasDeposit || replacementValueAcknowledged);
   const targetName = targetItem.name ?? (targetItem as any).title ?? "Item";
 
   // ── Submit ─────────────────────────────────────────────────────────────────
@@ -309,6 +319,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
       onInsufficientBalance(proratedCost);
       return;
     }
+    setSubmissionError(null);
     setSending(true);
     try {
       await onConfirm({
@@ -318,8 +329,23 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
         replacementValueAcknowledged,
         message: message.trim(),
       });
-    } catch {
-      // Parent handles specific error alerts / navigation
+    } catch (error) {
+      const structured = error as Error & {
+        itemName?: string;
+        requestId?: number;
+        partnerId?: number;
+        daysOverdue?: number;
+      };
+      setSubmissionError({
+        message:
+          error instanceof Error && error.message
+            ? error.message
+            : "We couldn't send your request. Please try again.",
+        itemName: structured.itemName,
+        requestId: structured.requestId,
+        partnerId: structured.partnerId,
+        daysOverdue: structured.daysOverdue,
+      });
     } finally {
       setSending(false);
     }
@@ -588,6 +614,48 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
           </View>
         </ScrollView>
 
+        {submissionError ? (
+          <View
+            accessibilityRole="alert"
+            style={[s.errorBanner, { backgroundColor: colors.muted }]}
+          >
+            <Feather name="alert-circle" size={16} color="#dc2626" />
+            {submissionError.itemName &&
+            submissionError.requestId &&
+            submissionError.partnerId ? (
+              <Text style={[s.errorText, { color: colors.foreground }]}>
+                You can’t start another borrow until you return{" "}
+                <Text
+                  accessibilityRole="link"
+                  onPress={() => {
+                    onClose();
+                    router.push(
+                      `/chat/${submissionError.partnerId}?requestId=${submissionError.requestId}` as never,
+                    );
+                  }}
+                  {...(Platform.OS === "web"
+                    ? ({
+                        onMouseEnter: () => setErrorLinkHovered(true),
+                        onMouseLeave: () => setErrorLinkHovered(false),
+                      } as any)
+                    : {})}
+                  style={[
+                    s.errorLink,
+                    errorLinkHovered && s.errorLinkHovered,
+                  ]}
+                >
+                  “{submissionError.itemName}”
+                </Text>
+                {`, which is ${submissionError.daysOverdue ?? 0} days overdue.`}
+              </Text>
+            ) : (
+              <Text style={[s.errorText, { color: colors.foreground }]}>
+                {submissionError.message}
+              </Text>
+            )}
+          </View>
+        ) : null}
+
         {/* Footer */}
         <View style={[s.footer, { borderTopColor: colors.border }]}>
           <Pressable
@@ -598,21 +666,20 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
           </Pressable>
           <Pressable
             style={[s.footerBtn, {
-              backgroundColor: canSubmit ? PRIMARY : colors.muted,
+              backgroundColor: PRIMARY,
               borderColor: "transparent",
               opacity: sending ? 0.7 : 1,
             }]}
             onPress={handleSend}
-            disabled={!canSubmit || sending}
+            disabled={sending}
+            accessibilityState={{ disabled: sending }}
           >
             {sending ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <>
-                <Feather name="send" size={14} color={canSubmit ? "#fff" : colors.mutedForeground} />
-                <Text style={[s.footerBtnLabel, {
-                  color: canSubmit ? "#fff" : colors.mutedForeground,
-                }]}>Send Request</Text>
+                <Feather name="send" size={14} color="#fff" />
+                <Text style={[s.footerBtnLabel, { color: "#fff" }]}>Send Request</Text>
               </>
             )}
           </Pressable>
@@ -702,6 +769,31 @@ const s = StyleSheet.create({
     fontSize: 14, fontFamily: "Inter_400Regular", minHeight: 80,
   },
   // Footer
+  errorBanner: {
+    marginHorizontal: H_PAD,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#dc2626",
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: "Inter_600SemiBold",
+  },
+  errorLink: {
+    color: "#b91c1c",
+    fontFamily: "Inter_700Bold",
+  },
+  errorLinkHovered: {
+    textDecorationLine: "underline",
+  },
   footer: { flexDirection: "row", gap: 10, padding: 16, borderTopWidth: 1 },
   footerBtn: {
     flex: 1, flexDirection: "row", alignItems: "center",

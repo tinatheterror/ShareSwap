@@ -113,7 +113,9 @@ export function ReturnConfirmationSheet({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onSuccess();
     },
-    onError: () => {},
+    onError: (error: Error) => {
+      Alert.alert("Could not initiate return", error.message || "Please try again.");
+    },
   });
 
   // Owner: confirm return — uploads dispute photo first if present
@@ -151,7 +153,9 @@ export function ReturnConfirmationSheet({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onSuccess();
     },
-    onError: () => {},
+    onError: (error: Error) => {
+      Alert.alert("Could not confirm return", error.message || "Please try again.");
+    },
   });
 
   const reset = () => {

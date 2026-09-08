@@ -99,6 +99,10 @@ export async function resolveClaimedDepositIntents(
   };
   const cancelIfActive = async (paymentIntentId: string) => {
     await assertClaimOwnership();
+    // Seeded/demo requests use a non-Stripe identifier. There is no external
+    // authorization to cancel, but the normal settlement workflow must still
+    // be allowed to complete and record the release.
+    if (paymentIntentId.startsWith("simulated-")) return;
     const intent = await stripeClient.paymentIntents.retrieve(paymentIntentId);
     if (intent.status === "succeeded") {
       // A refundable deposit is intentionally an already-captured charge. Its

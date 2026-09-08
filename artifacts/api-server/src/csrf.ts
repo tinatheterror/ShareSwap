@@ -6,8 +6,10 @@ const csrfConfig = doubleCsrf({
   getSecret: () => process.env.SESSION_SECRET || process.env.REPL_ID || "csrf-secret-fallback",
   cookieName: "x-csrf-token",
   cookieOptions: {
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
+    // Expo web and the API are served from different Replit hosts. Match the
+    // session cookie policy so credentialed mutations include both cookies.
+    sameSite: "none",
+    secure: true,
     httpOnly: false, // Must be false so frontend can read the token to send in header
     path: "/",
   },

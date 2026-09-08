@@ -1808,6 +1808,17 @@ export function ChatWidget() {
                     return (
                       <div className="mb-3">
                         {renderRequestCard(partnerRequest)}
+                        {partnerRequest.item.ownerId === user?.id && (
+                          <OwnerReturnRequestedCta
+                            requestId={partnerRequest.id}
+                            status={partnerRequest.status}
+                            requestType={partnerRequest.requestType}
+                            onConfirm={() => {
+                              setSelectedRequest(partnerRequest);
+                              setShowReturnModal(true);
+                            }}
+                          />
+                        )}
                         {["IN_PROGRESS", "RETURN_REQUESTED", "RETURNED_PENDING_REVIEW", "DISPUTED"].includes(partnerRequest.status) && (
                           <RequestLifecyclePanel
                             requestId={partnerRequest.id}
@@ -2427,19 +2438,6 @@ export function ChatWidget() {
                     );
                   }
 
-                  if (pr.status === "RETURN_REQUESTED") {
-                    return (
-                      <OwnerReturnRequestedCta
-                        status={pr.status}
-                        lifecycleStage={(pr as any).overdueStage}
-                        requestType={pr.requestType}
-                        onConfirm={() => {
-                          setSelectedRequest(pr);
-                          setShowReturnModal(true);
-                        }}
-                      />
-                    );
-                  }
                 }
 
                 // --- DISPUTED CTA (both parties) ---

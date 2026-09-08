@@ -20,6 +20,7 @@
 import { db } from "@workspace/db";
 import { users, notifications, userNotificationPrefs, userPushTokens } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
+import { compactNotificationCopy } from "./notification-copy";
 
 export type NotificationCategory =
   | "messages"
@@ -75,8 +76,9 @@ export async function sendPushToUser(
     const enabled = await isCategoryEnabled(userId, category);
     if (!enabled) return;
 
+    const compactPayload = compactNotificationCopy(payload);
     await sendExpoMessages(
-      tokenRows.map(({ token }) => ({ to: token, ...payload })),
+      tokenRows.map(({ token }) => ({ to: token, ...compactPayload })),
     );
   } catch (err) {
     console.error("[push] sendPushToUser error:", err);
@@ -122,8 +124,9 @@ export async function sendPushToUsers(
 
     if (eligibleRows.length === 0) return;
 
+    const compactPayload = compactNotificationCopy(payload);
     await sendExpoMessages(
-      eligibleRows.map(({ token }) => ({ to: token, ...payload })),
+      eligibleRows.map(({ token }) => ({ to: token, ...compactPayload })),
     );
   } catch (err) {
     console.error("[push] sendPushToUsers error:", err);

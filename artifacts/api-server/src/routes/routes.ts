@@ -48,6 +48,7 @@ import {
 } from "../deposit-renewal-service";
 import { reconcileClaimDeadlines, reconcileSettlementOperation, releaseRejectedClaim, settleApprovedClaim } from "../security-claims-service";
 import { validateBorrowPeriod } from "../borrow-period";
+import { compactNotificationCopy } from "../notification-copy";
 
 // Notify all availability subscribers that an item is back
 async function notifyAvailabilitySubscribers(itemId: number, itemName: string) {
@@ -10442,7 +10443,7 @@ Respond with ONLY the category name, nothing else.`
             userId: request.item_requests.requesterId,
             type: "trust_score_changed",
             title: returnResult.penaltyAlreadyApplied
-              ? "Trust score already updated"
+              ? "Trust score update"
               : borrowerPts > 0
                 ? `Trust score +${borrowerPts}`
                 : `Trust score −${Math.abs(borrowerPts)}`,
@@ -10892,7 +10893,7 @@ Respond with ONLY the category name, nothing else.`
         .orderBy(desc(notifications.createdAt))
         .limit(20);
 
-      res.json(userNotifications);
+      res.json(userNotifications.map(compactNotificationCopy));
     } catch (error) {
       console.error("Error fetching notifications:", error);
       res.status(500).json({ error: "Failed to fetch notifications" });

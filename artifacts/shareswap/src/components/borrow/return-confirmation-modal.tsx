@@ -180,6 +180,7 @@ export function ReturnConfirmationModal({
         });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       onSuccess();
     },

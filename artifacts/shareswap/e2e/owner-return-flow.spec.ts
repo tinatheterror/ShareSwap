@@ -1,10 +1,86 @@
 import { expect, test } from "@playwright/test";
 
+test.describe.configure({ mode: "serial" });
+
 type OwnerReturnFixture = {
   fixtureId: string;
   owner: { username: string; password: string };
   requestId: number;
 };
+
+test("owner completes a return and sees the refreshed review prompt", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const fixtureResponse = await page.request.post(
+    "/api/e2e/owner-return-fixture",
+  );
+  expect(fixtureResponse.ok()).toBe(true);
+  const fixture = (await fixtureResponse.json()) as OwnerReturnFixture;
+
+  try {
+    const loginResponse = await page.request.post("/api/login", {
+      data: fixture.owner,
+    });
+    expect(loginResponse.ok()).toBe(true);
+
+    await page.goto("/requests");
+    await page.getByRole("button", { name: "Open inbox" }).click();
+    await page.getByRole("button", { name: /Ben Borrower/ }).click();
+    await page
+      .getByRole("button", { name: "Confirm return", exact: true })
+      .last()
+      .click();
+
+    const returnDialog = page.getByRole("dialog", {
+      name: "Confirm Item Return",
+    });
+    await expect(returnDialog).toBeVisible();
+
+    const confirmationResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().endsWith(
+          `/api/requests/${fixture.requestId}/confirm-return`,
+        ),
+    );
+    const requestsRefresh = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().includes("/api/requests") &&
+        response.ok(),
+    );
+    const inboxRefresh = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().includes("/api/inbox") &&
+        response.ok(),
+    );
+
+    await returnDialog.getByRole("button", { name: "Confirm Return" }).click();
+
+    const [response] = await Promise.all([
+      confirmationResponse,
+      requestsRefresh,
+      inboxRefresh,
+    ]);
+    expect(response.ok()).toBe(true);
+
+    await expect(returnDialog).toBeHidden();
+    await expect(
+      page.getByRole("dialog", { name: "Leave a review" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: "How was your experience with Ben?",
+      }),
+    ).toBeVisible();
+  } finally {
+    await page.request.post("/api/e2e/owner-return-fixture/cleanup", {
+      data: { fixtureId: fixture.fixtureId },
+    });
+  }
+});
 
 test("owner sees a failed return confirmation without losing the dialog", async ({
   page,

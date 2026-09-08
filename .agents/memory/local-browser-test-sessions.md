@@ -7,4 +7,4 @@ Authenticated browser integration tests must use a real server session, but the 
 
 **Why:** Secure, SameSite=None session cookies are correct behind Replit's HTTPS proxy but browsers reject them on a local HTTP Playwright origin. Fully mocking authentication misses session, CSRF, authorization, and server-route regressions.
 
-**How to apply:** Gate the local cookie override and any fixture/fault routes behind an explicit E2E server mode. Seed uniquely named records, authenticate through the real login route, inject failures only after authz checks, and clean every request-linked table both after success and before the next run.
+**How to apply:** Gate the local cookie override and any fixture/fault routes behind an explicit E2E server mode. Seed uniquely named records, authenticate through the real login route, and inject failures only after authz checks. Cleanup must remove both request-linked rows and user-scoped side effects that may omit the request ID (such as rewards, achievements, or their notifications), after success and before the next run. Do not let orphan cleanup delete another parallel test's active fixture.

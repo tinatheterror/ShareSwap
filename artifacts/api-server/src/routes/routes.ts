@@ -1720,6 +1720,22 @@ export function registerRoutes(
         .where(inArray(itemRequests.id, requestIds));
     };
 
+    const deleteOwnerReturnFixtureUserActivity = async (
+      tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+      userIds: number[],
+    ) => {
+      if (userIds.length === 0) return;
+      await tx
+        .delete(userAchievements)
+        .where(inArray(userAchievements.userId, userIds));
+      await tx
+        .delete(shareCoinsTransactions)
+        .where(inArray(shareCoinsTransactions.userId, userIds));
+      await tx
+        .delete(notifications)
+        .where(inArray(notifications.userId, userIds));
+    };
+
     const cleanupOrphanedOwnerReturnFixtures = async () => {
       const staleUsers = await db
         .select({ id: users.id })
@@ -1753,6 +1769,7 @@ export function registerRoutes(
 
       await db.transaction(async (tx) => {
         await deleteOwnerReturnFixtureRequests(tx, staleRequestIds);
+        await deleteOwnerReturnFixtureUserActivity(tx, staleUserIds);
         if (staleItemIds.length > 0) {
           await tx.delete(items).where(inArray(items.id, staleItemIds));
         }
@@ -1850,6 +1867,7 @@ export function registerRoutes(
 
       await db.transaction(async (tx) => {
         await deleteOwnerReturnFixtureRequests(tx, [fixture.requestId]);
+        await deleteOwnerReturnFixtureUserActivity(tx, fixture.userIds);
         await tx.delete(items).where(eq(items.id, fixture.itemId));
         await tx.delete(users).where(inArray(users.id, fixture.userIds));
       });

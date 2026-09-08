@@ -416,12 +416,12 @@ export const sessionSettings: session.SessionOptions = {
   cookie: {
     // Must be secure=true when sameSite="none" — Replit proxy is always HTTPS
     // so this is safe in both dev and prod.
-    secure: true,
+    secure: process.env.E2E_TEST_MODE !== "true",
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     // "none" is required so the cookie is sent on cross-site credentialed requests
     // (the Expo web app lives on *.expo.spock.replit.dev; the API is on *.replit.dev).
     // CSRF is still protected by the x-csrf-token header required on all mutations.
-    sameSite: "none",
+    sameSite: process.env.E2E_TEST_MODE === "true" ? "lax" : "none",
     httpOnly: true,
     path: "/",
   },

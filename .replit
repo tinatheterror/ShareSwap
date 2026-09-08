@@ -9,6 +9,7 @@ args = ["pnpm", "store", "prune"]
 env = { "CI" = "true" }
 
 [workflows]
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "artifacts/shareswap-mobile: expo"
@@ -115,6 +116,26 @@ router = "path"
 [workflows.workflow.tasks.env]
 PORT = "23636"
 BASE_PATH = "/__mockup/"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "browser-return-flow"
+
+[[workflows.workflow]]
+name = "browser-return-flow"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/shareswap run test:browser"
+
+[workflows.workflow.metadata]
+isValidation = true
 
 [agent]
 stack = "PNPM_WORKSPACE"

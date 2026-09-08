@@ -1665,6 +1665,199 @@ export function registerRoutes(
 ): Server {
   setupAuth(app);
 
+  if (process.env.E2E_TEST_MODE === "true") {
+    const ownerReturnFixtures = new Map<
+      string,
+      { requestId: number; itemId: number; userIds: number[] }
+    >();
+
+    const deleteOwnerReturnFixtureRequests = async (
+      tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+      requestIds: number[],
+    ) => {
+      if (requestIds.length === 0) return;
+      await tx
+        .delete(depositSettlementOperations)
+        .where(inArray(depositSettlementOperations.requestId, requestIds));
+      await tx
+        .delete(requestLifecycleEvents)
+        .where(inArray(requestLifecycleEvents.requestId, requestIds));
+      await tx
+        .delete(securityClaims)
+        .where(inArray(securityClaims.requestId, requestIds));
+      await tx
+        .delete(extensionRequests)
+        .where(inArray(extensionRequests.requestId, requestIds));
+      await tx
+        .delete(deliveryArrangements)
+        .where(inArray(deliveryArrangements.requestId, requestIds));
+      await tx
+        .delete(rentalReturns)
+        .where(inArray(rentalReturns.requestId, requestIds));
+      await tx
+        .delete(rentalPayouts)
+        .where(inArray(rentalPayouts.requestId, requestIds));
+      await tx
+        .delete(platformCommissions)
+        .where(inArray(platformCommissions.transactionId, requestIds));
+      await tx
+        .delete(reputationActivities)
+        .where(inArray(reputationActivities.requestId, requestIds));
+      await tx
+        .delete(userReviews)
+        .where(inArray(userReviews.transactionId, requestIds));
+      await tx
+        .delete(swapMatches)
+        .where(inArray(swapMatches.requestId, requestIds));
+      await tx
+        .delete(notifications)
+        .where(inArray(notifications.requestId, requestIds));
+      await tx
+        .delete(messages)
+        .where(inArray(messages.requestId, requestIds));
+      await tx
+        .delete(itemRequests)
+        .where(inArray(itemRequests.id, requestIds));
+    };
+
+    const cleanupOrphanedOwnerReturnFixtures = async () => {
+      const staleUsers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(
+          or(
+            ilike(users.username, "e2e-owner-%@example.test"),
+            ilike(users.username, "e2e-borrower-%@example.test"),
+          ),
+        );
+      const staleUserIds = staleUsers.map((user) => user.id);
+      if (staleUserIds.length === 0) return;
+
+      const staleItems = await db
+        .select({ id: items.id })
+        .from(items)
+        .where(inArray(items.ownerId, staleUserIds));
+      const staleItemIds = staleItems.map((item) => item.id);
+      const staleRequests = await db
+        .select({ id: itemRequests.id })
+        .from(itemRequests)
+        .where(
+          or(
+            inArray(itemRequests.requesterId, staleUserIds),
+            ...(staleItemIds.length > 0
+              ? [inArray(itemRequests.itemId, staleItemIds)]
+              : []),
+          ),
+        );
+      const staleRequestIds = staleRequests.map((request) => request.id);
+
+      await db.transaction(async (tx) => {
+        await deleteOwnerReturnFixtureRequests(tx, staleRequestIds);
+        if (staleItemIds.length > 0) {
+          await tx.delete(items).where(inArray(items.id, staleItemIds));
+        }
+        await tx.delete(users).where(inArray(users.id, staleUserIds));
+      });
+    };
+
+    app.post("/api/e2e/owner-return-fixture", async (_req, res) => {
+      await cleanupOrphanedOwnerReturnFixtures();
+      const fixtureId = randomBytes(8).toString("hex");
+      const password = `OwnerReturn-${fixtureId}`;
+      const passwordHash = await hashPassword(password);
+
+      const [owner, borrower] = await db
+        .insert(users)
+        .values([
+          {
+            username: `e2e-owner-${fixtureId}@example.test`,
+            displayName: "Olivia Owner",
+            password: passwordHash,
+            emailVerified: true,
+            isVerified: true,
+            hasCompletedLocationSetup: true,
+            shareCoins: "20",
+          },
+          {
+            username: `e2e-borrower-${fixtureId}@example.test`,
+            displayName: "Ben Borrower",
+            password: passwordHash,
+            emailVerified: true,
+            isVerified: true,
+            hasCompletedLocationSetup: true,
+            shareCoins: "20",
+          },
+        ])
+        .returning({ id: users.id, username: users.username });
+
+      const [item] = await db
+        .insert(items)
+        .values({
+          ownerId: owner.id,
+          name: "Camping stove",
+          description: "Two burner stove",
+          conditionRating: 5,
+          photos: [],
+          isLendable: true,
+          isAvailable: false,
+          replacementValue: 100,
+          securityDeposit: "20",
+          shareCoinsReward: "1",
+          shareCoinPrice: "1",
+        })
+        .returning({ id: items.id });
+
+      const [request] = await db
+        .insert(itemRequests)
+        .values({
+          itemId: item.id,
+          requesterId: borrower.id,
+          requestType: "BORROW",
+          status: "RETURN_REQUESTED",
+          message: "Could I borrow this?",
+          startDate: new Date("2026-07-20T00:00:00.000Z"),
+          endDate: new Date("2026-08-01T00:00:00.000Z"),
+          deliveryMethod: "in_person",
+          depositMethod: "in_app",
+          trustDepositAmount: "20",
+          trustDepositBaseAmount: "20",
+          shareCoinAmount: "1",
+          depositStatus: "authorized",
+          ownerConfirmedHandoff: true,
+          borrowerConfirmedHandoff: true,
+          borrowerConfirmedReturn: true,
+          returnRequestedAt: new Date(),
+          overdueStage: "OVERDUE",
+        })
+        .returning({ id: itemRequests.id });
+
+      ownerReturnFixtures.set(fixtureId, {
+        requestId: request.id,
+        itemId: item.id,
+        userIds: [owner.id, borrower.id],
+      });
+
+      res.json({
+        fixtureId,
+        owner: { username: owner.username, password },
+        requestId: request.id,
+      });
+    });
+
+    app.post("/api/e2e/owner-return-fixture/cleanup", async (req, res) => {
+      const fixture = ownerReturnFixtures.get(req.body?.fixtureId);
+      if (!fixture) return res.sendStatus(204);
+
+      await db.transaction(async (tx) => {
+        await deleteOwnerReturnFixtureRequests(tx, [fixture.requestId]);
+        await tx.delete(items).where(eq(items.id, fixture.itemId));
+        await tx.delete(users).where(inArray(users.id, fixture.userIds));
+      });
+      ownerReturnFixtures.delete(req.body.fixtureId);
+      res.sendStatus(204);
+    });
+  }
+
   // Map of userId → WebSocket connection — shared by REST routes and the WS handler
   const connectedClients = new Map<number, WebSocket>();
 
@@ -10186,6 +10379,12 @@ Respond with ONLY the category name, nothing else.`
       // Must be return requested
       if (request.item_requests.status !== "RETURN_REQUESTED") {
         return res.status(400).json({ error: "No return pending" });
+      }
+      if (
+        process.env.E2E_TEST_MODE === "true" &&
+        req.get("x-e2e-simulate-failure") === "owner-return-confirmation"
+      ) {
+        return res.status(500).json({ error: "Return could not be saved" });
       }
       // A physical return stops overdue/non-return escalation, but an existing
       // damage/loss claim remains protected for review. Do not race it with a

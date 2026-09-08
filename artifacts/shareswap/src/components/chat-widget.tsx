@@ -1506,6 +1506,7 @@ export function ChatWidget() {
       {!isOpen ? (
         <Button
           onClick={() => setIsOpen(true)}
+          aria-label="Open inbox"
           className="rounded-full h-14 w-14 shadow-lg relative"
           size="icon"
         >

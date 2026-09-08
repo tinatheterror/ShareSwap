@@ -11678,8 +11678,8 @@ Respond with ONLY the category name, nothing else.`
           });
           if (transitioned && nextStage !== "ACTIVE") {
             const lateHours = Math.max(0, Math.floor((now.getTime() - new Date(request.endDate).getTime()) / 3_600_000));
-            const stageCopy: Record<string, { title: string; borrower: string; owner: string }> = {
-              RETURN_DUE: { title: "Return due", borrower: `"${item.name}" is due now. Please arrange return.`, owner: `"${item.name}" is due for return.` },
+            const stageCopy: Record<string, { title: string; borrowerTitle?: string; ownerTitle?: string; borrower: string; owner: string }> = {
+              RETURN_DUE: { title: "Return due", borrowerTitle: "Return Item to Owner", ownerTitle: "Get Your Item Back", borrower: `"${item.name}" is due now. Please arrange return.`, owner: `"${item.name}" is due for return.` },
               OVERDUE_GRACE: { title: "Return overdue", borrower: `"${item.name}" is overdue by ${lateHours} hours. Please arrange return.`, owner: `"${item.name}" has not yet been returned.` },
               OVERDUE: { title: "Return overdue", borrower: `"${item.name}" is overdue. Arrange return or request an extension.`, owner: `"${item.name}" remains overdue.` },
               SERIOUSLY_OVERDUE: { title: "Final return warning", borrower: `"${item.name}" is significantly overdue. The owner may open a non-return claim.`, owner: `"${item.name}" is significantly overdue; you may report an issue.` },
@@ -11687,8 +11687,8 @@ Respond with ONLY the category name, nothing else.`
             };
             const copy = stageCopy[nextStage];
             if (copy) await Promise.all([
-              createReminder(request.requesterId, request.id, item.id, `return_stage_${nextStage.toLowerCase()}_borrower`, copy.title, copy.borrower),
-              createReminder(owner.id, request.id, item.id, `return_stage_${nextStage.toLowerCase()}_owner`, copy.title, copy.owner),
+              createReminder(request.requesterId, request.id, item.id, `return_stage_${nextStage.toLowerCase()}_borrower`, copy.borrowerTitle ?? copy.title, copy.borrower),
+              createReminder(owner.id, request.id, item.id, `return_stage_${nextStage.toLowerCase()}_owner`, copy.ownerTitle ?? copy.title, copy.owner),
             ]);
           }
         }

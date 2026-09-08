@@ -48,6 +48,7 @@ import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
 import { RentalDepositModal } from "@/components/rental/rental-deposit-modal";
 import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmation-modal";
 import { ReturnConfirmationModal } from "@/components/borrow/return-confirmation-modal";
+import { OwnerReturnRequestedCta } from "@/components/borrow/owner-return-requested-cta";
 import { PostReturnReviewModal } from "@/components/borrow/post-return-review-modal";
 import { CelebrationAnimation } from "@/components/celebration-animation";
 import { SwapCounterModal } from "@/components/swap-counter-modal";
@@ -2427,14 +2428,15 @@ export function ChatWidget() {
 
                   if (pr.status === "RETURN_REQUESTED") {
                     return (
-                      <div className="px-3 py-2 border-t border-green-100 bg-green-50 space-y-1">
-                        <Button className="w-full h-10 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl"
-                          onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}>
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Confirm return
-                        </Button>
-                        <p className="text-xs text-center text-muted-foreground">{pr.requestType === "RENT" ? "Renter" : pr.requestType === "SWAP" ? "Swapper" : pr.requestType === "GIFT" ? "Recipient" : "Borrower"} says they've returned the item</p>
-                      </div>
+                      <OwnerReturnRequestedCta
+                        status={pr.status}
+                        lifecycleStage={(pr as any).overdueStage}
+                        requestType={pr.requestType}
+                        onConfirm={() => {
+                          setSelectedRequest(pr);
+                          setShowReturnModal(true);
+                        }}
+                      />
                     );
                   }
                 }

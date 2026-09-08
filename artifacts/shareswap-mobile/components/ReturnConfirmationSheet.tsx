@@ -463,6 +463,7 @@ export function ReturnConfirmationSheet({
             <Text style={[ss.btnTxt, { color: colors.foreground }]}>Cancel</Text>
           </Pressable>
           <Pressable
+            testID="submit-confirm-return"
             style={[
               ss.btn,
               {

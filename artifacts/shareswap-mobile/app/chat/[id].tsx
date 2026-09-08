@@ -598,9 +598,8 @@ export default function ChatScreen() {
     const mayOpenClaim = isOwner && !claim && !!lifecycleDetails?.actions.includes("open_claim");
     const mayRespondToClaim = isBorrower && !!lifecycleDetails?.actions.includes("respond_to_claim");
     const mayConfirmReturn =
-      isOwner &&
-      (lifecycleDetails?.actions.includes("confirm_return") ||
-        status === "RETURN_REQUESTED");
+      lifecycleDetails?.role === "owner" &&
+      lifecycleDetails.actions.includes("confirm_return");
     const lifecycleCopy: Record<string, { title: string; borrower: string; owner: string; color: string; bg: string }> = {
       RETURN_DUE: { title: "Return due", borrower: "Your item is due back now. Please arrange the return.", owner: "The item is due back. Contact the borrower to arrange return.", color: "#b45309", bg: "#fffbeb" },
       OVERDUE_GRACE: { title: "Overdue grace", borrower: "Please arrange return or request an eligible extension.", owner: "The item has not yet been returned. Contact the borrower to arrange return.", color: "#b45309", bg: "#fffbeb" },
@@ -1197,6 +1196,7 @@ export default function ChatScreen() {
             {/* RETURN_REQUESTED */}
             {mayConfirmReturn && (
               <Pressable
+                testID="confirm-return"
                 style={[card.btn, { backgroundColor: "#16a34a", borderColor: "#16a34a" }]}
                 onPress={() => setShowConfirmReturnSheet(true)}
                 disabled={anyMutating}

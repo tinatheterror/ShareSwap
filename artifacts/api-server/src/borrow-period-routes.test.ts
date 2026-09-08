@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import cookieParser from "cookie-parser";
 import express from "express";
-import { inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import {
   db,
   itemRequests,
@@ -211,6 +211,32 @@ test("initial BORROW requests accept exactly 12 months and reject anything longe
     ((await tooLongResponse.json()) as { code: string }).code,
     "BORROW_PERIOD_TOO_LONG",
   );
+});
+
+test("owner lifecycle keeps confirm_return available while a requested return is overdue", async () => {
+  const requestId = await createRequestFixture("BORROW");
+  await db.execute(sql`
+    update item_requests
+    set overdue_stage = 'OVERDUE'
+    where id = ${requestId}
+  `);
+  await db
+    .update(itemRequests)
+    .set({
+      status: "RETURN_REQUESTED",
+      endDate: new Date("2026-08-01T00:00:00.000Z"),
+    })
+    .where(eq(itemRequests.id, requestId));
+
+  const response = await owner.request(`/api/requests/${requestId}/lifecycle`);
+  assert.equal(response.status, 200);
+  const body = await response.json() as {
+    lifecycle: { role: string; stage: string; actions: string[] };
+  };
+
+  assert.equal(body.lifecycle.role, "owner");
+  assert.equal(body.lifecycle.stage, "OVERDUE");
+  assert(body.lifecycle.actions.includes("confirm_return"));
 });
 
 test("direct counter-proposals enforce the BORROW boundary", async () => {

@@ -6372,6 +6372,12 @@ Respond with ONLY the category name, nothing else.`
         reqReputationLevel: users.reputationLevel,
         ownerUsername: sql<string | null>`(SELECT username FROM users WHERE id = ${items.ownerId})`,
         ownerDisplayName: sql<string | null>`(SELECT display_name FROM users WHERE id = ${items.ownerId})`,
+        reviewedByCurrentUser: sql<boolean>`EXISTS (
+          SELECT 1
+          FROM ${userReviews}
+          WHERE ${userReviews.transactionId} = ${itemRequests.id}
+            AND ${userReviews.reviewerId} = ${req.user.id}
+        )`,
       })
       .from(itemRequests)
       .innerJoin(items, eq(items.id, itemRequests.itemId))
@@ -6463,6 +6469,7 @@ Respond with ONLY the category name, nothing else.`
         username: r.ownerUsername,
         displayName: r.ownerDisplayName,
       },
+      reviewedByCurrentUser: r.reviewedByCurrentUser,
     }));
 
     // Enrich SWAP requests with offered item details (original + counter items)
@@ -14487,7 +14494,7 @@ Respond with ONLY the category name, nothing else.`
           activityType: "RECEIVE_REVIEW",
           points: reviewPoints,
           itemId: transaction.items.id,
-          requestId: transaction.itemRequests.id,
+          requestId: transaction.item_requests.id,
           description: `Received a ${rating}-star review on "${transaction.items.name}"`,
         });
       }
@@ -14497,7 +14504,7 @@ Respond with ONLY the category name, nothing else.`
           activityType: "positive_feedback" as any,
           points: feedbackTagPoints,
           itemId: transaction.items.id,
-          requestId: transaction.itemRequests.id,
+          requestId: transaction.item_requests.id,
           description: `Received positive feedback on "${transaction.items.name}": ${positiveTagsAwarded.join(", ")}`,
         });
       }
@@ -14507,7 +14514,7 @@ Respond with ONLY the category name, nothing else.`
           activityType: "low_review_two_star" as any,
           points: negativeTagDeduction,
           itemId: transaction.items.id,
-          requestId: transaction.itemRequests.id,
+          requestId: transaction.item_requests.id,
           description: `Received negative feedback on "${transaction.items.name}": ${negativeTagsSelected.join(", ")}`,
         });
       }

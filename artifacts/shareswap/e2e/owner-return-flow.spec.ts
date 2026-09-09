@@ -74,7 +74,7 @@ test("borrower sees a failed return request without losing the dialog", async ({
   }
 });
 
-test("owner completes a return and sees the refreshed review prompt", async ({
+test("owner completes a return and saves the post-return review", async ({
   page,
 }) => {
   test.setTimeout(60_000);
@@ -141,6 +141,40 @@ test("owner completes a return and sees the refreshed review prompt", async ({
         name: "How was your experience with Ben?",
       }),
     ).toBeVisible();
+
+    const reviewDialog = page.getByRole("dialog", { name: "Leave a review" });
+    const reviewResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        /\/api\/users\/\d+\/reviews$/.test(new URL(response.url()).pathname),
+    );
+    const reviewedRequestsRefresh = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().includes("/api/requests") &&
+        response.ok(),
+    );
+
+    await reviewDialog.locator("button").nth(4).click();
+    await reviewDialog.getByRole("button", { name: "Submit review" }).click();
+
+    const [savedReview] = await Promise.all([
+      reviewResponse,
+      reviewedRequestsRefresh,
+    ]);
+    expect(savedReview.status()).toBe(201);
+    await expect(reviewDialog).toBeHidden();
+
+    const reloadedRequestsResponse = await page.request.get("/api/requests");
+    expect(reloadedRequestsResponse.ok()).toBe(true);
+    const reloadedRequests = (await reloadedRequestsResponse.json()) as Array<{
+      id: number;
+      reviewedByCurrentUser: boolean;
+    }>;
+    expect(
+      reloadedRequests.find((request) => request.id === fixture.requestId)
+        ?.reviewedByCurrentUser,
+    ).toBe(true);
   } finally {
     await page.request.post("/api/e2e/owner-return-fixture/cleanup", {
       data: { fixtureId: fixture.fixtureId },

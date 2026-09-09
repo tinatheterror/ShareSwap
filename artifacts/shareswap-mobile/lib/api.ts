@@ -1,6 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
-
 const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
 async function throwIfNotOk(res: Response) {
@@ -10,10 +7,17 @@ async function throwIfNotOk(res: Response) {
     try {
       parsed = JSON.parse(text);
     } catch {}
+    const isHtml = /<!doctype html|<html[\s>]/i.test(text);
+    const fallbackMessage =
+      res.status === 401
+        ? "Your session has expired. Please sign in again."
+        : res.status === 403
+        ? "Your request could not be verified. Please try again."
+        : `Request failed (${res.status}). Please try again.`;
     const msg =
       (parsed?.error as string) ||
       (parsed?.message as string) ||
-      `${res.status}: ${text}`;
+      (text && !isHtml ? `${res.status}: ${text}` : fallbackMessage);
     const err = new Error(msg) as Error & {
       status?: number;
       code?: string;
@@ -32,25 +36,35 @@ async function throwIfNotOk(res: Response) {
   }
 }
 
-async function getCsrfToken(): Promise<string | null> {
-  try {
-    const stored = await AsyncStorage.getItem("csrf_token");
-    return stored;
-  } catch {
-    return null;
-  }
-}
+let csrfToken: string | null = null;
+let csrfTokenRequest: Promise<string> | null = null;
 
-async function fetchCsrfToken(): Promise<void> {
-  try {
+async function fetchCsrfToken(forceRefresh = false): Promise<string> {
+  if (!forceRefresh && csrfToken) return csrfToken;
+  if (csrfTokenRequest) return csrfTokenRequest;
+
+  if (forceRefresh) csrfToken = null;
+  csrfTokenRequest = (async () => {
     const res = await fetch(`${BASE_URL}/api/csrf-token`, {
       credentials: "include",
+      cache: "no-store",
     });
-    const body = (await res.json().catch(() => null)) as { csrfToken?: string } | null;
-    if (body?.csrfToken) {
-      await AsyncStorage.setItem("csrf_token", body.csrfToken);
+    if (!res.ok) {
+      throw new Error("Unable to verify this request. Please try again.");
     }
-  } catch {}
+    const body = (await res.json().catch(() => null)) as { csrfToken?: string } | null;
+    if (!body?.csrfToken) {
+      throw new Error("Unable to verify this request. Please try again.");
+    }
+    csrfToken = body.csrfToken;
+    return csrfToken;
+  })();
+
+  try {
+    return await csrfTokenRequest;
+  } finally {
+    csrfTokenRequest = null;
+  }
 }
 
 export async function apiRequest(
@@ -70,12 +84,7 @@ export async function apiRequest(
   }
 
   if (isMutating) {
-    let token = await getCsrfToken();
-    if (!token) {
-      await fetchCsrfToken();
-      token = await getCsrfToken();
-    }
-    if (token) headers["x-csrf-token"] = token;
+    headers["x-csrf-token"] = await fetchCsrfToken();
   }
 
   const res = await fetch(url, {
@@ -95,9 +104,7 @@ export async function apiRequest(
       body.toLowerCase().includes("csrf") ||
       body.toLowerCase().includes("token")
     ) {
-      await fetchCsrfToken();
-      const token2 = await getCsrfToken();
-      if (token2) headers["x-csrf-token"] = token2;
+      headers["x-csrf-token"] = await fetchCsrfToken(true);
       const retryRes = await fetch(url, {
         method,
         headers,

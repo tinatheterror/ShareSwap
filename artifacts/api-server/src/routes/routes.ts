@@ -1886,22 +1886,33 @@ export function registerRoutes(
 
   // Security: CSRF token endpoint - call this before making mutating requests
   // This endpoint generates and sets the CSRF token cookie
-  app.get("/api/csrf-token", (req, res) => {
+  app.get("/api/csrf-token", async (req, res, next) => {
     // Never cache — every call must return a fresh signed token so retries work
     res.set("Cache-Control", "no-store, no-cache, must-revalidate");
     res.set("Pragma", "no-cache");
 
-    // Generate and set CSRF token in cookie
-    const token = setCsrfToken(req, res);
-    console.log('[CSRF Token Endpoint] Token generated and set');
+    try {
+      // A CSRF token is tied to the session ID. Persist newly-created sessions
+      // (including replacements for expired sessions) so the next request is
+      // validated against the same ID.
+      (req.session as any).csrfInitializedAt = Date.now();
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((error) => error ? reject(error) : resolve());
+      });
 
-    res.json({
-      message: "CSRF token set in cookie and ready for use",
-      // Also returned in the body: native clients (e.g. React Native/Expo)
-      // cannot read Set-Cookie headers or document.cookie, so they need the
-      // token value directly to send back in the x-csrf-token header.
-      csrfToken: token,
-    });
+      const token = setCsrfToken(req, res);
+      console.log('[CSRF Token Endpoint] Token generated and set');
+
+      res.json({
+        message: "CSRF token set in cookie and ready for use",
+        // Also returned in the body: native clients (e.g. React Native/Expo)
+        // cannot read Set-Cookie headers or document.cookie, so they need the
+        // token value directly to send back in the x-csrf-token header.
+        csrfToken: token,
+      });
+    } catch (error) {
+      next(error);
+    }
   });
 
   // Get Stripe publishable key for frontend
@@ -1924,7 +1935,23 @@ export function registerRoutes(
       return next();
     }
     // Apply CSRF protection to all other routes
-    csrfProtection(req, res, next);
+    csrfProtection(req, res, (error?: unknown) => {
+      if (!error) return next();
+
+      const csrfError = error as { code?: string; message?: string; status?: number };
+      if (
+        csrfError.status === 403 ||
+        csrfError.code === "EBADCSRFTOKEN" ||
+        csrfError.message?.toLowerCase().includes("csrf")
+      ) {
+        return res.status(403).json({
+          code: "CSRF_INVALID",
+          error: "Your request could not be verified. Please try again.",
+        });
+      }
+
+      next(error);
+    });
   });
 
   // Track last active timestamp for authenticated users (rate-limited to once per minute)

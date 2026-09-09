@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "parallel" });
 
 type OwnerReturnFixture = {
   fixtureId: string;
@@ -8,6 +8,17 @@ type OwnerReturnFixture = {
   borrower: { username: string; password: string };
   requestId: number;
 };
+
+async function cleanupOwnerReturnFixture(
+  request: APIRequestContext,
+  fixtureId: string,
+) {
+  const cleanupResponse = await request.post(
+    "/api/e2e/owner-return-fixture/cleanup",
+    { data: { fixtureId } },
+  );
+  expect(cleanupResponse.ok()).toBe(true);
+}
 
 test("borrower sees a failed return request without losing the dialog", async ({
   page,
@@ -68,9 +79,7 @@ test("borrower sees a failed return request without losing the dialog", async ({
       page.getByText("Return request could not be saved", { exact: true }),
     ).toBeVisible();
   } finally {
-    await page.request.post("/api/e2e/owner-return-fixture/cleanup", {
-      data: { fixtureId: fixture.fixtureId },
-    });
+    await cleanupOwnerReturnFixture(page.request, fixture.fixtureId);
   }
 });
 
@@ -176,9 +185,7 @@ test("owner completes a return and saves the post-return review", async ({
         ?.reviewedByCurrentUser,
     ).toBe(true);
   } finally {
-    await page.request.post("/api/e2e/owner-return-fixture/cleanup", {
-      data: { fixtureId: fixture.fixtureId },
-    });
+    await cleanupOwnerReturnFixture(page.request, fixture.fixtureId);
   }
 });
 
@@ -255,8 +262,6 @@ test("owner sees a failed return confirmation without losing the dialog", async 
       page.getByText("Return could not be saved", { exact: true }),
     ).toBeVisible();
   } finally {
-    await page.request.post("/api/e2e/owner-return-fixture/cleanup", {
-      data: { fixtureId: fixture.fixtureId },
-    });
+    await cleanupOwnerReturnFixture(page.request, fixture.fixtureId);
   }
 });

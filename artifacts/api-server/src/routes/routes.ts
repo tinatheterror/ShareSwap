@@ -1777,8 +1777,15 @@ export function registerRoutes(
       });
     };
 
+    let ownerReturnFixtureOrphanCleanup: Promise<void> | undefined;
+    const ensureOwnerReturnFixtureOrphansCleaned = () => {
+      ownerReturnFixtureOrphanCleanup ??=
+        cleanupOrphanedOwnerReturnFixtures();
+      return ownerReturnFixtureOrphanCleanup;
+    };
+
     app.post("/api/e2e/owner-return-fixture", async (req, res) => {
-      await cleanupOrphanedOwnerReturnFixtures();
+      await ensureOwnerReturnFixtureOrphansCleaned();
       const fixtureId = randomBytes(8).toString("hex");
       const password = `OwnerReturn-${fixtureId}`;
       const passwordHash = await hashPassword(password);
@@ -12089,7 +12096,10 @@ Respond with ONLY the category name, nothing else.`
       console.error("Error running overdue reminder sweep:", error),
     );
   };
-  if (options.startBackgroundJobs !== false) {
+  if (
+    options.startBackgroundJobs !== false &&
+    process.env.E2E_TEST_MODE !== "true"
+  ) {
     setTimeout(() => {
       runOverdueReminderSweep();
       setInterval(runOverdueReminderSweep, 6 * 60 * 60 * 1000);

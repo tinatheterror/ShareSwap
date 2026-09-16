@@ -1,7 +1,11 @@
 import { defineConfig } from "@playwright/test";
 
+const apiServerLogPath = "test-results/api-server.log";
+
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: "server-output-fixtures/**",
+  globalTeardown: "./e2e/server-output.global-teardown.ts",
   fullyParallel: true,
   forbidOnly: true,
   retries: 0,
@@ -19,7 +23,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "PORT=4180 E2E_TEST_MODE=true pnpm --filter @workspace/api-server run dev",
+        `PORT=4180 E2E_TEST_MODE=true E2E_API_SERVER_LOG=${apiServerLogPath} node e2e/run-api-server.mjs`,
       url: "http://127.0.0.1:4180/api/csrf-token",
       reuseExistingServer: false,
       timeout: 120_000,

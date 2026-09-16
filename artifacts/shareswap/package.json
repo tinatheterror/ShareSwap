@@ -9,6 +9,8 @@
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --config vitest.config.ts",
+    "test:server-output": "vitest run --config vitest.config.ts src/server-output.test.ts",
+    "test:server-output-lifecycle": "node e2e/server-output-fixtures/run-lifecycle-test.mjs",
     "test:browser": "playwright test --config playwright.config.ts"
   },
   "devDependencies": {

@@ -101,16 +101,25 @@ export const reputationActivities = pgTable(
   ],
 );
 
-export const userReviews = pgTable("user_reviews", {
-  id: serial("id").primaryKey(),
-  reviewerId: integer("reviewer_id").references(() => users.id),
-  reviewedUserId: integer("reviewed_user_id").references(() => users.id),
-  rating: integer("rating").notNull(),
-  comment: text("comment"),
-  feedbackTags: text("feedback_tags").array(), // ['reliable', 'on_time', 'as_described']
-  transactionId: integer("transaction_id").references(() => itemRequests.id),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const userReviews = pgTable(
+  "user_reviews",
+  {
+    id: serial("id").primaryKey(),
+    reviewerId: integer("reviewer_id").references(() => users.id),
+    reviewedUserId: integer("reviewed_user_id").references(() => users.id),
+    rating: integer("rating").notNull(),
+    comment: text("comment"),
+    feedbackTags: text("feedback_tags").array(), // ['reliable', 'on_time', 'as_described']
+    transactionId: integer("transaction_id").references(() => itemRequests.id),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("user_reviews_reviewer_transaction_uidx").on(
+      t.reviewerId,
+      t.transactionId,
+    ),
+  ],
+);
 
 export const verifications = pgTable("verifications", {
   id: serial("id").primaryKey(),

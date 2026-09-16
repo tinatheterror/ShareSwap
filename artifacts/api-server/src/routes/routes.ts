@@ -51,6 +51,7 @@ import { validateBorrowPeriod } from "../borrow-period";
 import { compactNotificationCopy } from "../notification-copy";
 import {
   applyRequiredLowReviewPenalty,
+  isDuplicateReviewSubmission,
   persistReviewAtomically,
   runNonCriticalReviewSideEffect,
 } from "../review-persistence";
@@ -14507,6 +14508,130 @@ Respond with ONLY the category name, nothing else.`
     ];
     const cleanedTags: string[] = feedbackTags?.filter((tag: string) => validTags.includes(tag)) || [];
 
+    let persistedReview;
+    try {
+      persistedReview = await persistReviewAtomically(db, async (tx) => {
+        // Create the review and apply required reputation changes in one transaction.
+        const [review] = await tx
+          .insert(userReviews)
+          .values({
+            reviewerId: req.user.id,
+            reviewedUserId,
+            rating,
+            comment,
+            feedbackTags: cleanedTags.length > 0 ? cleanedTags : null,
+            transactionId,
+          })
+          .returning();
+
+        // --- Compute ALL points upfront so the notification and level-up check are accurate ---
+        const reviewPoints = rating === 5 ? 5 : rating === 4 ? 3 : 0;
+        const POSITIVE_TAG_POINTS: Record<string, number> = { reliable: 1, on_time: 1, as_described: 1 };
+        const positiveTagsAwarded = cleanedTags.filter(t => t in POSITIVE_TAG_POINTS);
+        const feedbackTagPoints = positiveTagsAwarded.reduce((sum, t) => sum + POSITIVE_TAG_POINTS[t], 0);
+        const NEGATIVE_TAG_KEYS = ["late_return", "issue_reported", "no_show", "item_not_described"];
+        const negativeTagsSelected = cleanedTags.filter(t => NEGATIVE_TAG_KEYS.includes(t));
+        const negativeTagDeduction = negativeTagsSelected.length * -1;
+        const totalPoints = reviewPoints + feedbackTagPoints + negativeTagDeduction;
+
+        const [reviewedUserBefore] = await tx
+          .select({ reputationScore: users.reputationScore, reputationLevel: users.reputationLevel })
+          .from(users)
+          .where(eq(users.id, reviewedUserId))
+          .limit(1);
+        const oldScore = reviewedUserBefore?.reputationScore ?? 0;
+
+        let pairCapHit = false;
+        if (reviewPoints + feedbackTagPoints > 0) {
+          const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+          const [priorPairReview] = await tx
+            .select({ id: userReviews.id })
+            .from(userReviews)
+            .where(and(
+              eq(userReviews.reviewerId, req.user.id),
+              eq(userReviews.reviewedUserId, reviewedUserId),
+              gte(userReviews.createdAt, ninetyDaysAgo),
+              ne(userReviews.id, review.id),
+            ))
+            .limit(1);
+          pairCapHit = Boolean(priorPairReview);
+        }
+
+        let levelUp: { name: string; coinsReward: number } | null = null;
+        if (totalPoints !== 0 && !pairCapHit) {
+          if (reviewPoints > 0) {
+            await tx.insert(reputationActivities).values({
+              userId: reviewedUserId, activityType: "RECEIVE_REVIEW", points: reviewPoints,
+              itemId: transaction.items.id, requestId: transaction.item_requests.id,
+              description: `Received a ${rating}-star review on "${transaction.items.name}"`,
+            });
+          }
+          if (feedbackTagPoints > 0) {
+            await tx.insert(reputationActivities).values({
+              userId: reviewedUserId, activityType: "positive_feedback" as any, points: feedbackTagPoints,
+              itemId: transaction.items.id, requestId: transaction.item_requests.id,
+              description: `Received positive feedback on "${transaction.items.name}": ${positiveTagsAwarded.join(", ")}`,
+            });
+          }
+          if (negativeTagDeduction < 0) {
+            await tx.insert(reputationActivities).values({
+              userId: reviewedUserId, activityType: "low_review_two_star" as any, points: negativeTagDeduction,
+              itemId: transaction.items.id, requestId: transaction.item_requests.id,
+              description: `Received negative feedback on "${transaction.items.name}": ${negativeTagsSelected.join(", ")}`,
+            });
+          }
+          await tx.update(users).set({
+            reputationScore: sql`LEAST(500, GREATEST(0, reputation_score + ${totalPoints}))`,
+            reputationLevel: sql`CASE
+              WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 500 THEN 'ShareSwap Champion'
+              WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 300 THEN 'Community Pillar'
+              WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 150 THEN 'Trusted Member'
+              WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 50 THEN 'Neighbour'
+              ELSE 'Newcomer' END`,
+          }).where(eq(users.id, reviewedUserId));
+
+          const LEVEL_THRESHOLDS = [
+            { name: "Newcomer", minScore: 0, coinsReward: 0 },
+            { name: "Neighbour", minScore: 50, coinsReward: 5 },
+            { name: "Trusted Member", minScore: 150, coinsReward: 5 },
+            { name: "Community Pillar", minScore: 300, coinsReward: 5 },
+            { name: "ShareSwap Champion", minScore: 500, coinsReward: 5 },
+          ];
+          const getLevelForScore = (score: number) =>
+            [...LEVEL_THRESHOLDS].reverse().find(level => score >= level.minScore) ?? LEVEL_THRESHOLDS[0];
+          const oldLevelDef = getLevelForScore(oldScore);
+          const newLevelDef = getLevelForScore(Math.max(0, oldScore + totalPoints));
+          if (newLevelDef.name !== oldLevelDef.name) {
+            if (newLevelDef.coinsReward > 0) {
+              await tx.update(users).set({ shareCoins: sql`share_coins + ${newLevelDef.coinsReward}` })
+                .where(eq(users.id, reviewedUserId));
+              await tx.insert(shareCoinsTransactions).values({
+                userId: reviewedUserId, amount: newLevelDef.coinsReward.toString(),
+                description: `Level Up Bonus — ${newLevelDef.name}`, transactionType: "EARNED",
+              });
+            }
+            levelUp = { name: newLevelDef.name, coinsReward: newLevelDef.coinsReward };
+          }
+        }
+
+        const lowReviewPenaltyResult = await applyRequiredLowReviewPenalty({
+          rating,
+          cleanedTags,
+          applyPenalty: (penaltyRating, negativeTags) =>
+            applyLowReviewPenalty(reviewedUserId, review.id, penaltyRating, negativeTags, tx),
+        });
+        return {
+          review, reviewPoints, feedbackTagPoints, negativeTagDeduction, positiveTagsAwarded,
+          negativeTagsSelected, totalPoints, pairCapHit, levelUp, lowReviewPenaltyResult,
+        };
+      });
+    } catch (error) {
+      if (isDuplicateReviewSubmission(error)) {
+        return res.status(400).send("You have already reviewed this transaction");
+      }
+      throw error;
+    }
+
     const {
       review,
       reviewPoints,
@@ -14518,171 +14643,7 @@ Respond with ONLY the category name, nothing else.`
       pairCapHit,
       levelUp,
       lowReviewPenaltyResult,
-    } = await persistReviewAtomically(db, async (tx) => {
-    // Create the review and apply required reputation changes in one transaction.
-    const [review] = await tx
-      .insert(userReviews)
-      .values({
-        reviewerId: req.user.id,
-        reviewedUserId,
-        rating,
-        comment,
-        feedbackTags: cleanedTags.length > 0 ? cleanedTags : null,
-        transactionId,
-      })
-      .returning();
-
-    // --- Compute ALL points upfront so the notification and level-up check are accurate ---
-
-    // Base points from star rating: 3★=0, 4★=+3, 5★=+5
-    const reviewPoints = rating === 5 ? 5 : rating === 4 ? 3 : 0;
-
-    // Positive feedback tag points (+1 each for reliable / on_time / as_described)
-    const POSITIVE_TAG_POINTS: Record<string, number> = { reliable: 1, on_time: 1, as_described: 1 };
-    const positiveTagsAwarded = cleanedTags.filter(t => t in POSITIVE_TAG_POINTS);
-    const feedbackTagPoints = positiveTagsAwarded.reduce((sum, t) => sum + POSITIVE_TAG_POINTS[t], 0);
-
-    // Negative tag deduction: -1 per negative tag selected
-    const NEGATIVE_TAG_KEYS = ["late_return", "issue_reported", "no_show", "item_not_described"];
-    const negativeTagsSelected = cleanedTags.filter(t => NEGATIVE_TAG_KEYS.includes(t));
-    const negativeTagDeduction = negativeTagsSelected.length * -1;
-
-    const totalPoints = reviewPoints + feedbackTagPoints + negativeTagDeduction;
-
-    // Read current score/level BEFORE any update
-    const [reviewedUserBefore] = await tx
-      .select({ reputationScore: users.reputationScore, reputationLevel: users.reputationLevel })
-      .from(users)
-      .where(eq(users.id, reviewedUserId))
-      .limit(1);
-
-    const oldScore = reviewedUserBefore?.reputationScore ?? 0;
-
-    // Anti-farming: trust points from reviews are awarded at most once per reviewer→reviewed
-    // pair per 90-day rolling window. The review itself is still saved and visible.
-    const positiveTotal = reviewPoints + feedbackTagPoints;
-    let pairCapHit = false;
-    if (positiveTotal > 0) {
-      const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-      const [priorPairReview] = await tx
-        .select({ id: userReviews.id })
-        .from(userReviews)
-        .where(
-          and(
-            eq(userReviews.reviewerId, req.user.id),
-            eq(userReviews.reviewedUserId, reviewedUserId),
-            gte(userReviews.createdAt, ninetyDaysAgo),
-            ne(userReviews.id, review.id),
-          ),
-        )
-        .limit(1);
-      if (priorPairReview) {
-        console.log(`⚠️ Review trust points skipped — reviewer ${req.user.id} already awarded points to ${reviewedUserId} within 90 days (pair cap).`);
-        pairCapHit = true;
-      }
-    }
-
-    let levelUp: { name: string; coinsReward: number } | null = null;
-    if (totalPoints !== 0 && !pairCapHit) {
-      if (reviewPoints > 0) {
-        await tx.insert(reputationActivities).values({
-          userId: reviewedUserId,
-          activityType: "RECEIVE_REVIEW",
-          points: reviewPoints,
-          itemId: transaction.items.id,
-          requestId: transaction.item_requests.id,
-          description: `Received a ${rating}-star review on "${transaction.items.name}"`,
-        });
-      }
-      if (feedbackTagPoints > 0) {
-        await tx.insert(reputationActivities).values({
-          userId: reviewedUserId,
-          activityType: "positive_feedback" as any,
-          points: feedbackTagPoints,
-          itemId: transaction.items.id,
-          requestId: transaction.item_requests.id,
-          description: `Received positive feedback on "${transaction.items.name}": ${positiveTagsAwarded.join(", ")}`,
-        });
-      }
-      if (negativeTagDeduction < 0) {
-        await tx.insert(reputationActivities).values({
-          userId: reviewedUserId,
-          activityType: "low_review_two_star" as any,
-          points: negativeTagDeduction,
-          itemId: transaction.items.id,
-          requestId: transaction.item_requests.id,
-          description: `Received negative feedback on "${transaction.items.name}": ${negativeTagsSelected.join(", ")}`,
-        });
-      }
-
-      await tx
-        .update(users)
-        .set({
-          reputationScore: sql`LEAST(500, GREATEST(0, reputation_score + ${totalPoints}))`,
-          reputationLevel: sql`CASE
-            WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 500 THEN 'ShareSwap Champion'
-            WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 300 THEN 'Community Pillar'
-            WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 150 THEN 'Trusted Member'
-            WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 50  THEN 'Neighbour'
-            ELSE 'Newcomer'
-          END`,
-        })
-        .where(eq(users.id, reviewedUserId));
-
-      const LEVEL_THRESHOLDS = [
-        { name: 'Newcomer',           minScore: 0,   coinsReward: 0 },
-        { name: 'Neighbour',          minScore: 50,  coinsReward: 5 },
-        { name: 'Trusted Member',     minScore: 150, coinsReward: 5 },
-        { name: 'Community Pillar',   minScore: 300, coinsReward: 5 },
-        { name: 'ShareSwap Champion', minScore: 500, coinsReward: 5 },
-      ];
-      const getLevelForScore = (s: number) =>
-        [...LEVEL_THRESHOLDS].reverse().find(l => s >= l.minScore) ?? LEVEL_THRESHOLDS[0];
-      const oldLevelDef = getLevelForScore(oldScore);
-      const newLevelDef = getLevelForScore(Math.max(0, oldScore + totalPoints));
-      if (newLevelDef.name !== oldLevelDef.name) {
-        if (newLevelDef.coinsReward > 0) {
-          await tx.update(users)
-            .set({ shareCoins: sql`share_coins + ${newLevelDef.coinsReward}` })
-            .where(eq(users.id, reviewedUserId));
-          await tx.insert(shareCoinsTransactions).values({
-            userId: reviewedUserId,
-            amount: newLevelDef.coinsReward.toString(),
-            description: `Level Up Bonus — ${newLevelDef.name}`,
-            transactionType: "EARNED",
-          });
-        }
-        levelUp = { name: newLevelDef.name, coinsReward: newLevelDef.coinsReward };
-        console.log(`🎉 Level up: user ${reviewedUserId} reached ${newLevelDef.name} (score ${oldScore} → ${Math.max(0, oldScore + totalPoints)})`);
-      }
-    }
-
-    const lowReviewPenaltyResult = await applyRequiredLowReviewPenalty({
-      rating,
-      cleanedTags,
-      applyPenalty: (penaltyRating, negativeTags) =>
-        applyLowReviewPenalty(
-            reviewedUserId,
-            review.id,
-            penaltyRating,
-            negativeTags,
-            tx,
-          ),
-    });
-
-    return {
-      review,
-      reviewPoints,
-      feedbackTagPoints,
-      negativeTagDeduction,
-      positiveTagsAwarded,
-      negativeTagsSelected,
-      totalPoints,
-      pairCapHit,
-      levelUp,
-      lowReviewPenaltyResult,
-    };
-    });
+    } = persistedReview;
 
     if (levelUp) {
       await runNonCriticalReviewSideEffect("level-up notifications", async () => {

@@ -2,6 +2,28 @@ type TransactionRunner = {
   transaction<T>(callback: (tx: any) => Promise<T>): Promise<T>;
 };
 
+export const REVIEW_SUBMISSION_UNIQUE_CONSTRAINT =
+  "user_reviews_reviewer_transaction_uidx";
+
+export function isDuplicateReviewSubmission(error: unknown): boolean {
+  let current: unknown = error;
+  while (current && typeof current === "object") {
+    const databaseError = current as {
+      code?: string;
+      constraint?: string;
+      cause?: unknown;
+    };
+    if (
+      databaseError.code === "23505" &&
+      databaseError.constraint === REVIEW_SUBMISSION_UNIQUE_CONSTRAINT
+    ) {
+      return true;
+    }
+    current = databaseError.cause;
+  }
+  return false;
+}
+
 export function persistReviewAtomically<T>(
   database: TransactionRunner,
   callback: (tx: any) => Promise<T>,

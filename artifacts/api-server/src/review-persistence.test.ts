@@ -1,10 +1,19 @@
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
-import { db, pool, reputationActivities, userReviews, users } from "@workspace/db";
+import {
+  db,
+  itemRequests,
+  items,
+  pool,
+  reputationActivities,
+  userReviews,
+  users,
+} from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { applyLowReviewPenalty } from "./trust-score-service.js";
 import {
   applyRequiredLowReviewPenalty,
+  isDuplicateReviewSubmission,
   persistReviewAtomically,
   runNonCriticalReviewSideEffect,
 } from "./review-persistence.js";
@@ -45,6 +54,95 @@ test("a non-critical side-effect failure does not reject the saved operation", a
       throw new Error("simulated notification failure");
     }),
   );
+});
+
+test("concurrent submissions save one review and one reputation change", async (t) => {
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS user_reviews_reviewer_transaction_uidx
+      ON user_reviews(reviewer_id, transaction_id)
+  `);
+
+  const unique = `review-concurrency-${Date.now()}`;
+  const [reviewer] = await db.insert(users)
+    .values({ username: `${unique}-reviewer` })
+    .returning();
+  const [reviewed] = await db.insert(users)
+    .values({ username: `${unique}-reviewed` })
+    .returning();
+  const [item] = await db.insert(items).values({
+    ownerId: reviewed.id,
+    name: `${unique}-item`,
+    description: "concurrent review test item",
+    conditionRating: 4,
+    photos: [],
+    shareCoinsReward: "0",
+  }).returning();
+  const [request] = await db.insert(itemRequests).values({
+    itemId: item.id,
+    requesterId: reviewer.id,
+    requestType: "BORROW",
+    status: "COMPLETED",
+  }).returning();
+
+  t.after(async () => {
+    await db.delete(reputationActivities).where(eq(reputationActivities.requestId, request.id));
+    await db.delete(userReviews).where(eq(userReviews.transactionId, request.id));
+    await db.delete(itemRequests).where(eq(itemRequests.id, request.id));
+    await db.delete(items).where(eq(items.id, item.id));
+    await db.delete(users).where(eq(users.id, reviewer.id));
+    await db.delete(users).where(eq(users.id, reviewed.id));
+  });
+
+  const submit = () =>
+    persistReviewAtomically(db, async (tx) => {
+      await tx.insert(userReviews).values({
+        reviewerId: reviewer.id,
+        reviewedUserId: reviewed.id,
+        transactionId: request.id,
+        rating: 5,
+      });
+      await tx.insert(reputationActivities).values({
+        userId: reviewed.id,
+        activityType: "RECEIVE_REVIEW",
+        points: 5,
+        itemId: item.id,
+        requestId: request.id,
+        description: "Concurrent review reputation award",
+      });
+      await tx.update(users)
+        .set({ reputationScore: 5 })
+        .where(eq(users.id, reviewed.id));
+    });
+
+  const results = await Promise.allSettled([submit(), submit()]);
+  assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+  const rejected = results.find(
+    (result): result is PromiseRejectedResult => result.status === "rejected",
+  );
+  assert.ok(rejected);
+  assert.equal(isDuplicateReviewSubmission(rejected.reason), true);
+
+  const [reviews, activities, [reviewedAfter]] = await Promise.all([
+    db.select().from(userReviews).where(eq(userReviews.transactionId, request.id)),
+    db.select().from(reputationActivities).where(eq(reputationActivities.requestId, request.id)),
+    db.select({ reputationScore: users.reputationScore })
+      .from(users)
+      .where(eq(users.id, reviewed.id)),
+  ]);
+  assert.equal(reviews.length, 1);
+  assert.equal(activities.length, 1);
+  assert.equal(reviewedAfter.reputationScore, 5);
+});
+
+test("only the review submission constraint maps to already-reviewed", () => {
+  assert.equal(isDuplicateReviewSubmission({
+    code: "23505",
+    constraint: "user_reviews_reviewer_transaction_uidx",
+  }), true);
+  assert.equal(isDuplicateReviewSubmission({
+    code: "23505",
+    constraint: "some_other_constraint",
+  }), false);
 });
 
 async function createReviewUsers(t: TestContext, suffix: string) {

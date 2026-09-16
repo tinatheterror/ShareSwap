@@ -1,4 +1,9 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import {
+  expect,
+  test,
+  type APIRequestContext,
+  type Page,
+} from "@playwright/test";
 
 test.describe.configure({ mode: "parallel" });
 
@@ -9,21 +14,67 @@ type OwnerReturnFixture = {
   requestId: number;
 };
 
+type FixtureRecordCounts = {
+  users: number;
+  requests: number;
+  shareCoinRewards: number;
+  reputationRewards: number;
+  achievements: number;
+  reviews: number;
+  notifications: number;
+};
+
+async function suppressReturnReminderChecks(page: Page) {
+  await page.route("**/api/notifications/check-return-reminders", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ remindersCreated: 0 }),
+    });
+  });
+}
+
 async function cleanupOwnerReturnFixture(
   request: APIRequestContext,
   fixtureId: string,
+  options: { expectPostReturnActivity?: boolean } = {},
 ) {
   const cleanupResponse = await request.post(
     "/api/e2e/owner-return-fixture/cleanup",
     { data: { fixtureId } },
   );
   expect(cleanupResponse.ok()).toBe(true);
+  const cleanup = (await cleanupResponse.json()) as {
+    generated: FixtureRecordCounts;
+    remaining: FixtureRecordCounts;
+  };
+
+  if (options.expectPostReturnActivity) {
+    expect(cleanup.generated.users).toBe(2);
+    expect(cleanup.generated.requests).toBe(1);
+    expect(cleanup.generated.shareCoinRewards).toBeGreaterThan(0);
+    expect(cleanup.generated.reputationRewards).toBeGreaterThan(0);
+    expect(cleanup.generated.achievements).toBeGreaterThan(0);
+    expect(cleanup.generated.reviews).toBeGreaterThan(0);
+    expect(cleanup.generated.notifications).toBeGreaterThan(0);
+  }
+
+  expect(cleanup.remaining).toEqual({
+    users: 0,
+    requests: 0,
+    shareCoinRewards: 0,
+    reputationRewards: 0,
+    achievements: 0,
+    reviews: 0,
+    notifications: 0,
+  });
 }
 
 test("borrower sees a failed return request without losing the dialog", async ({
   page,
 }) => {
   test.setTimeout(60_000);
+  await suppressReturnReminderChecks(page);
   const fixtureResponse = await page.request.post(
     "/api/e2e/owner-return-fixture",
     { data: { flow: "borrower-return" } },
@@ -87,6 +138,7 @@ test("owner completes a return and saves the post-return review", async ({
   page,
 }) => {
   test.setTimeout(60_000);
+  await suppressReturnReminderChecks(page);
   const fixtureResponse = await page.request.post(
     "/api/e2e/owner-return-fixture",
   );
@@ -185,7 +237,9 @@ test("owner completes a return and saves the post-return review", async ({
         ?.reviewedByCurrentUser,
     ).toBe(true);
   } finally {
-    await cleanupOwnerReturnFixture(page.request, fixture.fixtureId);
+    await cleanupOwnerReturnFixture(page.request, fixture.fixtureId, {
+      expectPostReturnActivity: true,
+    });
   }
 });
 
@@ -193,6 +247,7 @@ test("owner sees a failed return confirmation without losing the dialog", async 
   page,
 }) => {
   test.setTimeout(60_000);
+  await suppressReturnReminderChecks(page);
   const fixtureResponse = await page.request.post(
     "/api/e2e/owner-return-fixture",
   );

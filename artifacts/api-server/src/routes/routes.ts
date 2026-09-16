@@ -1741,6 +1741,62 @@ export function registerRoutes(
         .where(inArray(notifications.userId, userIds));
     };
 
+    const countOwnerReturnFixtureRecords = async (
+      tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+      fixture: { requestId: number; itemId: number; userIds: number[] },
+    ) => {
+      const userReviewFilter = or(
+        eq(userReviews.transactionId, fixture.requestId),
+        inArray(userReviews.reviewerId, fixture.userIds),
+        inArray(userReviews.reviewedUserId, fixture.userIds),
+      );
+      const notificationFilter = or(
+        eq(notifications.requestId, fixture.requestId),
+        inArray(notifications.userId, fixture.userIds),
+      );
+      const fixtureUsers = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(inArray(users.id, fixture.userIds));
+      const fixtureRequests = await tx
+        .select({ id: itemRequests.id })
+        .from(itemRequests)
+        .where(eq(itemRequests.id, fixture.requestId));
+      const shareCoinRewards = await tx
+        .select({ id: shareCoinsTransactions.id })
+        .from(shareCoinsTransactions)
+        .where(inArray(shareCoinsTransactions.userId, fixture.userIds));
+      const reputationRewards = await tx
+        .select({ id: reputationActivities.id })
+        .from(reputationActivities)
+        .where(or(
+          eq(reputationActivities.requestId, fixture.requestId),
+          inArray(reputationActivities.userId, fixture.userIds),
+        ));
+      const fixtureAchievements = await tx
+        .select({ id: userAchievements.id })
+        .from(userAchievements)
+        .where(inArray(userAchievements.userId, fixture.userIds));
+      const fixtureReviews = await tx
+        .select({ id: userReviews.id })
+        .from(userReviews)
+        .where(userReviewFilter);
+      const fixtureNotifications = await tx
+        .select({ id: notifications.id })
+        .from(notifications)
+        .where(notificationFilter);
+
+      return {
+        users: fixtureUsers.length,
+        requests: fixtureRequests.length,
+        shareCoinRewards: shareCoinRewards.length,
+        reputationRewards: reputationRewards.length,
+        achievements: fixtureAchievements.length,
+        reviews: fixtureReviews.length,
+        notifications: fixtureNotifications.length,
+      };
+    };
+
     const cleanupOrphanedOwnerReturnFixtures = async () => {
       const staleUsers = await db
         .select({ id: users.id })
@@ -1885,14 +1941,17 @@ export function registerRoutes(
       const fixture = ownerReturnFixtures.get(req.body?.fixtureId);
       if (!fixture) return res.sendStatus(204);
 
-      await db.transaction(async (tx) => {
+      const cleanupVerification = await db.transaction(async (tx) => {
+        const generated = await countOwnerReturnFixtureRecords(tx, fixture);
         await deleteOwnerReturnFixtureRequests(tx, [fixture.requestId]);
         await deleteOwnerReturnFixtureUserActivity(tx, fixture.userIds);
         await tx.delete(items).where(eq(items.id, fixture.itemId));
         await tx.delete(users).where(inArray(users.id, fixture.userIds));
+        const remaining = await countOwnerReturnFixtureRecords(tx, fixture);
+        return { generated, remaining };
       });
       ownerReturnFixtures.delete(req.body.fixtureId);
-      res.sendStatus(204);
+      res.json(cleanupVerification);
     });
   }
 

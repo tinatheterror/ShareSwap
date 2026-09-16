@@ -135,8 +135,9 @@ export async function awardTrustPoints(
   activityType: TrustActivityType,
   points: number,
   metadata: TrustActivityMetadata = {},
+  executor: any = db,
 ): Promise<{ newScore: number; pointsAwarded: number }> {
-  const [user] = await db
+  const [user] = await executor
     .select({ reputationScore: users.reputationScore })
     .from(users)
     .where(eq(users.id, userId));
@@ -152,7 +153,7 @@ export async function awardTrustPoints(
   const description = buildActivityDescription(activityType, metadata);
 
   try {
-    await db.transaction(async (tx) => {
+    const persistAward = async (tx: any) => {
       await tx
         .update(users)
         .set({ reputationScore: newScore })
@@ -167,7 +168,12 @@ export async function awardTrustPoints(
         requestId: metadata.requestId ?? null,
         createdAt: new Date(),
       });
-    });
+    };
+    if (executor === db) {
+      await db.transaction(persistAward);
+    } else {
+      await persistAward(executor);
+    }
   } catch (err: any) {
     // PostgreSQL unique-constraint violation (23505) means a concurrent call
     // already committed this (userId, requestId, activityType) tuple.
@@ -821,6 +827,7 @@ const PENALTY_POINTS: Record<PenaltyType, number> = {
 async function checkGracePassEligibility(
   userId: number,
   penaltyType: PenaltyType,
+  executor: any = db,
 ): Promise<boolean> {
   // Only certain penalty types are eligible for grace pass
   const graceEligible =
@@ -835,7 +842,7 @@ async function checkGracePassEligibility(
     lookbackDate.getDate() - GRACE_PASS_CONFIG.LOOKBACK_DAYS,
   );
 
-  const priorPenalties = await db
+  const priorPenalties = await executor
     .select()
     .from(reputationActivities)
     .where(
@@ -847,7 +854,7 @@ async function checkGracePassEligibility(
     );
 
   // Also check for prior grace pass warnings for this type
-  const priorWarnings = await db
+  const priorWarnings = await executor
     .select()
     .from(reputationActivities)
     .where(
@@ -859,7 +866,7 @@ async function checkGracePassEligibility(
     );
 
   // Filter warnings that match this penalty type (stored in description)
-  const relevantWarnings = priorWarnings.filter((w) =>
+  const relevantWarnings = priorWarnings.filter((w: any) =>
     w.description?.includes(penaltyType),
   );
 
@@ -871,6 +878,7 @@ export async function applyTrustPenalty(
   userId: number,
   penaltyType: PenaltyType,
   metadata: TrustActivityMetadata = {},
+  executor: any = db,
 ): Promise<{
   applied: boolean;
   wasGracePass: boolean;
@@ -880,7 +888,7 @@ export async function applyTrustPenalty(
   const points = PENALTY_POINTS[penaltyType];
 
   // Check if eligible for grace pass
-  const isGraceEligible = await checkGracePassEligibility(userId, penaltyType);
+  const isGraceEligible = await checkGracePassEligibility(userId, penaltyType, executor);
 
   if (isGraceEligible) {
     // Issue a grace pass warning (no points deducted)
@@ -888,9 +896,9 @@ export async function applyTrustPenalty(
       ...metadata,
       originalPenaltyType: penaltyType,
       wasGracePass: true,
-    });
+    }, executor);
 
-    const [user] = await db
+    const [user] = await executor
       .select({ reputationScore: users.reputationScore })
       .from(users)
       .where(eq(users.id, userId));
@@ -908,7 +916,7 @@ export async function applyTrustPenalty(
   }
 
   // Apply the penalty
-  const result = await awardTrustPoints(userId, penaltyType, points, metadata);
+  const result = await awardTrustPoints(userId, penaltyType, points, metadata, executor);
 
   console.log(
     `🚨 Trust penalty applied to user ${userId}: ${penaltyType} (${points} points)`,
@@ -987,11 +995,12 @@ export async function applyLowReviewPenalty(
   reviewId: number,
   rating: 1 | 2,
   negativeTags: string[],
+  executor: any = db,
 ): Promise<{ applied: boolean; wasGracePass: boolean }> {
   const penaltyType = rating === 1 ? "low_review_one_star" : "low_review_two_star";
   const result = await applyTrustPenalty(userId, penaltyType, {
     reviewId,
     feedbackTags: negativeTags,
-  });
+  }, executor);
   return { applied: result.applied, wasGracePass: result.wasGracePass ?? false };
 }

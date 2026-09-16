@@ -11952,8 +11952,8 @@ Respond with ONLY the category name, nothing else.`
             const lateHours = Math.max(0, Math.floor((now.getTime() - new Date(request.endDate).getTime()) / 3_600_000));
             const stageCopy: Record<string, { title: string; borrowerTitle?: string; ownerTitle?: string; borrower: string; owner: string }> = {
               RETURN_DUE: { title: "Return due", borrowerTitle: "Return Item to Owner", ownerTitle: "Get Your Item Back", borrower: `"${item.name}" is due now. Please arrange return.`, owner: `"${item.name}" is due for return.` },
-              OVERDUE_GRACE: { title: "Return overdue", borrower: `"${item.name}" is overdue by ${lateHours} hours. Please arrange return.`, owner: `"${item.name}" has not yet been returned.` },
-              OVERDUE: { title: "Return overdue", borrower: `"${item.name}" is overdue. Arrange return or request an extension.`, owner: `"${item.name}" remains overdue.` },
+              OVERDUE_GRACE: { title: "Return overdue", borrowerTitle: "Overdue - Return Item to Owner", ownerTitle: "Overdue - Get Your Item Back", borrower: `"${item.name}" is overdue by ${lateHours} hours. Please arrange return.`, owner: `"${item.name}" has not yet been returned.` },
+              OVERDUE: { title: "Return overdue", borrowerTitle: "Overdue - Return Item to Owner", ownerTitle: "Overdue - Get Your Item Back", borrower: `"${item.name}" is overdue. Arrange return or request an extension.`, owner: `"${item.name}" remains overdue.` },
               SERIOUSLY_OVERDUE: { title: "Final return warning", borrower: `"${item.name}" is significantly overdue. The owner may open a non-return claim.`, owner: `"${item.name}" is significantly overdue; you may report an issue.` },
               NON_RETURN_REVIEW: { title: "Non-return review", borrower: `"${item.name}" is under non-return review. This is not a charge; return it or respond to a claim.`, owner: `"${item.name}" is eligible for non-return review; you may open a claim.` },
             };
@@ -11984,9 +11984,12 @@ Respond with ONLY the category name, nothing else.`
           const reminderType = serious
             ? "return_reminder_serious_overdue"
             : "return_reminder_overdue_restricted";
-          const title = serious
-            ? `Serious overdue: ${daysOverdue}d`
-            : `Return overdue by ${daysOverdue}d`;
+          const borrowerTitle = serious
+            ? `Serious overdue: ${daysOverdue}d - Return to Owner`
+            : `${daysOverdue}d Overdue - Return to Owner`;
+          const ownerTitle = serious
+            ? `Serious overdue: ${daysOverdue}d - Get Your Item Back`
+            : `${daysOverdue}d Overdue - Get Your Item Back`;
 
           if (serious) {
             const penalty = await applySeriousOverduePenalty(
@@ -12022,7 +12025,7 @@ Respond with ONLY the category name, nothing else.`
               request.id,
               item.id,
               reminderType,
-              title,
+              borrowerTitle,
               serious
                 ? `"${item.name}" is seriously overdue. Return it to ${owner.displayName || owner.username} immediately.`
                 : `"${item.name}" is ${daysOverdue} days overdue. Return it now before starting another borrow.`,
@@ -12032,7 +12035,7 @@ Respond with ONLY the category name, nothing else.`
               request.id,
               item.id,
               reminderType,
-              title,
+              ownerTitle,
               serious
                 ? `"${item.name}" is seriously overdue with ${borrowerName}. Please coordinate an immediate return.`
                 : `"${item.name}" is ${daysOverdue} days overdue with ${borrowerName}. Please arrange its return.`,

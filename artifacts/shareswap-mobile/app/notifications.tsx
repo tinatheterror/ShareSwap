@@ -116,7 +116,7 @@ function NotifRow({
       </View>
       <View style={styles.rowBody}>
         {notif.title ? (
-          <Text style={[styles.rowTitle, { color: colors.foreground }]} numberOfLines={1}>
+          <Text style={[styles.rowTitle, { color: colors.foreground }]} numberOfLines={2}>
             {notif.title}
           </Text>
         ) : null}

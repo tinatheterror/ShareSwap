@@ -8,7 +8,7 @@ test("serious overdue owner copy fits the mobile notification card", () => {
     message: '"Brown Suede Clogs" is seriously overdue with Tina L.. Please coordinate an immediate return.',
   });
 
-  assert.equal(copy.title, "Serious overdue: 101d");
+  assert.equal(copy.title, "Serious overdue: 101d - Get Your Item Back");
   assert.equal(copy.message, '"Brown Suede Clogs" with Tina L. Arrange return.');
   assert.ok(copy.message.length <= notificationCopyLimits.body);
   assert.doesNotMatch(copy.message, /…|\.\.\./);
@@ -32,4 +32,35 @@ test("renames existing trust score notifications", () => {
   });
 
   assert.equal(copy.title, "Trust score update");
+});
+
+test("renames existing overdue notifications by recipient role", () => {
+  assert.equal(
+    compactNotificationCopy({
+      title: "Return overdue",
+      message: '"Jeans" is overdue. Arrange return or request an extension.',
+    }).title,
+    "Overdue - Return Item to Owner",
+  );
+  assert.equal(
+    compactNotificationCopy({
+      title: "Return overdue",
+      message: '"Jeans" remains overdue.',
+    }).title,
+    "Overdue - Get Your Item Back",
+  );
+  assert.equal(
+    compactNotificationCopy({
+      title: "Return overdue by 9d",
+      message: '"Jeans" is 9 days overdue with Tina. Please arrange its return.',
+    }).title,
+    "9d Overdue - Get Your Item Back",
+  );
+  assert.equal(
+    compactNotificationCopy({
+      title: "Serious overdue: 15d",
+      message: '"Jeans" is seriously overdue. Return it to Sam immediately.',
+    }).title,
+    "Serious overdue: 15d - Return to Owner",
+  );
 });

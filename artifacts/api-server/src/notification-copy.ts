@@ -1,4 +1,4 @@
-const TITLE_LIMIT = 24;
+const TITLE_LIMIT = 64;
 const BODY_LIMIT = 54;
 
 function shortenQuotedNames(text: string): string {
@@ -37,8 +37,35 @@ function fitAtWord(text: string, limit: number): string {
     : `${result.slice(0, limit - 1).trimEnd()}.`;
 }
 
-function rewriteTitle(title: string): string {
-  return title.replace(/^Trust score already updated\.?$/, "Trust score update");
+function isOwnerOverdueMessage(message?: string | null): boolean {
+  return !!message && (
+    /\bwith .+?(?:\.|$)/i.test(message) ||
+    /has not yet been returned|remains overdue/i.test(message)
+  );
+}
+
+function rewriteTitle(title: string, message?: string | null): string {
+  const ownerCopy = isOwnerOverdueMessage(message);
+  return title
+    .replace(/^Trust score already updated\.?$/, "Trust score update")
+    .replace(
+      /^Return overdue$/,
+      ownerCopy
+        ? "Overdue - Get Your Item Back"
+        : "Overdue - Return Item to Owner",
+    )
+    .replace(
+      /^Return overdue by (\d+)d$/,
+      ownerCopy
+        ? "$1d Overdue - Get Your Item Back"
+        : "$1d Overdue - Return to Owner",
+    )
+    .replace(
+      /^Serious overdue: (\d+)d$/,
+      ownerCopy
+        ? "Serious overdue: $1d - Get Your Item Back"
+        : "Serious overdue: $1d - Return to Owner",
+    );
 }
 
 function rewriteBody(message: string): string {
@@ -87,7 +114,7 @@ export function compactNotificationCopy<T extends { title?: string | null; messa
   return {
     ...notification,
     title: notification.title
-      ? fitAtWord(rewriteTitle(notification.title), TITLE_LIMIT)
+      ? fitAtWord(rewriteTitle(notification.title, notification.message), TITLE_LIMIT)
       : notification.title,
     message: notification.message
       ? fitAtWord(rewriteBody(notification.message), BODY_LIMIT)

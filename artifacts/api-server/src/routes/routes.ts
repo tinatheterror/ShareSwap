@@ -1763,6 +1763,10 @@ export function registerRoutes(
         .select({ id: itemRequests.id })
         .from(itemRequests)
         .where(eq(itemRequests.id, fixture.requestId));
+      const fixtureItems = await tx
+        .select({ id: items.id })
+        .from(items)
+        .where(eq(items.id, fixture.itemId));
       const shareCoinRewards = await tx
         .select({ id: shareCoinsTransactions.id })
         .from(shareCoinsTransactions)
@@ -1789,6 +1793,7 @@ export function registerRoutes(
 
       return {
         users: fixtureUsers.length,
+        items: fixtureItems.length,
         requests: fixtureRequests.length,
         shareCoinRewards: shareCoinRewards.length,
         reputationRewards: reputationRewards.length,
@@ -1852,9 +1857,20 @@ export function registerRoutes(
       const password = `OwnerReturn-${fixtureId}`;
       const passwordHash = await hashPassword(password);
       const borrowerReturn = req.body?.flow === "borrower-return";
+      const simulateSetupFailure =
+        req.get("x-e2e-simulate-failure") === "owner-return-fixture-setup";
+      let attemptedFixture:
+        | { requestId: number; itemId: number; userIds: number[] }
+        | undefined;
 
-      const { owner, borrower, item, request } = await db.transaction(
-        async (tx) => {
+      let fixtureRecords: {
+        owner: { id: number; username: string };
+        borrower: { id: number; username: string };
+        item: { id: number };
+        request: { id: number };
+      };
+      try {
+        fixtureRecords = await db.transaction(async (tx) => {
           const [owner, borrower] = await tx
             .insert(users)
             .values([
@@ -1920,9 +1936,28 @@ export function registerRoutes(
             })
             .returning({ id: itemRequests.id });
 
+          attemptedFixture = {
+            requestId: request.id,
+            itemId: item.id,
+            userIds: [owner.id, borrower.id],
+          };
+          if (simulateSetupFailure) {
+            throw new Error("Simulated owner return fixture setup failure");
+          }
+
           return { owner, borrower, item, request };
-        },
-      );
+        });
+      } catch (error) {
+        if (!simulateSetupFailure || !attemptedFixture) throw error;
+
+        const remaining = await db.transaction((tx) =>
+          countOwnerReturnFixtureRecords(tx, attemptedFixture!),
+        );
+        res.status(500).json({ fixtureId, remaining });
+        return;
+      }
+
+      const { owner, borrower, item, request } = fixtureRecords;
 
       ownerReturnFixtures.set(fixtureId, {
         requestId: request.id,

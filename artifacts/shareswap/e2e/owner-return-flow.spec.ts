@@ -16,6 +16,7 @@ type OwnerReturnFixture = {
 
 type FixtureRecordCounts = {
   users: number;
+  items: number;
   requests: number;
   shareCoinRewards: number;
   reputationRewards: number;
@@ -49,9 +50,11 @@ async function cleanupOwnerReturnFixture(
     remaining: FixtureRecordCounts;
   };
 
+  expect(cleanup.generated.users).toBe(2);
+  expect(cleanup.generated.items).toBe(1);
+  expect(cleanup.generated.requests).toBe(1);
+
   if (options.expectPostReturnActivity) {
-    expect(cleanup.generated.users).toBe(2);
-    expect(cleanup.generated.requests).toBe(1);
     expect(cleanup.generated.shareCoinRewards).toBeGreaterThan(0);
     expect(cleanup.generated.reputationRewards).toBeGreaterThan(0);
     expect(cleanup.generated.achievements).toBeGreaterThan(0);
@@ -61,6 +64,7 @@ async function cleanupOwnerReturnFixture(
 
   expect(cleanup.remaining).toEqual({
     users: 0,
+    items: 0,
     requests: 0,
     shareCoinRewards: 0,
     reputationRewards: 0,
@@ -69,6 +73,36 @@ async function cleanupOwnerReturnFixture(
     notifications: 0,
   });
 }
+
+test("failed fixture setup rolls back every inserted record", async ({
+  request,
+}) => {
+  const fixtureResponse = await request.post(
+    "/api/e2e/owner-return-fixture",
+    {
+      headers: {
+        "x-e2e-simulate-failure": "owner-return-fixture-setup",
+      },
+    },
+  );
+
+  expect(fixtureResponse.status()).toBe(500);
+  const failure = (await fixtureResponse.json()) as {
+    fixtureId: string;
+    remaining: FixtureRecordCounts;
+  };
+  expect(failure.fixtureId).toMatch(/^[a-f0-9]{16}$/);
+  expect(failure.remaining).toEqual({
+    users: 0,
+    items: 0,
+    requests: 0,
+    shareCoinRewards: 0,
+    reputationRewards: 0,
+    achievements: 0,
+    reviews: 0,
+    notifications: 0,
+  });
+});
 
 test("borrower sees a failed return request without losing the dialog", async ({
   page,

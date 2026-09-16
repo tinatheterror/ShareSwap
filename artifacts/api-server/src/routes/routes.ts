@@ -1796,70 +1796,76 @@ export function registerRoutes(
       const passwordHash = await hashPassword(password);
       const borrowerReturn = req.body?.flow === "borrower-return";
 
-      const [owner, borrower] = await db
-        .insert(users)
-        .values([
-          {
-            username: `e2e-owner-${fixtureId}@example.test`,
-            displayName: "Olivia Owner",
-            password: passwordHash,
-            emailVerified: true,
-            isVerified: true,
-            hasCompletedLocationSetup: true,
-            shareCoins: "20",
-          },
-          {
-            username: `e2e-borrower-${fixtureId}@example.test`,
-            displayName: "Ben Borrower",
-            password: passwordHash,
-            emailVerified: true,
-            isVerified: true,
-            hasCompletedLocationSetup: true,
-            shareCoins: "20",
-          },
-        ])
-        .returning({ id: users.id, username: users.username });
+      const { owner, borrower, item, request } = await db.transaction(
+        async (tx) => {
+          const [owner, borrower] = await tx
+            .insert(users)
+            .values([
+              {
+                username: `e2e-owner-${fixtureId}@example.test`,
+                displayName: "Olivia Owner",
+                password: passwordHash,
+                emailVerified: true,
+                isVerified: true,
+                hasCompletedLocationSetup: true,
+                shareCoins: "20",
+              },
+              {
+                username: `e2e-borrower-${fixtureId}@example.test`,
+                displayName: "Ben Borrower",
+                password: passwordHash,
+                emailVerified: true,
+                isVerified: true,
+                hasCompletedLocationSetup: true,
+                shareCoins: "20",
+              },
+            ])
+            .returning({ id: users.id, username: users.username });
 
-      const [item] = await db
-        .insert(items)
-        .values({
-          ownerId: owner.id,
-          name: "Camping stove",
-          description: "Two burner stove",
-          conditionRating: 5,
-          photos: [],
-          isLendable: true,
-          isAvailable: false,
-          replacementValue: 100,
-          securityDeposit: "20",
-          shareCoinsReward: "1",
-          shareCoinPrice: "1",
-        })
-        .returning({ id: items.id });
+          const [item] = await tx
+            .insert(items)
+            .values({
+              ownerId: owner.id,
+              name: "Camping stove",
+              description: "Two burner stove",
+              conditionRating: 5,
+              photos: [],
+              isLendable: true,
+              isAvailable: false,
+              replacementValue: 100,
+              securityDeposit: "20",
+              shareCoinsReward: "1",
+              shareCoinPrice: "1",
+            })
+            .returning({ id: items.id });
 
-      const [request] = await db
-        .insert(itemRequests)
-        .values({
-          itemId: item.id,
-          requesterId: borrower.id,
-          requestType: "BORROW",
-          status: borrowerReturn ? "IN_PROGRESS" : "RETURN_REQUESTED",
-          message: "Could I borrow this?",
-          startDate: new Date("2026-07-20T00:00:00.000Z"),
-          endDate: new Date("2026-08-01T00:00:00.000Z"),
-          deliveryMethod: "in_person",
-          depositMethod: "in_app",
-          trustDepositAmount: "20",
-          trustDepositBaseAmount: "20",
-          shareCoinAmount: "1",
-          depositStatus: "authorized",
-          ownerConfirmedHandoff: true,
-          borrowerConfirmedHandoff: true,
-          borrowerConfirmedReturn: borrowerReturn ? false : true,
-          returnRequestedAt: borrowerReturn ? null : new Date(),
-          overdueStage: "OVERDUE",
-        })
-        .returning({ id: itemRequests.id });
+          const [request] = await tx
+            .insert(itemRequests)
+            .values({
+              itemId: item.id,
+              requesterId: borrower.id,
+              requestType: "BORROW",
+              status: borrowerReturn ? "IN_PROGRESS" : "RETURN_REQUESTED",
+              message: "Could I borrow this?",
+              startDate: new Date("2026-07-20T00:00:00.000Z"),
+              endDate: new Date("2026-08-01T00:00:00.000Z"),
+              deliveryMethod: "in_person",
+              depositMethod: "in_app",
+              trustDepositAmount: "20",
+              trustDepositBaseAmount: "20",
+              shareCoinAmount: "1",
+              depositStatus: "authorized",
+              ownerConfirmedHandoff: true,
+              borrowerConfirmedHandoff: true,
+              borrowerConfirmedReturn: borrowerReturn ? false : true,
+              returnRequestedAt: borrowerReturn ? null : new Date(),
+              overdueStage: "OVERDUE",
+            })
+            .returning({ id: itemRequests.id });
+
+          return { owner, borrower, item, request };
+        },
+      );
 
       ownerReturnFixtures.set(fixtureId, {
         requestId: request.id,

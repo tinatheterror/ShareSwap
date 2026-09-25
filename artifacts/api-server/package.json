@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "migrate-push-tokens": "tsx src/scripts/migrate-push-tokens.ts",
+    "reviews:duplicates": "tsx src/scripts/repair-duplicate-reviews.ts",
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {

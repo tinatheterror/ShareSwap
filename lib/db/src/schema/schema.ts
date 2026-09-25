@@ -121,6 +121,32 @@ export const userReviews = pgTable(
   ],
 );
 
+export const duplicateReviewRepairAudits = pgTable(
+  "duplicate_review_repair_audits",
+  {
+    id: serial("id").primaryKey(),
+    reviewerId: integer("reviewer_id").notNull(),
+    transactionId: integer("transaction_id").notNull(),
+    canonicalReviewId: integer("canonical_review_id").notNull(),
+    operatorName: text("operator_name").notNull(),
+    reason: text("reason").notNull(),
+    removedReviews: jsonb("removed_reviews").notNull(),
+    removedReputationActivities: jsonb("removed_reputation_activities").notNull().default(sql`'[]'::jsonb`),
+    removedShareCoinTransactions: jsonb("removed_share_coin_transactions").notNull().default(sql`'[]'::jsonb`),
+    removedNotifications: jsonb("removed_notifications").notNull().default(sql`'[]'::jsonb`),
+    removedUserAchievements: jsonb("removed_user_achievements").notNull().default(sql`'[]'::jsonb`),
+    scoreAdjustments: jsonb("score_adjustments").notNull().default(sql`'[]'::jsonb`),
+    coinAdjustments: jsonb("coin_adjustments").notNull().default(sql`'[]'::jsonb`),
+    repairedAt: timestamp("repaired_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("duplicate_review_repair_audits_group_uidx").on(
+      t.reviewerId,
+      t.transactionId,
+    ),
+  ],
+);
+
 export const verifications = pgTable("verifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),

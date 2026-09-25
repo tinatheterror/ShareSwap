@@ -168,7 +168,7 @@ test("borrower sees a failed return request without losing the dialog", async ({
   }
 });
 
-test("owner completes a return and saves the post-return review", async ({
+test("owner completes a return and failed fixture cleanup rolls back before retry", async ({
   page,
 }) => {
   test.setTimeout(60_000);
@@ -270,6 +270,30 @@ test("owner completes a return and saves the post-return review", async ({
       reloadedRequests.find((request) => request.id === fixture.requestId)
         ?.reviewedByCurrentUser,
     ).toBe(true);
+
+    const failedCleanupResponse = await page.request.post(
+      "/api/e2e/owner-return-fixture/cleanup",
+      {
+        data: { fixtureId: fixture.fixtureId },
+        headers: {
+          "x-e2e-simulate-failure": "owner-return-fixture-cleanup",
+        },
+      },
+    );
+    expect(failedCleanupResponse.status()).toBe(500);
+    const failedCleanup = (await failedCleanupResponse.json()) as {
+      generated: FixtureRecordCounts;
+      remaining: FixtureRecordCounts;
+    };
+    expect(failedCleanup.generated.users).toBe(2);
+    expect(failedCleanup.generated.items).toBe(1);
+    expect(failedCleanup.generated.requests).toBe(1);
+    expect(failedCleanup.generated.shareCoinRewards).toBeGreaterThan(0);
+    expect(failedCleanup.generated.reputationRewards).toBeGreaterThan(0);
+    expect(failedCleanup.generated.achievements).toBeGreaterThan(0);
+    expect(failedCleanup.generated.reviews).toBeGreaterThan(0);
+    expect(failedCleanup.generated.notifications).toBeGreaterThan(0);
+    expect(failedCleanup.remaining).toEqual(failedCleanup.generated);
   } finally {
     await cleanupOwnerReturnFixture(page.request, fixture.fixtureId, {
       expectPostReturnActivity: true,

@@ -1977,15 +1977,34 @@ export function registerRoutes(
       const fixture = ownerReturnFixtures.get(req.body?.fixtureId);
       if (!fixture) return res.sendStatus(204);
 
-      const cleanupVerification = await db.transaction(async (tx) => {
-        const generated = await countOwnerReturnFixtureRecords(tx, fixture);
-        await deleteOwnerReturnFixtureRequests(tx, [fixture.requestId]);
-        await deleteOwnerReturnFixtureUserActivity(tx, fixture.userIds);
-        await tx.delete(items).where(eq(items.id, fixture.itemId));
-        await tx.delete(users).where(inArray(users.id, fixture.userIds));
-        const remaining = await countOwnerReturnFixtureRecords(tx, fixture);
-        return { generated, remaining };
-      });
+      const simulateCleanupFailure =
+        req.get("x-e2e-simulate-failure") === "owner-return-fixture-cleanup";
+      const injectedFailure = new Error("Simulated owner return fixture cleanup failure");
+      let generatedBeforeFailure: Awaited<ReturnType<typeof countOwnerReturnFixtureRecords>> | undefined;
+      let cleanupVerification: {
+        generated: Awaited<ReturnType<typeof countOwnerReturnFixtureRecords>>;
+        remaining: Awaited<ReturnType<typeof countOwnerReturnFixtureRecords>>;
+      };
+      try {
+        cleanupVerification = await db.transaction(async (tx) => {
+          const generated = await countOwnerReturnFixtureRecords(tx, fixture);
+          generatedBeforeFailure = generated;
+          await deleteOwnerReturnFixtureRequests(tx, [fixture.requestId]);
+          await deleteOwnerReturnFixtureUserActivity(tx, fixture.userIds);
+          await tx.delete(items).where(eq(items.id, fixture.itemId));
+          if (simulateCleanupFailure) throw injectedFailure;
+          await tx.delete(users).where(inArray(users.id, fixture.userIds));
+          const remaining = await countOwnerReturnFixtureRecords(tx, fixture);
+          return { generated, remaining };
+        });
+      } catch (error) {
+        if (error !== injectedFailure) throw error;
+        const remaining = await db.transaction((tx) =>
+          countOwnerReturnFixtureRecords(tx, fixture),
+        );
+        res.status(500).json({ generated: generatedBeforeFailure, remaining });
+        return;
+      }
       ownerReturnFixtures.delete(req.body.fixtureId);
       res.json(cleanupVerification);
     });

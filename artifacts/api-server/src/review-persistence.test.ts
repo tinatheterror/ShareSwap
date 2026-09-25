@@ -1,15 +1,20 @@
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
+import cookieParser from "cookie-parser";
+import express from "express";
 import {
   db,
   itemRequests,
   items,
+  notifications,
   pool,
   reputationActivities,
   userReviews,
   users,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
+import { hashPassword } from "./auth.js";
+import { registerRoutes } from "./routes/routes.js";
 import { applyLowReviewPenalty } from "./trust-score-service.js";
 import {
   applyRequiredLowReviewPenalty,
@@ -131,6 +136,101 @@ test("concurrent submissions save one review and one reputation change", async (
   ]);
   assert.equal(reviews.length, 1);
   assert.equal(activities.length, 1);
+  assert.equal(reviewedAfter.reputationScore, 5);
+});
+
+test("concurrent authenticated review requests return success and already-reviewed", async (t) => {
+  const unique = `review-route-concurrency-${Date.now()}`;
+  const password = "ReviewRouteConcurrency!42";
+  const [reviewer, reviewed] = await db.insert(users).values([
+    { username: `${unique}-reviewer`, password: await hashPassword(password), emailVerified: true },
+    { username: `${unique}-reviewed`, emailVerified: true },
+  ]).returning();
+  const [item] = await db.insert(items).values({
+    ownerId: reviewed.id,
+    name: `${unique}-item`,
+    description: "Concurrent review route test item",
+    conditionRating: 4,
+    photos: [],
+    shareCoinsReward: "0",
+  }).returning();
+  const [request] = await db.insert(itemRequests).values({
+    itemId: item.id,
+    requesterId: reviewer.id,
+    requestType: "BORROW",
+    status: "COMPLETED",
+  }).returning();
+
+  t.after(async () => {
+    await db.delete(reputationActivities).where(eq(reputationActivities.requestId, request.id));
+    await db.delete(userReviews).where(eq(userReviews.transactionId, request.id));
+    await db.delete(notifications).where(eq(notifications.userId, reviewed.id));
+    await db.delete(itemRequests).where(eq(itemRequests.id, request.id));
+    await db.delete(items).where(eq(items.id, item.id));
+    await db.delete(users).where(eq(users.id, reviewer.id));
+    await db.delete(users).where(eq(users.id, reviewed.id));
+  });
+
+  const app = express();
+  app.use(cookieParser());
+  app.use(express.json());
+  const server = registerRoutes(app, { startBackgroundJobs: false });
+  t.after(() => new Promise<void>((resolve, reject) => {
+    server.close((error) => error ? reject(error) : resolve());
+  }));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  let cookies = "";
+  const login = await fetch(`${baseUrl}/api/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-forwarded-proto": "https" },
+    body: JSON.stringify({ username: reviewer.username, password }),
+  });
+  assert.equal(login.status, 200, await login.text());
+  cookies = login.headers.getSetCookie().map((cookie) => cookie.split(";", 1)[0]).join("; ");
+  assert.ok(cookies, "login must establish a real authenticated session");
+
+  const csrfResponse = await fetch(`${baseUrl}/api/csrf-token`, {
+    headers: { cookie: cookies, "x-forwarded-proto": "https" },
+  });
+  assert.equal(csrfResponse.status, 200);
+  const { csrfToken } = await csrfResponse.json() as { csrfToken: string };
+  const csrfCookies = csrfResponse.headers.getSetCookie().map((cookie) => cookie.split(";", 1)[0]);
+  cookies = [cookies, ...csrfCookies].filter(Boolean).join("; ");
+
+  const submit = () => fetch(`${baseUrl}/api/users/${reviewed.id}/reviews`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-forwarded-proto": "https",
+      "x-csrf-token": csrfToken,
+      cookie: cookies,
+    },
+    body: JSON.stringify({ rating: 5, transactionId: request.id }),
+  });
+  const responses = await Promise.all([submit(), submit()]);
+  const results = await Promise.all(responses.map(async (response) => ({
+    status: response.status,
+    body: await response.text(),
+  })));
+  assert.deepEqual(results.map(({ status }) => status).sort(), [201, 400], JSON.stringify(results));
+  assert.equal(results.find(({ status }) => status === 400)?.body,
+    "You have already reviewed this transaction");
+
+  const [reviews, activities, [reviewedAfter]] = await Promise.all([
+    db.select().from(userReviews).where(eq(userReviews.transactionId, request.id)),
+    db.select().from(reputationActivities).where(eq(reputationActivities.requestId, request.id)),
+    db.select({ reputationScore: users.reputationScore })
+      .from(users).where(eq(users.id, reviewed.id)),
+  ]);
+  assert.equal(reviews.length, 1);
+  assert.equal(reviews[0].reviewerId, reviewer.id);
+  assert.equal(activities.length, 1);
+  assert.equal(activities[0].activityType, "RECEIVE_REVIEW");
+  assert.equal(activities[0].points, 5);
   assert.equal(reviewedAfter.reputationScore, 5);
 });
 

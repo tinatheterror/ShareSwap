@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { pool as adminPool } from "@workspace/db";
 import {
@@ -260,6 +261,154 @@ test("report separates exact review effects from nearby unrelated activity", asy
     }, "integration-test", testPool),
     /selects effects of the canonical review/,
   );
+});
+
+test("stale plans and mid-repair failures preserve both duplicate groups and their effects", async (t) => {
+  const schema = `repair_rollback_${randomUUID().replaceAll("-", "")}`;
+  await adminPool.query(`CREATE SCHEMA ${schema}`);
+  const testPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    options: `-c search_path=${schema}`,
+  });
+  t.after(async () => {
+    await testPool.end();
+    await adminPool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+  });
+
+  await testPool.query(`
+    CREATE TABLE users (id integer PRIMARY KEY, reputation_score integer, reputation_level text, share_coins numeric);
+    CREATE TABLE user_reviews (id integer PRIMARY KEY, reviewer_id integer, reviewed_user_id integer, transaction_id integer, rating integer, comment text, feedback_tags text[], created_at timestamp);
+    CREATE TABLE reputation_activities (id integer PRIMARY KEY, user_id integer, activity_type text, request_id integer, review_id integer, created_at timestamp);
+    CREATE TABLE share_coins_transactions (id integer PRIMARY KEY, user_id integer, description text, transaction_type text, amount numeric, review_id integer, created_at timestamp);
+    CREATE TABLE notifications (id integer PRIMARY KEY, user_id integer, type text, request_id integer, review_id integer, created_at timestamp);
+    CREATE TABLE achievements (id integer PRIMARY KEY, name text);
+    CREATE TABLE user_achievements (id integer PRIMARY KEY, user_id integer, achievement_id integer, review_id integer, earned_at timestamp);
+    INSERT INTO users VALUES (10, 500, 'ShareSwap Champion', 12);
+    INSERT INTO achievements VALUES (1, 'Reviewed');
+    INSERT INTO user_reviews VALUES
+      (1, 20, 10, 30, 5, 'first canonical', NULL, '2026-01-01'),
+      (2, 20, 10, 30, 5, 'first duplicate', NULL, '2026-01-02'),
+      (3, 21, 10, 31, 5, 'second canonical', NULL, '2026-02-01'),
+      (4, 21, 10, 31, 5, 'second duplicate', NULL, '2026-02-02');
+    INSERT INTO reputation_activities VALUES
+      (1, 10, 'RECEIVE_REVIEW', 30, 1, '2026-01-01'),
+      (2, 10, 'RECEIVE_REVIEW', 30, 2, '2026-01-02'),
+      (3, 10, 'RECEIVE_REVIEW', 31, 3, '2026-02-01'),
+      (4, 10, 'RECEIVE_REVIEW', 31, 4, '2026-02-02');
+    INSERT INTO share_coins_transactions VALUES
+      (1, 10, 'review reward', 'EARNED', 5, 1, '2026-01-01'),
+      (2, 10, 'review reward', 'EARNED', 5, 2, '2026-01-02'),
+      (3, 10, 'review reward', 'EARNED', 5, 3, '2026-02-01'),
+      (4, 10, 'review reward', 'EARNED', 5, 4, '2026-02-02');
+    INSERT INTO notifications VALUES
+      (1, 10, 'new_review_received', 30, 1, '2026-01-01'),
+      (2, 10, 'new_review_received', 30, 2, '2026-01-02'),
+      (3, 10, 'new_review_received', 31, 3, '2026-02-01'),
+      (4, 10, 'new_review_received', 31, 4, '2026-02-02');
+    INSERT INTO user_achievements VALUES
+      (1, 10, 1, 1, '2026-01-01'),
+      (2, 10, 1, 2, '2026-01-02'),
+      (3, 10, 1, 3, '2026-02-01'),
+      (4, 10, 1, 4, '2026-02-02');
+  `);
+
+  const report = await buildDuplicateReviewReport(testPool);
+  assert.equal(report.duplicateGroupCount, 2);
+  assert.deepEqual(report.duplicates.map((group: any) => group.affectedUsers[0].id), [10, 10]);
+  const plan = {
+    reason: "Remove reviewed effects from both duplicate groups.",
+    repairs: [30, 31].map((transactionId, index) => ({
+      reviewerId: 20 + index,
+      transactionId,
+      canonicalReviewId: 1 + index * 2,
+      reputationActivityIds: [2 + index * 2],
+      shareCoinTransactionIds: [2 + index * 2],
+      notificationIds: [2 + index * 2],
+      userAchievementIds: [2 + index * 2],
+    })),
+    userReconciliations: [{
+      userId: 10,
+      expectedReputationScore: 500,
+      targetReputationScore: 490,
+      expectedShareCoins: "12",
+      targetShareCoins: "2",
+    }],
+  };
+  const tables = [
+    "users", "user_reviews", "reputation_activities",
+    "share_coins_transactions", "notifications", "user_achievements",
+  ];
+  const snapshot = async () => {
+    const rows = await Promise.all(tables.map(async (table) =>
+      (await testPool.query(`SELECT * FROM ${table} ORDER BY id`)).rows));
+    const auditTable = (await testPool.query(
+      "SELECT to_regclass('duplicate_review_repair_audits') AS name",
+    )).rows[0].name;
+    return { rows, auditTable };
+  };
+  const rejectsWithoutChanges = async (expected: RegExp, apply = () =>
+    applyDuplicateReviewRepair(plan, "integration-test", testPool)) => {
+    const before = await snapshot();
+    await assert.rejects(apply(), expected);
+    assert.deepEqual(await snapshot(), before, "a rejected apply must not change any surviving rows or totals");
+  };
+
+  await testPool.query("UPDATE users SET reputation_score = 501 WHERE id = 10");
+  await rejectsWithoutChanges(/reputation score changed: expected 500, found 501/);
+  await testPool.query("UPDATE users SET reputation_score = 500, share_coins = 13 WHERE id = 10");
+  await rejectsWithoutChanges(/ShareCoin balance changed: expected 12, found 13/);
+  await testPool.query("UPDATE users SET share_coins = 12 WHERE id = 10");
+
+  // The plan still selects the effect, but it vanished after the report was reviewed.
+  await testPool.query("DELETE FROM notifications WHERE id = 4");
+  await rejectsWithoutChanges(/notificationIds contains unrelated or stale IDs: 4/);
+  await testPool.query(
+    "INSERT INTO notifications VALUES (4, 10, 'new_review_received', 31, 4, '2026-02-02')",
+  );
+
+  let deletedEffects = 0;
+  let deletedFirstGroupReviews = false;
+  const failingClient = {
+    connect: async () => {
+      const connection = await testPool.connect();
+      return {
+        query: async (sql: string, values?: any[]) => {
+          if (sql.startsWith("DELETE FROM user_reviews") && values?.[0]?.includes(4)) {
+            assert.ok(deletedEffects >= 4, "effects from both groups were deleted before the failure");
+            assert.ok(deletedFirstGroupReviews, "the first group was already repaired inside the transaction");
+            throw new Error("injected failure after partial deletion");
+          }
+          const result = await connection.query(sql, values);
+          if (sql.startsWith("DELETE FROM reputation_activities") ||
+              sql.startsWith("DELETE FROM share_coins_transactions") ||
+              sql.startsWith("DELETE FROM notifications") ||
+              sql.startsWith("DELETE FROM user_achievements")) {
+            deletedEffects += result.rowCount ?? 0;
+          }
+          if (sql.startsWith("DELETE FROM user_reviews")) deletedFirstGroupReviews = true;
+          return result;
+        },
+        release: () => connection.release(),
+      };
+    },
+    query: (sql: string, values?: any[]) => testPool.query(sql, values),
+  };
+  await rejectsWithoutChanges(
+    /injected failure after partial deletion/,
+    () => applyDuplicateReviewRepair(plan, "integration-test", failingClient),
+  );
+  assert.equal(deletedEffects, 8);
+
+  assert.deepEqual(
+    await applyDuplicateReviewRepair(plan, "integration-test", testPool),
+    { status: "repaired", repairedGroups: 2 },
+  );
+  const after = await snapshot();
+  assert.deepEqual(after.rows.slice(1).map((rows) => rows.map((row: any) => row.id)),
+    [[1, 3], [1, 3], [1, 3], [1, 3], [1, 3]]);
+  assert.equal(after.rows[0][0].reputation_score, 490);
+  assert.equal(Number(after.rows[0][0].share_coins), 2);
+  assert.equal((await testPool.query("SELECT count(*)::int AS count FROM duplicate_review_repair_audits")).rows[0].count, 2);
 });
 
 test.after(async () => {

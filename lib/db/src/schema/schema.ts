@@ -87,6 +87,8 @@ export const reputationActivities = pgTable(
     points: integer("points").notNull(),
     itemId: integer("item_id").references(() => items.id),
     requestId: integer("request_id").references(() => itemRequests.id),
+    // Intentionally not a foreign key: repair audits may remove a review without erasing attribution.
+    reviewId: integer("review_id"),
     description: text("description").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
   },
@@ -239,6 +241,7 @@ export const shareCoinsTransactions = pgTable("share_coins_transactions", {
   amount: decimal("amount").notNull(),
   description: text("description").notNull(),
   transactionType: text("transaction_type").notNull(),
+  reviewId: integer("review_id"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   userCreatedIdx: index("share_coins_transactions_user_created_idx").on(table.userId, table.createdAt),
@@ -561,6 +564,7 @@ export const userAchievements = pgTable("user_achievements", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
   achievementId: integer("achievement_id").references(() => achievements.id),
+  reviewId: integer("review_id"),
   earnedAt: timestamp("earned_at").defaultNow(),
   progress: integer("progress").default(0),
   isCompleted: boolean("is_completed").default(false),
@@ -890,6 +894,7 @@ export const notifications = pgTable("notifications", {
   message: text("message").notNull(),
   itemId: integer("item_id").references(() => items.id),
   requestId: integer("request_id").references(() => itemRequests.id),
+  reviewId: integer("review_id"),
   isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({

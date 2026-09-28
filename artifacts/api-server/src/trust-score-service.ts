@@ -100,6 +100,7 @@ export type PenaltyType =
 
 interface TrustActivityMetadata {
   requestId?: number;
+  reviewId?: number;
   itemId?: number;
   itemName?: string | null;
   counterpartyId?: number;
@@ -166,6 +167,7 @@ export async function awardTrustPoints(
         description,
         itemId: metadata.itemId,
         requestId: metadata.requestId ?? null,
+        reviewId: metadata.reviewId ?? null,
         createdAt: new Date(),
       });
     };

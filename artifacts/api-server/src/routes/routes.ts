@@ -483,7 +483,8 @@ const ACHIEVEMENT_DEFS = [
   { name: 'welcome_wagon',          title: 'Welcome Wagon',         description: 'Completed a transaction with a user who joined in the last 30 days.',         icon: '👋', color: '#0891b2', category: 'social'   },
 ];
 
-async function checkAndAwardAchievements(userId: number) {
+async function checkAndAwardAchievements(userId: number, reviewContext?: { reviewId: number; tx: any }) {
+  const executor = reviewContext?.tx ?? db;
   try {
     const completedWhere = or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY"));
     const ownerItemsSub = sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`;
@@ -495,38 +496,38 @@ async function checkAndAwardAchievements(userId: number) {
       [borrowRow], [itemsRow], [reviewsLeftRow], [referralRow], [weeklyRow], [reviewsReceivedRow],
       [urgentRow], [courierRow],
     ] = await Promise.all([
-      db.select({ isVerified: users.isVerified, reputationScore: users.reputationScore, shareCoins: users.shareCoins }).from(users).where(eq(users.id, userId)).limit(1),
+      executor.select({ isVerified: users.isVerified, reputationScore: users.reputationScore, shareCoins: users.shareCoins }).from(users).where(eq(users.id, userId)).limit(1),
       // Total completed transactions (any side)
-      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere)),
+      executor.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere)),
       // Items lent (as owner)
-      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(and(eq(items.ownerId, userId), completedWhere)),
+      executor.select({ cnt: sql<number>`count(*)` }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(and(eq(items.ownerId, userId), completedWhere)),
       // Gifts given (as owner)
-      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(and(eq(items.ownerId, userId), eq(itemRequests.requestType, "GIFT"), completedWhere)),
+      executor.select({ cnt: sql<number>`count(*)` }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(and(eq(items.ownerId, userId), eq(itemRequests.requestType, "GIFT"), completedWhere)),
       // Swaps (any side)
-      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), eq(itemRequests.requestType, "SWAP"), completedWhere)),
+      executor.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), eq(itemRequests.requestType, "SWAP"), completedWhere)),
       // Borrows (as requester)
-      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(eq(itemRequests.requesterId, userId), eq(itemRequests.requestType, "BORROW"), completedWhere)),
+      executor.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(eq(itemRequests.requesterId, userId), eq(itemRequests.requestType, "BORROW"), completedWhere)),
       // Items listed by user
-      db.select({ cnt: sql<number>`count(*)` }).from(items).where(eq(items.ownerId, userId)),
+      executor.select({ cnt: sql<number>`count(*)` }).from(items).where(eq(items.ownerId, userId)),
       // Reviews left by user
-      db.select({ cnt: sql<number>`count(*)` }).from(userReviews).where(eq(userReviews.reviewerId, userId)),
+      executor.select({ cnt: sql<number>`count(*)` }).from(userReviews).where(eq(userReviews.reviewerId, userId)),
       // Successful referrals (completed and rewarded)
-      db.select({ cnt: sql<number>`count(*)` }).from(referrals).where(and(eq(referrals.referrerId, userId), eq(referrals.isRewardClaimed, true))),
+      executor.select({ cnt: sql<number>`count(*)` }).from(referrals).where(and(eq(referrals.referrerId, userId), eq(referrals.isRewardClaimed, true))),
       // Completed transactions in the past 7 days
-      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(
+      executor.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(
         or(eq(itemRequests.requesterId, userId), ownerItemsSub),
         completedWhere,
         sql`item_requests.created_at >= ${sevenDaysAgo}`,
       )),
       // Reviews received
-      db.select({ cnt: sql<number>`count(*)` }).from(userReviews).where(eq(userReviews.reviewedUserId, userId)),
+      executor.select({ cnt: sql<number>`count(*)` }).from(userReviews).where(eq(userReviews.reviewedUserId, userId)),
       // Urgent wishlist requests helped
-      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests)
+      executor.select({ cnt: sql<number>`count(*)` }).from(itemRequests)
         .innerJoin(items, eq(items.id, itemRequests.itemId))
         .innerJoin(wishlists, sql`${wishlists.itemName} ILIKE '%' || ${items.name} || '%'`)
         .where(and(eq(items.ownerId, userId), completedWhere, eq(wishlists.urgency, "urgent"))),
       // Courier deliveries (any side)
-      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere, eq(itemRequests.deliveryMethod, "courier"))),
+      executor.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere, eq(itemRequests.deliveryMethod, "courier"))),
     ]);
 
     const total          = Number(totalRow?.cnt ?? 0);
@@ -574,23 +575,23 @@ async function checkAndAwardAchievements(userId: number) {
     if (urgent >= 1)      metKeys.push('urgent_helper');
     if (courier >= 1)     metKeys.push('courier_rider');
     {
-      const [earnedRow] = await db.select({ total: sql<number>`coalesce(sum(amount), 0)` }).from(shareCoinsTransactions).where(and(eq(shareCoinsTransactions.userId, userId), sql`amount > 0`));
+      const [earnedRow] = await executor.select({ total: sql<number>`coalesce(sum(amount), 0)` }).from(shareCoinsTransactions).where(and(eq(shareCoinsTransactions.userId, userId), sql`amount > 0`));
       if (Number(earnedRow?.total ?? 0) >= 50) metKeys.push('coin_collector');
     }
     {
-      const [wlRow] = await db.select({ cnt: sql<number>`count(*)` }).from(wishlists).where(eq(wishlists.userId, userId));
+      const [wlRow] = await executor.select({ cnt: sql<number>`count(*)` }).from(wishlists).where(eq(wishlists.userId, userId));
       if (Number(wlRow?.cnt ?? 0) >= 3) metKeys.push('wish_maker');
     }
     {
-      const [ppRow] = await db.select({ cnt: sql<number>`count(*)` }).from(items).where(and(eq(items.ownerId, userId), sql`array_length(items.photos, 1) >= 5`));
+      const [ppRow] = await executor.select({ cnt: sql<number>`count(*)` }).from(items).where(and(eq(items.ownerId, userId), sql`array_length(items.photos, 1) >= 5`));
       if (Number(ppRow?.cnt ?? 0) >= 1) metKeys.push('photo_pro');
     }
     {
-      const gnRes = await db.execute(sql`SELECT COUNT(*) AS cnt FROM (SELECT item_requests.item_id FROM item_requests INNER JOIN items ON items.id = item_requests.item_id WHERE items.owner_id = ${userId} AND item_requests.status IN ('COMPLETED','COMPLETED_EARLY') GROUP BY item_requests.item_id HAVING COUNT(DISTINCT item_requests.requester_id) >= 3) AS subq`);
+      const gnRes = await executor.execute(sql`SELECT COUNT(*) AS cnt FROM (SELECT item_requests.item_id FROM item_requests INNER JOIN items ON items.id = item_requests.item_id WHERE items.owner_id = ${userId} AND item_requests.status IN ('COMPLETED','COMPLETED_EARLY') GROUP BY item_requests.item_id HAVING COUNT(DISTINCT item_requests.requester_id) >= 3) AS subq`);
       if (Number((gnRes.rows?.[0] as any)?.cnt ?? 0) >= 1) metKeys.push('good_neighbour');
     }
     {
-      const wwRes = await db.execute(sql`SELECT COUNT(*) AS cnt FROM item_requests ir INNER JOIN items i ON i.id = ir.item_id WHERE ir.status IN ('COMPLETED','COMPLETED_EARLY') AND ((i.owner_id = ${userId} AND EXISTS (SELECT 1 FROM users u WHERE u.id = ir.requester_id AND ir.created_at >= u.created_at AND ir.created_at - u.created_at < INTERVAL '30 days')) OR (ir.requester_id = ${userId} AND EXISTS (SELECT 1 FROM users u WHERE u.id = i.owner_id AND ir.created_at >= u.created_at AND ir.created_at - u.created_at < INTERVAL '30 days')))`);
+      const wwRes = await executor.execute(sql`SELECT COUNT(*) AS cnt FROM item_requests ir INNER JOIN items i ON i.id = ir.item_id WHERE ir.status IN ('COMPLETED','COMPLETED_EARLY') AND ((i.owner_id = ${userId} AND EXISTS (SELECT 1 FROM users u WHERE u.id = ir.requester_id AND ir.created_at >= u.created_at AND ir.created_at - u.created_at < INTERVAL '30 days')) OR (ir.requester_id = ${userId} AND EXISTS (SELECT 1 FROM users u WHERE u.id = i.owner_id AND ir.created_at >= u.created_at AND ir.created_at - u.created_at < INTERVAL '30 days')))`);
       if (Number((wwRes.rows?.[0] as any)?.cnt ?? 0) >= 1) metKeys.push('welcome_wagon');
     }
     if (reviewsRx >= 10)  metKeys.push('well_loved');
@@ -611,25 +612,30 @@ async function checkAndAwardAchievements(userId: number) {
     }
     // Five-Star Neighbour: 5+ reviews with avg >= 4.8
     {
-      const [rRow] = await db
+      const [rRow] = await executor
         .select({ cnt: sql<number>`count(*)`, avg: sql<number>`avg(${userReviews.rating})` })
         .from(userReviews).where(eq(userReviews.reviewedUserId, userId));
       if (Number(rRow?.cnt || 0) >= 5 && Number(rRow?.avg || 0) >= 4.8) metKeys.push('five_star_neighbour');
     }
     // Early Member: joined before Sept 1, 2026
     {
-      const [u] = await db.select({ createdAt: users.createdAt }).from(users).where(eq(users.id, userId)).limit(1);
+      const [u] = await executor.select({ createdAt: users.createdAt }).from(users).where(eq(users.id, userId)).limit(1);
       if (u?.createdAt && new Date(u.createdAt) < new Date('2026-09-01')) metKeys.push('early_member');
     }
     if (reviewsRx >= 5)   metKeys.push('five_reviews_received');
 
     for (const key of metKeys) {
+      // Only review-sensitive milestones should be attributed to a review.
+      if (reviewContext && ![
+        "five_reviews_left", "well_loved", "five_reviews_received",
+        "five_star_neighbour", "neighbourhood_hero", "shareswap_legend", "coin_collector",
+      ].includes(key)) continue;
       const def = ACHIEVEMENT_DEFS.find(d => d.name === key);
       if (!def) continue;
 
-      let [achievement] = await db.select({ id: achievements.id }).from(achievements).where(eq(achievements.name, key)).limit(1);
+      let [achievement] = await executor.select({ id: achievements.id }).from(achievements).where(eq(achievements.name, key)).limit(1);
       if (!achievement) {
-        [achievement] = await db.insert(achievements).values({
+        [achievement] = await executor.insert(achievements).values({
           name: key,
           description: def.description,
           badgeIcon: def.icon,
@@ -638,30 +644,33 @@ async function checkAndAwardAchievements(userId: number) {
         }).returning({ id: achievements.id });
       }
 
-      const [existing] = await db.select({ id: userAchievements.id }).from(userAchievements).where(
+      const [existing] = await executor.select({ id: userAchievements.id }).from(userAchievements).where(
         and(eq(userAchievements.userId, userId), eq(userAchievements.achievementId, achievement.id))
       ).limit(1);
       if (existing) continue;
 
       // Newly unlocked — award +1 ShareCoin
-      await db.insert(userAchievements).values({ userId, achievementId: achievement.id, isCompleted: true, progress: 100 });
-      await db.insert(shareCoinsTransactions).values({
+      await executor.insert(userAchievements).values({ userId, achievementId: achievement.id, isCompleted: true, progress: 100, reviewId: reviewContext?.reviewId });
+      await executor.insert(shareCoinsTransactions).values({
         userId,
         amount: "1",
         description: `Badge unlocked: ${def.title}`,
         transactionType: "EARNED",
+        reviewId: reviewContext?.reviewId,
       });
-      await db.update(users).set({ shareCoins: sql`share_coins + 1` }).where(eq(users.id, userId));
-      await db.insert(notifications).values({
+      await executor.update(users).set({ shareCoins: sql`share_coins + 1` }).where(eq(users.id, userId));
+      await executor.insert(notifications).values({
         userId,
         type: "badge_earned",
         title: `🏅 Badge Unlocked: ${def.title}`,
         message: `${def.description} +1 ShareCoin awarded!`,
         link: "/achievements",
         isRead: false,
+        reviewId: reviewContext?.reviewId,
       });
     }
   } catch (err) {
+    if (reviewContext) throw err;
     console.error('Error checking/awarding achievements:', err);
   }
 }
@@ -14617,6 +14626,7 @@ Respond with ONLY the category name, nothing else.`
             await tx.insert(reputationActivities).values({
               userId: reviewedUserId, activityType: "RECEIVE_REVIEW", points: reviewPoints,
               itemId: transaction.items.id, requestId: transaction.item_requests.id,
+              reviewId: review.id,
               description: `Received a ${rating}-star review on "${transaction.items.name}"`,
             });
           }
@@ -14624,6 +14634,7 @@ Respond with ONLY the category name, nothing else.`
             await tx.insert(reputationActivities).values({
               userId: reviewedUserId, activityType: "positive_feedback" as any, points: feedbackTagPoints,
               itemId: transaction.items.id, requestId: transaction.item_requests.id,
+              reviewId: review.id,
               description: `Received positive feedback on "${transaction.items.name}": ${positiveTagsAwarded.join(", ")}`,
             });
           }
@@ -14631,6 +14642,7 @@ Respond with ONLY the category name, nothing else.`
             await tx.insert(reputationActivities).values({
               userId: reviewedUserId, activityType: "low_review_two_star" as any, points: negativeTagDeduction,
               itemId: transaction.items.id, requestId: transaction.item_requests.id,
+              reviewId: review.id,
               description: `Received negative feedback on "${transaction.items.name}": ${negativeTagsSelected.join(", ")}`,
             });
           }
@@ -14662,6 +14674,7 @@ Respond with ONLY the category name, nothing else.`
               await tx.insert(shareCoinsTransactions).values({
                 userId: reviewedUserId, amount: newLevelDef.coinsReward.toString(),
                 description: `Level Up Bonus — ${newLevelDef.name}`, transactionType: "EARNED",
+                reviewId: review.id,
               });
             }
             levelUp = { name: newLevelDef.name, coinsReward: newLevelDef.coinsReward };
@@ -14674,9 +14687,51 @@ Respond with ONLY the category name, nothing else.`
           applyPenalty: (penaltyRating, negativeTags) =>
             applyLowReviewPenalty(reviewedUserId, review.id, penaltyRating, negativeTags, tx),
         });
+
+        // Persist all review-triggered effects before commit; delivery to WebSocket is
+        // best-effort after commit, but the inbox records themselves are not.
+        if (levelUp) {
+          if (levelUp.coinsReward > 0) {
+            await tx.insert(notifications).values({
+              userId: reviewedUserId, type: "sharecoin_earned",
+              title: `+${levelUp.coinsReward} ShareCoins earned`,
+              message: `You earned ${levelUp.coinsReward} ShareCoins for reaching ${levelUp.name}!`,
+              link: "/achievements", isRead: false, reviewId: review.id,
+            } as any);
+          }
+          await tx.insert(notifications).values({
+            userId: reviewedUserId, type: "level_up",
+            title: `Level up — ${levelUp.name}! 🎉`,
+            message: `You've reached ${levelUp.name}. Keep sharing to unlock more perks!`,
+            link: "/achievements", isRead: false, reviewId: review.id,
+          } as any);
+        }
+        const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+        const breakdownParts: string[] = [];
+        if (reviewPoints > 0) breakdownParts.push(`${rating}★ review +${reviewPoints}`);
+        positiveTagsAwarded.forEach(t => breakdownParts.push(`${t.replace(/_/g, ' ')} +1`));
+        negativeTagsSelected.forEach(t => breakdownParts.push(`${t.replace(/_/g, ' ')} −1`));
+        const effectivePoints = pairCapHit ? 0 : totalPoints;
+        const trustTitle = effectivePoints > 0
+          ? `New ${rating}-star review (+${effectivePoints} trust)`
+          : effectivePoints < 0
+            ? `New ${rating}-star review (${effectivePoints} trust)`
+            : `New ${rating}-star review`;
+        const reviewerName = req.user.displayName || req.user.username;
+        const reviewLine = comment
+          ? `${reviewerName} ${stars}: "${comment.slice(0, 60)}${comment.length > 60 ? '…' : ''}"`
+          : `${reviewerName} left you a ${rating}-star review ${stars}`;
+        const breakdownLine = !pairCapHit && breakdownParts.length > 0 ? `\n${breakdownParts.join(', ')}` : '';
+        const [reviewNotif] = await tx.insert(notifications).values({
+          userId: reviewedUserId, type: "new_review_received", title: trustTitle,
+          message: `${reviewLine}${breakdownLine}`, isRead: false, reviewId: review.id,
+        }).returning();
+
+        await checkAndAwardAchievements(req.user.id, { reviewId: review.id, tx });
+        await checkAndAwardAchievements(reviewedUserId, { reviewId: review.id, tx });
         return {
           review, reviewPoints, feedbackTagPoints, negativeTagDeduction, positiveTagsAwarded,
-          negativeTagsSelected, totalPoints, pairCapHit, levelUp, lowReviewPenaltyResult,
+          negativeTagsSelected, totalPoints, pairCapHit, levelUp, lowReviewPenaltyResult, reviewNotif,
         };
       });
     } catch (error) {
@@ -14697,60 +14752,12 @@ Respond with ONLY the category name, nothing else.`
       pairCapHit,
       levelUp,
       lowReviewPenaltyResult,
+      reviewNotif,
     } = persistedReview;
 
-    if (levelUp) {
-      await runNonCriticalReviewSideEffect("level-up notifications", async () => {
-        if (levelUp.coinsReward > 0) {
-          await db.insert(notifications).values({
-            userId: reviewedUserId,
-            type: "sharecoin_earned",
-            title: `+${levelUp.coinsReward} ShareCoins earned`,
-            message: `You earned ${levelUp.coinsReward} ShareCoins for reaching ${levelUp.name}!`,
-            link: "/achievements",
-            isRead: false,
-          } as any);
-        }
-        await db.insert(notifications).values({
-          userId: reviewedUserId,
-          type: "level_up",
-          title: `Level up — ${levelUp.name}! 🎉`,
-          message: `You've reached ${levelUp.name}. Keep sharing to unlock more perks!`,
-          link: "/achievements",
-          isRead: false,
-        } as any);
-      });
-    }
-
-    // Build single combined notification: review + trust score impact
-    const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
-    const breakdownParts: string[] = [];
-    if (reviewPoints > 0) breakdownParts.push(`${rating}★ review +${reviewPoints}`);
-    positiveTagsAwarded.forEach(t => breakdownParts.push(`${t.replace(/_/g, ' ')} +1`));
-    negativeTagsSelected.forEach(t => breakdownParts.push(`${t.replace(/_/g, ' ')} −1`));
-
-    const effectivePoints = pairCapHit ? 0 : totalPoints;
-    const trustTitle = effectivePoints > 0
-      ? `New ${rating}-star review (+${effectivePoints} trust)`
-      : effectivePoints < 0
-        ? `New ${rating}-star review (${effectivePoints} trust)`
-        : `New ${rating}-star review`;
-
-    const reviewerName = req.user.displayName || req.user.username;
-    const reviewLine = comment
-      ? `${reviewerName} ${stars}: "${comment.slice(0, 60)}${comment.length > 60 ? '…' : ''}"`
-      : `${reviewerName} left you a ${rating}-star review ${stars}`;
-    const breakdownLine = !pairCapHit && breakdownParts.length > 0 ? `\n${breakdownParts.join(', ')}` : '';
     const selectedNegativeTags = cleanedTags.filter((tag) => ["late_return", "issue_reported"].includes(tag));
 
-    await runNonCriticalReviewSideEffect("review notification", async () => {
-      const [reviewNotif] = await db.insert(notifications).values({
-        userId: reviewedUserId,
-        type: "new_review_received",
-        title: trustTitle,
-        message: `${reviewLine}${breakdownLine}`,
-        isRead: false,
-      }).returning();
+    await runNonCriticalReviewSideEffect("review notification delivery", async () => {
       const reviewedUserWs = connectedClients.get(reviewedUserId);
       if (reviewedUserWs?.readyState === WebSocket.OPEN) {
         reviewedUserWs.send(JSON.stringify({ type: "new_notification", notification: reviewNotif }));

@@ -143,16 +143,12 @@ async function buildDuplicateReviewReportWithClient(client: Queryable) {
         )
         SELECT DISTINCT ra.*
         FROM reputation_activities ra
-        JOIN duplicate_reviews dr ON dr.reviewed_user_id = ra.user_id
-        WHERE ra.activity_type = ANY($3::text[])
-          AND (
-            ra.request_id = $2
-            OR (
-              ra.request_id IS NULL
-              AND ra.created_at BETWEEN dr.first_at - interval '10 minutes'
-                                    AND dr.last_at + interval '10 minutes'
-            )
-          )
+        WHERE ra.review_id IN (SELECT id FROM user_reviews WHERE reviewer_id = $1 AND transaction_id = $2)
+           OR (ra.review_id IS NULL AND ra.activity_type = ANY($3::text[])
+             AND EXISTS (SELECT 1 FROM duplicate_reviews dr WHERE dr.reviewed_user_id = ra.user_id
+               AND (ra.request_id = $2 OR (ra.request_id IS NULL
+                 AND ra.created_at BETWEEN dr.first_at - interval '10 minutes'
+                                       AND dr.last_at + interval '10 minutes'))))
         ORDER BY ra.created_at, ra.id
       `, [...windowArgs, RELATED_ACTIVITY_TYPES]),
       query(`
@@ -163,12 +159,14 @@ async function buildDuplicateReviewReportWithClient(client: Queryable) {
         )
         SELECT DISTINCT sct.*
         FROM share_coins_transactions sct
-        JOIN duplicate_reviews dr ON dr.reviewed_user_id = sct.user_id
-        WHERE sct.description LIKE 'Level Up Bonus — %'
+        WHERE sct.review_id IN (SELECT id FROM user_reviews WHERE reviewer_id = $1 AND transaction_id = $2)
+           OR (sct.review_id IS NULL
+           AND sct.description LIKE 'Level Up Bonus — %'
           AND sct.transaction_type = 'EARNED'
           AND sct.amount > 0
-          AND sct.created_at BETWEEN dr.first_at - interval '10 minutes'
-                                 AND dr.last_at + interval '10 minutes'
+           AND EXISTS (SELECT 1 FROM duplicate_reviews dr WHERE dr.reviewed_user_id = sct.user_id
+             AND sct.created_at BETWEEN dr.first_at - interval '10 minutes'
+                                    AND dr.last_at + interval '10 minutes'))
         ORDER BY sct.created_at, sct.id
       `, windowArgs),
       query(`
@@ -179,13 +177,11 @@ async function buildDuplicateReviewReportWithClient(client: Queryable) {
         )
         SELECT DISTINCT n.*
         FROM notifications n
-        JOIN duplicate_reviews dr ON dr.reviewed_user_id = n.user_id
-        WHERE n.type = ANY($3::text[])
-          AND (
-            n.request_id = $2
-            OR n.created_at BETWEEN dr.first_at - interval '10 minutes'
-                                AND dr.last_at + interval '10 minutes'
-          )
+        WHERE n.review_id IN (SELECT id FROM user_reviews WHERE reviewer_id = $1 AND transaction_id = $2)
+           OR (n.review_id IS NULL AND n.type = ANY($3::text[])
+             AND EXISTS (SELECT 1 FROM duplicate_reviews dr WHERE dr.reviewed_user_id = n.user_id
+               AND (n.request_id = $2 OR n.created_at BETWEEN dr.first_at - interval '10 minutes'
+                                                          AND dr.last_at + interval '10 minutes')))
         ORDER BY n.created_at, n.id
       `, [...windowArgs, RELATED_NOTIFICATION_TYPES]),
       query(`
@@ -197,9 +193,11 @@ async function buildDuplicateReviewReportWithClient(client: Queryable) {
         SELECT DISTINCT ua.*, a.name AS achievement_name
         FROM user_achievements ua
         JOIN achievements a ON a.id = ua.achievement_id
-        JOIN duplicate_reviews dr ON dr.reviewed_user_id = ua.user_id
-        WHERE ua.earned_at BETWEEN dr.first_at - interval '10 minutes'
-                               AND dr.last_at + interval '10 minutes'
+        WHERE ua.review_id IN (SELECT id FROM user_reviews WHERE reviewer_id = $1 AND transaction_id = $2)
+           OR (ua.review_id IS NULL AND EXISTS (
+             SELECT 1 FROM duplicate_reviews dr WHERE dr.reviewed_user_id = ua.user_id
+               AND ua.earned_at BETWEEN dr.first_at - interval '10 minutes'
+                                    AND dr.last_at + interval '10 minutes'))
         ORDER BY ua.earned_at, ua.id
       `, windowArgs),
       auditTableExists
@@ -212,16 +210,23 @@ async function buildDuplicateReviewReportWithClient(client: Queryable) {
         : Promise.resolve({ rows: [], rowCount: 0 }),
     ]);
 
+    const effects = {
+      reputationActivities: reputationActivities.rows,
+      shareCoinTransactions: shareCoinTransactions.rows,
+      notifications: notifications.rows,
+      userAchievements: userAchievements.rows,
+    };
+    const subset = (attributed: boolean) => Object.fromEntries(
+      Object.entries(effects).map(([name, rows]) => [name, rows.filter((row: any) =>
+        (row.review_id !== null) === attributed)]),
+    );
     duplicates.push({
       ...group,
       reviews: reviews.rows,
       affectedUsers: affectedUsers.rows,
-      relatedEffects: {
-        reputationActivities: reputationActivities.rows,
-        shareCoinTransactions: shareCoinTransactions.rows,
-        notifications: notifications.rows,
-        userAchievements: userAchievements.rows,
-      },
+      relatedEffects: effects, // Retained for existing report consumers.
+      attributedEffects: subset(true),
+      legacyCandidates: subset(false),
       priorAudit: priorAudit.rows[0] ?? null,
     });
   }
@@ -231,7 +236,7 @@ async function buildDuplicateReviewReportWithClient(client: Queryable) {
     duplicateGroupCount: duplicates.length,
     instructions: duplicates.length === 0
       ? "No duplicate review groups found."
-      : "Choose one canonical review per group. In the apply plan, include only effect IDs confirmed to have been produced by removed reviews; candidates are not selected automatically.",
+      : "Choose one canonical review per group. attributedEffects have exact review_id matches; legacyCandidates are conservative, unverified matches. Include only confirmed effects of removed reviews in the apply plan; nothing is selected automatically.",
     duplicates,
   };
 }
@@ -445,6 +450,17 @@ export async function applyDuplicateReviewRepair(
         const invalid = ids(repair[planField]).filter((id) => !candidates.has(id));
         if (invalid.length > 0) {
           throw new Error(`${planField} contains unrelated or stale IDs: ${invalid.join(", ")}`);
+        }
+        const selected = new Set(ids(repair[planField]));
+        const canonicalEffects = group.attributedEffects[reportField]
+          .filter((effect: any) => effect.review_id === repair.canonicalReviewId && selected.has(effect.id));
+        if (canonicalEffects.length > 0) {
+          throw new Error(`${planField} selects effects of the canonical review: ${canonicalEffects.map((effect: any) => effect.id).join(", ")}`);
+        }
+        const missing = group.attributedEffects[reportField]
+          .filter((effect: any) => effect.review_id !== repair.canonicalReviewId && !selected.has(effect.id));
+        if (missing.length > 0) {
+          throw new Error(`${planField} omits attributed effects of removed reviews: ${missing.map((effect: any) => effect.id).join(", ")}`);
         }
       }
 

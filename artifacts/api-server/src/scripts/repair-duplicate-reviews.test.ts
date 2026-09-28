@@ -48,6 +48,7 @@ test("reviewed duplicate repair is complete, audited, and safe to rerun", async 
       points integer NOT NULL,
       item_id integer,
       request_id integer,
+      review_id integer,
       description text NOT NULL,
       created_at timestamp NOT NULL DEFAULT now()
     );
@@ -57,6 +58,7 @@ test("reviewed duplicate repair is complete, audited, and safe to rerun", async 
       amount numeric NOT NULL,
       description text NOT NULL,
       transaction_type text NOT NULL,
+      review_id integer,
       created_at timestamp NOT NULL DEFAULT now()
     );
     CREATE TABLE notifications (
@@ -66,6 +68,7 @@ test("reviewed duplicate repair is complete, audited, and safe to rerun", async 
       title text NOT NULL,
       message text NOT NULL,
       request_id integer,
+      review_id integer,
       created_at timestamp NOT NULL DEFAULT now()
     );
     CREATE TABLE achievements (
@@ -76,6 +79,7 @@ test("reviewed duplicate repair is complete, audited, and safe to rerun", async 
       id serial PRIMARY KEY,
       user_id integer NOT NULL,
       achievement_id integer NOT NULL,
+      review_id integer,
       earned_at timestamp NOT NULL DEFAULT now()
     );
   `);
@@ -89,10 +93,10 @@ test("reviewed duplicate repair is complete, audited, and safe to rerun", async 
       (1, 20, 10, 30, 5, 'canonical'),
       (2, 20, 10, 30, 5, 'duplicate');
     INSERT INTO reputation_activities
-      (id, user_id, activity_type, points, request_id, description)
+      (id, user_id, activity_type, points, request_id, review_id, description)
     VALUES
-      (1, 10, 'RECEIVE_REVIEW', 5, 30, 'canonical effect'),
-      (2, 10, 'RECEIVE_REVIEW', 5, 30, 'duplicate effect');
+      (1, 10, 'RECEIVE_REVIEW', 5, 30, NULL, 'canonical effect'),
+      (2, 10, 'RECEIVE_REVIEW', 5, 30, NULL, 'duplicate effect');
     INSERT INTO share_coins_transactions
       (id, user_id, amount, description, transaction_type)
     VALUES
@@ -123,6 +127,8 @@ test("reviewed duplicate repair is complete, audited, and safe to rerun", async 
   assert.equal(report.duplicates[0].relatedEffects.notifications.length, 2);
   assert.equal(report.duplicates[0].relatedEffects.userAchievements.length, 2);
   assert.equal(report.duplicates[0].affectedUsers[0].reputationScore, 500);
+  assert.equal(report.duplicates[0].attributedEffects.reputationActivities.length, 0);
+  assert.equal(report.duplicates[0].legacyCandidates.reputationActivities.length, 2);
 
   const plan = {
     reason: "Remove effects confirmed to belong to the duplicate review.",
@@ -197,6 +203,62 @@ test("reviewed duplicate repair is complete, audited, and safe to rerun", async 
   assert.deepEqual(
     await applyDuplicateReviewRepair(plan, "integration-test", testPool),
     { status: "already_repaired", repairedGroups: 0 },
+  );
+});
+
+test("report separates exact review effects from nearby unrelated activity", async (t) => {
+  const schema = `review_effect_attribution_${Date.now()}`;
+  await adminPool.query(`CREATE SCHEMA ${schema}`);
+  const testPool = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema}` });
+  t.after(async () => {
+    await testPool.end();
+    await adminPool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+  });
+  await testPool.query(`
+    CREATE TABLE user_reviews (id integer PRIMARY KEY, reviewer_id integer, reviewed_user_id integer, transaction_id integer, rating integer, comment text, feedback_tags text[], created_at timestamp);
+    CREATE TABLE users (id integer PRIMARY KEY, reputation_score integer, reputation_level text, share_coins numeric);
+    CREATE TABLE reputation_activities (id integer PRIMARY KEY, user_id integer, activity_type text, request_id integer, review_id integer, created_at timestamp);
+    CREATE TABLE share_coins_transactions (id integer PRIMARY KEY, user_id integer, description text, transaction_type text, amount numeric, review_id integer, created_at timestamp);
+    CREATE TABLE notifications (id integer PRIMARY KEY, user_id integer, type text, request_id integer, review_id integer, created_at timestamp);
+    CREATE TABLE achievements (id integer PRIMARY KEY, name text);
+    CREATE TABLE user_achievements (id integer PRIMARY KEY, user_id integer, achievement_id integer, review_id integer, earned_at timestamp);
+    INSERT INTO users VALUES (10, 0, 'Newcomer', 0);
+    INSERT INTO user_reviews VALUES (1, 20, 10, 30, 5, NULL, NULL, '2020-01-01'), (2, 20, 10, 30, 5, NULL, NULL, '2020-01-01');
+    INSERT INTO reputation_activities VALUES (1, 10, 'RECEIVE_REVIEW', 30, 2, '2026-01-01'), (2, 10, 'lending_smooth', 30, NULL, '2020-01-01');
+    INSERT INTO share_coins_transactions VALUES (1, 20, 'Badge unlocked', 'EARNED', 1, 2, '2026-01-01'), (2, 10, 'Borrowed', 'EARNED', 1, NULL, '2020-01-01');
+    INSERT INTO notifications VALUES (1, 20, 'badge_earned', NULL, 2, '2026-01-01'), (2, 10, 'request_accepted', 30, NULL, '2020-01-01');
+    INSERT INTO achievements VALUES (1, 'review badge');
+    INSERT INTO user_achievements VALUES (1, 20, 1, 2, '2026-01-01'), (2, 10, 1, NULL, '2020-01-01');
+  `);
+  const report = await buildDuplicateReviewReport(testPool);
+  const group = report.duplicates[0];
+  for (const category of ["reputationActivities", "shareCoinTransactions", "notifications", "userAchievements"] as const) {
+    assert.deepEqual(group.attributedEffects[category].map((row: any) => row.id), [1]);
+  }
+  assert.deepEqual(group.legacyCandidates.reputationActivities, []);
+  assert.deepEqual(group.legacyCandidates.shareCoinTransactions, []);
+  assert.deepEqual(group.legacyCandidates.notifications, []);
+  // The unlabelled achievement is only a candidate, never an exact match.
+  assert.deepEqual(group.legacyCandidates.userAchievements.map((row: any) => row.id), [2]);
+  const plan = {
+    reason: "Confirm every attributed effect before removing duplicates.",
+    userReconciliations: [],
+    repairs: [{
+      reviewerId: 20, transactionId: 30, canonicalReviewId: 1,
+      reputationActivityIds: [], shareCoinTransactionIds: [],
+      notificationIds: [], userAchievementIds: [],
+    }],
+  };
+  await assert.rejects(
+    applyDuplicateReviewRepair(plan, "integration-test", testPool),
+    /omits attributed effects of removed reviews/,
+  );
+  await assert.rejects(
+    applyDuplicateReviewRepair({
+      ...plan,
+      repairs: [{ ...plan.repairs[0], canonicalReviewId: 2, reputationActivityIds: [1] }],
+    }, "integration-test", testPool),
+    /selects effects of the canonical review/,
   );
 });
 

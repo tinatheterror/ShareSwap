@@ -1812,7 +1812,10 @@ export function registerRoutes(
       };
     };
 
-    const cleanupOrphanedOwnerReturnFixtures = async () => {
+    const cleanupOrphanedOwnerReturnFixtures = async (simulateFailure = false) => {
+      const activeUserIds = new Set(
+        [...ownerReturnFixtures.values()].flatMap((fixture) => fixture.userIds),
+      );
       const staleUsers = await db
         .select({ id: users.id })
         .from(users)
@@ -1822,25 +1825,31 @@ export function registerRoutes(
             ilike(users.username, "e2e-borrower-%@example.test"),
           ),
         );
-      const staleUserIds = staleUsers.map((user) => user.id);
-      if (staleUserIds.length === 0) return;
+      const staleUserIds = staleUsers
+        .map((user) => user.id)
+        .filter((id) => !activeUserIds.has(id));
+      if (staleUserIds.length === 0 && !simulateFailure) return;
 
-      const staleItems = await db
-        .select({ id: items.id })
-        .from(items)
-        .where(inArray(items.ownerId, staleUserIds));
+      const staleItems = staleUserIds.length > 0
+        ? await db
+            .select({ id: items.id })
+            .from(items)
+            .where(inArray(items.ownerId, staleUserIds))
+        : [];
       const staleItemIds = staleItems.map((item) => item.id);
-      const staleRequests = await db
-        .select({ id: itemRequests.id })
-        .from(itemRequests)
-        .where(
-          or(
-            inArray(itemRequests.requesterId, staleUserIds),
-            ...(staleItemIds.length > 0
-              ? [inArray(itemRequests.itemId, staleItemIds)]
-              : []),
-          ),
-        );
+      const staleRequests = staleUserIds.length > 0
+        ? await db
+            .select({ id: itemRequests.id })
+            .from(itemRequests)
+            .where(
+              or(
+                inArray(itemRequests.requesterId, staleUserIds),
+                ...(staleItemIds.length > 0
+                  ? [inArray(itemRequests.itemId, staleItemIds)]
+                  : []),
+              ),
+            )
+        : [];
       const staleRequestIds = staleRequests.map((request) => request.id);
 
       await db.transaction(async (tx) => {
@@ -1849,19 +1858,45 @@ export function registerRoutes(
         if (staleItemIds.length > 0) {
           await tx.delete(items).where(inArray(items.id, staleItemIds));
         }
-        await tx.delete(users).where(inArray(users.id, staleUserIds));
+        if (simulateFailure) {
+          throw new Error("Simulated owner return orphan cleanup failure");
+        }
+        if (staleUserIds.length > 0) {
+          await tx.delete(users).where(inArray(users.id, staleUserIds));
+        }
       });
     };
 
     let ownerReturnFixtureOrphanCleanup: Promise<void> | undefined;
-    const ensureOwnerReturnFixtureOrphansCleaned = () => {
-      ownerReturnFixtureOrphanCleanup ??=
-        cleanupOrphanedOwnerReturnFixtures();
+    let ownerReturnFixtureOrphanCleanupComplete = false;
+    const ensureOwnerReturnFixtureOrphansCleaned = (simulateFailure: boolean) => {
+      // The fault header re-runs cleanup even if the initial startup pass succeeded.
+      // A failure must not poison later fixture setups in this same server process.
+      if (simulateFailure && ownerReturnFixtureOrphanCleanupComplete) {
+        ownerReturnFixtureOrphanCleanup = undefined;
+        ownerReturnFixtureOrphanCleanupComplete = false;
+      }
+      if (!ownerReturnFixtureOrphanCleanup) {
+        const attempt = cleanupOrphanedOwnerReturnFixtures(simulateFailure);
+        ownerReturnFixtureOrphanCleanup = attempt;
+        void attempt.then(
+          () => {
+            ownerReturnFixtureOrphanCleanupComplete = true;
+          },
+          () => {
+            if (ownerReturnFixtureOrphanCleanup === attempt) {
+              ownerReturnFixtureOrphanCleanup = undefined;
+            }
+          },
+        );
+      }
       return ownerReturnFixtureOrphanCleanup;
     };
 
     app.post("/api/e2e/owner-return-fixture", async (req, res) => {
-      await ensureOwnerReturnFixtureOrphansCleaned();
+      await ensureOwnerReturnFixtureOrphansCleaned(
+        req.get("x-e2e-simulate-failure") === "owner-return-orphan-cleanup",
+      );
       const fixtureId = randomBytes(8).toString("hex");
       const password = `OwnerReturn-${fixtureId}`;
       const passwordHash = await hashPassword(password);
@@ -1968,11 +2003,13 @@ export function registerRoutes(
 
       const { owner, borrower, item, request } = fixtureRecords;
 
-      ownerReturnFixtures.set(fixtureId, {
-        requestId: request.id,
-        itemId: item.id,
-        userIds: [owner.id, borrower.id],
-      });
+      if (req.get("x-e2e-simulate-failure") !== "owner-return-fixture-orphan") {
+        ownerReturnFixtures.set(fixtureId, {
+          requestId: request.id,
+          itemId: item.id,
+          userIds: [owner.id, borrower.id],
+        });
+      }
 
       res.json({
         fixtureId,

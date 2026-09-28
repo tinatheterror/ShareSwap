@@ -104,6 +104,65 @@ test("failed fixture setup rolls back every inserted record", async ({
   });
 });
 
+test("failed orphan cleanup rolls back and the next setup retries without deleting active fixtures", async ({
+  request,
+}) => {
+  const activeResponses = await Promise.all([
+    request.post("/api/e2e/owner-return-fixture"),
+    request.post("/api/e2e/owner-return-fixture"),
+  ]);
+  for (const response of activeResponses) expect(response.ok()).toBe(true);
+  const active = await Promise.all(
+    activeResponses.map((response) => response.json() as Promise<OwnerReturnFixture>),
+  );
+  let retried: OwnerReturnFixture | undefined;
+
+  try {
+    // Deliberately leave one fixture untracked to represent a previous interrupted run.
+    const orphanResponse = await request.post("/api/e2e/owner-return-fixture", {
+      headers: { "x-e2e-simulate-failure": "owner-return-fixture-orphan" },
+    });
+    expect(orphanResponse.ok()).toBe(true);
+    const orphan = (await orphanResponse.json()) as OwnerReturnFixture;
+
+    const failedCleanup = await request.post("/api/e2e/owner-return-fixture", {
+      headers: { "x-e2e-simulate-failure": "owner-return-orphan-cleanup" },
+    });
+    expect(failedCleanup.status()).toBe(500);
+
+    // Deletions inside the failed transaction must have rolled back.
+    const orphanLogin = await request.post("/api/login", {
+      data: orphan.owner,
+    });
+    expect(orphanLogin.ok()).toBe(true);
+
+    const retryResponse = await request.post("/api/e2e/owner-return-fixture");
+    expect(retryResponse.ok()).toBe(true);
+    retried = (await retryResponse.json()) as OwnerReturnFixture;
+
+    const removedOrphanLogin = await request.post("/api/login", {
+      data: orphan.owner,
+    });
+    expect(removedOrphanLogin.ok()).toBe(false);
+    for (const fixture of active) {
+      const activeLogin = await request.post("/api/login", {
+        data: fixture.owner,
+      });
+      expect(activeLogin.ok()).toBe(true);
+    }
+  } finally {
+    // If an assertion fails before retry, a later setup still clears the orphan.
+    if (!retried) {
+      const recovery = await request.post("/api/e2e/owner-return-fixture");
+      if (recovery.ok()) retried = (await recovery.json()) as OwnerReturnFixture;
+    }
+    if (retried) await cleanupOwnerReturnFixture(request, retried.fixtureId);
+    for (const fixture of active) {
+      await cleanupOwnerReturnFixture(request, fixture.fixtureId);
+    }
+  }
+});
+
 test("borrower sees a failed return request without losing the dialog", async ({
   page,
 }) => {

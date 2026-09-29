@@ -1,10 +1,18 @@
 import React from "react";
 import { act } from "react";
-import { Alert } from "react-native";
 import renderer from "react-test-renderer";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReturnConfirmationSheet } from "../ReturnConfirmationSheet";
 import { apiPost } from "@/lib/api";
+
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
+jest.mock("@/context/AuthContext", () => ({
+  useAuth: () => ({ refetchUser: jest.fn() }),
+}));
 
 jest.mock("@/hooks/useColors", () => ({
   useColors: () => ({
@@ -42,7 +50,6 @@ jest.mock("react-native-safe-area-context", () => ({
 test("a failed owner confirmation shows a visible error", async () => {
   const error = new Error("Return confirmation is temporarily unavailable");
   jest.mocked(apiPost).mockRejectedValueOnce(error);
-  const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
   const client = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
   });
@@ -71,10 +78,48 @@ test("a failed owner confirmation shows a visible error", async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
-  expect(alertSpy).toHaveBeenCalledWith(
-    "Could not confirm return",
-    "Return confirmation is temporarily unavailable",
-  );
+  expect(tree.root.findAllByProps({ children: error.message }).length).toBeGreaterThan(0);
   expect(tree.root.findByProps({ testID: "submit-confirm-return" })).toBeTruthy();
-  alertSpy.mockRestore();
+  act(() => tree.unmount());
+  client.clear();
+});
+
+test("an expired session offers sign-in instead of silently retrying the return", async () => {
+  const error = Object.assign(new Error("Your session has expired."), { status: 401 });
+  jest.mocked(apiPost).mockRejectedValueOnce(error);
+  mockPush.mockClear();
+  const client = new QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+  });
+
+  let tree!: renderer.ReactTestRenderer;
+  await act(async () => {
+    tree = renderer.create(
+      <QueryClientProvider client={client}>
+        <ReturnConfirmationSheet
+          visible
+          onClose={jest.fn()}
+          onSuccess={jest.fn()}
+          requestId={42}
+          itemName="Tent"
+          depositAmount={25}
+          userRole="borrower"
+        />
+      </QueryClientProvider>,
+    );
+  });
+
+  await act(async () => {
+    tree.root.findByProps({ testID: "submit-borrower-return" }).props.onPress();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  expect(tree.root.findAllByProps({ testID: "return-submit-error" }).length).toBeGreaterThan(0);
+  expect(tree.root.findAllByProps({
+    children: "Your sign-in has expired. Sign in again, then reopen this chat to return the item.",
+  }).length).toBeGreaterThan(0);
+  act(() => tree.root.findByProps({ testID: "return-sign-in" }).props.onPress());
+  expect(mockPush).toHaveBeenCalledWith("/login?session_expired=1");
+  act(() => tree.unmount());
+  client.clear();
 });

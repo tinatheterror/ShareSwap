@@ -12,12 +12,14 @@ import {
   View,
 } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useColors } from "@/hooks/useColors";
 import { apiPost, apiRequest } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 interface ReturnConfirmationSheetProps {
   visible: boolean;
@@ -54,6 +56,8 @@ export function ReturnConfirmationSheet({
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
+  const router = useRouter();
+  const { refetchUser } = useAuth();
 
   const [sameCondition, setSameCondition] = useState(true);
   const [conditionRating, setConditionRating] = useState(4);
@@ -61,6 +65,8 @@ export function ReturnConfirmationSheet({
   const [confirmDispute, setConfirmDispute] = useState(false);
   const [disputePhotoUri, setDisputePhotoUri] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [signInRequired, setSignInRequired] = useState(false);
 
   const isEarlyReturn = endDate ? new Date() < new Date(endDate) : false;
   const isRental = requestType === "RENT";
@@ -72,6 +78,20 @@ export function ReturnConfirmationSheet({
     qc.invalidateQueries({ queryKey: ["/api/inbox"] });
     qc.invalidateQueries({ queryKey: ["/api/inbox/archived"] });
   };
+
+  function handleSubmitError(error: Error & { status?: number }) {
+    const expired = error.status === 401;
+    setSignInRequired(expired);
+    setSubmitError(expired
+      ? "Your sign-in has expired. Sign in again, then reopen this chat to return the item."
+      : error.message || "The return could not be saved. Please try again.");
+    if (expired) void refetchUser();
+  }
+
+  function goToSignIn() {
+    handleClose();
+    router.push("/login?session_expired=1" as never);
+  }
 
   async function pickDisputePhoto() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -109,13 +129,12 @@ export function ReturnConfirmationSheet({
   const initiateReturnMutation = useMutation({
     mutationFn: () => apiPost(`/api/requests/${requestId}/return`, {}),
     onSuccess: () => {
+      setSubmitError(null);
       invalidate();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onSuccess();
     },
-    onError: (error: Error) => {
-      Alert.alert("Could not initiate return", error.message || "Please try again.");
-    },
+    onError: handleSubmitError,
   });
 
   // Owner: confirm return — uploads dispute photo first if present
@@ -149,13 +168,12 @@ export function ReturnConfirmationSheet({
       });
     },
     onSuccess: () => {
+      setSubmitError(null);
       invalidate();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onSuccess();
     },
-    onError: (error: Error) => {
-      Alert.alert("Could not confirm return", error.message || "Please try again.");
-    },
+    onError: handleSubmitError,
   });
 
   const reset = () => {
@@ -164,6 +182,8 @@ export function ReturnConfirmationSheet({
     setConditionNotes("");
     setConfirmDispute(false);
     setDisputePhotoUri(null);
+    setSubmitError(null);
+    setSignInRequired(false);
   };
 
   const handleClose = () => {
@@ -211,6 +231,12 @@ export function ReturnConfirmationSheet({
             </Text>
           </View>
 
+          {submitError && (
+            <View testID="return-submit-error" style={[ss.infoBox, { backgroundColor: "#fef2f2", borderColor: "#fecaca" }]}>
+              <Text style={{ color: "#991b1b", fontSize: 13, flex: 1 }}>{submitError}</Text>
+            </View>
+          )}
+
           <View style={ss.btnRow}>
             <Pressable
               style={[ss.btn, { flex: 1, borderColor: colors.border }]}
@@ -220,17 +246,21 @@ export function ReturnConfirmationSheet({
               <Text style={[ss.btnTxt, { color: colors.foreground }]}>Message Owner</Text>
             </Pressable>
             <Pressable
+              testID={signInRequired ? "return-sign-in" : "submit-borrower-return"}
               style={[ss.btn, { flex: 1, backgroundColor: "#2563eb", borderColor: "#2563eb" }]}
-              onPress={() => initiateReturnMutation.mutate()}
+              onPress={signInRequired ? goToSignIn : () => {
+                setSubmitError(null);
+                initiateReturnMutation.mutate();
+              }}
               disabled={initiateReturnMutation.isPending}
             >
               {initiateReturnMutation.isPending ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Feather name="rotate-ccw" size={14} color="#fff" />
+                  <Feather name={signInRequired ? "log-in" : "rotate-ccw"} size={14} color="#fff" />
                   <Text style={[ss.btnTxt, { color: "#fff" }]}>
-                    {isEarlyReturn ? "Initiate Early Return" : "Return Item"}
+                    {signInRequired ? "Sign in again" : isEarlyReturn ? "Initiate Early Return" : "Return Item"}
                   </Text>
                 </>
               )}
@@ -454,6 +484,11 @@ export function ReturnConfirmationSheet({
           </View>
         </ScrollView>
 
+        {submitError && (
+          <View testID="return-submit-error" style={[ss.infoBox, { backgroundColor: "#fef2f2", borderColor: "#fecaca" }]}>
+            <Text style={{ color: "#991b1b", fontSize: 13, flex: 1 }}>{submitError}</Text>
+          </View>
+        )}
         <View style={ss.btnRow}>
           <Pressable
             style={[ss.btn, { flex: 1, borderColor: colors.border }]}
@@ -463,7 +498,7 @@ export function ReturnConfirmationSheet({
             <Text style={[ss.btnTxt, { color: colors.foreground }]}>Cancel</Text>
           </Pressable>
           <Pressable
-            testID="submit-confirm-return"
+            testID={signInRequired ? "return-sign-in" : "submit-confirm-return"}
             style={[
               ss.btn,
               {
@@ -473,20 +508,23 @@ export function ReturnConfirmationSheet({
                 opacity: canSubmit ? 1 : 0.5,
               },
             ]}
-            onPress={() => confirmReturnMutation.mutate()}
-            disabled={!canSubmit || confirmReturnMutation.isPending}
+            onPress={signInRequired ? goToSignIn : () => {
+              setSubmitError(null);
+              confirmReturnMutation.mutate();
+            }}
+            disabled={(!signInRequired && !canSubmit) || confirmReturnMutation.isPending}
           >
             {confirmReturnMutation.isPending ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <>
                 <Feather
-                  name={shouldTriggerDispute ? "alert-triangle" : "check-circle"}
+                  name={signInRequired ? "log-in" : shouldTriggerDispute ? "alert-triangle" : "check-circle"}
                   size={14}
                   color="#fff"
                 />
                 <Text style={[ss.btnTxt, { color: "#fff" }]}>
-                  {shouldTriggerDispute ? "Open Dispute" : "Confirm Return"}
+                  {signInRequired ? "Sign in again" : shouldTriggerDispute ? "Open Dispute" : "Confirm Return"}
                 </Text>
               </>
             )}

@@ -283,16 +283,18 @@ export default function ChatScreen() {
     refetchInterval: 5000,
   });
 
+  const reqId = requestId ? parseInt(requestId, 10) : null;
   const { data: allRequests, isLoading: requestsLoading, error: requestsError, refetch: refetchRequests } = useQuery<ItemRequest[]>({
     queryKey: ["/api/requests"],
-    queryFn: () => apiGet<ItemRequest[]>("/api/requests", {
+    // A conditional 304 has no JSON body on native fetch. Use a unique URL for
+    // each refresh without adding custom headers (which break Expo web CORS).
+    queryFn: () => apiGet<ItemRequest[]>(`/api/requests?cardRequest=${reqId}&refresh=${Date.now()}`, {
       cache: "no-store",
     }),
-    enabled: !!requestId,
+    enabled: !!reqId,
     refetchInterval: 8000,
   });
 
-  const reqId = requestId ? parseInt(requestId) : null;
   const request = reqId ? (allRequests?.find((r) => r.id === reqId) ?? null) : null;
   // The full requests feed can fail independently of messages and the inbox.
   // Keep the item identified in the pinned area rather than silently removing it.
@@ -1399,7 +1401,7 @@ export default function ChatScreen() {
                 </View>
               </View>
               <View style={[card.detailsWrap, { borderTopColor: colors.border }]}>
-                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17, color: colors.mutedForeground }}>
                   {requestsError ? "Full request details could not load." : "Loading request details."}
                 </Text>
                 <Pressable onPress={() => refetchRequests()} testID="retry-request-card">

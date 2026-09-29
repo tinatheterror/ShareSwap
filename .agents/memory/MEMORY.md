@@ -17,3 +17,4 @@
 - [Derived-effect deduplication](derived-effect-deduplication.md) — never delete duplicate source records in a migration when reputation, rewards, or notifications may already reflect each record.
 - [Trust level follows current score](trust-level-current-score.md) — treat the current score as authoritative; saved level must change with every score write.
 - [Request chat deep links](request-chat-deep-links.md) — item-linked alerts need both the chat partner and request ID; a partner-only chat can open the wrong item.
+- [Native request-card cache behavior](native-request-card-cache.md) — a bodyless 304 can hide chat details; bypass conditional caching without custom cross-origin headers.

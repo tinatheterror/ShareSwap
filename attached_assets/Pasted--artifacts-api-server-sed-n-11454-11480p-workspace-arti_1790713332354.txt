@@ -1,0 +1,65 @@
+~/.../artifacts/api-server$ sed -n '11454,11480p' ~/workspace/artifacts/api-server/src/routes/routes.ts
+    const lateHours = deadline ? Math.max(0, Math.floor((Date.now() - new Date(deadline).getTime()) / 3_600_000)) : 0;
+    const role = request.ownerId === req.user.id ? "owner" : "borrower";
+    const actions = role === "owner"
+      ? ["open_claim", "arrange_return"]
+      : ["respond_to_claim", "request_extension", "arrange_return"];
+    if (role === "owner" && r.status === "RETURN_REQUESTED") {
+      actions.unshift("confirm_return");
+    }
+    res.json({
+      lifecycle: {
+        requestId: r.id, stage: r.overdueStage || "ACTIVE", deadline, lateHours,
+        claimDecisionDeadlineAt: r.claimDecisionDeadlineAt,
+        settlementStartDeadlineAt: r.settlementStartDeadlineAt,
+        role, actions,
+        deposit: { mode: r.depositMode, status: r.depositStatus, amount: r.trustDepositAmount, expiresAt: r.depositAuthorizationExpiresAt, protectionReviewRequired: r.depositRenewalStatus === "protection_review_required" },
+      },
+      claims: claims.map(c => ({ id: c.id, claimType: c.claimType, status: c.status, reason: c.reason, evidence: c.evidence, borrowerResponse: c.borrowerResponse, requestedAmount: c.requestedAmount, approvedAmount: c.approvedAmount, decisionReason: c.decisionReason, responseDeadlineAt: c.responseDeadlineAt, settlementStatus: c.settlementStatus, createdAt: c.createdAt, decidedAt: c.decidedAt })),
+      events: events.map(e => ({ eventType: e.eventType, createdAt: e.createdAt })),
+    });
+  });
+
+  app.post("/api/requests/:id/claims", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const requestId = Number(req.params.id), requestedAmount = Number(req.body.requestedAmount);
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0 || typeof req.body.reason !== "string" || !req.body.reason.trim())
+      return res.status(400).json({ error: "reason and a positive requestedAmount are required" });
+    const claimType = String(req.body.claimType || "");
+flag provided but not defined: -x
+Usage: grep [-clFivnhqre] [FILE]...
+
+  -F    Match using fixed strings (shorthand)
+  -c    Just show counts
+  -count
+        Just show counts
+  -e string
+        Pattern to match (shorthand)
+  -files-with-matches
+        list only files
+  -fixed-strings
+        Match using fixed strings
+  -h    Suppress file name prefixes on output (shorthand)
+  -i    case-insensitive matching (shorthand)
+  -ignore-case
+        case-insensitive matching
+  -invert-match
+        Print only non-matching lines
+  -l    list only files (shorthand)
+  -line-number
+        Show line numbers
+  -n    Show line numbers (shorthand)
+  -no-filename
+        Suppress file name prefixes on output
+  -q    Don't print matches; exit on first match (shorthand)
+  -quiet
+        Don't print matches; exit on first match
+  -r    recursive
+  -recursive
+        recursive
+  -regexp string
+        Pattern to match
+  -s    Don't print matches; exit on first match (shorthand)
+  -silent
+        Don't print matches; exit on first match
+  -v    Print only non-matching lines (shorthand)

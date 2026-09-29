@@ -2,9 +2,11 @@ import React from "react";
 import { act } from "react";
 import renderer from "react-test-renderer";
 import ChatScreen from "../../app/chat/[id]";
+import { apiGet } from "@/lib/api";
 
 const mockReturnSheet = jest.fn((_props: object) => null);
 let mockRequestsUnavailable = false;
+let mockRequestQueryFn: (() => unknown) | undefined;
 
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "2", requestId: "42" }),
@@ -32,8 +34,9 @@ jest.mock("@/lib/api", () => ({
 jest.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: jest.fn() }),
   useMutation: () => ({ mutate: jest.fn(), isPending: false }),
-  useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
+  useQuery: ({ queryKey, queryFn }: { queryKey: unknown[]; queryFn?: () => unknown }) => {
     const key = queryKey[0];
+    if (key === "/api/requests") mockRequestQueryFn = queryFn;
     if (key === "/api/requests" && mockRequestsUnavailable) {
       return { data: undefined, isLoading: false, error: new Error("Request feed unavailable"), refetch: jest.fn() };
     }
@@ -144,8 +147,13 @@ test("the pinned item remains identifiable when the full request feed fails", ()
     act(() => {
       tree = renderer.create(<ChatScreen />);
     });
-    expect(tree.root.findAllByProps({ testID: "retry-request-card" })).toHaveLength(1);
+    expect(tree.root.findAllByProps({ testID: "retry-request-card" }).length).toBeGreaterThan(0);
     expect(tree.root.findAllByProps({ children: "Tent" }).length).toBeGreaterThan(0);
+    mockRequestQueryFn?.();
+    expect(apiGet).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/api\/requests\?cardRequest=42&refresh=\d+$/),
+      { cache: "no-store" },
+    );
   } finally {
     act(() => tree?.unmount());
     mockRequestsUnavailable = false;

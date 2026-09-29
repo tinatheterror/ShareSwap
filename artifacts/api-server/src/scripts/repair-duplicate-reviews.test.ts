@@ -469,6 +469,141 @@ test("stale plans and mid-repair failures preserve both duplicate groups and the
   assert.equal(after.rows[6].length, 2);
 });
 
+test("an effect removed by another connection during apply rolls back earlier deletions", async (t) => {
+  const schema = `repair_concurrent_effect_${randomUUID().replaceAll("-", "")}`;
+  await adminPool.query(`CREATE SCHEMA ${schema}`);
+  const testPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    options: `-c search_path=${schema}`,
+  });
+  t.after(async () => {
+    await testPool.end();
+    await adminPool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+  });
+
+  await testPool.query(`
+    CREATE TABLE users (id integer PRIMARY KEY, reputation_score integer, reputation_level text, share_coins numeric);
+    CREATE TABLE user_reviews (id integer PRIMARY KEY, reviewer_id integer, reviewed_user_id integer, transaction_id integer, rating integer, comment text, feedback_tags text[], created_at timestamp);
+    CREATE TABLE reputation_activities (id integer PRIMARY KEY, user_id integer, activity_type text, request_id integer, review_id integer, created_at timestamp);
+    CREATE TABLE share_coins_transactions (id integer PRIMARY KEY, user_id integer, description text, transaction_type text, amount numeric, review_id integer, created_at timestamp);
+    CREATE TABLE notifications (id integer PRIMARY KEY, user_id integer, type text, request_id integer, review_id integer, created_at timestamp);
+    CREATE TABLE achievements (id integer PRIMARY KEY, name text);
+    CREATE TABLE user_achievements (id integer PRIMARY KEY, user_id integer, achievement_id integer, review_id integer, earned_at timestamp);
+    INSERT INTO users VALUES (10, 100, 'Neighbour', 8);
+    INSERT INTO user_reviews VALUES
+      (1, 20, 10, 30, 5, 'canonical', NULL, '2026-01-01'),
+      (2, 20, 10, 30, 5, 'duplicate', NULL, '2026-01-02');
+    INSERT INTO reputation_activities VALUES
+      (1, 10, 'RECEIVE_REVIEW', 30, 1, '2026-01-01'),
+      (2, 10, 'RECEIVE_REVIEW', 30, 2, '2026-01-02');
+    INSERT INTO notifications VALUES
+      (1, 10, 'new_review_received', 30, 1, '2026-01-01'),
+      (2, 10, 'new_review_received', 30, 2, '2026-01-02');
+  `);
+
+  const plan = {
+    reason: "Remove the duplicate review and its confirmed effects.",
+    repairs: [{
+      reviewerId: 20,
+      transactionId: 30,
+      canonicalReviewId: 1,
+      reputationActivityIds: [2],
+      notificationIds: [2],
+    }],
+    userReconciliations: [{
+      userId: 10,
+      expectedReputationScore: 100,
+      targetReputationScore: 95,
+    }],
+  };
+
+  let reachedNotificationDelete!: () => void;
+  const atNotificationDelete = new Promise<void>((resolve) => {
+    reachedNotificationDelete = resolve;
+  });
+  let resumeApply!: () => void;
+  const mayContinue = new Promise<void>((resolve) => {
+    resumeApply = resolve;
+  });
+  const pausedClient = {
+    connect: async () => {
+      const connection = await testPool.connect();
+      return {
+        query: async (sql: string, values?: any[]) => {
+          if (sql.startsWith("DELETE FROM notifications")) {
+            const deletedActivity = await connection.query(
+              "SELECT id FROM reputation_activities WHERE id = 2",
+            );
+            assert.equal(deletedActivity.rowCount, 0, "apply has already deleted an effect in its transaction");
+            reachedNotificationDelete();
+            await mayContinue;
+          }
+          return connection.query(sql, values);
+        },
+        release: () => connection.release(),
+      };
+    },
+    query: (sql: string, values?: any[]) => testPool.query(sql, values),
+  };
+  const remover = await testPool.connect();
+  const apply = applyDuplicateReviewRepair(plan, "integration-test", pausedClient);
+  let removerTransactionOpen = false;
+  try {
+    // Fail promptly if apply rejects before reaching the pause, rather than waiting forever.
+    await Promise.race([
+      atNotificationDelete,
+      apply.then(
+        () => { throw new Error("apply finished before the notification delete"); },
+        (error) => { throw error; },
+      ),
+    ]);
+    await remover.query("BEGIN");
+    removerTransactionOpen = true;
+    await remover.query("SET LOCAL lock_timeout = '5s'");
+    const removed = await remover.query("DELETE FROM notifications WHERE id = 2 RETURNING id");
+    assert.deepEqual(removed.rows, [{ id: 2 }]);
+    await remover.query("COMMIT");
+    removerTransactionOpen = false;
+    resumeApply();
+    await assert.rejects(apply, /A selected notification was stale or already removed/);
+  } finally {
+    resumeApply();
+    if (removerTransactionOpen) await remover.query("ROLLBACK");
+    remover.release();
+    await apply.catch(() => undefined);
+  }
+
+  assert.deepEqual(
+    (await testPool.query("SELECT id FROM user_reviews ORDER BY id")).rows,
+    [{ id: 1 }, { id: 2 }],
+    "neither review was removed",
+  );
+  assert.deepEqual(
+    (await testPool.query("SELECT id FROM reputation_activities ORDER BY id")).rows,
+    [{ id: 1 }, { id: 2 }],
+    "apply's earlier effect deletion was rolled back",
+  );
+  assert.deepEqual(
+    (await testPool.query("SELECT id FROM notifications ORDER BY id")).rows,
+    [{ id: 1 }],
+    "only the other connection's committed deletion remains",
+  );
+  assert.deepEqual(
+    (await testPool.query("SELECT reputation_score, reputation_level, share_coins FROM users WHERE id = 10")).rows,
+    [{ reputation_score: 100, reputation_level: "Neighbour", share_coins: "8" }],
+  );
+  assert.equal(
+    (await testPool.query("SELECT to_regclass('duplicate_review_repair_audits') AS name")).rows[0].name,
+    null,
+    "the repair did not commit an audit",
+  );
+  assert.equal(
+    (await testPool.query("SELECT to_regclass('user_reviews_reviewer_transaction_uidx') AS name")).rows[0].name,
+    null,
+    "the repair did not install the uniqueness index",
+  );
+});
+
 test.after(async () => {
   await adminPool.end();
 });

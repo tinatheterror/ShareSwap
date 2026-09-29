@@ -486,8 +486,88 @@ const ACHIEVEMENT_DEFS = [
   { name: 'welcome_wagon',          title: 'Welcome Wagon',         description: 'Completed a transaction with a user who joined in the last 30 days.',         icon: '👋', color: '#0891b2', category: 'social'   },
 ];
 
-async function checkAndAwardAchievements(userId: number, reviewContext?: { reviewId: number; tx: any }) {
-  const executor = reviewContext?.tx ?? db;
+async function awardAchievementKeys(
+  userId: number,
+  metKeys: string[],
+  executor: any,
+  reviewId?: number,
+) {
+  for (const key of metKeys) {
+    const def = ACHIEVEMENT_DEFS.find(d => d.name === key);
+    if (!def) continue;
+
+    let [achievement] = await executor.select({ id: achievements.id }).from(achievements).where(eq(achievements.name, key)).limit(1);
+    if (!achievement) {
+      const [created] = await executor.insert(achievements).values({
+        name: key,
+        description: def.description,
+        badgeIcon: def.icon,
+        badgeColor: def.color,
+        category: def.category,
+      }).onConflictDoNothing({ target: achievements.name }).returning({ id: achievements.id });
+      [achievement] = created
+        ? [created]
+        : await executor.select({ id: achievements.id }).from(achievements).where(eq(achievements.name, key)).limit(1);
+    }
+
+    await awardAchievementOnce({
+      userId,
+      achievementId: achievement.id,
+      title: def.title,
+      description: def.description,
+      reviewId,
+    }, reviewId === undefined ? undefined : executor);
+  }
+}
+
+// A review can change only review counts, the recipient's trust score, and earned coins.
+// Keep these checks on the review transaction so badges and their rewards roll back with it.
+async function checkReviewAchievements(
+  userId: number,
+  role: "reviewer" | "recipient",
+  reviewId: number,
+  tx: any,
+) {
+  const metKeys: string[] = [];
+  if (role === "reviewer") {
+    const [left] = await tx.select({ cnt: sql<number>`count(*)` })
+      .from(userReviews).where(eq(userReviews.reviewerId, userId));
+    if (Number(left?.cnt ?? 0) >= 5) metKeys.push("five_reviews_left");
+  } else {
+    const [received] = await tx.select({
+      cnt: sql<number>`count(*)`,
+      avg: sql<number>`avg(${userReviews.rating})`,
+    }).from(userReviews).where(eq(userReviews.reviewedUserId, userId));
+    const receivedCount = Number(received?.cnt ?? 0);
+    if (receivedCount >= 5) metKeys.push("five_reviews_received");
+    if (receivedCount >= 10) metKeys.push("well_loved");
+    if (receivedCount >= 5 && Number(received?.avg ?? 0) >= 4.8) metKeys.push("five_star_neighbour");
+
+    const [user] = await tx.select({ reputationScore: users.reputationScore })
+      .from(users).where(eq(users.id, userId)).limit(1);
+    const score = Number(user?.reputationScore ?? 0);
+    if (score >= 300) metKeys.push("neighbourhood_hero");
+    if (score >= 500) {
+      const [lent] = await tx.select({ cnt: sql<number>`count(*)` })
+        .from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(and(eq(items.ownerId, userId), or(
+          eq(itemRequests.status, "COMPLETED"),
+          eq(itemRequests.status, "COMPLETED_EARLY"),
+        )));
+      if (Number(lent?.cnt ?? 0) >= 20) metKeys.push("shareswap_legend");
+    }
+  }
+
+  const [earned] = await tx.select({ total: sql<number>`coalesce(sum(amount), 0)` })
+    .from(shareCoinsTransactions)
+    .where(and(eq(shareCoinsTransactions.userId, userId), sql`amount > 0`));
+  if (Number(earned?.total ?? 0) >= 50) metKeys.push("coin_collector");
+
+  await awardAchievementKeys(userId, metKeys, tx, reviewId);
+}
+
+export async function checkAndAwardAchievements(userId: number) {
+  const executor = db;
   try {
     const completedWhere = or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY"));
     const ownerItemsSub = sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`;
@@ -627,39 +707,8 @@ async function checkAndAwardAchievements(userId: number, reviewContext?: { revie
     }
     if (reviewsRx >= 5)   metKeys.push('five_reviews_received');
 
-    for (const key of metKeys) {
-      // Only review-sensitive milestones should be attributed to a review.
-      if (reviewContext && ![
-        "five_reviews_left", "well_loved", "five_reviews_received",
-        "five_star_neighbour", "neighbourhood_hero", "shareswap_legend", "coin_collector",
-      ].includes(key)) continue;
-      const def = ACHIEVEMENT_DEFS.find(d => d.name === key);
-      if (!def) continue;
-
-      let [achievement] = await executor.select({ id: achievements.id }).from(achievements).where(eq(achievements.name, key)).limit(1);
-      if (!achievement) {
-        const [created] = await executor.insert(achievements).values({
-          name: key,
-          description: def.description,
-          badgeIcon: def.icon,
-          badgeColor: def.color,
-          category: def.category,
-        }).onConflictDoNothing({ target: achievements.name }).returning({ id: achievements.id });
-        [achievement] = created
-          ? [created]
-          : await executor.select({ id: achievements.id }).from(achievements).where(eq(achievements.name, key)).limit(1);
-      }
-
-      await awardAchievementOnce({
-        userId,
-        achievementId: achievement.id,
-        title: def.title,
-        description: def.description,
-        reviewId: reviewContext?.reviewId,
-      }, reviewContext?.tx);
-    }
+    await awardAchievementKeys(userId, metKeys, executor);
   } catch (err) {
-    if (reviewContext) throw err;
     console.error('Error checking/awarding achievements:', err);
   }
 }
@@ -14760,8 +14809,8 @@ Respond with ONLY the category name, nothing else.`
           message: `${reviewLine}${breakdownLine}`, isRead: false, reviewId: review.id,
         }).returning();
 
-        await checkAndAwardAchievements(req.user.id, { reviewId: review.id, tx });
-        await checkAndAwardAchievements(reviewedUserId, { reviewId: review.id, tx });
+        await checkReviewAchievements(req.user.id, "reviewer", review.id, tx);
+        await checkReviewAchievements(reviewedUserId, "recipient", review.id, tx);
         return {
           review, reviewPoints, feedbackTagPoints, negativeTagDeduction, positiveTagsAwarded,
           negativeTagsSelected, totalPoints, pairCapHit, levelUp, lowReviewPenaltyResult, reviewNotif,

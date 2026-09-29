@@ -3,6 +3,7 @@ import test, { type TestContext } from "node:test";
 import cookieParser from "cookie-parser";
 import express from "express";
 import {
+  achievements,
   db,
   itemRequests,
   items,
@@ -16,7 +17,7 @@ import {
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { hashPassword } from "./auth.js";
-import { registerRoutes } from "./routes/routes.js";
+import { checkAndAwardAchievements, registerRoutes } from "./routes/routes.js";
 import { applyLowReviewPenalty } from "./trust-score-service.js";
 import {
   applyRequiredLowReviewPenalty,
@@ -148,6 +149,7 @@ test("concurrent authenticated review requests return success and already-review
     { username: `${unique}-reviewer`, password: await hashPassword(password), emailVerified: true },
     { username: `${unique}-reviewed`, emailVerified: true, reputationScore: 49 },
   ]).returning();
+  assert.notEqual(reviewer.id, reviewed.id);
   const [item] = await db.insert(items).values({
     ownerId: reviewed.id,
     name: `${unique}-item`,
@@ -162,11 +164,28 @@ test("concurrent authenticated review requests return success and already-review
     requestType: "BORROW",
     status: "COMPLETED",
   }).returning();
+  // These four reviews were left AND received by the reviewer, not the recipient.
+  // The new submission is the reviewer's fifth review left.
   await db.insert(userReviews).values(
     Array.from({ length: 4 }, () => ({
       reviewerId: reviewer.id, reviewedUserId: reviewer.id, rating: 4,
     })),
   );
+  // The recipient has nine prior 5-star reviews, so the new 5-star review is
+  // their tenth received and keeps their average at 5.0 (above the 4.8 badge threshold).
+  await db.insert(userReviews).values(
+    Array.from({ length: 9 }, () => ({
+      reviewerId: reviewed.id, reviewedUserId: reviewed.id, rating: 5,
+    })),
+  );
+  const recipientHistory = await db.select({ rating: userReviews.rating })
+    .from(userReviews).where(eq(userReviews.reviewedUserId, reviewed.id));
+  assert.equal(recipientHistory.length, 9);
+  assert.ok(recipientHistory.every(({ rating }) => rating === 5));
+  await db.insert(shareCoinsTransactions).values({
+    userId: reviewed.id, amount: "49", transactionType: "EARNED",
+    description: "Prior earned coins for review milestone",
+  });
 
   t.after(async () => {
     await db.delete(reputationActivities).where(eq(reputationActivities.requestId, request.id));
@@ -178,6 +197,7 @@ test("concurrent authenticated review requests return success and already-review
     await db.delete(userAchievements).where(eq(userAchievements.userId, reviewed.id));
     await db.delete(userAchievements).where(eq(userAchievements.userId, reviewer.id));
     await db.delete(userReviews).where(eq(userReviews.reviewerId, reviewer.id));
+    await db.delete(userReviews).where(eq(userReviews.reviewerId, reviewed.id));
     await db.delete(itemRequests).where(eq(itemRequests.id, request.id));
     await db.delete(items).where(eq(items.id, item.id));
     await db.delete(users).where(eq(users.id, reviewer.id));
@@ -255,6 +275,44 @@ test("concurrent authenticated review requests return success and already-review
   assert.ok(achievementRows.some(row => row.userId === reviewer.id), "review milestone must be attributed");
   assert.ok(notificationRows.some(row => row.type === "new_review_received" && row.reviewId === savedReview.id));
   assert.ok(notificationRows.some(row => row.type === "level_up" && row.reviewId === savedReview.id));
+  const earnedDefinitions = await db.select({ id: achievements.id, name: achievements.name }).from(achievements);
+  const earnedNames = earnedDefinitions.filter(def => achievementRows.some(row => row.achievementId === def.id))
+    .map(def => def.name).sort();
+  assert.deepEqual(earnedNames, [
+    "coin_collector", "five_reviews_left", "five_reviews_received",
+    "five_star_neighbour", "well_loved",
+  ].sort(), "only review-sensitive badges are attributed to the submitted review");
+  assert.equal(coins.filter(row => row.amount === "1").length, achievementRows.length,
+    "each attributed badge earns exactly one coin");
+  assert.equal(notificationRows.filter(row => row.type === "badge_earned" && row.reviewId === savedReview.id).length, 4,
+    "recipient badges produce attributed notifications in the same commit");
+});
+
+test("non-review achievement checks still award listing milestones", async (t) => {
+  const unique = `non-review-achievements-${Date.now()}`;
+  const [owner] = await db.insert(users).values({ username: unique }).returning();
+  const listed = await db.insert(items).values(Array.from({ length: 5 }, (_, index) => ({
+    ownerId: owner.id,
+    name: `${unique}-${index}`,
+    description: "Listing achievement test item",
+    conditionRating: 4,
+    photos: [],
+    shareCoinsReward: "0",
+  }))).returning();
+  t.after(async () => {
+    await db.delete(notifications).where(eq(notifications.userId, owner.id));
+    await db.delete(shareCoinsTransactions).where(eq(shareCoinsTransactions.userId, owner.id));
+    await db.delete(userAchievements).where(eq(userAchievements.userId, owner.id));
+    await db.delete(items).where(eq(items.ownerId, owner.id));
+    await db.delete(users).where(eq(users.id, owner.id));
+  });
+
+  await checkAndAwardAchievements(owner.id);
+  const badges = await db.select({ name: achievements.name })
+    .from(userAchievements)
+    .innerJoin(achievements, eq(achievements.id, userAchievements.achievementId))
+    .where(eq(userAchievements.userId, owner.id));
+  assert.ok(badges.some(badge => badge.name === "five_listed"));
 });
 
 test("only the review submission constraint maps to already-reviewed", () => {

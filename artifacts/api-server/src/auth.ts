@@ -219,6 +219,9 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // 5 attempts per IP per window
   message: "Too many authentication attempts, please try again later.",
+  // Browser fixtures deliberately retry logins against one shared test IP.
+  // The persistent counter otherwise survives test-server restarts.
+  skip: () => process.env.E2E_TEST_MODE === "true",
   skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,

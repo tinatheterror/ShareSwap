@@ -5,6 +5,7 @@ import * as uberDirect from "../uber-direct";
 import { randomBytes } from "crypto";
 import { setupAuth, hashPassword, comparePasswords } from "../auth";
 import { db, pool } from "@workspace/db";
+import { awardAchievementOnce } from "../achievement-awards";
 import {
   verifications,
   messages,
@@ -637,39 +638,25 @@ async function checkAndAwardAchievements(userId: number, reviewContext?: { revie
 
       let [achievement] = await executor.select({ id: achievements.id }).from(achievements).where(eq(achievements.name, key)).limit(1);
       if (!achievement) {
-        [achievement] = await executor.insert(achievements).values({
+        const [created] = await executor.insert(achievements).values({
           name: key,
           description: def.description,
           badgeIcon: def.icon,
           badgeColor: def.color,
           category: def.category,
-        }).returning({ id: achievements.id });
+        }).onConflictDoNothing({ target: achievements.name }).returning({ id: achievements.id });
+        [achievement] = created
+          ? [created]
+          : await executor.select({ id: achievements.id }).from(achievements).where(eq(achievements.name, key)).limit(1);
       }
 
-      const [existing] = await executor.select({ id: userAchievements.id }).from(userAchievements).where(
-        and(eq(userAchievements.userId, userId), eq(userAchievements.achievementId, achievement.id))
-      ).limit(1);
-      if (existing) continue;
-
-      // Newly unlocked — award +1 ShareCoin
-      await executor.insert(userAchievements).values({ userId, achievementId: achievement.id, isCompleted: true, progress: 100, reviewId: reviewContext?.reviewId });
-      await executor.insert(shareCoinsTransactions).values({
+      await awardAchievementOnce({
         userId,
-        amount: "1",
-        description: `Badge unlocked: ${def.title}`,
-        transactionType: "EARNED",
+        achievementId: achievement.id,
+        title: def.title,
+        description: def.description,
         reviewId: reviewContext?.reviewId,
-      });
-      await executor.update(users).set({ shareCoins: sql`share_coins + 1` }).where(eq(users.id, userId));
-      await executor.insert(notifications).values({
-        userId,
-        type: "badge_earned",
-        title: `🏅 Badge Unlocked: ${def.title}`,
-        message: `${def.description} +1 ShareCoin awarded!`,
-        link: "/achievements",
-        isRead: false,
-        reviewId: reviewContext?.reviewId,
-      });
+      }, reviewContext?.tx);
     }
   } catch (err) {
     if (reviewContext) throw err;

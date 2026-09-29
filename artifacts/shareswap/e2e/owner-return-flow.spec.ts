@@ -5,7 +5,9 @@ import {
   type Page,
 } from "@playwright/test";
 
-test.describe.configure({ mode: "parallel" });
+// These tests share one E2E API fixture registry and intentionally inject
+// cleanup failures; a parallel setup can observe another test's injected failure.
+test.describe.configure({ mode: "serial" });
 
 type OwnerReturnFixture = {
   fixtureId: string;

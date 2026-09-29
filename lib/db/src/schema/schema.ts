@@ -568,7 +568,9 @@ export const userAchievements = pgTable("user_achievements", {
   earnedAt: timestamp("earned_at").defaultNow(),
   progress: integer("progress").default(0),
   isCompleted: boolean("is_completed").default(false),
-});
+}, (table) => ({
+  userAchievementUniq: uniqueIndex("user_achievements_user_achievement_uidx").on(table.userId, table.achievementId),
+}));
 
 // Wishlist Offers — tracks which users have tapped "I Have This Item!" on a community wishlist card
 export const wishlistOffers = pgTable("wishlist_offers", {

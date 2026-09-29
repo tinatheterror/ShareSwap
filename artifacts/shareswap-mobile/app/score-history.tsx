@@ -43,6 +43,12 @@ export default function ScoreHistoryScreen() {
   });
 
   const activities = (reputation?.recentActivities ?? []).filter((activity) => activity.points !== 0);
+  const currentScore = reputation?.reputationScore ?? user?.trustScore ?? 0;
+  const currentLevel = currentScore >= 500 ? "ShareSwap Champion"
+    : currentScore >= 300 ? "Community Pillar"
+    : currentScore >= 150 ? "Trusted Member"
+    : currentScore >= 50 ? "Neighbour"
+    : "Newcomer";
 
   if (!user) {
     return (
@@ -88,9 +94,9 @@ export default function ScoreHistoryScreen() {
           </View>
           <View style={styles.introCopy}>
             <Text style={[styles.introLabel, { color: colors.mutedForeground }]}>Current trust score</Text>
-            <Text style={[styles.introScore, { color: colors.foreground }]}>{reputation?.reputationScore ?? user.trustScore ?? 0}</Text>
+            <Text style={[styles.introScore, { color: colors.foreground }]}>{currentScore}</Text>
           </View>
-          <Text style={[styles.introLevel, { color: colors.primary }]}>{reputation?.reputationLevel ?? user.trustLevel ?? "Newcomer"}</Text>
+          <Text style={[styles.introLevel, { color: colors.primary }]}>{currentLevel}</Text>
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>

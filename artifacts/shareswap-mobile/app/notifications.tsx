@@ -18,8 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useNotifications, type Notification } from "@/hooks/useNotifications";
-import { useAuth } from "@/context/AuthContext";
-import { apiGet } from "@/lib/api";
+import { isOverdueScoreNotification, resolveNotificationChatPath } from "@/lib/notificationChat";
 import { safeDate } from "@/lib/dateUtils";
 
 // ── Time-ago helper (matches web display) ──────────────────────────────────
@@ -137,7 +136,6 @@ export default function NotificationsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user } = useAuth();
   const { notifications, unreadCount, markAllRead, markRead } = useNotifications();
 
   const [refreshing, setRefreshing] = React.useState(false);
@@ -152,7 +150,8 @@ export default function NotificationsScreen() {
     if (!notif.isRead) markRead(notif.id);
 
     // Type-specific deep-links (matches web notifications-page.tsx routing)
-    if (notif.type === "trust_score_changed" || notif.type === "level_up" || notif.type === "milestone_achieved" || notif.type === "badge_earned" || notif.type === "new_review_received") {
+    if ((notif.type === "trust_score_changed" && !isOverdueScoreNotification(notif.type, notif.message, notif.requestId))
+      || notif.type === "level_up" || notif.type === "milestone_achieved" || notif.type === "badge_earned" || notif.type === "new_review_received") {
       router.push("/achievements" as never);
       return;
     }
@@ -163,20 +162,14 @@ export default function NotificationsScreen() {
 
     if (notif.requestId) {
       try {
-        // Need the partner's userId — fetch requests to resolve it
-        const requests = await apiGet<any[]>("/api/requests");
-        const req = requests.find((r: any) => r.id === notif.requestId);
-        if (req && user) {
-          const partnerId =
-            req.requesterId === user.id
-              ? req.item?.ownerId
-              : req.requesterId;
-          if (partnerId) {
-            router.push(`/chat/${partnerId}?requestId=${notif.requestId}` as never);
-            return;
-          }
+        const chatPath = await resolveNotificationChatPath(notif.requestId, notif.itemId);
+        if (chatPath) {
+          router.push(chatPath as never);
+          return;
         }
-      } catch {}
+      } catch (error) {
+        console.warn("[notifications] Could not open request chat:", error);
+      }
       // Fallback: open inbox so user can find the conversation
       router.push("/(tabs)/inbox" as never);
     } else if (notif.itemId) {

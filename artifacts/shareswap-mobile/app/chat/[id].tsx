@@ -150,6 +150,15 @@ interface Lifecycle {
 }
 interface LifecycleData { lifecycle: Lifecycle; claims: SecurityClaim[]; events: unknown[]; }
 
+interface ChatInboxThread {
+  requestId: number;
+  partnerId: number;
+  itemId: number;
+  itemName: string;
+  itemPhoto: string | null;
+  requestStatus: string;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getActiveStatus(lastActiveAt: string | null): { label: string; isNow: boolean } | null {
   if (!lastActiveAt) return null;
@@ -274,15 +283,35 @@ export default function ChatScreen() {
     refetchInterval: 5000,
   });
 
-  const { data: allRequests } = useQuery<ItemRequest[]>({
+  const { data: allRequests, isLoading: requestsLoading, error: requestsError, refetch: refetchRequests } = useQuery<ItemRequest[]>({
     queryKey: ["/api/requests"],
-    queryFn: () => apiGet<ItemRequest[]>("/api/requests"),
+    queryFn: () => apiGet<ItemRequest[]>("/api/requests", {
+      cache: "no-store",
+    }),
     enabled: !!requestId,
     refetchInterval: 8000,
   });
 
   const reqId = requestId ? parseInt(requestId) : null;
   const request = reqId ? (allRequests?.find((r) => r.id === reqId) ?? null) : null;
+  // The full requests feed can fail independently of messages and the inbox.
+  // Keep the item identified in the pinned area rather than silently removing it.
+  const { data: inboxThreads = [], isLoading: inboxLoading } = useQuery<ChatInboxThread[]>({
+    queryKey: ["/api/inbox"],
+    queryFn: () => apiGet<ChatInboxThread[]>("/api/inbox"),
+    enabled: !!reqId && !request && !requestsLoading,
+  });
+  const activeThread = inboxThreads.find((thread) =>
+    thread.requestId === reqId && thread.partnerId === Number(id)
+  );
+  const { data: archivedThreads = [], isLoading: archivedLoading } = useQuery<ChatInboxThread[]>({
+    queryKey: ["/api/inbox/archived"],
+    queryFn: () => apiGet<ChatInboxThread[]>("/api/inbox?archived=true"),
+    enabled: !!reqId && !request && !requestsLoading && !inboxLoading && !activeThread,
+  });
+  const fallbackThread = activeThread ?? archivedThreads.find((thread) =>
+    thread.requestId === reqId && thread.partnerId === Number(id)
+  );
   const { data: lifecycle, isLoading: lifecycleLoading, error: lifecycleError } = useQuery<LifecycleData>({
     queryKey: [`/api/requests/${requestId}/lifecycle`],
     queryFn: () => apiGet<LifecycleData>(`/api/requests/${requestId}/lifecycle`),
@@ -1339,11 +1368,66 @@ export default function ChatScreen() {
         </View>
       </View>
 
-      {/* Request card (fixed between header and messages) */}
+      {/* Request card (fixed between header and messages, scrollable when tall) */}
       {request && (
-        <View style={[styles.cardScroll, { borderBottomColor: colors.border, padding: 12 }]}>
+        <ScrollView
+          style={[styles.cardScroll, { borderBottomColor: colors.border }]}
+          contentContainerStyle={{ padding: 12 }}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          testID="pinned-request-card"
+        >
           {renderRequestCard()}
+        </ScrollView>
+      )}
+      {reqId && !request && (
+        <View style={[styles.cardScroll, { borderBottomColor: colors.border, padding: 12 }]}>
+          {requestsLoading || inboxLoading || archivedLoading ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : fallbackThread ? (
+            <View style={[card.wrap, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <View style={card.itemRow}>
+                {fallbackThread.itemPhoto ? (
+                  <Image source={{ uri: photoUrl(fallbackThread.itemPhoto) }} style={card.thumbImg} />
+                ) : null}
+                <View style={{ flex: 1 }}>
+                  <Text style={[card.itemName, { color: colors.foreground }]}>{fallbackThread.itemName}</Text>
+                  <Text style={[card.detailText, { color: colors.mutedForeground }]}>
+                    {getStatusInfo(fallbackThread.requestStatus).label}
+                    {lifecycle?.lifecycle.stage ? ` · ${lifecycle.lifecycle.stage.replace(/_/g, " ").toLowerCase()}` : ""}
+                  </Text>
+                </View>
+              </View>
+              <View style={[card.detailsWrap, { borderTopColor: colors.border }]}>
+                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
+                  {requestsError ? "Full request details could not load." : "Loading request details."}
+                </Text>
+                <Pressable onPress={() => refetchRequests()} testID="retry-request-card">
+                  <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Retry details</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <View>
+              <Text style={{ color: colors.foreground }}>
+                {requestsError ? "Could not load this item request." : "This item request is unavailable."}
+              </Text>
+              <Pressable onPress={() => refetchRequests()} testID="retry-request-card">
+                <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>Retry</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
+      )}
+      {!reqId && (
+        <Pressable
+          style={[styles.cardScroll, { borderBottomColor: colors.border, padding: 12 }]}
+          onPress={() => router.push("/(tabs)/inbox" as never)}
+        >
+          <Text style={{ color: colors.mutedForeground }}>
+            Open an item conversation from Inbox to see its pinned request card.
+          </Text>
+        </Pressable>
       )}
 
       {/* Messages */}

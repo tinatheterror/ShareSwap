@@ -36,6 +36,7 @@ export default function LoginScreen() {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showReferral, setShowReferral] = useState(false);
@@ -53,9 +54,10 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!username.trim() || !password.trim()) {
-      Alert.alert("Missing fields", "Please enter your username and password.");
+      setLoginError("Please enter your email and password.");
       return;
     }
+    setLoginError("");
     setLoading(true);
     try {
       await login(username.trim(), password);
@@ -63,7 +65,7 @@ export default function LoginScreen() {
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Login failed. Please try again.";
-      Alert.alert("Login failed", msg);
+      setLoginError(msg);
     } finally {
       setLoading(false);
     }
@@ -209,7 +211,7 @@ export default function LoginScreen() {
                   placeholder="Email"
                   placeholderTextColor={colors.mutedForeground}
                   value={username}
-                  onChangeText={setUsername}
+                  onChangeText={(value) => { setUsername(value); setLoginError(""); }}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="next"
@@ -227,7 +229,7 @@ export default function LoginScreen() {
                   placeholder="Password"
                   placeholderTextColor={colors.mutedForeground}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(value) => { setPassword(value); setLoginError(""); }}
                   secureTextEntry={!showPassword}
                   returnKeyType="done"
                   onSubmitEditing={handleLogin}
@@ -240,6 +242,11 @@ export default function LoginScreen() {
                   />
                 </Pressable>
               </View>
+              {!!loginError && (
+                <Text accessibilityRole="alert" style={styles.loginError}>
+                  {loginError}
+                </Text>
+              )}
               <Pressable
                 style={({ pressed }) => [
                   styles.signInBtn,
@@ -416,6 +423,11 @@ const styles = StyleSheet.create({
   },
   emailForm: {
     gap: 10,
+  },
+  loginError: {
+    color: "#b91c1c",
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
   inputWrapper: {
     flexDirection: "row",

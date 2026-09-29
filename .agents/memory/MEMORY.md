@@ -14,3 +14,5 @@
 - [Simulated deposit settlement](simulated-deposit-settlement.md) — simulated PaymentIntent IDs have no Stripe resource; terminal workflows must treat their external release as a no-op.
 - [Local browser-test sessions](local-browser-test-sessions.md) — real Playwright sessions over HTTP need test-only cookie settings and interruption-safe database fixture cleanup.
 - [Derived-effect deduplication](derived-effect-deduplication.md) — never delete duplicate source records in a migration when reputation, rewards, or notifications may already reflect each record.
+- [Trust level follows current score](trust-level-current-score.md) — treat the current score as authoritative; saved level must change with every score write.
+- [Request chat deep links](request-chat-deep-links.md) — item-linked alerts need both the chat partner and request ID; a partner-only chat can open the wrong item.

@@ -62,7 +62,7 @@ export default function EditProfileScreen() {
     mutationFn: async () => {
       const trimmedName = displayName.trim();
       const body: Record<string, string | undefined> = {
-        bio: bio.trim() || undefined,
+        bio: bio.trim(),
         location: location.trim() || undefined,
       };
       // Only send displayName if it actually changed — server enforces a 30-day cooldown
@@ -79,7 +79,7 @@ export default function EditProfileScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
-      queryClient.invalidateQueries({ queryKey: ["public-profile"] });
+      if (user?.id) queryClient.invalidateQueries({ queryKey: [`/api/users/${user.id}/public-profile`] });
       if (refreshUser) refreshUser();
       router.back();
     },
@@ -138,7 +138,7 @@ export default function EditProfileScreen() {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
-      queryClient.invalidateQueries({ queryKey: ["public-profile"] });
+      if (user?.id) queryClient.invalidateQueries({ queryKey: [`/api/users/${user.id}/public-profile`] });
       if (refreshUser) refreshUser();
 
       if (data.shareCoinsAwarded > 0) {

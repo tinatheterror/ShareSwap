@@ -53,7 +53,8 @@ export default function NotificationsPage() {
       return;
     }
 
-    if (["trust_score_changed", "milestone_achieved", "badge_earned", "new_review_received"].includes(notification.type)) {
+    if (["trust_score_changed", "milestone_achieved", "badge_earned", "new_review_received"].includes(notification.type)
+      && !(notification.type === "trust_score_changed" && notification.requestId && /\boverdue\b/i.test(notification.message))) {
       navigate("/achievements");
       return;
     }

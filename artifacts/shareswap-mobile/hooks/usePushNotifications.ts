@@ -15,12 +15,20 @@ import type * as NotificationsType from "expo-notifications";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { AppState, AppStateStatus, Platform } from "react-native";
-import { apiRequest, apiGet } from "@/lib/api";
+import { apiRequest } from "@/lib/api";
+import { buildNotificationChatPath, resolveNotificationChatPath } from "@/lib/notificationChat";
 
 /** Set by RootLayoutNav to avoid an AuthContext ↔ usePushNotifications cycle. */
 let _currentUser: { id: number } | null | undefined = null;
 export function setCurrentUser(u: { id: number } | null | undefined) {
   _currentUser = u;
+  if (u && _killedStatePending) {
+    const data = _killedStatePending;
+    _killedStatePending = null;
+    setTimeout(() => navigateFromPushData(data).catch((error) => {
+      console.warn("[push] Could not open pending notification:", error);
+    }), 350);
+  }
 }
 
 // expo-notifications throws on web during module init — load it only on native.
@@ -207,22 +215,20 @@ export function usePushNotificationNavigation() {
     null,
   );
 
-  // Flush any killed-state notification once the user is available.
-  // _currentUser is set externally by RootLayoutNav via setCurrentUser().
-  useEffect(() => {
-    if (!_currentUser || !_killedStatePending) return;
-    const data = _killedStatePending;
-    _killedStatePending = null;
-    navigateFromPushData(data).catch(() => {});
-  }, [_currentUser]);
-
   useEffect(() => {
     // Push notification APIs are not available on web, or not linked into this build
     if (!isPushAvailable) return;
 
     // Foreground/background tap: router + session are already up, navigate immediately
-    const handle = (data: Record<string, unknown>) =>
-      navigateFromPushData(data).catch(() => {});
+    const handle = (data: Record<string, unknown>) => {
+      if (!_currentUser) {
+        _killedStatePending = data;
+        return;
+      }
+      navigateFromPushData(data).catch((error) => {
+        console.warn("[push] Could not open notification:", error);
+      });
+    };
 
     // Notification received while app is in the foreground (no navigation, just display)
     notificationListener.current =
@@ -248,12 +254,11 @@ export function usePushNotificationNavigation() {
         string,
         unknown
       >;
-      const chatUserId = data.chatUserId as string | number | undefined;
-      if (chatUserId) {
-        // Router needs ~300ms to mount after a cold start
+      if (_currentUser) {
+        // Router needs ~300ms to mount after a cold start.
         setTimeout(() => handle(data), 350);
       } else {
-        // Need the session — store and let the user-effect flush it
+        // Need the session — setCurrentUser flushes once it is available.
         _killedStatePending = data;
       }
     });
@@ -269,7 +274,7 @@ export function usePushNotificationNavigation() {
  * Derive the correct in-app route from the push notification data payload.
  *
  * Priority:
- *  1. `chatUserId` present → go straight to /chat/:chatUserId  (new notifications)
+ *  1. `chatUserId` present → go to /chat/:chatUserId with requestId if available
  *  2. `requestId` present  → look up the request on the API to find the partner
  *     and navigate to their chat thread  (works for old notifications too)
  *  3. `itemId` present     → open the item detail page
@@ -288,30 +293,23 @@ async function navigateFromPushData(
   try {
     // ── 1. Direct chat deep-link (new notifications have chatUserId set) ──
     if (chatUserId) {
-      router.push(`/chat/${chatUserId}` as any);
-      return;
+      const chatPath = buildNotificationChatPath(chatUserId, requestId);
+      if (chatPath) {
+        router.push(chatPath as any);
+        return;
+      }
     }
 
     // ── 2. Request notification — resolve partner via API ──
     if (requestId) {
       try {
-        const requests = await apiGet<any[]>("/api/requests");
-        const req = requests.find(
-          (r: any) => Number(r.id) === Number(requestId),
-        );
-        if (req) {
-          const userId = _currentUser?.id;
-          const partnerId =
-            userId && req.requesterId === userId
-              ? req.item?.ownerId
-              : req.requesterId;
-          if (partnerId) {
-            router.push(`/chat/${partnerId}?requestId=${requestId}` as any);
-            return;
-          }
+        const chatPath = await resolveNotificationChatPath(requestId, itemId);
+        if (chatPath) {
+          router.push(chatPath as any);
+          return;
         }
-      } catch {
-        // API unavailable (e.g. app just cold-started) — fall through
+      } catch (error) {
+        console.warn("[push] Could not resolve request chat:", error);
       }
     }
 

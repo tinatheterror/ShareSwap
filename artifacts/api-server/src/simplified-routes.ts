@@ -3,6 +3,7 @@ import type { Express } from "express";
 import { db } from "@workspace/db";
 import { users, achievements, userAchievements, wishlists } from "@workspace/db";
 import { eq, and, ne, desc } from "drizzle-orm";
+import { trustLevelForScore } from "./trust-score-service";
 
 const BADGE_TITLE_MAP: Record<string, string> = {
   five_transactions: "Community Sharer",
@@ -66,7 +67,7 @@ export function addSimplifiedRoutes(app: Express) {
         .limit(1);
 
       const score = userRow?.reputationScore ?? 0;
-      const level = userRow?.reputationLevel ?? "Newcomer";
+      const level = trustLevelForScore(score);
 
       const LEVEL_THRESHOLDS = [
         { name: "Newcomer", minScore: 0 },

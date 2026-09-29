@@ -71,6 +71,7 @@ export async function apiRequest(
   method: string,
   path: string,
   data?: unknown,
+  options?: { cache?: RequestCache },
 ): Promise<Response> {
   const url = `${BASE_URL}${path}`;
   const isMutating =
@@ -90,6 +91,7 @@ export async function apiRequest(
   const res = await fetch(url, {
     method,
     headers,
+    cache: options?.cache,
     body: isFormData
       ? (data as FormData)
       : data
@@ -124,8 +126,11 @@ export async function apiRequest(
   return res;
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const res = await apiRequest("GET", path);
+export async function apiGet<T>(
+  path: string,
+  options?: { cache?: RequestCache },
+): Promise<T> {
+  const res = await apiRequest("GET", path, undefined, options);
   return res.json() as Promise<T>;
 }
 

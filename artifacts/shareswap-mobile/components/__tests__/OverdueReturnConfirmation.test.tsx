@@ -4,6 +4,7 @@ import renderer from "react-test-renderer";
 import ChatScreen from "../../app/chat/[id]";
 
 const mockReturnSheet = jest.fn((_props: object) => null);
+let mockRequestsUnavailable = false;
 
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "2", requestId: "42" }),
@@ -33,6 +34,13 @@ jest.mock("@tanstack/react-query", () => ({
   useMutation: () => ({ mutate: jest.fn(), isPending: false }),
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
     const key = queryKey[0];
+    if (key === "/api/requests" && mockRequestsUnavailable) {
+      return { data: undefined, isLoading: false, error: new Error("Request feed unavailable"), refetch: jest.fn() };
+    }
+    if (key === "/api/inbox") return { data: [{
+      requestId: 42, partnerId: 2, itemId: 9, itemName: "Tent", itemPhoto: null,
+      requestStatus: "IN_PROGRESS",
+    }], isLoading: false };
     if (key === "/api/requests") return { data: [{
       id: 42, requestType: "BORROW", status: "RETURN_REQUESTED", requesterId: 2,
       startDate: "2026-08-01", endDate: "2026-08-08", depositMethod: "in_app",
@@ -127,4 +135,19 @@ test("an owner can open return confirmation while the overdue stage remains acti
   }));
 
   act(() => tree.unmount());
+});
+
+test("the pinned item remains identifiable when the full request feed fails", () => {
+  mockRequestsUnavailable = true;
+  let tree!: renderer.ReactTestRenderer;
+  try {
+    act(() => {
+      tree = renderer.create(<ChatScreen />);
+    });
+    expect(tree.root.findAllByProps({ testID: "retry-request-card" })).toHaveLength(1);
+    expect(tree.root.findAllByProps({ children: "Tent" }).length).toBeGreaterThan(0);
+  } finally {
+    act(() => tree?.unmount());
+    mockRequestsUnavailable = false;
+  }
 });

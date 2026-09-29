@@ -128,13 +128,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (username: string, password: string) => {
       const deviceFingerprint = await getDeviceFingerprint();
       await apiPost("/api/login", { username, password, deviceFingerprint });
+      // A successful POST alone is not enough: the next request must be able to
+      // use the session cookie. Unlike fetchUser(), do not swallow a failed check.
+      const authenticatedUser = await apiGet<User>("/api/user");
+      setUser(authenticatedUser);
+      hadSession.current = true;
+      await AsyncStorage.setItem(HAS_SESSION_KEY, "1");
       await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "email");
       setSessionExpired(false);
-      await fetchUser();
       // Register Expo push token with the server after successful login
       registerPushToken().catch(() => {});
     },
-    [fetchUser, getDeviceFingerprint],
+    [getDeviceFingerprint],
   );
 
   const register = useCallback(

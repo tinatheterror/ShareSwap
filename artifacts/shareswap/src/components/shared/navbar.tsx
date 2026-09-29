@@ -188,7 +188,8 @@ function NotificationBell() {
   }, [user?.id]);
 
   const handleNotificationClick = (n: Notification) => {
-    if (["trust_score_changed", "milestone_achieved", "badge_earned", "level_up"].includes(n.type)) {
+    if (["trust_score_changed", "milestone_achieved", "badge_earned", "level_up"].includes(n.type)
+      && !(n.type === "trust_score_changed" && n.requestId && /\boverdue\b/i.test(n.message))) {
       if (n.type === "trust_score_changed") {
         const increaseMatch = n.message.match(/(?:went up by|\+)(\d+)\s*point/);
         const decreaseMatch = n.message.match(/dropped by (\d+)\s*point/);

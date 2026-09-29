@@ -94,6 +94,8 @@ import {
   applyDepositClaimedPenalty,
   applyLowReviewPenalty,
   formatReputationActivityDescription,
+  trustLevelForScore,
+  trustLevelForSqlScore,
 } from "../trust-score-service";
 import { calculateAIValuation, getTierBand, type ItemValuationInput } from "../ai-valuation";
 import { calculateReplacementValueAndTier } from "../replacement-value";
@@ -2346,12 +2348,14 @@ export function registerRoutes(
       
       const hasPaymentMethod = !!currentUser?.stripePaymentMethodId;
       
+      const verifiedScore = sql<number>`LEAST(500, COALESCE(reputation_score, 0) + ${VERIFICATION_TRUST_BOOST})`;
       await db
         .update(users)
         .set({
           isVerified: hasPaymentMethod, // Only verified if both ID and payment method exist
           verifiedAt: hasPaymentMethod ? new Date() : null,
-          reputationScore: sql`LEAST(500, COALESCE(reputation_score, 0) + ${VERIFICATION_TRUST_BOOST})`,
+          reputationScore: verifiedScore,
+          reputationLevel: trustLevelForSqlScore(verifiedScore),
         })
         .where(eq(users.id, userId));
 
@@ -2598,13 +2602,15 @@ export function registerRoutes(
 
         const hasPaymentMethod = !!currentUser?.stripePaymentMethodId;
 
+        const verifiedScore = sql<number>`LEAST(500, COALESCE(reputation_score, 0) + ${VERIFICATION_TRUST_BOOST})`;
         await db
           .update(users)
           .set({
             isVerified: hasPaymentMethod,
             verifiedAt: hasPaymentMethod ? new Date() : null,
             fullName: fullName || undefined,
-            reputationScore: sql`LEAST(500, COALESCE(reputation_score, 0) + ${VERIFICATION_TRUST_BOOST})`,
+            reputationScore: verifiedScore,
+            reputationLevel: trustLevelForSqlScore(verifiedScore),
           })
           .where(eq(users.id, userId));
 
@@ -12049,6 +12055,7 @@ Respond with ONLY the category name, nothing else.`
 
       const createReminder = async (
         recipientId: number,
+        partnerId: number,
         requestId: number,
         itemId: number,
         type: string,
@@ -12084,7 +12091,7 @@ Respond with ONLY the category name, nothing else.`
         sendPushToUser(recipientId, {
           title,
           body: message,
-          data: { screen: "notifications", requestId, itemId },
+          data: { screen: "chat", chatUserId: partnerId, requestId, itemId },
         }, "requests").catch((err) =>
           console.error("[push] return-reminder push failed:", err),
         );
@@ -12125,8 +12132,8 @@ Respond with ONLY the category name, nothing else.`
             };
             const copy = stageCopy[nextStage];
             if (copy) await Promise.all([
-              createReminder(request.requesterId, request.id, item.id, `return_stage_${nextStage.toLowerCase()}_borrower`, copy.borrowerTitle ?? copy.title, copy.borrower),
-              createReminder(owner.id, request.id, item.id, `return_stage_${nextStage.toLowerCase()}_owner`, copy.ownerTitle ?? copy.title, copy.owner),
+              createReminder(request.requesterId, owner.id, request.id, item.id, `return_stage_${nextStage.toLowerCase()}_borrower`, copy.borrowerTitle ?? copy.title, copy.borrower),
+              createReminder(owner.id, request.requesterId, request.id, item.id, `return_stage_${nextStage.toLowerCase()}_owner`, copy.ownerTitle ?? copy.title, copy.owner),
             ]);
           }
         }
@@ -12180,7 +12187,7 @@ Respond with ONLY the category name, nothing else.`
               sendPushToUser(request.requesterId, {
                 title: penaltyTitle,
                 body: penaltyMessage,
-                data: { screen: "notifications", requestId: request.id, itemId: item.id },
+                data: { screen: "chat", chatUserId: owner.id, requestId: request.id, itemId: item.id },
               }, "requests").catch(() => {});
             }
           }
@@ -12188,6 +12195,7 @@ Respond with ONLY the category name, nothing else.`
           await Promise.all([
             createReminder(
               request.requesterId,
+              owner.id,
               request.id,
               item.id,
               reminderType,
@@ -12198,6 +12206,7 @@ Respond with ONLY the category name, nothing else.`
             ),
             createReminder(
               owner.id,
+              request.requesterId,
               request.id,
               item.id,
               reminderType,
@@ -12218,6 +12227,7 @@ Respond with ONLY the category name, nothing else.`
         if (daysUntilReturn === 1) {
           await createReminder(
             request.requesterId,
+            owner.id,
             request.id,
             item.id,
             "return_reminder_tomorrow",
@@ -12227,6 +12237,7 @@ Respond with ONLY the category name, nothing else.`
         } else if (daysUntilReturn === 0) {
           await createReminder(
             request.requesterId,
+            owner.id,
             request.id,
             item.id,
             "return_reminder_today",
@@ -12236,6 +12247,7 @@ Respond with ONLY the category name, nothing else.`
         } else if (daysOverdue > 0) {
           await createReminder(
             request.requesterId,
+            owner.id,
             request.id,
             item.id,
             "return_reminder_overdue",
@@ -14548,6 +14560,7 @@ Respond with ONLY the category name, nothing else.`
 
     res.json({
       ...user,
+      reputationLevel: trustLevelForScore(user.reputationScore ?? 0),
       recentActivities: formattedActivities,
       reviews,
     });
@@ -14683,14 +14696,10 @@ Respond with ONLY the category name, nothing else.`
               description: `Received negative feedback on "${transaction.items.name}": ${negativeTagsSelected.join(", ")}`,
             });
           }
+          const updatedScore = sql<number>`LEAST(500, GREATEST(0, reputation_score + ${totalPoints}))`;
           await tx.update(users).set({
-            reputationScore: sql`LEAST(500, GREATEST(0, reputation_score + ${totalPoints}))`,
-            reputationLevel: sql`CASE
-              WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 500 THEN 'ShareSwap Champion'
-              WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 300 THEN 'Community Pillar'
-              WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 150 THEN 'Trusted Member'
-              WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 50 THEN 'Neighbour'
-              ELSE 'Newcomer' END`,
+            reputationScore: updatedScore,
+            reputationLevel: trustLevelForSqlScore(updatedScore),
           }).where(eq(users.id, reviewedUserId));
 
           const LEVEL_THRESHOLDS = [

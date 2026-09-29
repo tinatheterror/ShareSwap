@@ -62,7 +62,8 @@ function matchesTab(type: string, tab: Tab): boolean {
 // ─── Smart routing (single source of truth) ───────────────────────────────────
 
 export function getNotificationRoute(n: SelectNotification): { type: "chat"; requestId: number } | { type: "url"; url: string } | null {
-  if (["trust_score_changed", "milestone_achieved", "badge_earned", "level_up"].includes(n.type)) {
+  if (["trust_score_changed", "milestone_achieved", "badge_earned", "level_up"].includes(n.type)
+    && !(n.type === "trust_score_changed" && n.requestId && /\boverdue\b/i.test(n.message))) {
     return { type: "url", url: "/achievements" };
   }
   if (n.type === "sharecoin_earned") return { type: "url", url: "/wallet" };

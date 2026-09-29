@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { users, reputationActivities, itemRequests } from "@workspace/db";
-import { eq, and, gte, like, sql } from "drizzle-orm";
+import { eq, and, gte, like, sql, type SQL } from "drizzle-orm";
 
 export const TRUST_POINTS = {
   MAJOR: {
@@ -43,6 +43,23 @@ export const TRUST_POINTS = {
 
 // Minimum trust score floor (can go negative to signal risk)
 export const TRUST_SCORE_FLOOR = 0;
+
+export function trustLevelForScore(score: number): string {
+  if (score >= 500) return "ShareSwap Champion";
+  if (score >= 300) return "Community Pillar";
+  if (score >= 150) return "Trusted Member";
+  if (score >= 50) return "Neighbour";
+  return "Newcomer";
+}
+
+export function trustLevelForSqlScore(score: SQL): SQL<string> {
+  return sql<string>`CASE
+    WHEN ${score} >= 500 THEN 'ShareSwap Champion'
+    WHEN ${score} >= 300 THEN 'Community Pillar'
+    WHEN ${score} >= 150 THEN 'Trusted Member'
+    WHEN ${score} >= 50 THEN 'Neighbour'
+    ELSE 'Newcomer' END`;
+}
 
 // Grace pass configuration - first-time offenders get a warning instead of penalty
 export const GRACE_PASS_CONFIG = {
@@ -157,7 +174,7 @@ export async function awardTrustPoints(
     const persistAward = async (tx: any) => {
       await tx
         .update(users)
-        .set({ reputationScore: newScore })
+        .set({ reputationScore: newScore, reputationLevel: trustLevelForScore(newScore) })
         .where(eq(users.id, userId));
 
       await tx.insert(reputationActivities).values({
@@ -510,13 +527,15 @@ export async function applySeriousOverduePenalty(
 
     if (inserted.length === 0) return { pointsAwarded: 0 };
 
+    const newScore = Math.max(
+      TRUST_SCORE_FLOOR,
+      (borrower.reputationScore || 0) + pointsAwarded,
+    );
     await tx
       .update(users)
       .set({
-        reputationScore: Math.max(
-          TRUST_SCORE_FLOOR,
-          (borrower.reputationScore || 0) + pointsAwarded,
-        ),
+        reputationScore: newScore,
+        reputationLevel: trustLevelForScore(newScore),
       })
       .where(eq(users.id, borrowerId));
 

@@ -561,6 +561,18 @@ export default function PublicProfileScreen() {
             </View>
           </View>
 
+          {profile.bio?.trim() ? (
+            <Text style={[styles.bio, { color: colors.foreground }]}>
+              {profile.bio.trim()}
+            </Text>
+          ) : isOwnProfile ? (
+            <Pressable onPress={() => router.push("/edit-profile" as never)}>
+              <Text style={[styles.bioPrompt, { color: colors.mutedForeground }]}>
+                Add a bio
+              </Text>
+            </Pressable>
+          ) : null}
+
           {/* Stats */}
           <View
             style={[
@@ -751,6 +763,8 @@ const styles = StyleSheet.create({
   },
   handle: { fontSize: 13, fontFamily: "Inter_400Regular" },
   activeText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  bio: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  bioPrompt: { fontSize: 13, fontFamily: "Inter_400Regular", textDecorationLine: "underline" },
 
   statsRow: {
     flexDirection: "row",

@@ -283,6 +283,23 @@ test("stale plans and mid-repair failures preserve both duplicate groups and the
     CREATE TABLE notifications (id integer PRIMARY KEY, user_id integer, type text, request_id integer, review_id integer, created_at timestamp);
     CREATE TABLE achievements (id integer PRIMARY KEY, name text);
     CREATE TABLE user_achievements (id integer PRIMARY KEY, user_id integer, achievement_id integer, review_id integer, earned_at timestamp);
+    CREATE TABLE duplicate_review_repair_audits (
+      id serial PRIMARY KEY,
+      reviewer_id integer NOT NULL,
+      transaction_id integer NOT NULL,
+      canonical_review_id integer NOT NULL,
+      operator_name text NOT NULL,
+      reason text NOT NULL,
+      removed_reviews jsonb NOT NULL,
+      removed_reputation_activities jsonb NOT NULL DEFAULT '[]'::jsonb,
+      removed_share_coin_transactions jsonb NOT NULL DEFAULT '[]'::jsonb,
+      removed_notifications jsonb NOT NULL DEFAULT '[]'::jsonb,
+      removed_user_achievements jsonb NOT NULL DEFAULT '[]'::jsonb,
+      score_adjustments jsonb NOT NULL DEFAULT '[]'::jsonb,
+      coin_adjustments jsonb NOT NULL DEFAULT '[]'::jsonb,
+      repaired_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE (reviewer_id, transaction_id)
+    );
     INSERT INTO users VALUES (10, 500, 'ShareSwap Champion', 12);
     INSERT INTO achievements VALUES (1, 'Reviewed');
     INSERT INTO user_reviews VALUES
@@ -337,6 +354,7 @@ test("stale plans and mid-repair failures preserve both duplicate groups and the
   const tables = [
     "users", "user_reviews", "reputation_activities",
     "share_coins_transactions", "notifications", "user_achievements",
+    "duplicate_review_repair_audits",
   ];
   const snapshot = async () => {
     const rows = await Promise.all(tables.map(async (table) =>
@@ -399,16 +417,56 @@ test("stale plans and mid-repair failures preserve both duplicate groups and the
   );
   assert.equal(deletedEffects, 8);
 
+  let auditInserts = 0;
+  let sawAdjustedTotals = false;
+  const failingAuditClient = {
+    connect: async () => {
+      const connection = await testPool.connect();
+      return {
+        query: async (sql: string, values?: any[]) => {
+          if (sql.includes("INSERT INTO duplicate_review_repair_audits")) {
+            auditInserts++;
+            if (auditInserts === 2) {
+              const user = (await connection.query(
+                "SELECT reputation_score, reputation_level, share_coins FROM users WHERE id = 10",
+              )).rows[0];
+              assert.equal(user.reputation_score, 490);
+              assert.equal(user.reputation_level, "Community Pillar");
+              assert.equal(Number(user.share_coins), 2);
+              sawAdjustedTotals = true;
+              assert.equal((await connection.query(
+                "SELECT count(*)::int AS count FROM duplicate_review_repair_audits",
+              )).rows[0].count, 1, "the first audit was inserted before the second fails");
+              // Force a real PostgreSQL NOT NULL error on the second audit insert.
+              return connection.query(sql, [
+                ...values!.slice(0, 3), null, ...values!.slice(4),
+              ]);
+            }
+          }
+          return connection.query(sql, values);
+        },
+        release: () => connection.release(),
+      };
+    },
+    query: (sql: string, values?: any[]) => testPool.query(sql, values),
+  };
+  await rejectsWithoutChanges(
+    /null value in column "operator_name"/,
+    () => applyDuplicateReviewRepair(plan, "integration-test", failingAuditClient),
+  );
+  assert.equal(auditInserts, 2);
+  assert.ok(sawAdjustedTotals, "both balances were changed before the audit insert failed");
+
   assert.deepEqual(
     await applyDuplicateReviewRepair(plan, "integration-test", testPool),
     { status: "repaired", repairedGroups: 2 },
   );
   const after = await snapshot();
-  assert.deepEqual(after.rows.slice(1).map((rows) => rows.map((row: any) => row.id)),
+  assert.deepEqual(after.rows.slice(1, 6).map((rows) => rows.map((row: any) => row.id)),
     [[1, 3], [1, 3], [1, 3], [1, 3], [1, 3]]);
   assert.equal(after.rows[0][0].reputation_score, 490);
   assert.equal(Number(after.rows[0][0].share_coins), 2);
-  assert.equal((await testPool.query("SELECT count(*)::int AS count FROM duplicate_review_repair_audits")).rows[0].count, 2);
+  assert.equal(after.rows[6].length, 2);
 });
 
 test.after(async () => {

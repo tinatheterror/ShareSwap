@@ -1906,20 +1906,17 @@ export function registerRoutes(
     };
 
     let ownerReturnFixtureOrphanCleanup: Promise<void> | undefined;
-    let ownerReturnFixtureOrphanCleanupComplete = false;
     const ensureOwnerReturnFixtureOrphansCleaned = (simulateFailure: boolean) => {
-      // The fault header re-runs cleanup even if the initial startup pass succeeded.
-      // A failure must not poison later fixture setups in this same server process.
-      if (simulateFailure && ownerReturnFixtureOrphanCleanupComplete) {
-        ownerReturnFixtureOrphanCleanup = undefined;
-        ownerReturnFixtureOrphanCleanupComplete = false;
-      }
+      // Retry on every setup: an earlier run can be interrupted after this
+      // server's first cleanup. Share an in-flight scan across concurrent setups.
       if (!ownerReturnFixtureOrphanCleanup) {
         const attempt = cleanupOrphanedOwnerReturnFixtures(simulateFailure);
         ownerReturnFixtureOrphanCleanup = attempt;
         void attempt.then(
           () => {
-            ownerReturnFixtureOrphanCleanupComplete = true;
+            if (ownerReturnFixtureOrphanCleanup === attempt) {
+              ownerReturnFixtureOrphanCleanup = undefined;
+            }
           },
           () => {
             if (ownerReturnFixtureOrphanCleanup === attempt) {
@@ -2054,6 +2051,8 @@ export function registerRoutes(
         owner: { username: owner.username, password },
         borrower: { username: borrower.username, password },
         requestId: request.id,
+        itemId: item.id,
+        userIds: [owner.id, borrower.id],
       });
     });
 
@@ -2091,6 +2090,24 @@ export function registerRoutes(
       }
       ownerReturnFixtures.delete(req.body.fixtureId);
       res.json(cleanupVerification);
+    });
+
+    // Inspect by IDs captured at setup, including after an orphan's users are gone.
+    // This is only mounted in E2E_TEST_MODE and never mutates fixture state.
+    app.post("/api/e2e/owner-return-fixture/records", async (req, res) => {
+      const { requestId, itemId, userIds } = req.body ?? {};
+      if (
+        !Number.isSafeInteger(requestId) || requestId <= 0 ||
+        !Number.isSafeInteger(itemId) || itemId <= 0 ||
+        !Array.isArray(userIds) || userIds.length !== 2 ||
+        !userIds.every((id: unknown) => Number.isSafeInteger(id) && (id as number) > 0)
+      ) {
+        res.sendStatus(400);
+        return;
+      }
+      res.json(await db.transaction((tx) =>
+        countOwnerReturnFixtureRecords(tx, { requestId, itemId, userIds }),
+      ));
     });
   }
 

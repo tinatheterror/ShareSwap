@@ -14,6 +14,8 @@ type OwnerReturnFixture = {
   owner: { username: string; password: string };
   borrower: { username: string; password: string };
   requestId: number;
+  itemId: number;
+  userIds: number[];
 };
 
 type FixtureRecordCounts = {
@@ -74,6 +76,58 @@ async function cleanupOwnerReturnFixture(
     reviews: 0,
     notifications: 0,
   });
+}
+
+async function countFixtureRecords(
+  request: APIRequestContext,
+  fixture: OwnerReturnFixture,
+): Promise<FixtureRecordCounts> {
+  const response = await request.post("/api/e2e/owner-return-fixture/records", {
+    data: {
+      requestId: fixture.requestId,
+      itemId: fixture.itemId,
+      userIds: fixture.userIds,
+    },
+  });
+  expect(response.ok()).toBe(true);
+  return response.json() as Promise<FixtureRecordCounts>;
+}
+
+function expectPostReturnActivity(counts: FixtureRecordCounts) {
+  expect(counts.users).toBe(2);
+  expect(counts.items).toBe(1);
+  expect(counts.requests).toBe(1);
+  expect(counts.shareCoinRewards).toBeGreaterThan(0);
+  expect(counts.reputationRewards).toBeGreaterThan(0);
+  expect(counts.achievements).toBeGreaterThan(0);
+  expect(counts.reviews).toBeGreaterThan(0);
+  expect(counts.notifications).toBeGreaterThan(0);
+}
+
+async function completeReturnWithReview(page: Page, fixture: OwnerReturnFixture) {
+  const login = await page.request.post("/api/login", { data: fixture.owner });
+  expect(login.ok()).toBe(true);
+  await page.goto("/requests");
+  await page.getByRole("button", { name: "Open inbox" }).click();
+  await page.getByRole("button", { name: /Ben Borrower/ }).click();
+  await page.getByRole("button", { name: "Confirm return", exact: true }).last().click();
+  const returnDialog = page.getByRole("dialog", { name: "Confirm Item Return" });
+  await expect(returnDialog).toBeVisible();
+  const confirmed = page.waitForResponse((response) =>
+    response.request().method() === "POST" &&
+    response.url().endsWith(`/api/requests/${fixture.requestId}/confirm-return`),
+  );
+  await returnDialog.getByRole("button", { name: "Confirm Return" }).click();
+  expect((await confirmed).ok()).toBe(true);
+  const reviewDialog = page.getByRole("dialog", { name: "Leave a review" });
+  await expect(reviewDialog).toBeVisible();
+  await reviewDialog.locator("button").nth(4).click();
+  const reviewed = page.waitForResponse((response) =>
+    response.request().method() === "POST" &&
+    /\/api\/users\/\d+\/reviews$/.test(new URL(response.url()).pathname),
+  );
+  await reviewDialog.getByRole("button", { name: "Submit review" }).click();
+  expect((await reviewed).status()).toBe(201);
 }
 
 test("failed fixture setup rolls back every inserted record", async ({
@@ -162,6 +216,58 @@ test("failed orphan cleanup rolls back and the next setup retries without deleti
     for (const fixture of active) {
       await cleanupOwnerReturnFixture(request, fixture.fixtureId);
     }
+  }
+});
+
+test("next setup removes an interrupted completed return's rewards without touching active rewards", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await suppressReturnReminderChecks(page);
+  const activeResponse = await page.request.post("/api/e2e/owner-return-fixture");
+  expect(activeResponse.ok()).toBe(true);
+  const active = (await activeResponse.json()) as OwnerReturnFixture;
+  let replacement: OwnerReturnFixture | undefined;
+  let orphan: OwnerReturnFixture | undefined;
+
+  try {
+    const orphanResponse = await page.request.post("/api/e2e/owner-return-fixture", {
+      headers: { "x-e2e-simulate-failure": "owner-return-fixture-orphan" },
+    });
+    expect(orphanResponse.ok()).toBe(true);
+    orphan = (await orphanResponse.json()) as OwnerReturnFixture;
+
+    await completeReturnWithReview(page, orphan);
+    await completeReturnWithReview(page, active);
+    expectPostReturnActivity(await countFixtureRecords(page.request, orphan));
+    const activeBefore = await countFixtureRecords(page.request, active);
+    expectPostReturnActivity(activeBefore);
+
+    // A fresh setup runs orphan cleanup; the completed orphan was never in the
+    // registry, while the active completed fixture still is.
+    const nextSetup = await page.request.post("/api/e2e/owner-return-fixture");
+    expect(nextSetup.ok()).toBe(true);
+    replacement = (await nextSetup.json()) as OwnerReturnFixture;
+    expect(await countFixtureRecords(page.request, orphan)).toEqual({
+      users: 0,
+      items: 0,
+      requests: 0,
+      shareCoinRewards: 0,
+      reputationRewards: 0,
+      achievements: 0,
+      reviews: 0,
+      notifications: 0,
+    });
+    expect(await countFixtureRecords(page.request, active)).toEqual(activeBefore);
+  } finally {
+    // If the assertion fails before the next setup, recover the untracked
+    // orphan so a later browser run is not contaminated.
+    if (orphan && !replacement) {
+      const recovery = await page.request.post("/api/e2e/owner-return-fixture");
+      if (recovery.ok()) replacement = (await recovery.json()) as OwnerReturnFixture;
+    }
+    if (replacement) await cleanupOwnerReturnFixture(page.request, replacement.fixtureId);
+    await cleanupOwnerReturnFixture(page.request, active.fixtureId);
   }
 });
 

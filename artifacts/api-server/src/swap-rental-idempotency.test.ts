@@ -28,12 +28,15 @@ import {
   awardRentalCompletionPoints,
   awardTrustPoints,
   TRUST_POINTS,
+  trustLevelForScore,
 } from "./trust-score-service.js";
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
 
 let user1Id: number;
 let user2Id: number;
+let concurrentScoreUserId: number;
+let concurrentAwardRequestIds: number[] = [];
 let item1Id: number;
 let item2Id: number;
 
@@ -80,6 +83,11 @@ before(async () => {
 
   user1Id = u1.id;
   user2Id = u2.id;
+  const [scoreUser] = await db
+    .insert(users)
+    .values({ username: `${UNIQUE}-score-user`, reputationScore: 290 })
+    .returning({ id: users.id });
+  concurrentScoreUserId = scoreUser.id;
 
   // Two items — one owned by each user for the swap scenario
   const [i1] = await db
@@ -148,6 +156,10 @@ before(async () => {
 
   const [rbr] = await insertReq("RENT");
   rentalBarrierRequestId = rbr.id;
+  for (let i = 0; i < 2; i++) {
+    const [request] = await insertReq("SWAP");
+    concurrentAwardRequestIds.push(request.id);
+  }
 });
 
 after(async () => {
@@ -160,6 +172,7 @@ after(async () => {
     rentalRequestId,
     rentalConcurrentRequestId,
     rentalBarrierRequestId,
+    ...concurrentAwardRequestIds,
   ];
 
   for (const rid of allRequestIds) {
@@ -175,8 +188,71 @@ after(async () => {
   await db.delete(items).where(eq(items.id, item2Id));
   await db.delete(users).where(eq(users.id, user1Id));
   await db.delete(users).where(eq(users.id, user2Id));
+  await db.delete(users).where(eq(users.id, concurrentScoreUserId));
 
   await pool.end();
+});
+
+// ── Independent score changes to one account ─────────────────────────────────
+
+test("simultaneous independent awards scale from the latest score and persist the matching level", async () => {
+  const [first, second, retry] = await Promise.all([
+    awardTrustPoints(concurrentScoreUserId, "swap_completed", 40, {
+      requestId: concurrentAwardRequestIds[0],
+    }),
+    awardTrustPoints(concurrentScoreUserId, "swap_completed", 40, {
+      requestId: concurrentAwardRequestIds[1],
+    }),
+    awardTrustPoints(concurrentScoreUserId, "swap_completed", 40, {
+      requestId: concurrentAwardRequestIds[0],
+    }),
+  ]);
+  assert.deepEqual(
+    [first.pointsAwarded, second.pointsAwarded, retry.pointsAwarded].sort((a, b) => a - b),
+    [0, 20, 40],
+  );
+
+  const [saved] = await db.select({
+    score: users.reputationScore,
+    level: users.reputationLevel,
+  }).from(users).where(eq(users.id, concurrentScoreUserId));
+  assert.equal(saved.score, 350);
+  assert.equal(saved.level, trustLevelForScore(350));
+
+  const rows = await db.select().from(reputationActivities).where(and(
+    eq(reputationActivities.userId, concurrentScoreUserId),
+    eq(reputationActivities.activityType, "swap_completed"),
+  ));
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map(row => row.points).sort((a, b) => a - b), [20, 40]);
+});
+
+test("simultaneous award and penalty retain both changes and lower the saved level", async () => {
+  await db.update(users).set({
+    reputationScore: 155,
+    reputationLevel: trustLevelForScore(155),
+  }).where(eq(users.id, concurrentScoreUserId));
+
+  await Promise.all([
+    awardTrustPoints(concurrentScoreUserId, "gifting_completed", 40, {
+      requestId: concurrentAwardRequestIds[0],
+    }),
+    awardTrustPoints(concurrentScoreUserId, "fraud_abuse", -60, {
+      requestId: concurrentAwardRequestIds[1],
+    }),
+  ]);
+  const [saved] = await db.select({
+    score: users.reputationScore,
+    level: users.reputationLevel,
+  }).from(users).where(eq(users.id, concurrentScoreUserId));
+  assert.equal(saved.score, 135);
+  assert.equal(saved.level, trustLevelForScore(135));
+  const rows = await db.select().from(reputationActivities).where(and(
+    eq(reputationActivities.userId, concurrentScoreUserId),
+    eq(reputationActivities.activityType, "fraud_abuse"),
+  ));
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].points, -60);
 });
 
 // ── SWAP — Sequential-retry tests ─────────────────────────────────────────────

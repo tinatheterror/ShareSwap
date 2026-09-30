@@ -155,29 +155,25 @@ export async function awardTrustPoints(
   metadata: TrustActivityMetadata = {},
   executor: any = db,
 ): Promise<{ newScore: number; pointsAwarded: number }> {
-  const [user] = await executor
-    .select({ reputationScore: users.reputationScore })
-    .from(users)
-    .where(eq(users.id, userId));
-
-  if (!user) {
-    throw new Error(`User ${userId} not found`);
-  }
-
-  const currentScore = user.reputationScore || 0;
-  const scaledPoints = scaleTrustPoints(currentScore, points);
-  const newScore = Math.max(TRUST_SCORE_FLOOR, currentScore + scaledPoints);
-
   const description = buildActivityDescription(activityType, metadata);
+  const persistAward = async (tx: any): Promise<{ newScore: number; pointsAwarded: number }> => {
+    // Lock before reading: scaling, the score floor and the saved level must all
+    // use the latest committed score, including when the caller supplies a tx.
+    const [user] = await tx
+      .select({ reputationScore: users.reputationScore })
+      .from(users)
+      .where(eq(users.id, userId))
+      .for("update");
+    if (!user) throw new Error(`User ${userId} not found`);
 
-  try {
-    const persistAward = async (tx: any) => {
-      await tx
-        .update(users)
-        .set({ reputationScore: newScore, reputationLevel: trustLevelForScore(newScore) })
-        .where(eq(users.id, userId));
+    const currentScore = user.reputationScore || 0;
+    const scaledPoints = scaleTrustPoints(currentScore, points);
+    const newScore = Math.max(TRUST_SCORE_FLOOR, currentScore + scaledPoints);
 
-      await tx.insert(reputationActivities).values({
+    // The unique request/activity index makes retries no-ops. Insert first so
+    // even inside a caller-owned transaction a conflict cannot change the score
+    // or abort that transaction.
+    const inserted = await tx.insert(reputationActivities).values({
         userId,
         activityType,
         points: scaledPoints,
@@ -186,30 +182,20 @@ export async function awardTrustPoints(
         requestId: metadata.requestId ?? null,
         reviewId: metadata.reviewId ?? null,
         createdAt: new Date(),
-      });
-    };
-    if (executor === db) {
-      await db.transaction(persistAward);
-    } else {
-      await persistAward(executor);
-    }
-  } catch (err: any) {
-    // PostgreSQL unique-constraint violation (23505) means a concurrent call
-    // already committed this (userId, requestId, activityType) tuple.
-    // Drizzle wraps the pg error, so the code may be on either err or err.cause.
-    // Treat it as an idempotent no-op rather than crashing.
-    const pgCode: string | undefined = err?.code ?? err?.cause?.code;
-    if (pgCode === "23505") {
-      console.warn(
-        `[awardTrustPoints] Unique-constraint conflict for userId=${userId} ` +
-          `activityType=${activityType} requestId=${metadata.requestId ?? "null"} — skipping duplicate`,
-      );
+      })
+      .onConflictDoNothing()
+      .returning({ id: reputationActivities.id });
+    if (inserted.length === 0) {
       return { newScore: currentScore, pointsAwarded: 0 };
     }
-    throw err;
-  }
 
-  return { newScore, pointsAwarded: scaledPoints };
+    await tx
+      .update(users)
+      .set({ reputationScore: newScore, reputationLevel: trustLevelForScore(newScore) })
+      .where(eq(users.id, userId));
+    return { newScore, pointsAwarded: scaledPoints };
+  };
+  return executor === db ? db.transaction(persistAward) : persistAward(executor);
 }
 
 export function formatReputationActivityDescription(
@@ -498,6 +484,7 @@ export async function applySeriousOverduePenalty(
       .select({ reputationScore: users.reputationScore })
       .from(users)
       .where(eq(users.id, borrowerId))
+      .for("update")
       .limit(1);
     if (!borrower) throw new Error(`User ${borrowerId} not found`);
 

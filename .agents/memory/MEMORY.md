@@ -11,6 +11,7 @@
 - [Hybrid Stripe deposits](stripe-hybrid-deposits.md) — use exact hold deadlines when coverage fits; otherwise require explicit consent before a captured refundable deposit.
 - [Expo SDK dependency alignment](expo-sdk-dependency-alignment.md) — keep native packages and Jest preset on the app’s Expo SDK major; cross-SDK versions can duplicate native modules and break launch.
 - [Expo web CSRF cookies](expo-web-csrf-cookies.md) — cross-host Expo web mutations require the CSRF cookie to use the same cross-site policy as the session cookie.
+- [API workflow port ownership](api-workflow-port-ownership.md) — a failed managed API workflow can leave an older listener on its port; verify the live endpoint before changing authentication.
 - [Simulated deposit settlement](simulated-deposit-settlement.md) — simulated PaymentIntent IDs have no Stripe resource; terminal workflows must treat their external release as a no-op.
 - [Local browser-test sessions](local-browser-test-sessions.md) — real Playwright sessions over HTTP need test-only cookie settings and interruption-safe database fixture cleanup.
 - [Shared E2E fault injection](shared-e2e-fault-injection.md) — serialize tests that inject failures into a shared server's fixture cleanup; parallel workers can contaminate unrelated setups.

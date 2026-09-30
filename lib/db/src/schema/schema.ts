@@ -572,6 +572,31 @@ export const userAchievements = pgTable("user_achievements", {
   userAchievementUniq: uniqueIndex("user_achievements_user_achievement_uidx").on(table.userId, table.achievementId),
 }));
 
+// Immutable snapshots of badge rows archived during operator-reviewed reconciliation.
+// Historical rewards and notifications remain in their original tables.
+export const duplicateBadgeReconciliationAudits = pgTable(
+  "duplicate_badge_reconciliation_audits",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull(),
+    achievementId: integer("achievement_id").notNull(),
+    canonicalBadge: jsonb("canonical_badge").notNull(),
+    archivedBadges: jsonb("archived_badges").notNull(),
+    reviewedRewards: jsonb("reviewed_rewards").notNull(),
+    reviewedNotifications: jsonb("reviewed_notifications").notNull(),
+    expectedShareCoins: numeric("expected_share_coins").notNull(),
+    targetShareCoins: numeric("target_share_coins").notNull(),
+    correctionTransaction: jsonb("correction_transaction"),
+    operatorName: text("operator_name").notNull(),
+    reason: text("reason").notNull(),
+    reconciledAt: timestamp("reconciled_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("duplicate_badge_reconciliation_audits_user_achievement_uidx")
+      .on(table.userId, table.achievementId),
+  ],
+);
+
 // Wishlist Offers — tracks which users have tapped "I Have This Item!" on a community wishlist card
 export const wishlistOffers = pgTable("wishlist_offers", {
   id: serial("id").primaryKey(),

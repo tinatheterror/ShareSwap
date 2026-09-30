@@ -1,5 +1,6 @@
 -- Existing duplicate badges may already have paid coins and sent notifications.
 -- Do not discard that history to make the index creation succeed.
+-- See docs/duplicate-badge-reconciliation.md for the reviewed, audited repair.
 DO $$
 DECLARE
   duplicate_keys text;
@@ -21,7 +22,7 @@ BEGIN
 
   IF duplicate_keys IS NOT NULL THEN
     RAISE EXCEPTION
-      'Cannot enforce unique badge awards; reconcile duplicate badges and their rewards first: %',
+      'Cannot enforce unique badge awards; run badges:duplicates report and follow docs/duplicate-badge-reconciliation.md first: %',
       duplicate_keys;
   END IF;
 END

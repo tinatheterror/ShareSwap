@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "migrate-push-tokens": "tsx src/scripts/migrate-push-tokens.ts",
     "reviews:duplicates": "tsx src/scripts/repair-duplicate-reviews.ts",
+    "badges:duplicates": "tsx src/scripts/reconcile-duplicate-badges.ts",
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {

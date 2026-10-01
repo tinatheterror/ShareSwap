@@ -14,6 +14,7 @@
 - [Expo web CSRF cookies](expo-web-csrf-cookies.md) — cross-host Expo web mutations require the CSRF cookie to use the same cross-site policy as the session cookie.
 - [API workflow port ownership](api-workflow-port-ownership.md) — a failed managed API workflow can leave an older listener on its port; verify the live endpoint before changing authentication.
 - [Native app live-API mismatch](native-live-api-mismatch.md) — a phone screen can hit an older published API even while the development API and database have the expected request state.
+- [Google OAuth environment boundaries](google-oauth-environment-boundaries.md) — dev sign-in must return to dev; a production callback can create a new profile instead of opening existing test history.
 - [Simulated deposit settlement](simulated-deposit-settlement.md) — simulated PaymentIntent IDs have no Stripe resource; terminal workflows must treat their external release as a no-op.
 - [Local browser-test sessions](local-browser-test-sessions.md) — real Playwright sessions over HTTP need test-only cookie settings and interruption-safe database fixture cleanup.
 - [Shared E2E fault injection](shared-e2e-fault-injection.md) — serialize tests that inject failures into a shared server's fixture cleanup; parallel workers can contaminate unrelated setups.

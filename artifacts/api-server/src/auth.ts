@@ -20,6 +20,7 @@ import { eq, or, and, ilike, ne } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./sendgrid";
 import { computeActiveStatus, computeResponseTime } from "./user-stats";
+import { resolveGoogleOAuthCallbackURL } from "./google-oauth-config";
 
 // ---------------------------------------------------------------------------
 // Postgres-backed rate-limit store
@@ -471,10 +472,12 @@ export function setupAuth(app: Express) {
     }),
   );
 
-  // Google OAuth Strategy - use custom domain if available, fallback to Replit URL
-  const googleCallbackURL = process.env.CUSTOM_DOMAIN
-    ? `https://${process.env.CUSTOM_DOMAIN}/api/auth/google/callback`
-    : "https://share-swap-mvp.replit.app/api/auth/google/callback";
+  // A development callback must return to development's database, not production.
+  // Configure it explicitly; never select an OAuth callback from request headers.
+  const googleCallbackURL = resolveGoogleOAuthCallbackURL({
+    GOOGLE_OAUTH_CALLBACK_URL: process.env.GOOGLE_OAUTH_CALLBACK_URL,
+    CUSTOM_DOMAIN: process.env.CUSTOM_DOMAIN,
+  });
 
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     console.log(

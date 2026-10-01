@@ -179,3 +179,8 @@ externalPort = 5173
 
 [objectStorage]
 defaultBucketID = "replit-objstore-cb3aab52-ac42-40ef-9d04-b5fbb6285151"
+
+[userenv]
+
+[userenv.development]
+GOOGLE_OAUTH_CALLBACK_URL = "https://17c64ebc-4359-4add-a3e5-c73b7d69f2c1-00-dww21b21gbj6.spock.replit.dev/api/auth/google/callback"

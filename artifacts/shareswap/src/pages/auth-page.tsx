@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { googleSignInHref, isEmbeddedBrowser } from "@/lib/google-sign-in";
 
 // Generate a simple device fingerprint for anti-fraud
 function generateDeviceFingerprint(): string {
@@ -54,11 +55,16 @@ export default function AuthPage() {
   const [showReactivate, setShowReactivate] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showReferralInput, setShowReferralInput] = useState(false);
+  const [isEmbeddedPreview, setIsEmbeddedPreview] = useState(false);
   // Forgot-password state
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setIsEmbeddedPreview(isEmbeddedBrowser(window));
+  }, []);
 
   // Extract referral code from URL and handle verification status
   useEffect(() => {
@@ -254,16 +260,22 @@ export default function AuthPage() {
               </h2>
 
               <Button
-                onClick={() => {
-                  const url = referralCode.trim() 
-                    ? `/api/auth/google?ref=${encodeURIComponent(referralCode.trim())}`
-                    : "/api/auth/google";
-                  window.location.href = url;
-                }}
+                asChild
                 className="w-full bg-primary hover:bg-primary/90 h-11"
               >
-                Continue with Google
+                <a
+                  href={googleSignInHref(referralCode, import.meta.env.BASE_URL)}
+                  target={isEmbeddedPreview ? "_blank" : undefined}
+                  rel={isEmbeddedPreview ? "noopener noreferrer" : undefined}
+                >
+                  Continue with Google
+                </a>
               </Button>
+              {isEmbeddedPreview && (
+                <p className="text-xs text-center text-muted-foreground">
+                  Google sign-in opens in a new tab. Continue using ShareSwap in that tab.
+                </p>
+              )}
 
               <Button variant="outline" className="w-full h-11" disabled>
                 Continue with Phone Number

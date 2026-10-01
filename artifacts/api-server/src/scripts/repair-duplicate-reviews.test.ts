@@ -604,6 +604,120 @@ test("an effect removed by another connection during apply rolls back earlier de
   );
 });
 
+test("reassigned effects survive apply and roll back previously repaired groups", { timeout: 120_000 }, async (t) => {
+  const effectTables = [
+    "reputation_activities", "share_coins_transactions", "notifications", "user_achievements",
+  ];
+  for (const table of effectTables) {
+    for (const scenario of [
+      { name: "duplicate to canonical", before: 4, after: 3 },
+      { name: "duplicate to unrelated review", before: 4, after: 5 },
+      { name: "duplicate to legacy candidate", before: 4, after: null },
+      { name: "legacy candidate to canonical", before: null, after: 3 },
+    ]) {
+      await t.test(`${table}: ${scenario.name}`, async (t) => {
+        const schema = `repair_reassignment_${randomUUID().replaceAll("-", "")}`;
+        await adminPool.query(`CREATE SCHEMA ${schema}`);
+        const testPool = new Pool({
+          connectionString: process.env.DATABASE_URL,
+          options: `-c search_path=${schema}`,
+        });
+        t.after(async () => {
+          await testPool.end();
+          await adminPool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+        });
+        await testPool.query(`
+          CREATE TABLE users (id integer PRIMARY KEY, reputation_score integer, reputation_level text, share_coins numeric);
+          CREATE TABLE user_reviews (id integer PRIMARY KEY, reviewer_id integer, reviewed_user_id integer, transaction_id integer, rating integer, comment text, feedback_tags text[], created_at timestamp);
+          CREATE TABLE reputation_activities (id integer PRIMARY KEY, user_id integer, activity_type text, request_id integer, review_id integer, created_at timestamp);
+          CREATE TABLE share_coins_transactions (id integer PRIMARY KEY, user_id integer, description text, transaction_type text, amount numeric, review_id integer, created_at timestamp);
+          CREATE TABLE notifications (id integer PRIMARY KEY, user_id integer, type text, request_id integer, review_id integer, created_at timestamp);
+          CREATE TABLE achievements (id integer PRIMARY KEY, name text);
+          CREATE TABLE user_achievements (id integer PRIMARY KEY, user_id integer, achievement_id integer, review_id integer, earned_at timestamp);
+          INSERT INTO users VALUES (10, 500, 'ShareSwap Champion', 12);
+          INSERT INTO achievements VALUES (1, 'Reviewed');
+          INSERT INTO user_reviews VALUES
+            (1, 20, 10, 30, 5, 'canonical', NULL, '2026-01-01'),
+            (2, 20, 10, 30, 5, 'duplicate', NULL, '2026-01-01'),
+            (3, 21, 10, 31, 5, 'canonical', NULL, '2026-02-01'),
+            (4, 21, 10, 31, 5, 'duplicate', NULL, '2026-02-01'),
+            (5, 22, 10, 32, 5, 'unrelated', NULL, '2026-03-01');
+          INSERT INTO reputation_activities
+            SELECT id, 10, 'RECEIVE_REVIEW', transaction_id, id, created_at FROM user_reviews WHERE id < 5;
+          INSERT INTO share_coins_transactions
+            SELECT id, 10, 'Level Up Bonus — Neighbour', 'EARNED', 5, id, created_at FROM user_reviews WHERE id < 5;
+          INSERT INTO notifications
+            SELECT id, 10, 'new_review_received', transaction_id, id, created_at FROM user_reviews WHERE id < 5;
+          INSERT INTO user_achievements
+            SELECT id, 10, 1, id, created_at FROM user_reviews WHERE id < 5;
+        `);
+        await testPool.query(`UPDATE ${table} SET review_id = $1 WHERE id = 4`, [scenario.before]);
+        const plan = {
+          reason: "Remove confirmed duplicate effects from both groups.",
+          repairs: [30, 31].map((transactionId, index) => ({
+            reviewerId: 20 + index, transactionId, canonicalReviewId: 1 + index * 2,
+            reputationActivityIds: [2 + index * 2],
+            shareCoinTransactionIds: [2 + index * 2],
+            notificationIds: [2 + index * 2],
+            userAchievementIds: [2 + index * 2],
+          })),
+          userReconciliations: [{
+            userId: 10, expectedReputationScore: 500, targetReputationScore: 490,
+            expectedShareCoins: "12", targetShareCoins: "2",
+          }],
+        };
+        const tables = ["users", "user_reviews", ...effectTables];
+        const snapshot = async () => Promise.all(tables.map(async (name) =>
+          (await testPool.query(`SELECT * FROM ${name} ORDER BY id`)).rows));
+        const expected = await snapshot();
+        expected[tables.indexOf(table)].find((row: any) => row.id === 4).review_id = scenario.after;
+        const updater = await testPool.connect();
+        let reassigned = false;
+        const pausedClient = {
+          connect: async () => {
+            const connection = await testPool.connect();
+            return {
+              query: async (sql: string, values?: any[]) => {
+                if (sql.startsWith(`DELETE FROM ${table}`) && values?.[0]?.includes(4)) {
+                  assert.equal((await connection.query(
+                    "SELECT id FROM user_reviews WHERE id = 2",
+                  )).rowCount, 0, "the first group has already been repaired inside the transaction");
+                  await updater.query("SET lock_timeout = '5s'");
+                  const result = await updater.query(
+                    `UPDATE ${table} SET review_id = $1 WHERE id = 4 RETURNING review_id`,
+                    [scenario.after],
+                  );
+                  assert.deepEqual(result.rows, [{ review_id: scenario.after }]);
+                  reassigned = true;
+                }
+                return connection.query(sql, values);
+              },
+              release: () => connection.release(),
+            };
+          },
+          query: (sql: string, values?: any[]) => testPool.query(sql, values),
+        };
+        try {
+          await assert.rejects(
+            applyDuplicateReviewRepair(plan, "integration-test", pausedClient),
+            /review attribution may have changed/,
+          );
+        } finally {
+          updater.release();
+        }
+        assert.ok(reassigned, "another connection committed the reassignment after apply read its report");
+        assert.deepEqual(await snapshot(), expected,
+          "only the committed reassignment survives; every repair deletion and all balances roll back");
+        for (const name of ["duplicate_review_repair_audits", "user_reviews_reviewer_transaction_uidx"]) {
+          assert.equal((await testPool.query(
+            "SELECT to_regclass($1) AS name", [name],
+          )).rows[0].name, null, "failed apply leaves no audit or uniqueness index");
+        }
+      });
+    }
+  }
+});
+
 test.after(async () => {
   await adminPool.end();
 });

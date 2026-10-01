@@ -53,6 +53,28 @@ function ids(values: number[] | undefined): number[] {
   return [...new Set(values ?? [])].sort((a, b) => a - b);
 }
 
+async function deleteUnchangedEffects(
+  connection: Queryable,
+  table: "reputation_activities" | "share_coins_transactions" | "notifications" | "user_achievements",
+  selectedIds: number[],
+  reportedEffects: any[],
+) {
+  if (selectedIds.length === 0) return [];
+  const expectedReviewIds = selectedIds.map((id) =>
+    reportedEffects.find((effect) => Number(effect.id) === id).review_id);
+  // PostgreSQL rechecks this predicate after waiting for a concurrent UPDATE.
+  // Match NULL explicitly too: a legacy candidate must not become attributed
+  // to another review between validation and deletion.
+  return (await connection.query(
+    `DELETE FROM ${table} AS effect
+     USING unnest($1::int[], $2::int[]) AS expected(id, review_id)
+     WHERE effect.id = expected.id
+       AND effect.review_id IS NOT DISTINCT FROM expected.review_id
+     RETURNING effect.*`,
+    [selectedIds, expectedReviewIds],
+  )).rows;
+}
+
 function requirePositiveInteger(value: unknown, label: string): number {
   if (!Number.isInteger(value) || Number(value) <= 0) {
     throw new Error(`${label} must be a positive integer`);
@@ -472,45 +494,33 @@ export async function applyDuplicateReviewRepair(
       const notificationIds = ids(repair.notificationIds);
       const achievementIds = ids(repair.userAchievementIds);
 
-      const removedActivities = activityIds.length
-        ? (await connection.query(
-          "DELETE FROM reputation_activities WHERE id = ANY($1::int[]) RETURNING *",
-          [activityIds],
-        )).rows
-        : [];
+      const removedActivities = await deleteUnchangedEffects(
+        connection, "reputation_activities", activityIds, group.relatedEffects.reputationActivities,
+      );
       if (removedActivities.length !== activityIds.length) {
-        throw new Error("A selected reputation activity was stale or already removed");
+        throw new Error("A selected reputation activity was stale or already removed; its review attribution may have changed");
       }
       removedActivities.forEach((row: any) => affectedScoreUsers.add(row.user_id));
 
-      const removedCoins = coinIds.length
-        ? (await connection.query(
-          "DELETE FROM share_coins_transactions WHERE id = ANY($1::int[]) RETURNING *",
-          [coinIds],
-        )).rows
-        : [];
+      const removedCoins = await deleteUnchangedEffects(
+        connection, "share_coins_transactions", coinIds, group.relatedEffects.shareCoinTransactions,
+      );
       if (removedCoins.length !== coinIds.length) {
-        throw new Error("A selected ShareCoin transaction was stale or already removed");
+        throw new Error("A selected ShareCoin transaction was stale or already removed; its review attribution may have changed");
       }
       removedCoins.forEach((row: any) => affectedCoinUsers.add(row.user_id));
 
-      const removedNotifications = notificationIds.length
-        ? (await connection.query(
-          "DELETE FROM notifications WHERE id = ANY($1::int[]) RETURNING *",
-          [notificationIds],
-        )).rows
-        : [];
+      const removedNotifications = await deleteUnchangedEffects(
+        connection, "notifications", notificationIds, group.relatedEffects.notifications,
+      );
       if (removedNotifications.length !== notificationIds.length) {
-        throw new Error("A selected notification was stale or already removed");
+        throw new Error("A selected notification was stale or already removed; its review attribution may have changed");
       }
-      const removedAchievements = achievementIds.length
-        ? (await connection.query(
-          "DELETE FROM user_achievements WHERE id = ANY($1::int[]) RETURNING *",
-          [achievementIds],
-        )).rows
-        : [];
+      const removedAchievements = await deleteUnchangedEffects(
+        connection, "user_achievements", achievementIds, group.relatedEffects.userAchievements,
+      );
       if (removedAchievements.length !== achievementIds.length) {
-        throw new Error("A selected achievement was stale or already removed");
+        throw new Error("A selected achievement was stale or already removed; its review attribution may have changed");
       }
 
       const deletedReviews = await connection.query(

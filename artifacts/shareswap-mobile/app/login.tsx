@@ -24,6 +24,7 @@ import { BASE_URL, apiRequest } from "@/lib/api";
 import { LAST_AUTH_METHOD_KEY } from "@/context/AuthContext";
 import { registerPushToken } from "@/hooks/usePushNotifications";
 import { resumeDestination } from "@/lib/sessionNavigation";
+import { ApiEnvironmentLabel } from "@/components/ApiEnvironmentLabel";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -149,6 +150,8 @@ export default function LoginScreen() {
           style={styles.logo}
           resizeMode="contain"
         />
+
+        <ApiEnvironmentLabel />
 
         <View style={styles.card}>
           {sessionExpired && (

@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiRequest } from "@/lib/api";
+import { ApiEnvironmentLabel } from "@/components/ApiEnvironmentLabel";
 
 interface UserProfile {
   id: number;
@@ -252,6 +253,7 @@ export default function SettingsScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.muted ?? "#f5f6f8", alignItems: "center", justifyContent: "center", padding: 24 }]}>
         <View style={[styles.deactivatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <ApiEnvironmentLabel />
           <View style={styles.deactivatedIcon}>
             <Feather name="user-x" size={32} color="#d97706" />
           </View>
@@ -306,6 +308,8 @@ export default function SettingsScreen() {
             </Text>
           </View>
         </View>
+
+        <ApiEnvironmentLabel />
 
         {/* ── Contact ── */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>

@@ -23,13 +23,18 @@ import { useColors } from "@/hooks/useColors";
 import { BASE_URL, apiRequest } from "@/lib/api";
 import { LAST_AUTH_METHOD_KEY } from "@/context/AuthContext";
 import { registerPushToken } from "@/hooks/usePushNotifications";
+import { resumeDestination } from "@/lib/sessionNavigation";
 
 export default function LoginScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { login, refetchUser, clearSessionExpired, setUserData } = useAuth();
-  const params = useLocalSearchParams<{ session_expired?: string }>();
+  const { user, login, setUserData } = useAuth();
+  const params = useLocalSearchParams<{ session_expired?: string; returnTo?: string; returnUserId?: string }>();
+
+  useEffect(() => {
+    if (user) router.replace(resumeDestination(params.returnTo, params.returnUserId, user.id) as never);
+  }, [user, router, params.returnTo, params.returnUserId]);
 
   const sessionExpired = params.session_expired === "1";
 
@@ -61,7 +66,6 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(username.trim(), password);
-      router.replace("/(tabs)");
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Login failed. Please try again.";
@@ -100,13 +104,16 @@ export default function LoginScreen() {
             const userData = await resp.json();
             if (userData?.id) {
               setUserData(userData);
+            } else {
+              throw new Error("Unable to verify your sign-in. Please try again.");
             }
+          } else {
+            throw new Error("Unable to verify your sign-in. Please try again.");
           }
           await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "google");
           // Register push token after Google OAuth — mirrors what login() and
           // register() do so no auth path is left uncovered.
           registerPushToken().catch(() => {});
-          router.replace("/(tabs)");
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Google sign-in failed.";

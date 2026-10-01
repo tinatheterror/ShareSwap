@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiRequest } from "@/lib/api";
 
 interface PaymentMethodData {
@@ -50,6 +51,7 @@ export default function PaymentMethodsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
@@ -64,6 +66,7 @@ export default function PaymentMethodsScreen() {
   const { data, isLoading, refetch } = useQuery<PaymentMethodData>({
     queryKey: ["payment-method"],
     queryFn: () => apiGet("/api/payment-method"),
+    enabled: !!user,
   });
 
   useEffect(() => {
@@ -76,13 +79,15 @@ export default function PaymentMethodsScreen() {
         // User returned from Stripe — refresh payment method status
         hasOpenedStripe.current = false;
         setIsRedirecting(false);
-        refetch();
-        queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+        if (user) {
+          refetch();
+          queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+        }
       }
       appState.current = next;
     });
     return () => sub.remove();
-  }, [refetch, queryClient]);
+  }, [refetch, queryClient, user]);
 
   // POST /api/payment-method/create-checkout-session → open Stripe URL
   const addCardMutation = useMutation({

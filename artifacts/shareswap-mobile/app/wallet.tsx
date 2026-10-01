@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
 import { fmtDate } from "@/lib/dateUtils";
 
@@ -90,6 +91,7 @@ export default function MyBalanceScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
@@ -104,11 +106,13 @@ export default function MyBalanceScreen() {
   const { data: balanceData, isLoading: balanceLoading } = useQuery<BalanceData>({
     queryKey: ["/api/rental-balance"],
     queryFn: () => apiGet("/api/rental-balance"),
+    enabled: !!user,
   });
 
   const { data: connectStatus, isLoading: statusLoading, refetch: refetchStatus } = useQuery<ConnectStatus>({
     queryKey: ["/api/stripe/connect/status"],
     queryFn: () => apiGet("/api/stripe/connect/status"),
+    enabled: !!user,
   });
 
   // Native: refetch connect status when user returns from Stripe Connect browser
@@ -120,13 +124,15 @@ export default function MyBalanceScreen() {
         hasOpenedStripe.current
       ) {
         hasOpenedStripe.current = false;
-        refetchStatus();
-        queryClient.invalidateQueries({ queryKey: ["/api/rental-balance"] });
+        if (user) {
+          refetchStatus();
+          queryClient.invalidateQueries({ queryKey: ["/api/rental-balance"] });
+        }
       }
       appStateRef.current = next;
     });
     return () => sub.remove();
-  }, [refetchStatus, queryClient]);
+  }, [refetchStatus, queryClient, user]);
 
   // Web: detect Stripe Connect redirect back with ?connected / ?reconnect params
   useEffect(() => {
@@ -135,12 +141,12 @@ export default function MyBalanceScreen() {
     if (params.get("connected") === "true") {
       Alert.alert("Bank account connected!", "Your payout account is set up. Earnings will be sent to your bank.");
       window.history.replaceState({}, "", window.location.pathname);
-      refetchStatus();
+      if (user) refetchStatus();
     } else if (params.get("reconnect") === "true") {
       Alert.alert("Complete your setup", "Please finish connecting your bank account.");
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, [refetchStatus]);
+  }, [refetchStatus, user]);
 
   const onboardMutation = useMutation({
     mutationFn: () => {

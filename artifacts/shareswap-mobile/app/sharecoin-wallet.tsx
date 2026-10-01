@@ -24,13 +24,14 @@ export default function ShareCoinWalletScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user } = useAuth() as { user: User | null };
+  const { user } = useAuth();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
   const { data: freshUser } = useQuery<User>({
     queryKey: ["/api/user"],
     queryFn: () => apiGet<User>("/api/user"),
+    enabled: !!user,
   });
 
   const balance = Math.round(Number((freshUser ?? user)?.shareCoins ?? 0));

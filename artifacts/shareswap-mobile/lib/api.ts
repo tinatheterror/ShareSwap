@@ -1,5 +1,60 @@
 const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
+// An epoch prevents requests started under an old cookie from affecting a new
+// login, or repopulating private caches after they have been cleared.
+let sessionEpoch = 0;
+let sessionState: "unknown" | "active" | "expired" = "unknown";
+const expirationListeners = new Set<() => void>();
+
+export function setApiSession(active: boolean) {
+  sessionEpoch++;
+  sessionState = active ? "active" : "unknown";
+  csrfToken = null;
+  csrfTokenRequest = null;
+}
+
+export function onSessionExpired(listener: () => void) {
+  expirationListeners.add(listener);
+  return () => { expirationListeners.delete(listener); };
+}
+
+function sessionError() {
+  return Object.assign(new Error("Your session has expired. Please sign in again."), { status: 401 });
+}
+
+function checkSessionResponse(res: Response, epoch: number, handlesSession: boolean) {
+  if (!handlesSession) return;
+  if (epoch !== sessionEpoch) throw sessionError();
+  if (res.status === 401 && sessionState === "active") {
+    sessionState = "expired";
+    sessionEpoch++;
+    csrfToken = null;
+    csrfTokenRequest = null;
+    expirationListeners.forEach((listener) => listener());
+  }
+}
+
+const AUTH_PATHS = new Set([
+  "/api/login", "/api/register", "/api/logout", "/api/auth/exchange-token",
+  "/api/auth/forgot-password", "/api/auth/reset-password",
+  "/api/forgot-password", "/api/reset-password",
+]);
+function isPublicGet(method: string, path: string) {
+  return method === "GET" && (
+    /^\/api\/users\/\d+\/public-profile(?:\?|$)/.test(path) ||
+    /^\/api\/items(?:\/\d+)?(?:\?|$)/.test(path) ||
+    /^\/api\/(?:categories|cities)(?:\?|$)/.test(path)
+  );
+}
+function handlesSessionFor(method: string, path: string, options?: RequestOptions) {
+  return !AUTH_PATHS.has(path.split("?")[0]) && !options?.sessionProbe && !isPublicGet(method, path);
+}
+export interface RequestOptions {
+  cache?: RequestCache;
+  /** Only authentication's cookie verification may bypass an expired session. */
+  sessionProbe?: boolean;
+}
+
 async function throwIfNotOk(res: Response) {
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
@@ -39,16 +94,18 @@ async function throwIfNotOk(res: Response) {
 let csrfToken: string | null = null;
 let csrfTokenRequest: Promise<string> | null = null;
 
-async function fetchCsrfToken(forceRefresh = false): Promise<string> {
+async function fetchCsrfToken(forceRefresh = false, handlesSession = true): Promise<string> {
   if (!forceRefresh && csrfToken) return csrfToken;
   if (csrfTokenRequest) return csrfTokenRequest;
 
   if (forceRefresh) csrfToken = null;
-  csrfTokenRequest = (async () => {
+  const epoch = sessionEpoch;
+  const request = (async () => {
     const res = await fetch(`${BASE_URL}/api/csrf-token`, {
       credentials: "include",
       cache: "no-store",
     });
+    checkSessionResponse(res, epoch, handlesSession);
     if (!res.ok) {
       throw new Error("Unable to verify this request. Please try again.");
     }
@@ -56,14 +113,15 @@ async function fetchCsrfToken(forceRefresh = false): Promise<string> {
     if (!body?.csrfToken) {
       throw new Error("Unable to verify this request. Please try again.");
     }
-    csrfToken = body.csrfToken;
-    return csrfToken;
+    if (epoch === sessionEpoch) csrfToken = body.csrfToken;
+    return body.csrfToken;
   })();
+  csrfTokenRequest = request;
 
   try {
-    return await csrfTokenRequest;
+    return await request;
   } finally {
-    csrfTokenRequest = null;
+    if (csrfTokenRequest === request) csrfTokenRequest = null;
   }
 }
 
@@ -71,8 +129,11 @@ export async function apiRequest(
   method: string,
   path: string,
   data?: unknown,
-  options?: { cache?: RequestCache },
+  options?: RequestOptions,
 ): Promise<Response> {
+  const handlesSession = handlesSessionFor(method, path, options);
+  const epoch = sessionEpoch;
+  if (handlesSession && sessionState === "expired") throw sessionError();
   const url = `${BASE_URL}${path}`;
   const isMutating =
     method !== "GET" && method !== "HEAD" && method !== "OPTIONS";
@@ -85,8 +146,9 @@ export async function apiRequest(
   }
 
   if (isMutating) {
-    headers["x-csrf-token"] = await fetchCsrfToken();
+    headers["x-csrf-token"] = await fetchCsrfToken(false, handlesSession);
   }
+  if (handlesSession && epoch !== sessionEpoch) throw sessionError();
 
   const res = await fetch(url, {
     method,
@@ -99,6 +161,7 @@ export async function apiRequest(
         : undefined,
     credentials: "include",
   });
+  checkSessionResponse(res, epoch, handlesSession);
 
   if (res.status === 403 && isMutating) {
     const body = await res.clone().text();
@@ -106,7 +169,8 @@ export async function apiRequest(
       body.toLowerCase().includes("csrf") ||
       body.toLowerCase().includes("token")
     ) {
-      headers["x-csrf-token"] = await fetchCsrfToken(true);
+      headers["x-csrf-token"] = await fetchCsrfToken(true, handlesSession);
+      if (handlesSession && epoch !== sessionEpoch) throw sessionError();
       const retryRes = await fetch(url, {
         method,
         headers,
@@ -117,6 +181,7 @@ export async function apiRequest(
             : undefined,
         credentials: "include",
       });
+      checkSessionResponse(retryRes, epoch, handlesSession);
       await throwIfNotOk(retryRes);
       return retryRes;
     }
@@ -128,25 +193,37 @@ export async function apiRequest(
 
 export async function apiGet<T>(
   path: string,
-  options?: { cache?: RequestCache },
+  options?: RequestOptions,
 ): Promise<T> {
+  const epoch = sessionEpoch;
   const res = await apiRequest("GET", path, undefined, options);
-  return res.json() as Promise<T>;
+  const body = await res.json() as T;
+  if (handlesSessionFor("GET", path, options) && epoch !== sessionEpoch) throw sessionError();
+  return body;
 }
 
 export async function apiPost<T>(path: string, data?: unknown): Promise<T> {
+  const epoch = sessionEpoch;
   const res = await apiRequest("POST", path, data);
-  return res.json() as Promise<T>;
+  const body = await res.json() as T;
+  if (handlesSessionFor("POST", path) && epoch !== sessionEpoch) throw sessionError();
+  return body;
 }
 
 export async function apiPatch<T>(path: string, data?: unknown): Promise<T> {
+  const epoch = sessionEpoch;
   const res = await apiRequest("PATCH", path, data);
-  return res.json() as Promise<T>;
+  const body = await res.json() as T;
+  if (epoch !== sessionEpoch) throw sessionError();
+  return body;
 }
 
 export async function apiDelete<T>(path: string): Promise<T> {
+  const epoch = sessionEpoch;
   const res = await apiRequest("DELETE", path);
-  return res.json() as Promise<T>;
+  const body = await res.json() as T;
+  if (epoch !== sessionEpoch) throw sessionError();
+  return body;
 }
 
 /** Ensure photo/avatar paths stored as "/storage/..." become full URLs. */

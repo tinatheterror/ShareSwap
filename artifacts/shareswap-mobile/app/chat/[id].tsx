@@ -279,8 +279,8 @@ export default function ChatScreen() {
   const { data: messages, isLoading } = useQuery<Message[]>({
     queryKey: [`/api/messages/${id}`, requestId ?? null],
     queryFn: () => apiGet<Message[]>(messagesUrl),
-    enabled: !!id,
-    refetchInterval: 5000,
+    enabled: !!user && !!id,
+    refetchInterval: user ? 5000 : false,
   });
 
   const reqId = requestId ? parseInt(requestId, 10) : null;
@@ -291,8 +291,8 @@ export default function ChatScreen() {
     queryFn: () => apiGet<ItemRequest[]>(`/api/requests?cardRequest=${reqId}&refresh=${Date.now()}`, {
       cache: "no-store",
     }),
-    enabled: !!reqId,
-    refetchInterval: 8000,
+    enabled: !!user && !!reqId,
+    refetchInterval: user ? 8000 : false,
   });
 
   const request = reqId ? (allRequests?.find((r) => r.id === reqId) ?? null) : null;
@@ -301,7 +301,7 @@ export default function ChatScreen() {
   const { data: inboxThreads = [], isLoading: inboxLoading } = useQuery<ChatInboxThread[]>({
     queryKey: ["/api/inbox"],
     queryFn: () => apiGet<ChatInboxThread[]>("/api/inbox"),
-    enabled: !!reqId && !request && !requestsLoading,
+    enabled: !!user && !!reqId && !request && !requestsLoading,
   });
   const activeThread = inboxThreads.find((thread) =>
     thread.requestId === reqId && thread.partnerId === Number(id)
@@ -309,7 +309,7 @@ export default function ChatScreen() {
   const { data: archivedThreads = [], isLoading: archivedLoading } = useQuery<ChatInboxThread[]>({
     queryKey: ["/api/inbox/archived"],
     queryFn: () => apiGet<ChatInboxThread[]>("/api/inbox?archived=true"),
-    enabled: !!reqId && !request && !requestsLoading && !inboxLoading && !activeThread,
+    enabled: !!user && !!reqId && !request && !requestsLoading && !inboxLoading && !activeThread,
   });
   const fallbackThread = activeThread ?? archivedThreads.find((thread) =>
     thread.requestId === reqId && thread.partnerId === Number(id)
@@ -317,8 +317,8 @@ export default function ChatScreen() {
   const { data: lifecycle, isLoading: lifecycleLoading, error: lifecycleError } = useQuery<LifecycleData>({
     queryKey: [`/api/requests/${requestId}/lifecycle`],
     queryFn: () => apiGet<LifecycleData>(`/api/requests/${requestId}/lifecycle`),
-    enabled: !!requestId,
-    refetchInterval: 8000,
+    enabled: !!user && !!requestId,
+    refetchInterval: user ? 8000 : false,
   });
 
   // Extension queries — only active during an in-progress borrow
@@ -328,15 +328,15 @@ export default function ChatScreen() {
   const { data: pendingExtension } = useQuery<ExtensionRequest | null>({
     queryKey: [`/api/requests/${requestId}/extension`],
     queryFn: () => apiGet<ExtensionRequest | null>(`/api/requests/${requestId}/extension`),
-    enabled: !!requestId && isInProgressBorrow,
-    refetchInterval: 8000,
+    enabled: !!user && !!requestId && isInProgressBorrow,
+    refetchInterval: user ? 8000 : false,
   });
 
   const { data: activeExtensions } = useQuery<ExtensionRequest[]>({
     queryKey: ["/api/extensions/active"],
     queryFn: () => apiGet<ExtensionRequest[]>("/api/extensions/active"),
-    enabled: !!requestId && isInProgressBorrow,
-    refetchInterval: 8000,
+    enabled: !!user && !!requestId && isInProgressBorrow,
+    refetchInterval: user ? 8000 : false,
   });
 
   const hasPendingExtension = !!pendingExtension;

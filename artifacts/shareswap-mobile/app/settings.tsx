@@ -80,16 +80,19 @@ export default function SettingsScreen() {
   const { data: profile } = useQuery<UserProfile>({
     queryKey: ["user-profile"],
     queryFn: () => apiGet("/api/user-profile"),
+    enabled: !!user,
   });
 
   const { data: accountStatus } = useQuery<AccountStatus>({
     queryKey: ["account-status"],
     queryFn: () => apiGet("/api/account/status"),
+    enabled: !!user,
   });
 
   const { data: notifPrefs, isLoading: notifPrefsLoading } = useQuery<NotificationPrefs>({
     queryKey: ["notification-prefs"],
     queryFn: () => apiGet("/api/user/notification-prefs"),
+    enabled: !!user,
   });
 
   const updateNotifPrefMutation = useMutation({

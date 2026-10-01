@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiRequest, BASE_URL } from "@/lib/api";
 import { fmtDate } from "@/lib/dateUtils";
 
@@ -35,6 +36,7 @@ export default function VerificationScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
@@ -48,6 +50,7 @@ export default function VerificationScreen() {
   const { data: verification, isLoading, refetch } = useQuery<VerificationData>({
     queryKey: ["verification-status"],
     queryFn: () => apiGet("/api/verification-status"),
+    enabled: !!user,
   });
 
   // When app comes back to foreground after Persona, complete the inquiry

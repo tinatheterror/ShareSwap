@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost, BASE_URL } from "@/lib/api";
 
 interface User {
@@ -25,12 +26,14 @@ export default function ReferralsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const { user: authenticatedUser } = useAuth();
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
 
   const { data: user } = useQuery<User>({
     queryKey: ["/api/user"],
     queryFn: () => apiGet<User>("/api/user"),
+    enabled: !!authenticatedUser,
   });
 
   const code = generatedCode ?? user?.referralCode ?? null;

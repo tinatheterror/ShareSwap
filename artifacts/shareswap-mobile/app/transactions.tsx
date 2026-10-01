@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 import { apiGet } from "@/lib/api";
 import { fmtDate } from "@/lib/dateUtils";
 
@@ -31,12 +32,14 @@ export default function TransactionsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useAuth();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
     queryKey: ["/api/transactions"],
     queryFn: () => apiGet<Transaction[]>("/api/transactions"),
+    enabled: !!user,
   });
 
   return (

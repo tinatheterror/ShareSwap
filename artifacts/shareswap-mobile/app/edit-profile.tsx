@@ -48,6 +48,7 @@ export default function EditProfileScreen() {
   const { data: profile, isLoading } = useQuery<UserProfile>({
     queryKey: ["user-profile"],
     queryFn: () => apiGet("/api/user-profile"),
+    enabled: !!user,
   });
 
   useEffect(() => {

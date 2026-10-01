@@ -279,6 +279,11 @@ function buildActivityDescription(
   activityType: TrustActivityType,
   metadata: TrustActivityMetadata,
 ): string {
+  // Eligibility reads this marker from the stored warning. The read-facing
+  // formatter deliberately keeps the user-visible copy independent of it.
+  if (activityType === "grace_pass_warning" && metadata.originalPenaltyType) {
+    return `${formatReputationActivityDescription(activityType, metadata)} (${metadata.originalPenaltyType})`;
+  }
   return formatReputationActivityDescription(activityType, metadata);
 }
 
@@ -835,7 +840,7 @@ const PENALTY_POINTS: Record<PenaltyType, number> = {
 async function checkGracePassEligibility(
   userId: number,
   penaltyType: PenaltyType,
-  executor: any = db,
+  executor: any,
 ): Promise<boolean> {
   // Only certain penalty types are eligible for grace pass
   const graceEligible =
@@ -894,48 +899,48 @@ export async function applyTrustPenalty(
   newScore: number;
 }> {
   const points = PENALTY_POINTS[penaltyType];
-
-  // Check if eligible for grace pass
-  const isGraceEligible = await checkGracePassEligibility(userId, penaltyType, executor);
-
-  if (isGraceEligible) {
-    // Issue a grace pass warning (no points deducted)
-    await awardTrustPoints(userId, "grace_pass_warning", 0, {
-      ...metadata,
-      originalPenaltyType: penaltyType,
-      wasGracePass: true,
-    }, executor);
-
-    const [user] = await executor
-      .select({ reputationScore: users.reputationScore })
+  const persistPenalty = async (tx: any) => {
+    // Serialize eligibility with the warning/penalty write, not just the score
+    // update. Reuse caller-owned transactions so a failed review rolls back
+    // its warning too. All trust awards share this same user-row lock.
+    const [user] = await tx
+      .select({ id: users.id })
       .from(users)
-      .where(eq(users.id, userId));
+      .where(eq(users.id, userId))
+      .for("update");
+    if (!user) throw new Error(`User ${userId} not found`);
 
+    const isGraceEligible = await checkGracePassEligibility(userId, penaltyType, tx);
+    if (isGraceEligible) {
+      const result = await awardTrustPoints(userId, "grace_pass_warning", 0, {
+        ...metadata,
+        originalPenaltyType: penaltyType,
+        wasGracePass: true,
+      }, tx);
+
+      console.log(
+        `⚠️ Grace pass issued for user ${userId}: ${penaltyType} (first offense)`,
+      );
+      return {
+        applied: false,
+        wasGracePass: true,
+        pointsDeducted: 0,
+        newScore: result.newScore,
+      };
+    }
+
+    const result = await awardTrustPoints(userId, penaltyType, points, metadata, tx);
     console.log(
-      `⚠️ Grace pass issued for user ${userId}: ${penaltyType} (first offense)`,
+      `🚨 Trust penalty applied to user ${userId}: ${penaltyType} (${points} points)`,
     );
-
     return {
-      applied: false,
-      wasGracePass: true,
-      pointsDeducted: 0,
-      newScore: user?.reputationScore || 0,
+      applied: true,
+      wasGracePass: false,
+      pointsDeducted: Math.abs(points),
+      newScore: result.newScore,
     };
-  }
-
-  // Apply the penalty
-  const result = await awardTrustPoints(userId, penaltyType, points, metadata, executor);
-
-  console.log(
-    `🚨 Trust penalty applied to user ${userId}: ${penaltyType} (${points} points)`,
-  );
-
-  return {
-    applied: true,
-    wasGracePass: false,
-    pointsDeducted: Math.abs(points),
-    newScore: result.newScore,
   };
+  return executor === db ? db.transaction(persistPenalty) : persistPenalty(executor);
 }
 
 // Convenience functions for specific penalty types

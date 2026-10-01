@@ -24,3 +24,4 @@
 - [Request chat deep links](request-chat-deep-links.md) — item-linked alerts need both the chat partner and request ID; a partner-only chat can open the wrong item.
 - [Native request-card cache behavior](native-request-card-cache.md) — a bodyless 304 can hide chat details; bypass conditional caching without custom cross-origin headers.
 - [Native session recovery](native-session-recovery.md) — resume safe views for the same account after reauthentication; never automatically replay an action.
+- [Historical grace warnings](historical-grace-warnings.md) — older generic warnings may lack penalty-type attribution; repair only from verifiable evidence.

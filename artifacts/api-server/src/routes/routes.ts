@@ -51,6 +51,11 @@ import { reconcileClaimDeadlines, reconcileSettlementOperation, releaseRejectedC
 import { validateBorrowPeriod } from "../borrow-period";
 import { compactNotificationCopy } from "../notification-copy";
 import {
+  confirmApprovedReturn,
+  recoverPendingApprovedReturns,
+  type ReturnRecoveryContext,
+} from "../return-recovery-service";
+import {
   applyRequiredLowReviewPenalty,
   isDuplicateReviewSubmission,
   persistReviewAtomically,
@@ -780,6 +785,10 @@ const stripe = {
     create: async (...args: Parameters<Stripe["refunds"]["create"]>) => {
       const s = await getStripe();
       return s.refunds.create(...args);
+    },
+    list: async (...args: Parameters<Stripe["refunds"]["list"]>) => {
+      const s = await getStripe();
+      return s.refunds.list(...args);
     },
   },
   checkout: {
@@ -1710,6 +1719,101 @@ export async function confirmRentalDeposit({
         : "Rental deposit authorized successfully. Payment secured.",
     },
   };
+}
+
+async function runConfirmedReturnPostEffects(context: ReturnRecoveryContext) {
+  const request = context.request;
+  const item = context.item;
+  if (item.ownerId) {
+    await notifyAvailabilitySubscribers(item.id, item.name);
+  }
+
+  // Keep existing trust, coin, referral, and achievement behavior on the
+  // winning finalization path for both HTTP confirmations and recovery workers.
+  const endDate = request.endDate ? new Date(request.endDate) : null;
+  const physicalReturnAt = request.actualReturnAt
+    ? new Date(request.actualReturnAt)
+    : new Date();
+  const daysLate = daysLateAgainstDueDate(physicalReturnAt, endDate);
+  try {
+    const hadCommunication = !!request.returnDelayNotifiedAt;
+    const returnResult = await awardBorrowReturnPoints(
+      request.requesterId!,
+      item.ownerId!,
+      request.id,
+      item.id,
+      request.returnConditionRating || 5,
+      daysLate,
+      hadCommunication,
+    );
+    const borrowerPts = returnResult.borrowerPoints;
+    let borrowerMsg: string;
+    if (returnResult.penaltyAlreadyApplied) {
+      borrowerMsg = "Serious overdue penalty was already applied when this item reached 15 days overdue.";
+    } else {
+      switch (returnResult.activityType) {
+        case "borrow_return_perfect": borrowerMsg = "On-time return, great condition +40"; break;
+        case "borrow_return_good": borrowerMsg = "On-time return +25"; break;
+        case "borrow_return_late_minor": borrowerMsg = daysLate <= 2 ? "1-2 day late return +5" : "Late return +5"; break;
+        case "borrow_return_late_moderate": borrowerMsg = "Late return −20"; break;
+        case "borrow_return_late_severe": borrowerMsg = "Late return −40"; break;
+        case "borrow_return_late_critical": borrowerMsg = "Late return −60"; break;
+        case "borrow_return_damaged": borrowerMsg = "Damage confirmed −45"; break;
+        default: borrowerMsg = "Return processed";
+      }
+    }
+    const lenderPts = 20;
+    await db.insert(notifications).values([
+      {
+        userId: request.requesterId!,
+        type: "trust_score_changed",
+        title: returnResult.penaltyAlreadyApplied
+          ? "Trust score update"
+          : borrowerPts > 0
+            ? `Trust score +${borrowerPts}`
+            : `Trust score −${Math.abs(borrowerPts)}`,
+        message: borrowerMsg,
+        itemId: item.id,
+        requestId: request.id,
+        isRead: false,
+      },
+      {
+        userId: item.ownerId!,
+        type: "trust_score_changed",
+        title: `Trust score +${lenderPts}`,
+        message: `Lending completed +${lenderPts}`,
+        itemId: item.id,
+        requestId: request.id,
+        isRead: false,
+      },
+    ]);
+  } catch (trustError) {
+    console.error("Error awarding trust points:", trustError);
+  }
+
+  try {
+    const borrowerCoins = await awardShareCoinsWithFirstTimeBonus(
+      request.requesterId!,
+      "BORROW",
+      item.name,
+      1,
+    );
+    console.log(`✅ ShareCoins awarded on confirm-return: borrower=${borrowerCoins.totalAwarded}`);
+  } catch (coinError) {
+    console.error("Error awarding ShareCoins on return:", coinError);
+  }
+
+  const transactionType = request.requestType === "RENT" ? "RENT" : "BORROW";
+  await checkAndAwardReferralBonus(request.requesterId!, request.id, transactionType);
+  if (item.ownerId) {
+    await checkAndAwardReferralBonus(
+      item.ownerId,
+      request.id,
+      transactionType === "RENT" ? "RENT" : "LEND",
+    );
+  }
+  await checkAndAwardAchievements(request.requesterId!);
+  if (item.ownerId) await checkAndAwardAchievements(item.ownerId);
 }
 
 export function registerRoutes(
@@ -10733,11 +10837,14 @@ Respond with ONLY the category name, nothing else.`
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      // Must be return requested
-      if (request.item_requests.status !== "RETURN_REQUESTED") {
+      // A completed return owned by this service is idempotently retryable.
+      // Other terminal states retain the existing "no return pending" response.
+      const isAlreadyCompleted = ["COMPLETED", "COMPLETED_EARLY"].includes(request.item_requests.status);
+      if (request.item_requests.status !== "RETURN_REQUESTED" && !(isAlreadyCompleted && !triggerDispute)) {
         return res.status(400).json({ error: "No return pending" });
       }
       if (
+        request.item_requests.status === "RETURN_REQUESTED" &&
         process.env.E2E_TEST_MODE === "true" &&
         req.get("x-e2e-simulate-failure") === "owner-return-confirmation"
       ) {
@@ -10746,34 +10853,39 @@ Respond with ONLY the category name, nothing else.`
       // A physical return stops overdue/non-return escalation, but an existing
       // damage/loss claim remains protected for review. Do not race it with a
       // terminal cancel/refund operation.
-      const activeClaim = await db.transaction(async tx => {
-        await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);
-        const [claim] = await tx.select({ id: securityClaims.id }).from(securityClaims)
-          .where(and(eq(securityClaims.requestId, requestId), inArray(securityClaims.status, ["OPEN", "CUSTOMER_RESPONSE_PENDING", "UNDER_REVIEW", "APPROVED", "PROCESSING"]))).limit(1);
-        if (claim) {
-          await tx.update(itemRequests).set({ overdueStage: "RETURNED_PENDING_REVIEW", overdueStageChangedAt: new Date(), actualReturnAt: new Date() })
-            .where(eq(itemRequests.id, requestId));
-        }
-        return claim;
-      });
+      const activeClaim = request.item_requests.status === "RETURN_REQUESTED"
+        ? await db.transaction(async tx => {
+            await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);
+            const [claim] = await tx.select({ id: securityClaims.id }).from(securityClaims)
+              .where(and(eq(securityClaims.requestId, requestId), inArray(securityClaims.status, ["OPEN", "CUSTOMER_RESPONSE_PENDING", "UNDER_REVIEW", "APPROVED", "PROCESSING"]))).limit(1);
+            if (claim) {
+              const [currentRequest] = await tx.select({ actualReturnAt: itemRequests.actualReturnAt })
+                .from(itemRequests).where(eq(itemRequests.id, requestId)).limit(1);
+              const actualReturnAt = currentRequest?.actualReturnAt || new Date();
+              await tx.update(itemRequests).set({
+                overdueStage: "RETURNED_PENDING_REVIEW",
+                overdueStageChangedAt: new Date(),
+                actualReturnAt,
+              })
+                .where(eq(itemRequests.id, requestId));
+            }
+            return claim;
+          })
+        : undefined;
       if (activeClaim) {
         return res.json({ success: true, returnedPendingReview: true, message: "Return recorded. The existing claim remains under review; deposit protection was not released." });
       }
-      const terminalClaim = await claimDepositTerminalAction(
-        requestId,
-        triggerDispute ? "dispute" : "cancel",
-      );
-      if (terminalClaim.status !== "claimed") {
-        return res.status(409).json({ error: terminalClaim.reason });
-      }
-      const currentRequest = terminalClaim.request;
-      if (currentRequest.status !== "RETURN_REQUESTED") {
-        await releaseDepositTerminalClaim(terminalClaim);
-        return res.status(409).json({ error: "Request changed before the return could complete" });
-      }
-
       // Handle dispute if owner reports damage
       if (triggerDispute) {
+        const terminalClaim = await claimDepositTerminalAction(requestId, "dispute");
+        if (terminalClaim.status !== "claimed") {
+          return res.status(409).json({ error: terminalClaim.reason });
+        }
+        const currentRequest = terminalClaim.request;
+        if (currentRequest.status !== "RETURN_REQUESTED") {
+          await releaseDepositTerminalClaim(terminalClaim);
+          return res.status(409).json({ error: "Request changed before the return could complete" });
+        }
         // Update request to DISPUTED status, hold deposit
         const [disputed] = await db
           .update(itemRequests)
@@ -10850,205 +10962,40 @@ Respond with ONLY the category name, nothing else.`
         });
       }
 
-      // Release all deposit authorizations claimed for this request.
-      if (currentRequest.depositPaymentIntentId || currentRequest.depositPreviousPaymentIntentId) {
-        try {
-          await resolveClaimedDepositIntents(terminalClaim, stripe as any, "cancel");
-          // An unconditional return release is itself auditable and idempotent;
-          // it is never a capture, including for a late return.
-          await db.insert(depositSettlementOperations).values({
-            requestId, operationKey: `return-release-${requestId}-${currentRequest.depositPaymentIntentId || "none"}`,
-            status: "SETTLED", approvedAmount: "0", retainedAmount: "0",
-            releasedAmount: currentRequest.trustDepositAmount || "0",
-            stripePaymentIntentId: currentRequest.depositPaymentIntentId,
-            completedAt: new Date(),
-          }).onConflictDoNothing();
-          // The return_confirmed notification below includes this release.
-          // Emit it only after the request has successfully completed, not
-          // a separate hold-release alert for the same return.
-        } catch (stripeError: any) {
-          console.error("Error releasing deposit:", stripeError);
-          await db.update(itemRequests).set({
-            depositRenewalStatus: "failed",
-            depositOperationToken: null,
-            depositOperationType: null,
-          }).where(and(
-            eq(itemRequests.id, requestId),
-            eq(itemRequests.depositRenewalStatus, "terminal_action"),
-            eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
-            eq(itemRequests.depositOperationType, terminalClaim.operationType),
-          ));
-          return res.status(502).json({ error: "Could not release the deposit hold. Please retry." });
-        }
-      }
-
-      const isEarlyReturn = request.item_requests.isEarlyReturn || false;
-      const isRental = request.item_requests.requestType === 'RENT';
-
-      // Update request to completed (early returns get "COMPLETED_EARLY" status)
-      const returnNow = new Date();
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          status: isEarlyReturn ? "COMPLETED_EARLY" : "COMPLETED",
-          overdueStage: "RETURNED_PENDING_REVIEW",
-          overdueStageChangedAt: returnNow,
-          returnConfirmedAt: returnNow,
-          actualReturnAt: returnNow,
-          returnConditionRating: conditionRating || 5,
-          returnConditionNotes: conditionNotes,
-          depositStatus: "released",
-          depositReleasedAt: returnNow,
-          depositPreviousPaymentIntentId: null,
-          depositRenewalStatus: null,
-          depositOperationToken: null,
-          depositOperationType: null,
-        })
-        .where(and(
-          eq(itemRequests.id, requestId),
-          eq(itemRequests.depositRenewalStatus, "terminal_action"),
-          eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
-          currentRequest.depositPaymentIntentId
-            ? eq(itemRequests.depositPaymentIntentId, currentRequest.depositPaymentIntentId)
-            : isNull(itemRequests.depositPaymentIntentId),
-        ))
-        .returning();
-      if (!updated) {
-        return res.status(409).json({ error: "Deposit changed before the return could complete" });
-      }
-
-      // Mark item as available again
-      await db
-        .update(items)
-        .set({ isAvailable: true, updatedAt: new Date() })
-        .where(eq(items.id, request.items.id));
-      notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
-
-      // Notify borrower that return has been confirmed and deposit released
-      await db.insert(notifications).values({
-        userId: request.item_requests.requesterId,
-        type: "return_confirmed",
-        title: "Return Confirmed",
-        message: request.item_requests.depositMethod === "in_person"
-          ? `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" returned to owner.`
-          : `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" returned to owner. Deposit hold lifted.`,
-        itemId: request.items.id,
+      const result = await confirmApprovedReturn({
         requestId,
-        isRead: false,
+        conditionRating,
+        conditionNotes,
+        sameCondition,
+        stripeClient: stripe as any,
+        onCompleted: runConfirmedReturnPostEffects,
+        beforeFinalization: process.env.E2E_TEST_MODE === "true" &&
+          req.get("x-e2e-simulate-failure") === "owner-return-finalization"
+          ? () => { throw new Error("Simulated owner return finalization failure"); }
+          : undefined,
       });
-
-      // System message scoped to the request thread
-      const ownerId_conf = request.items.ownerId!;
-      const borrowerId_conf = request.item_requests.requesterId;
-      await db.insert(messages).values({
-        content: request.item_requests.depositMethod === "in_person"
-          ? `✅ Return confirmed — item received in good condition.`
-          : `✅ Return confirmed — item received in good condition. Deposit hold is lifted.`,
-        senderId: ownerId_conf,
-        receiverId: borrowerId_conf,
-        messageType: "system",
-        requestId,
-      });
-
-      // Award trust points using the new tiered system
-      const endDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
-      const now = new Date();
-      // Calculate lateness from the active due date. An accepted extension
-      // replaces endDate, so it is always accounted for here.
-      const daysLate = daysLateAgainstDueDate(now, endDate);
-      
-      try {
-        const hadCommunication = !!request.item_requests.returnDelayNotifiedAt;
-        const returnResult = await awardBorrowReturnPoints(
-          request.item_requests.requesterId,
-          request.items.ownerId!,
-          requestId,
-          request.items.id,
-          conditionRating || 5,
-          daysLate,
-          hadCommunication
-        );
-
-        // Build notification message from the unified result
-        const borrowerPts = returnResult.borrowerPoints;
-        let borrowerMsg: string;
-        if (returnResult.penaltyAlreadyApplied) {
-          borrowerMsg = "Serious overdue penalty was already applied when this item reached 15 days overdue.";
-        } else {
-          switch (returnResult.activityType) {
-            case "borrow_return_perfect":    borrowerMsg = "On-time return, great condition +40"; break;
-            case "borrow_return_good":       borrowerMsg = "On-time return +25"; break;
-            case "borrow_return_late_minor": borrowerMsg = daysLate <= 2 ? "1-2 day late return +5" : "Late return +5"; break;
-            case "borrow_return_late_moderate": borrowerMsg = "Late return −20"; break;
-            case "borrow_return_late_severe":   borrowerMsg = "Late return −40"; break;
-            case "borrow_return_late_critical": borrowerMsg = "Late return −60"; break;
-            case "borrow_return_damaged":    borrowerMsg = "Damage confirmed −45"; break;
-            default:                         borrowerMsg = "Return processed";
-          }
-        }
-        const lenderPts = 20;
-        await db.insert(notifications).values([
-          {
-            userId: request.item_requests.requesterId,
-            type: "trust_score_changed",
-            title: returnResult.penaltyAlreadyApplied
-              ? "Trust score update"
-              : borrowerPts > 0
-                ? `Trust score +${borrowerPts}`
-                : `Trust score −${Math.abs(borrowerPts)}`,
-            message: borrowerMsg,
-            itemId: request.items.id,
-            requestId,
-            isRead: false,
-          },
-          {
-            userId: request.items.ownerId!,
-            type: "trust_score_changed",
-            title: `Trust score +${lenderPts}`,
-            message: `Lending completed +${lenderPts}`,
-            itemId: request.items.id,
-            requestId,
-            isRead: false,
-          },
-        ]);
-      } catch (trustError) {
-        console.error("Error awarding trust points:", trustError);
-        // Don't fail the return if trust scoring fails
+      if (result.status === "not_found") return res.status(404).json({ error: result.error });
+      if (result.status === "conflict") return res.status(409).json({ error: result.error });
+      if (result.status === "pending") {
+        return res.status(503).json({
+          error: result.error,
+          returnRecoveryPending: true,
+          depositReleased: result.depositReleased,
+        });
       }
-
-      // Award ShareCoins to borrower on return (lender already received coins at handoff)
-      try {
-        const borrowerCoins = await awardShareCoinsWithFirstTimeBonus(
-          request.item_requests.requesterId,
-          'BORROW',
-          request.items.name,
-          1
-        );
-        console.log(`✅ ShareCoins awarded on confirm-return: borrower=${borrowerCoins.totalAwarded}`);
-      } catch (coinError) {
-        console.error("Error awarding ShareCoins on return:", coinError);
-        // Don't fail the return if coin award fails
-      }
-
-      // Check and award referral bonus for both users (first transaction completion)
-      const transactionType = request.item_requests.requestType === 'RENT' ? 'RENT' : 'BORROW';
-      await checkAndAwardReferralBonus(request.item_requests.requesterId, requestId, transactionType);
-      await checkAndAwardReferralBonus(request.items.ownerId!, requestId, transactionType === 'RENT' ? 'RENT' : 'LEND');
-      // Check and award any newly unlocked badges for both parties
-      await checkAndAwardAchievements(request.item_requests.requesterId);
-      if (request.items.ownerId) await checkAndAwardAchievements(request.items.ownerId);
-
-      const inPerson = request.item_requests.depositMethod === "in_person";
+      const isEarlyReturn = result.request.isEarlyReturn || false;
+      const inPerson = result.request.depositMethod === "in_person";
       const returnMessage = isEarlyReturn
         ? (inPerson ? "Item returned early." : "Item returned early. Deposit hold lifted.")
         : (inPerson ? "Return confirmed!" : "Return confirmed! Deposit hold lifted.");
-
-      res.json({
+      return res.json({
         success: true,
-        request: updated,
+        request: result.request,
         depositReleased: true,
         isEarlyReturn,
         message: returnMessage,
+        recovered: result.recovered,
+        alreadyCompleted: result.alreadyCompleted,
       });
     } catch (error: any) {
       console.error("Error confirming return:", error);
@@ -12153,6 +12100,7 @@ Respond with ONLY the category name, nothing else.`
                 eq(itemRequests.status, "IN_PROGRESS"),
               ),
             ),
+            isNull(itemRequests.actualReturnAt),
             sql`${itemRequests.endDate} IS NOT NULL AND ${itemRequests.endDate} <= ${twoDaysFromNow}`,
           ),
         );
@@ -12168,30 +12116,57 @@ Respond with ONLY the category name, nothing else.`
         title: string,
         message: string,
       ) => {
-        const existingNotification = await db
-          .select({ id: notifications.id })
-          .from(notifications)
-          .where(
-            and(
-              eq(notifications.userId, recipientId),
-              eq(notifications.requestId, requestId),
-              eq(notifications.type, type),
-              gte(notifications.createdAt, todayStart),
-            ),
-          )
-          .limit(1);
+        const inserted = await db.transaction(async (tx) => {
+          await tx.execute(sql`
+            SELECT 1 FROM ${itemRequests}
+            WHERE ${itemRequests.id} = ${requestId}
+            FOR UPDATE
+          `);
+          const [eligibleRequest] = await tx.select({ id: itemRequests.id })
+            .from(itemRequests)
+            .where(and(
+              eq(itemRequests.id, requestId),
+              or(
+                and(
+                  eq(itemRequests.requestType, "BORROW"),
+                  inArray(itemRequests.status, ACTIVE_OVERDUE_BORROW_STATUSES),
+                ),
+                and(
+                  eq(itemRequests.requestType, "RENT"),
+                  eq(itemRequests.status, "IN_PROGRESS"),
+                ),
+              ),
+              isNull(itemRequests.actualReturnAt),
+            ))
+            .limit(1);
+          if (!eligibleRequest) return false;
 
-        if (existingNotification.length > 0) return;
+          const [existingNotification] = await tx
+            .select({ id: notifications.id })
+            .from(notifications)
+            .where(
+              and(
+                eq(notifications.userId, recipientId),
+                eq(notifications.requestId, requestId),
+                eq(notifications.type, type),
+                gte(notifications.createdAt, todayStart),
+              ),
+            )
+            .limit(1);
+          if (existingNotification) return false;
 
-        await db.insert(notifications).values({
-          userId: recipientId,
-          type,
-          title,
-          message,
-          itemId,
-          requestId,
-          isRead: false,
+          await tx.insert(notifications).values({
+            userId: recipientId,
+            type,
+            title,
+            message,
+            itemId,
+            requestId,
+            isRead: false,
+          });
+          return true;
         });
+        if (!inserted) return;
         remindersCreated++;
 
         sendPushToUser(recipientId, {
@@ -12215,11 +12190,25 @@ Respond with ONLY the category name, nothing else.`
         if (nextStage !== (request.overdueStage || "ACTIVE")) {
           const transitionKey = `overdue-stage-${request.id}-${nextStage}-${new Date(request.returnDeadlineAt || request.endDate).toISOString()}`;
           const transitioned = await db.transaction(async tx => {
+            await tx.execute(sql`
+              SELECT 1 FROM ${itemRequests}
+              WHERE ${itemRequests.id} = ${request.id}
+              FOR UPDATE
+            `);
+            const activeStatus = request.requestType === "BORROW"
+              ? inArray(itemRequests.status, ACTIVE_OVERDUE_BORROW_STATUSES)
+              : eq(itemRequests.status, "IN_PROGRESS");
             const [updated] = await tx.update(itemRequests).set({
               overdueStage: nextStage,
               overdueStageChangedAt: now,
               returnDeadlineAt: request.returnDeadlineAt || request.endDate,
-            }).where(and(eq(itemRequests.id, request.id), ne(itemRequests.overdueStage, nextStage))).returning({ id: itemRequests.id });
+            }).where(and(
+              eq(itemRequests.id, request.id),
+              eq(itemRequests.requestType, request.requestType),
+              activeStatus,
+              isNull(itemRequests.actualReturnAt),
+              or(isNull(itemRequests.overdueStage), ne(itemRequests.overdueStage, nextStage)),
+            )).returning({ id: itemRequests.id });
             if (!updated) return false;
             await tx.insert(requestLifecycleEvents).values({
               requestId: request.id, eventType: `OVERDUE_${nextStage}`, idempotencyKey: transitionKey,
@@ -12388,6 +12377,24 @@ Respond with ONLY the category name, nothing else.`
       console.error("Error running overdue reminder sweep:", error),
     );
   };
+  const runReturnRecoverySweep = async () => {
+    try {
+      const result = await recoverPendingApprovedReturns({
+        stripeClient: stripe as any,
+        onCompleted: runConfirmedReturnPostEffects,
+        limit: 3,
+      });
+      if (result.checked > 0) {
+        console.info("[return-recovery] sweep finished", {
+          checked: result.checked,
+          completed: result.completed,
+          pending: result.pending,
+        });
+      }
+    } catch (error) {
+      console.error("[return-recovery] sweep failed:", error);
+    }
+  };
   if (
     options.startBackgroundJobs !== false &&
     process.env.E2E_TEST_MODE !== "true"
@@ -12395,6 +12402,8 @@ Respond with ONLY the category name, nothing else.`
     setTimeout(() => {
       runOverdueReminderSweep();
       setInterval(runOverdueReminderSweep, 6 * 60 * 60 * 1000);
+      void runReturnRecoverySweep();
+      setInterval(() => void runReturnRecoverySweep(), 60 * 1000);
     }, 30 * 1000);
   }
 

@@ -449,7 +449,7 @@ test("confirmed return with a held deposit sends one combined borrower notificat
       headers: { "x-csrf-token": csrfToken, cookie },
       data: { conditionRating: 5, sameCondition: true },
     });
-    expect(retry.status()).toBe(400);
+    expect(retry.status(), await retry.text()).toBe(200);
 
     type ReturnNotification = { requestId: number | null; type: string; message: string };
     const returnAlerts = (notifications: ReturnNotification[]) => notifications.filter(notification =>

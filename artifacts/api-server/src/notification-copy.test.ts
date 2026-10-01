@@ -54,6 +54,27 @@ test("in-person return notice does not gain a deposit release claim", () => {
   assert.equal(copy.message, '"Camping stove" returned to owner.');
 });
 
+test("pending return copy keeps both the release and pending state visible", () => {
+  for (const name of ["Camping stove", "A very long item name that must be shortened"]) {
+    const copy = compactNotificationCopy({
+      title: "Deposit Released",
+      message: `"${name}" — deposit hold lifted; return confirmation is pending while we finish updating your request.`,
+    });
+    assert.match(copy.message, /Hold lifted\. Return pending:/);
+    assert.ok(copy.message.length <= notificationCopyLimits.body);
+  }
+});
+
+test("partially released return copy does not imply the entire deposit was released", () => {
+  const copy = compactNotificationCopy({
+    title: "Deposit Release Pending",
+    message: '"A very long item name that must be shortened" — part of the deposit hold was released; return confirmation is pending while we reconcile the remaining hold.',
+  });
+  assert.match(copy.message, /^Partial release; return pending:/);
+  assert.ok(copy.message.length <= notificationCopyLimits.body);
+  assert.doesNotMatch(copy.message, /Hold lifted/);
+});
+
 test("renames existing overdue notifications by recipient role", () => {
   assert.equal(
     compactNotificationCopy({

@@ -7,6 +7,7 @@
 - [Request notification inbox parity](request-notification-inbox-parity.md) — request-linked bell notifications must also surface as unread inbox activity until viewed.
 - [Return-date action sequencing](return-date-action-sequencing.md) — pending extensions freeze late notices, while an early return remains available and withdraws the extension.
 - [Borrow lifecycle transaction locking](borrow-lifecycle-transaction-locking.md) — serialize extension and follow-up state changes on the request row so concurrent actions cannot split due dates, credits, or alerts.
+- [Return release recovery](return-release-recovery.md) — durable payment ownership, fair retries, same-client locking, and a frozen physical return time.
 - [Score-history calendar dates](score-history-calendar-dates.md) — score activity uses the recorded UTC calendar day on web and native, never the viewer’s local date.
 - [Stripe deposit-hold vs charge split](stripe-deposit-vs-charge-split.md) — use two PaymentIntents (manual-capture hold + off-session auto-charge) instead of partial capture to hold a deposit and charge a fee together.
 - [Stripe publish gate](stripe-publish-gate.md) — sandbox integration may block republishing until a live Stripe account is connected through Publish; removing Stripe is not a safe quick bypass.

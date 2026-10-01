@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,14 +11,14 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useColors } from "@/hooks/useColors";
-import { apiPost, apiRequest } from "@/lib/api";
+import { apiGet, apiPost, apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 interface ReturnConfirmationSheetProps {
@@ -67,6 +67,21 @@ export function ReturnConfirmationSheet({
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [signInRequired, setSignInRequired] = useState(false);
+  const [recoveryPending, setRecoveryPending] = useState(false);
+  const completionHandled = useRef(false);
+
+  useEffect(() => {
+    setRecoveryPending(false);
+    if (visible) completionHandled.current = false;
+  }, [visible, requestId, userRole]);
+
+  const recoveryStatus = useQuery<Array<{ id: number; status: string }>>({
+    queryKey: ["return-recovery-status", requestId],
+    queryFn: () => apiGet("/api/requests"),
+    enabled: visible && userRole === "owner" && recoveryPending && !signInRequired,
+    refetchInterval: recoveryPending ? 3000 : false,
+    retry: false,
+  });
 
   const isEarlyReturn = endDate ? new Date() < new Date(endDate) : false;
   const isRental = requestType === "RENT";
@@ -79,9 +94,22 @@ export function ReturnConfirmationSheet({
     qc.invalidateQueries({ queryKey: ["/api/inbox/archived"] });
   };
 
+  useEffect(() => {
+    if (!visible || !recoveryPending || completionHandled.current) return;
+    const recovered = recoveryStatus.data?.find(request => request.id === requestId);
+    if (!recovered || !["COMPLETED", "COMPLETED_EARLY"].includes(recovered.status)) return;
+    completionHandled.current = true;
+    setRecoveryPending(false);
+    setSubmitError(null);
+    invalidate();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onSuccess();
+  }, [visible, recoveryPending, recoveryStatus.data, requestId, onSuccess]);
+
   function handleSubmitError(error: Error & { status?: number }) {
     const expired = error.status === 401;
     setSignInRequired(expired);
+    setRecoveryPending(userRole === "owner" && error.status === 503);
     setSubmitError(expired
       ? "Your sign-in has expired. Sign in again, then reopen this chat to return the item."
       : error.message || "The return could not be saved. Please try again.");
@@ -129,6 +157,9 @@ export function ReturnConfirmationSheet({
   const initiateReturnMutation = useMutation({
     mutationFn: () => apiPost(`/api/requests/${requestId}/return`, {}),
     onSuccess: () => {
+      if (completionHandled.current) return;
+      completionHandled.current = true;
+      setRecoveryPending(false);
       setSubmitError(null);
       invalidate();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -168,6 +199,9 @@ export function ReturnConfirmationSheet({
       });
     },
     onSuccess: () => {
+      if (completionHandled.current) return;
+      completionHandled.current = true;
+      setRecoveryPending(false);
       setSubmitError(null);
       invalidate();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -184,6 +218,7 @@ export function ReturnConfirmationSheet({
     setDisputePhotoUri(null);
     setSubmitError(null);
     setSignInRequired(false);
+    setRecoveryPending(false);
   };
 
   const handleClose = () => {
@@ -308,6 +343,7 @@ export function ReturnConfirmationSheet({
             <Pressable
               style={[ss.conditionCard, { borderColor: sameCondition ? "#0d9488" : colors.border, backgroundColor: colors.muted }]}
               onPress={() => {
+                if (recoveryPending) return;
                 const next = !sameCondition;
                 setSameCondition(next);
                 if (next) {
@@ -356,6 +392,7 @@ export function ReturnConfirmationSheet({
                           conditionRating === r.value ? "#f0fdf4" : colors.background,
                       },
                     ]}
+                    disabled={recoveryPending}
                     onPress={() => setConditionRating(r.value)}
                   >
                     <View style={{ flex: 1 }}>
@@ -398,6 +435,7 @@ export function ReturnConfirmationSheet({
                 }
                 placeholderTextColor={colors.mutedForeground}
                 value={conditionNotes}
+                editable={!recoveryPending}
                 onChangeText={setConditionNotes}
                 multiline
                 numberOfLines={3}

@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, pool } from "@workspace/db";
 import { itemRequests, items, users } from "@workspace/db";
 import { getBlockingOverdueBorrow } from "./routes/routes.js";
+import { applySeriousOverduePenalty } from "./trust-score-service.js";
 
 const UNIQUE = `test-overdue-restriction-${Date.now()}`;
 const evaluationDate = new Date("2026-08-24T12:00:00.000Z");
@@ -85,4 +86,27 @@ test("the shared borrow guard releases automatically once the overdue item is re
 
   const blockedBorrow = await getBlockingOverdueBorrow(borrowerId, evaluationDate);
   assert.equal(blockedBorrow, undefined);
+});
+
+test("serious-overdue penalty skips a stale active candidate after physical return is recorded", async () => {
+  await db
+    .update(itemRequests)
+    .set({
+      status: "RETURN_REQUESTED",
+      actualReturnAt: evaluationDate,
+    })
+    .where(eq(itemRequests.id, overdueRequestId));
+
+  const result = await applySeriousOverduePenalty(
+    borrowerId,
+    lenderId,
+    overdueRequestId,
+    itemId,
+    15,
+  );
+
+  assert.equal(result.pointsAwarded, 0);
+  await db.update(itemRequests)
+    .set({ actualReturnAt: null })
+    .where(eq(itemRequests.id, overdueRequestId));
 });

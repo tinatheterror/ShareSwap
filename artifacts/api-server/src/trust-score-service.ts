@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { users, reputationActivities, itemRequests } from "@workspace/db";
-import { eq, and, gte, like, sql, type SQL } from "drizzle-orm";
+import { eq, and, gte, isNull, like, sql, type SQL } from "drizzle-orm";
 
 export const TRUST_POINTS = {
   MAJOR: {
@@ -479,6 +479,7 @@ export async function applySeriousOverduePenalty(
           eq(itemRequests.requestType, "BORROW"),
           eq(itemRequests.requesterId, borrowerId),
           sql`${itemRequests.status} IN ('IN_PROGRESS', 'RETURN_REQUESTED')`,
+          isNull(itemRequests.actualReturnAt),
         ),
       )
       .limit(1);

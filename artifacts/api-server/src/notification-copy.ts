@@ -71,6 +71,14 @@ function rewriteTitle(title: string, message?: string | null): string {
 function rewriteBody(message: string): string {
   return message
     .replace(
+      /^"([^"]+)" — deposit hold lifted; return confirmation is pending while we finish updating your request\.$/,
+      'Hold lifted. Return pending: "$1".',
+    )
+    .replace(
+      /^"([^"]+)" — part of the deposit hold was released; return confirmation is pending while we reconcile the remaining hold\.$/,
+      'Partial release; return pending: "$1".',
+    )
+    .replace(
       /^"([^"]+)" returned to owner\. Deposit hold lifted\.$/,
       '"$1" returned. Deposit hold lifted.',
     )

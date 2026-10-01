@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
   RotateCcw,
@@ -75,6 +75,35 @@ export function ReturnConfirmationModal({
   const [disputePhoto, setDisputePhoto] = useState<File | null>(null);
   const [disputePhotoPreview, setDisputePhotoPreview] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [recoveryPending, setRecoveryPending] = useState(false);
+  const completionHandled = useRef(false);
+
+  useEffect(() => {
+    setRecoveryPending(false);
+    if (isOpen) completionHandled.current = false;
+  }, [isOpen, requestId, userRole]);
+
+  const recoveryStatus = useQuery<Array<{ id: number; status: string }>>({
+    queryKey: ["return-recovery-status", requestId],
+    queryFn: async () => (await apiRequest("GET", "/api/requests")).json(),
+    enabled: isOpen && userRole === "owner" && recoveryPending,
+    refetchInterval: recoveryPending ? 3000 : false,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!isOpen || !recoveryPending || completionHandled.current) return;
+    const recovered = recoveryStatus.data?.find(request => request.id === requestId);
+    if (!recovered || !["COMPLETED", "COMPLETED_EARLY"].includes(recovered.status)) return;
+    completionHandled.current = true;
+    setRecoveryPending(false);
+    setIsProcessing(false);
+    queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    toast({ title: "Return confirmed", description: "The return confirmation has been recovered and saved." });
+    onSuccess();
+  }, [isOpen, recoveryPending, recoveryStatus.data, requestId, queryClient, toast, onSuccess]);
 
   const shouldTriggerDispute = !sameCondition && conditionRating <= 2;
   const isRental = requestType === "RENT";
@@ -155,6 +184,9 @@ export function ReturnConfirmationModal({
       return response.json();
     },
     onSuccess: (data) => {
+      if (completionHandled.current) return;
+      completionHandled.current = true;
+      setRecoveryPending(false);
       setIsProcessing(false);
       if (shouldTriggerDispute) {
         toast({
@@ -186,6 +218,8 @@ export function ReturnConfirmationModal({
     },
     onError: (error: any) => {
       setIsProcessing(false);
+      setRecoveryPending(error.status === 503);
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       toast({
         title: "Confirmation failed",
         description: error.message || "Failed to confirm return",
@@ -284,6 +318,11 @@ export function ReturnConfirmationModal({
 
         <div className="overflow-y-auto flex-1 -mx-1 px-1">
         <div className="space-y-4 py-4">
+          {recoveryPending && (
+            <div role="status" className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+              Return confirmation is being recovered. Checking for completion—you can retry safely or close this dialog.
+            </div>
+          )}
           {isEarlyReturn && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center gap-2 text-blue-700 font-medium">
@@ -303,6 +342,7 @@ export function ReturnConfirmationModal({
               <Checkbox
                 id="sameCondition"
                 checked={sameCondition}
+                disabled={recoveryPending}
                 onCheckedChange={(checked) => {
                   setSameCondition(checked === true);
                   if (checked) {
@@ -338,7 +378,7 @@ export function ReturnConfirmationModal({
                 {CONDITION_RATINGS.filter((r) => r.value < 5).map((rating) => (
                   <div
                     key={rating.value}
-                    onClick={() => setConditionRating(rating.value)}
+                    onClick={() => { if (!recoveryPending) setConditionRating(rating.value); }}
                     className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
                       conditionRating === rating.value
                         ? "border-teal-500 bg-teal-50"
@@ -382,6 +422,7 @@ export function ReturnConfirmationModal({
                   : "Any comments about the item condition..."
               }
               value={conditionNotes}
+              disabled={recoveryPending}
               onChange={(e) => setConditionNotes(e.target.value)}
               rows={2}
               required={!sameCondition}

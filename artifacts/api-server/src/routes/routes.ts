@@ -1723,6 +1723,13 @@ export function registerRoutes(
       string,
       { requestId: number; itemId: number; userIds: number[] }
     >();
+    // Reserve names before the first await, through commit and registration.
+    // Scans must consult this live set after reading users, not snapshot it.
+    const creatingOwnerReturnUsernames = new Set<string>();
+    const ownerReturnSetupBarriers = new Map<string, {
+      fixture: { requestId: number; itemId: number; userIds: number[] };
+      release: () => void;
+    }>();
 
     const deleteOwnerReturnFixtureRequests = async (
       tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
@@ -1851,11 +1858,8 @@ export function registerRoutes(
     };
 
     const cleanupOrphanedOwnerReturnFixtures = async (simulateFailure = false) => {
-      const activeUserIds = new Set(
-        [...ownerReturnFixtures.values()].flatMap((fixture) => fixture.userIds),
-      );
       const staleUsers = await db
-        .select({ id: users.id })
+        .select({ id: users.id, username: users.username })
         .from(users)
         .where(
           or(
@@ -1863,9 +1867,15 @@ export function registerRoutes(
             ilike(users.username, "e2e-borrower-%@example.test"),
           ),
         );
+      const activeUserIds = new Set(
+        [...ownerReturnFixtures.values()].flatMap((fixture) => fixture.userIds),
+      );
       const staleUserIds = staleUsers
-        .map((user) => user.id)
-        .filter((id) => !activeUserIds.has(id));
+        .filter((user) =>
+          !activeUserIds.has(user.id) &&
+          !creatingOwnerReturnUsernames.has(user.username),
+        )
+        .map((user) => user.id);
       if (staleUserIds.length === 0 && !simulateFailure) return;
 
       const staleItems = staleUserIds.length > 0
@@ -1929,10 +1939,15 @@ export function registerRoutes(
     };
 
     app.post("/api/e2e/owner-return-fixture", async (req, res) => {
+      const fixtureId = randomBytes(8).toString("hex");
+      const ownerUsername = `e2e-owner-${fixtureId}@example.test`;
+      const borrowerUsername = `e2e-borrower-${fixtureId}@example.test`;
+      creatingOwnerReturnUsernames.add(ownerUsername);
+      creatingOwnerReturnUsernames.add(borrowerUsername);
+      try {
       await ensureOwnerReturnFixtureOrphansCleaned(
         req.get("x-e2e-simulate-failure") === "owner-return-orphan-cleanup",
       );
-      const fixtureId = randomBytes(8).toString("hex");
       const password = `OwnerReturn-${fixtureId}`;
       const passwordHash = await hashPassword(password);
       const borrowerReturn = req.body?.flow === "borrower-return";
@@ -1954,7 +1969,7 @@ export function registerRoutes(
             .insert(users)
             .values([
               {
-                username: `e2e-owner-${fixtureId}@example.test`,
+                username: ownerUsername,
                 displayName: "Olivia Owner",
                 password: passwordHash,
                 emailVerified: true,
@@ -1963,7 +1978,7 @@ export function registerRoutes(
                 shareCoins: "20",
               },
               {
-                username: `e2e-borrower-${fixtureId}@example.test`,
+                username: borrowerUsername,
                 displayName: "Ben Borrower",
                 password: passwordHash,
                 emailVerified: true,
@@ -2038,6 +2053,34 @@ export function registerRoutes(
 
       const { owner, borrower, item, request } = fixtureRecords;
 
+      // Deterministically expose the committed-but-unregistered window to tests.
+      const barrierId = req.get("x-e2e-setup-barrier");
+      if (barrierId) {
+        if (!/^[a-f0-9]{16}$/.test(barrierId) || ownerReturnSetupBarriers.has(barrierId)) {
+          throw new Error("Invalid or duplicate owner return setup barrier");
+        }
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error("Owner return setup barrier timed out"));
+            }, 15_000);
+            ownerReturnSetupBarriers.set(barrierId, {
+              fixture: {
+                requestId: request.id,
+                itemId: item.id,
+                userIds: [owner.id, borrower.id],
+              },
+              release: () => {
+                clearTimeout(timeout);
+                resolve();
+              },
+            });
+          });
+        } finally {
+          ownerReturnSetupBarriers.delete(barrierId);
+        }
+      }
+
       if (req.get("x-e2e-simulate-failure") !== "owner-return-fixture-orphan") {
         ownerReturnFixtures.set(fixtureId, {
           requestId: request.id,
@@ -2054,6 +2097,20 @@ export function registerRoutes(
         itemId: item.id,
         userIds: [owner.id, borrower.id],
       });
+      } finally {
+        creatingOwnerReturnUsernames.delete(ownerUsername);
+        creatingOwnerReturnUsernames.delete(borrowerUsername);
+      }
+    });
+
+    app.post("/api/e2e/owner-return-fixture/setup-barrier", (req, res) => {
+      const barrier = ownerReturnSetupBarriers.get(req.body?.barrierId);
+      if (!barrier) {
+        res.sendStatus(404);
+        return;
+      }
+      if (req.body?.action === "release") barrier.release();
+      res.json(barrier.fixture);
     });
 
     app.post("/api/e2e/owner-return-fixture/cleanup", async (req, res) => {

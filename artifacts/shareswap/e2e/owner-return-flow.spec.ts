@@ -4,6 +4,7 @@ import {
   type APIRequestContext,
   type Page,
 } from "@playwright/test";
+import { randomBytes } from "node:crypto";
 
 // These tests share one E2E API fixture registry and intentionally inject
 // cleanup failures; a parallel setup can observe another test's injected failure.
@@ -158,6 +159,80 @@ test("failed fixture setup rolls back every inserted record", async ({
     reviews: 0,
     notifications: 0,
   });
+});
+
+test("parallel setups retain committed unregistered records and clean up independently", async ({
+  request,
+}) => {
+  const barrierId = randomBytes(8).toString("hex");
+  const firstSetup = request.post("/api/e2e/owner-return-fixture", {
+    headers: { "x-e2e-setup-barrier": barrierId },
+  });
+  let first: OwnerReturnFixture | undefined;
+  let second: OwnerReturnFixture | undefined;
+  try {
+    await expect.poll(async () => {
+      const status = await request.post("/api/e2e/owner-return-fixture/setup-barrier", {
+        data: { barrierId },
+      });
+      return status.status();
+    }).toBe(200);
+    const pausedResponse = await request.post("/api/e2e/owner-return-fixture/setup-barrier", {
+      data: { barrierId },
+    });
+    const paused = (await pausedResponse.json()) as OwnerReturnFixture;
+    const pausedBefore = await countFixtureRecords(request, paused);
+    expect(pausedBefore).toMatchObject({ users: 2, items: 1, requests: 1 });
+
+    // This setup's orphan scan runs while the first fixture is committed but
+    // absent from the active registry. No timing-based race is required.
+    const secondResponse = await request.post("/api/e2e/owner-return-fixture");
+    expect(secondResponse.ok()).toBe(true);
+    second = (await secondResponse.json()) as OwnerReturnFixture;
+    expect(await countFixtureRecords(request, paused)).toEqual(pausedBefore);
+    const secondBefore = await countFixtureRecords(request, second);
+    expect(secondBefore).toMatchObject({ users: 2, items: 1, requests: 1 });
+
+    const release = await request.post("/api/e2e/owner-return-fixture/setup-barrier", {
+      data: { barrierId, action: "release" },
+    });
+    expect(release.ok()).toBe(true);
+    const firstResponse = await firstSetup;
+    expect(firstResponse.ok()).toBe(true);
+    first = (await firstResponse.json()) as OwnerReturnFixture;
+    expect(first).toMatchObject(paused);
+    for (const fixture of [first, second]) {
+      for (const credentials of [fixture.owner, fixture.borrower]) {
+        const login = await request.post("/api/login", { data: credentials });
+        expect(login.ok()).toBe(true);
+      }
+    }
+    await cleanupOwnerReturnFixture(request, first.fixtureId);
+    expect(await countFixtureRecords(request, second)).toEqual(secondBefore);
+    await cleanupOwnerReturnFixture(request, second.fixtureId);
+    expect(await countFixtureRecords(request, first)).toMatchObject({
+      users: 0, items: 0, requests: 0,
+    });
+    first = undefined;
+    second = undefined;
+  } finally {
+    await request.post("/api/e2e/owner-return-fixture/setup-barrier", {
+      data: { barrierId, action: "release" },
+    });
+    const firstResponse = await firstSetup;
+    if (!first && firstResponse.ok()) {
+      first = (await firstResponse.json()) as OwnerReturnFixture;
+    }
+    // Idempotent recovery also handles an assertion failing after one cleanup.
+    for (const fixture of [first, second]) {
+      if (fixture) {
+        const cleanup = await request.post("/api/e2e/owner-return-fixture/cleanup", {
+          data: { fixtureId: fixture.fixtureId },
+        });
+        expect(cleanup.ok()).toBe(true);
+      }
+    }
+  }
 });
 
 test("failed orphan cleanup rolls back and the next setup retries without deleting active fixtures", async ({

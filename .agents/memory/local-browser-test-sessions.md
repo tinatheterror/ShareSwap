@@ -14,3 +14,9 @@ Scan for abandoned browser fixtures before each fixture setup, not just once whe
 **Why:** A browser run can be interrupted after the server's initial scan and after a completed return has generated user-scoped rewards. A one-time scan leaves these records behind until the server restarts.
 
 **How to apply:** Any E2E fixture registry that can outlive a browser test should permit repeated orphan scans while excluding fixtures held by concurrent tests.
+
+Protect in-flight fixture creation before its first asynchronous step, not only after registration. Evaluate live protection after the orphan scan reads candidates.
+
+**Why:** A scan can observe committed users before their fixture enters the active registry. A protection snapshot taken before the query can also miss setups that start while that query is pending.
+
+**How to apply:** Reserve unique fixture identities synchronously, retain protection through commit and registration, and release it on every exit. Regression tests should pause after commit but before registration while a second setup completes its scan.

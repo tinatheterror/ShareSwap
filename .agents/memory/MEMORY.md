@@ -1,4 +1,5 @@
 - [Express 5 port lessons](express5-port-lessons.md) — wildcards need named params, @replit/object-storage must be esbuild external, PORT env var required in workflow command
+- [Shell utility compatibility](shell-utility-compatibility.md) — some workspace Unix commands have reduced flag support; a successful pipeline can conceal a failed search.
 - [Extracting shadcn theme tokens](shadcn-theme-token-extraction.md) — curl the running Vite dev server HTML to read the actual injected `--background`/`--primary`/etc HSL values instead of guessing from theme.json.
 - [Always-mounted RN components surface missing imports immediately](always-mounted-rn-imports.md) — components rendered unconditionally (isOpen=false) on a screen will crash it on mount if they have any undefined reference, not just when opened.
 - [Expo Go crash diagnosis workflow](expo-go-crash-diagnosis.md) — "Try Again" re-runs cached bundle; shake→Reload fetches fresh from Metro. Make ErrorFallback show error.message inline in __DEV__ to read the crash without a debugger.

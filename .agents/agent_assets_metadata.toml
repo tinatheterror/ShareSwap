@@ -1,3 +1,16 @@
 uploads = []
 generated = []
-outputs = []
+
+[[outputs]]
+id = "xwEJRTmBNVnqDa35JnS0e"
+uri = "file://attached_assets/shareswap-native-development-qr.png"
+type = "image"
+title = "Open ShareSwap native development session"
+description = "Display this QR on your computer and scan it with your phone camera. It opens the current development server in an installed ShareSwap development-client build, not the published app."
+logical_id = "99713c4b-62dd-4fdd-a238-302d99f2929e"
+content_hash = "sha256:a1e52ca5ebce6bdea4f3110a28621da96dbedd544547110efcfed90b7d39d829"
+size = 6229
+mtime_ms = 1790877926342
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:17c64ebc-4359-4add-a3e5-c73b7d69f2c1/99713c4b-62dd-4fdd-a238-302d99f2929e/45c80b2f-4721-4fa4-99e5-9c22f9eb4a96"
+storage_version_token = "1790877954210441"
+content_type = "image/png"

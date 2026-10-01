@@ -25,3 +25,4 @@
 - [Native request-card cache behavior](native-request-card-cache.md) — a bodyless 304 can hide chat details; bypass conditional caching without custom cross-origin headers.
 - [Native session recovery](native-session-recovery.md) — resume safe views for the same account after reauthentication; never automatically replay an action.
 - [Historical grace warnings](historical-grace-warnings.md) — older generic warnings may lack penalty-type attribution; repair only from verifiable evidence.
+- [Postgres contention tests](postgres-contention-tests.md) — refresh activity snapshots inside observer transactions and follow indirect blockers when testing row-lock contention.

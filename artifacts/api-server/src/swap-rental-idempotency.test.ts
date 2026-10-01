@@ -27,6 +27,7 @@ import {
   awardSwapCompletionPoints,
   awardRentalCompletionPoints,
   awardTrustPoints,
+  applySeriousOverduePenalty,
   TRUST_POINTS,
   trustLevelForScore,
 } from "./trust-score-service.js";
@@ -256,6 +257,124 @@ test("simultaneous award and penalty retain both changes and lower the saved lev
 });
 
 // ── SWAP — Sequential-retry tests ─────────────────────────────────────────────
+
+for (const { initialScore, expectedAwards } of [
+  { initialScore: 155, expectedAwards: [40] },
+  { initialScore: 310, expectedAwards: [20, 40] },
+  { initialScore: 460, expectedAwards: [10, 20] },
+]) {
+  test(`serious-overdue penalty racing an independent award retains both changes from score ${initialScore}`, async () => {
+    const [borrower] = await db.insert(users).values({
+      username: `${UNIQUE}-overdue-${initialScore}`,
+      reputationScore: initialScore,
+      reputationLevel: trustLevelForScore(initialScore),
+    }).returning({ id: users.id });
+    const requestIds: number[] = [];
+    const blocker = await pool.connect();
+    let changes: Promise<{ pointsAwarded: number }>[] = [];
+    try {
+      for (const [requestType, status] of [
+        ["BORROW", "IN_PROGRESS"],
+        ["SWAP", "COMPLETED"],
+      ]) {
+        const [request] = await db.insert(itemRequests).values({
+          itemId: item1Id,
+          requesterId: borrower.id,
+          requestType,
+          status,
+        }).returning({ id: itemRequests.id });
+        requestIds.push(request.id);
+      }
+
+      // Hold the borrower row until both real transactions contend for it.
+      // Unlike a timing-only Promise.all test, this also detects a regression
+      // to an unlocked score read followed by a stale UPDATE.
+      await blocker.query("BEGIN");
+      const { rows: [{ pid }] } = await blocker.query("SELECT pg_backend_pid() AS pid");
+      await blocker.query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [borrower.id]);
+      changes = [
+        applySeriousOverduePenalty(borrower.id, user1Id, requestIds[0], item1Id, 16),
+        awardTrustPoints(borrower.id, "swap_completed", 40, {
+          requestId: requestIds[1],
+          itemId: item1Id,
+          counterpartyId: user1Id,
+        }),
+      ];
+      // Observe rejections immediately, even if the contention assertion fails.
+      const settledChanges = Promise.allSettled(changes);
+      const deadline = Date.now() + 5_000;
+      let waitingQueries: string[] = [];
+      do {
+        // PostgreSQL caches activity snapshots inside this blocker transaction.
+        await blocker.query("SELECT pg_stat_clear_snapshot()");
+        const { rows } = await blocker.query(
+          `WITH RECURSIVE blocked AS (
+            SELECT pid, query FROM pg_stat_activity
+            WHERE $1::int = ANY(pg_blocking_pids(pid))
+            UNION
+            SELECT activity.pid, activity.query FROM pg_stat_activity activity
+            JOIN blocked ON blocked.pid = ANY(pg_blocking_pids(activity.pid))
+          ) SELECT query FROM blocked`,
+          [pid],
+        );
+        waitingQueries = rows.map(row => row.query);
+        if (waitingQueries.length === 2) break;
+        await new Promise(resolve => setTimeout(resolve, 10));
+      } while (Date.now() < deadline);
+
+      assert.equal(waitingQueries.length, 2, "both scoring transactions must contend for the borrower row");
+      for (const query of waitingQueries) {
+        assert.match(query, /^\s*select\b[\s\S]*\bfor update\b/i,
+          "each path must lock before reading the score, not block on a stale UPDATE");
+      }
+      await blocker.query("COMMIT");
+      const results = await settledChanges;
+      for (const result of results) {
+        if (result.status === "rejected") throw result.reason;
+      }
+      const [penalty, award] = await Promise.all(changes);
+      assert.equal(penalty.pointsAwarded, -60, "serious-overdue penalties are never scaled");
+      assert.ok(expectedAwards.includes(award.pointsAwarded),
+        `award must use the serialized score; got ${award.pointsAwarded}`);
+      const expectedScore = initialScore - 60 + award.pointsAwarded;
+
+      const [saved] = await db.select({
+        score: users.reputationScore,
+        level: users.reputationLevel,
+      }).from(users).where(eq(users.id, borrower.id));
+      assert.equal(saved.score, expectedScore, "neither score change may be overwritten");
+      assert.equal(saved.level, trustLevelForScore(expectedScore));
+      if (initialScore === 155 || initialScore === 310) {
+        assert.notEqual(saved.level, trustLevelForScore(initialScore),
+          "the saved level must reflect the downward tier crossing");
+      }
+
+      const rows = await db.select().from(reputationActivities)
+        .where(eq(reputationActivities.userId, borrower.id));
+      assert.equal(rows.length, 2, "exactly one activity per outcome");
+      assert.deepEqual(rows.map(row => ({
+        type: row.activityType,
+        points: row.points,
+        requestId: row.requestId,
+        itemId: row.itemId,
+      })).sort((a, b) => a.type.localeCompare(b.type)), [
+        { type: "borrow_overdue_serious", points: -60, requestId: requestIds[0], itemId: item1Id },
+        { type: "swap_completed", points: award.pointsAwarded, requestId: requestIds[1], itemId: item1Id },
+      ]);
+      assert.equal(initialScore + rows.reduce((sum, row) => sum + row.points, 0), saved.score);
+    } finally {
+      // Release blocked writers before awaiting them or deleting their fixtures.
+      await blocker.query("ROLLBACK");
+      blocker.release();
+      await Promise.allSettled(changes);
+      await db.delete(reputationActivities).where(eq(reputationActivities.userId, borrower.id));
+      for (const requestId of requestIds) {
+        await db.delete(itemRequests).where(eq(itemRequests.id, requestId));
+      }
+      await db.delete(users).where(eq(users.id, borrower.id));
+    }
+  });
+}
 
 test("first call to awardSwapCompletionPoints records exactly one swap_completed activity per user", async () => {
   // Capture scores before any swap award so later tests can assert the delta.

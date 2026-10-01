@@ -83,6 +83,7 @@ async function reportWithClient(client: Queryable) {
     ORDER BY ua.user_id, ua.achievement_id
   `);
   const duplicates = [];
+  const accountCredits = new Map<number, any[]>();
   for (const group of groups) {
     // A pg client permits only one in-flight query on its connection.
     const badges = await client.query(`SELECT * FROM user_achievements WHERE user_id = $1 AND achievement_id = $2
@@ -94,6 +95,14 @@ async function reportWithClient(client: Queryable) {
                          WHERE user_id = $1 AND achievement_id = $2 AND review_id IS NOT NULL))
                     ORDER BY created_at, id`,
         [group.userId, group.achievementId]);
+    // Legacy credits need not have a known description, type, or review ID.
+    // This account-wide list is investigation evidence, not badge attribution.
+    if (!accountCredits.has(group.userId)) {
+      const credits = await client.query(`SELECT * FROM share_coins_transactions
+                      WHERE user_id = $1 AND amount > 0
+                      ORDER BY created_at, id`, [group.userId]);
+      accountCredits.set(group.userId, credits.rows);
+    }
     const notices = await client.query(`SELECT * FROM notifications
                     WHERE user_id = $1 AND type = 'badge_earned'
                     ORDER BY created_at, id`,
@@ -102,12 +111,17 @@ async function reportWithClient(client: Queryable) {
       ...group,
       badges: badges.rows,
       rewardCandidates: rewards.rows,
+      possibleAccountRewardEntries: {
+        label: "Unverified account-wide positive credits — not attributed to this badge",
+        scope: "All positive ledger entries for this account, regardless of description, transaction type, review ID, or date. Includes unrelated credits and may overlap rewardCandidates.",
+        entries: accountCredits.get(group.userId)!,
+      },
       notificationCandidates: notices.rows,
     });
   }
   return {
     duplicateGroupCount: duplicates.length,
-    instructions: "Review each account and every badge, reward and notice. Candidates are not proof of attribution; put confirmed IDs in the plan, and explicitly enter expected and target balances. Unselected effects remain untouched.",
+    instructions: "Review each account and every badge, reward and notice, including possibleAccountRewardEntries before approving a balance. Candidates and account-wide positive credits are not proof of attribution; put only manually confirmed IDs in the plan, and explicitly enter expected and target balances. Unselected effects remain untouched.",
     duplicates,
   };
 }
@@ -159,8 +173,9 @@ export async function reconcileDuplicateBadges(plan: Plan, operator: string, dat
       if (JSON.stringify(liveIds) !== JSON.stringify(selectedIds)) {
         throw new Error(`Badge selection changed for ${group.userId}:${group.achievementId}`);
       }
+      const reviewableRewards = [...live.rewardCandidates, ...live.possibleAccountRewardEntries.entries];
       for (const [field, candidates, seen] of [
-        ["rewardTransactionIds", live.rewardCandidates, allRewards],
+        ["rewardTransactionIds", reviewableRewards, allRewards],
         ["notificationIds", live.notificationCandidates, allNotices],
       ] as const) {
         const allowed = new Set(candidates.map((row: any) => row.id));
@@ -190,7 +205,7 @@ export async function reconcileDuplicateBadges(plan: Plan, operator: string, dat
         throw new Error("A reviewed reward or notification changed");
       }
       for (const [actual, candidates] of [
-        [rewardRows, live.rewardCandidates],
+        [rewardRows, reviewableRewards],
         [noticeRows, live.notificationCandidates],
       ] as const) {
         for (const row of actual) {

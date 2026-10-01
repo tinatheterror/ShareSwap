@@ -129,6 +129,67 @@ test("duplicate-containing migration fails closed; reviewed repair preserves his
   await db.query(migration);
 });
 
+test("wider report exposes historical account credits without attributing or changing them", async (t) => {
+  const db = await createFixture(t);
+  await db.query(`
+    INSERT INTO users VALUES (20, 99.00);
+    INSERT INTO share_coins_transactions
+      (id, user_id, amount, description, transaction_type, review_id, created_at) VALUES
+      (206,10,2,'Achievement bonus from the old app','EARNED',NULL,'2001-01-01'),
+      (207,10,3,'Legacy milestone credit','LEGACY_CREDIT',NULL,'2001-01-01'),
+      (208,10,4,'Unrelated referral bonus','EARNED',NULL,'2002-01-01'),
+      (209,10,0,'Zero entry','EARNED',NULL,'2001-01-01'),
+      (210,10,-1,'Old debit','EARNED',NULL,'2001-01-01'),
+      (211,20,99,'Achievement bonus from the old app','EARNED',NULL,'2001-01-01');
+  `);
+  const originalRewards = (await db.query("SELECT * FROM share_coins_transactions ORDER BY id")).rows;
+  const originalBadges = (await db.query("SELECT * FROM user_achievements ORDER BY id")).rows;
+  const report = await reportDuplicateBadges(db);
+  assert.match(report.instructions, /possibleAccountRewardEntries before approving a balance/);
+  for (const group of report.duplicates) {
+    assert.deepEqual(group.rewardCandidates.map((row: any) => row.id), [201, 202, 203, 204],
+      "historical credits must not silently become conventional badge candidates");
+    assert.match(group.possibleAccountRewardEntries.label, /Unverified account-wide.*not attributed/);
+    assert.deepEqual(group.possibleAccountRewardEntries.entries.map((row: any) => row.id),
+      [206, 207, 208, 201, 202, 203, 204],
+      "include old and unrelated positive credits, exclude other accounts, zero entries and debits");
+    assert.deepEqual(group.possibleAccountRewardEntries.entries,
+      [...originalRewards].filter((row) => row.user_id === 10 && Number(row.amount) > 0)
+        .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id - b.id),
+      "keep full ledger evidence in deterministic date/ID order");
+  }
+  assert.deepEqual((await db.query("SELECT * FROM share_coins_transactions ORDER BY id")).rows, originalRewards);
+  assert.deepEqual((await db.query("SELECT * FROM user_achievements ORDER BY id")).rows, originalBadges);
+  assert.equal((await db.query("SELECT share_coins FROM users WHERE id = 10")).rows[0].share_coins, "4.00");
+
+  const plan = {
+    reason: "Manually confirmed the legacy credit against historical award evidence; other credits are unrelated.",
+    groups: [
+      { userId: 10, achievementId: 7, canonicalBadgeId: 101, duplicateBadgeIds: [102],
+        rewardTransactionIds: [206, 207], notificationIds: [],
+        expectedShareCoins: "4.00", targetShareCoins: "4.00" },
+      { userId: 10, achievementId: 8, canonicalBadgeId: 103, duplicateBadgeIds: [104],
+        rewardTransactionIds: [], notificationIds: [],
+        expectedShareCoins: "4.00", targetShareCoins: "4.00" },
+    ],
+  };
+  await assert.rejects(reconcileDuplicateBadges({
+    ...plan, groups: [plan.groups[0], { ...plan.groups[1], rewardTransactionIds: [206] }],
+  }, "tester", db), /Unrelated, stale or reused/);
+  await assert.rejects(reconcileDuplicateBadges({
+    ...plan, groups: [{ ...plan.groups[0], rewardTransactionIds: [211] }, plan.groups[1]],
+  }, "tester", db), /Unrelated, stale or reused/);
+  await reconcileDuplicateBadges(plan, "tester", db);
+  const audits = (await db.query(
+    "SELECT * FROM duplicate_badge_reconciliation_audits ORDER BY achievement_id",
+  )).rows;
+  assert.deepEqual(audits.map((row) => row.reviewed_rewards.map((reward: any) => reward.id)), [[206, 207], []],
+    "only explicitly selected credits are recorded as reviewed; no automatic attribution");
+  assert.deepEqual((await db.query("SELECT * FROM share_coins_transactions ORDER BY id")).rows, originalRewards,
+    "legacy and unselected credits remain unchanged, without an automatic balance adjustment");
+  assert.equal((await db.query("SELECT share_coins FROM users WHERE id = 10")).rows[0].share_coins, "4.00");
+});
+
 test("concurrent operators reconcile each duplicate badge group only once", { timeout: 60_000 }, async (t) => {
   for (const targetShareCoins of ["3.00", "4.00"]) {
     await t.test(`target balance ${targetShareCoins}`, { timeout: 25_000 }, async (t) => {

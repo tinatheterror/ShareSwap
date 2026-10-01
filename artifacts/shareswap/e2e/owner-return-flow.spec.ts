@@ -1,135 +1,14 @@
-import {
-  expect,
-  test,
-  type APIRequestContext,
-  type Page,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { randomBytes } from "node:crypto";
+import {
+  cleanupOwnerReturnFixture, completeReturnWithReview, countFixtureRecords,
+  expectPostReturnActivity, suppressReturnReminderChecks,
+  type FixtureRecordCounts, type OwnerReturnFixture,
+} from "./owner-return-helpers";
 
 // These tests share one E2E API fixture registry and intentionally inject
 // cleanup failures; a parallel setup can observe another test's injected failure.
 test.describe.configure({ mode: "serial" });
-
-type OwnerReturnFixture = {
-  fixtureId: string;
-  owner: { username: string; password: string };
-  borrower: { username: string; password: string };
-  requestId: number;
-  itemId: number;
-  userIds: number[];
-};
-
-type FixtureRecordCounts = {
-  users: number;
-  items: number;
-  requests: number;
-  shareCoinRewards: number;
-  reputationRewards: number;
-  achievements: number;
-  reviews: number;
-  notifications: number;
-};
-
-async function suppressReturnReminderChecks(page: Page) {
-  await page.route("**/api/notifications/check-return-reminders", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ remindersCreated: 0 }),
-    });
-  });
-}
-
-async function cleanupOwnerReturnFixture(
-  request: APIRequestContext,
-  fixtureId: string,
-  options: { expectPostReturnActivity?: boolean } = {},
-) {
-  const cleanupResponse = await request.post(
-    "/api/e2e/owner-return-fixture/cleanup",
-    { data: { fixtureId } },
-  );
-  expect(cleanupResponse.ok()).toBe(true);
-  const cleanup = (await cleanupResponse.json()) as {
-    generated: FixtureRecordCounts;
-    remaining: FixtureRecordCounts;
-  };
-
-  expect(cleanup.generated.users).toBe(2);
-  expect(cleanup.generated.items).toBe(1);
-  expect(cleanup.generated.requests).toBe(1);
-
-  if (options.expectPostReturnActivity) {
-    expect(cleanup.generated.shareCoinRewards).toBeGreaterThan(0);
-    expect(cleanup.generated.reputationRewards).toBeGreaterThan(0);
-    expect(cleanup.generated.achievements).toBeGreaterThan(0);
-    expect(cleanup.generated.reviews).toBeGreaterThan(0);
-    expect(cleanup.generated.notifications).toBeGreaterThan(0);
-  }
-
-  expect(cleanup.remaining).toEqual({
-    users: 0,
-    items: 0,
-    requests: 0,
-    shareCoinRewards: 0,
-    reputationRewards: 0,
-    achievements: 0,
-    reviews: 0,
-    notifications: 0,
-  });
-}
-
-async function countFixtureRecords(
-  request: APIRequestContext,
-  fixture: OwnerReturnFixture,
-): Promise<FixtureRecordCounts> {
-  const response = await request.post("/api/e2e/owner-return-fixture/records", {
-    data: {
-      requestId: fixture.requestId,
-      itemId: fixture.itemId,
-      userIds: fixture.userIds,
-    },
-  });
-  expect(response.ok()).toBe(true);
-  return response.json() as Promise<FixtureRecordCounts>;
-}
-
-function expectPostReturnActivity(counts: FixtureRecordCounts) {
-  expect(counts.users).toBe(2);
-  expect(counts.items).toBe(1);
-  expect(counts.requests).toBe(1);
-  expect(counts.shareCoinRewards).toBeGreaterThan(0);
-  expect(counts.reputationRewards).toBeGreaterThan(0);
-  expect(counts.achievements).toBeGreaterThan(0);
-  expect(counts.reviews).toBeGreaterThan(0);
-  expect(counts.notifications).toBeGreaterThan(0);
-}
-
-async function completeReturnWithReview(page: Page, fixture: OwnerReturnFixture) {
-  const login = await page.request.post("/api/login", { data: fixture.owner });
-  expect(login.ok()).toBe(true);
-  await page.goto("/requests");
-  await page.getByRole("button", { name: "Open inbox" }).click();
-  await page.getByRole("button", { name: /Ben Borrower/ }).click();
-  await page.getByRole("button", { name: "Confirm return", exact: true }).last().click();
-  const returnDialog = page.getByRole("dialog", { name: "Confirm Item Return" });
-  await expect(returnDialog).toBeVisible();
-  const confirmed = page.waitForResponse((response) =>
-    response.request().method() === "POST" &&
-    response.url().endsWith(`/api/requests/${fixture.requestId}/confirm-return`),
-  );
-  await returnDialog.getByRole("button", { name: "Confirm Return" }).click();
-  expect((await confirmed).ok()).toBe(true);
-  const reviewDialog = page.getByRole("dialog", { name: "Leave a review" });
-  await expect(reviewDialog).toBeVisible();
-  await reviewDialog.locator("button").nth(4).click();
-  const reviewed = page.waitForResponse((response) =>
-    response.request().method() === "POST" &&
-    /\/api\/users\/\d+\/reviews$/.test(new URL(response.url()).pathname),
-  );
-  await reviewDialog.getByRole("button", { name: "Submit review" }).click();
-  expect((await reviewed).status()).toBe(201);
-}
 
 test("failed fixture setup rolls back every inserted record", async ({
   request,

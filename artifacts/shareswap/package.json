@@ -11,7 +11,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:server-output": "vitest run --config vitest.config.ts src/server-output.test.ts",
     "test:server-output-lifecycle": "node e2e/server-output-fixtures/run-lifecycle-test.mjs",
-    "test:browser": "playwright test --config playwright.config.ts"
+    "test:browser": "playwright test --config playwright.config.ts && pnpm run test:browser-restart",
+    "test:browser-restart": "playwright test --config e2e/owner-return-restart.config.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",

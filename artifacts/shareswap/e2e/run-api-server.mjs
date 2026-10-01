@@ -9,7 +9,9 @@ if (!logPath) {
 }
 
 mkdirSync(dirname(logPath), { recursive: true });
-const log = createWriteStream(logPath, { flags: "w" });
+const log = createWriteStream(logPath, {
+  flags: process.env.E2E_API_SERVER_LOG_APPEND === "true" ? "a" : "w",
+});
 const command = process.env.E2E_API_SERVER_COMMAND ?? "pnpm";
 const args = process.env.E2E_API_SERVER_ARGS
   ? JSON.parse(process.env.E2E_API_SERVER_ARGS)

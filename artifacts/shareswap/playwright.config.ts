@@ -4,7 +4,7 @@ const apiServerLogPath = "test-results/api-server.log";
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: "server-output-fixtures/**",
+  testIgnore: ["server-output-fixtures/**", "owner-return-restart.spec.ts"],
   globalTeardown: "./e2e/server-output.global-teardown.ts",
   fullyParallel: true,
   forbidOnly: true,

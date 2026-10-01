@@ -15,6 +15,12 @@ Scan for abandoned browser fixtures before each fixture setup, not just once whe
 
 **How to apply:** Any E2E fixture registry that can outlive a browser test should permit repeated orphan scans while excluding fixtures held by concurrent tests.
 
+Run tests that restart a separate API sequentially with other suites using the same database. Separate ports and processes do not isolate persistent fixture cleanup.
+
+**Why:** Restart destroys the process-local active registry. Another API's still-live fixtures can look abandoned to the restarted server's scan. A survival control for restart tests must live outside the orphan naming pattern, not merely in the old registry.
+
+**How to apply:** Keep restart checks in a separate sequential test command until database or durable run-level isolation exists. Use uniquely named control data and restore its cleanup eligibility in a finally block.
+
 Protect in-flight fixture creation before its first asynchronous step, not only after registration. Evaluate live protection after the orphan scan reads candidates.
 
 **Why:** A scan can observe committed users before their fixture enters the active registry. A protection snapshot taken before the query can also miss setups that start while that query is pending.

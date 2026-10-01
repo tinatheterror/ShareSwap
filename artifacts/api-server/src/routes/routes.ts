@@ -2018,6 +2018,9 @@ export function registerRoutes(
               endDate: new Date("2026-08-01T00:00:00.000Z"),
               deliveryMethod: "in_person",
               depositMethod: "in_app",
+              depositPaymentIntentId: req.body?.depositHeld === true
+                ? `simulated-e2e-return-${item.id}`
+                : null,
               trustDepositAmount: "20",
               trustDepositBaseAmount: "20",
               shareCoinAmount: "1",
@@ -10860,16 +10863,9 @@ Respond with ONLY the category name, nothing else.`
             stripePaymentIntentId: currentRequest.depositPaymentIntentId,
             completedAt: new Date(),
           }).onConflictDoNothing();
-          // Notify borrower their deposit hold has been lifted
-          await db.insert(notifications).values({
-            userId: request.item_requests.requesterId,
-            type: "security_deposit_released",
-            title: "Deposit Hold Lifted",
-            message: `Authorization hold for "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" has been removed — nothing was charged.`,
-            itemId: request.items.id,
-            requestId,
-            isRead: false,
-          });
+          // The return_confirmed notification below includes this release.
+          // Emit it only after the request has successfully completed, not
+          // a separate hold-release alert for the same return.
         } catch (stripeError: any) {
           console.error("Error releasing deposit:", stripeError);
           await db.update(itemRequests).set({

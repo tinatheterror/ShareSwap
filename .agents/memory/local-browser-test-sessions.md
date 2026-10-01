@@ -9,6 +9,12 @@ Authenticated browser integration tests must use a real server session, but the 
 
 **How to apply:** Gate the local cookie override and any fixture/fault routes behind an explicit E2E server mode. Seed uniquely named records, authenticate through the real login route, and inject failures only after authz checks. Cleanup must remove both request-linked rows and user-scoped side effects that may omit the request ID (such as rewards, achievements, or their notifications), after success and before the next run. Do not let orphan cleanup delete another parallel test's active fixture.
 
+Playwright's direct API request context can omit a Secure CSRF cookie over local HTTP even after fetching a valid token. For an isolated authenticated fixture, explicitly forward its current cookie jar with the matching CSRF header; do not weaken production CSRF settings.
+
+**Why:** A real API regression reached authentication but received 403 because the CSRF header was present without its Secure double-submit cookie. Browser-driven requests and direct API requests do not necessarily treat localhost cookie security identically.
+
+**How to apply:** Obtain the CSRF token after login and use that same test context's session and CSRF cookies for the mutation. Never log cookie values or use a real user's session for this workaround.
+
 Scan for abandoned browser fixtures before each fixture setup, not just once when the test server starts; share a scan already in progress and protect registered live fixtures.
 
 **Why:** A browser run can be interrupted after the server's initial scan and after a completed return has generated user-scoped rewards. A one-time scan leaves these records behind until the server restarts.

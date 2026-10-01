@@ -34,6 +34,26 @@ test("renames existing trust score notifications", () => {
   assert.equal(copy.title, "Trust score update");
 });
 
+test("combined return notice preserves deposit release even with a long item name", () => {
+  for (const name of ["Hermes scarf", "Camping stove", "A very long item name that must be shortened"]) {
+    const copy = compactNotificationCopy({
+      title: "Return Confirmed",
+      message: `"${name}" returned to owner. Deposit hold lifted.`,
+    });
+    assert.equal(copy.title, "Return Confirmed");
+    assert.match(copy.message, /returned\. Deposit hold lifted\.$/);
+    assert.ok(copy.message.length <= notificationCopyLimits.body);
+  }
+});
+
+test("in-person return notice does not gain a deposit release claim", () => {
+  const copy = compactNotificationCopy({
+    title: "Return Confirmed",
+    message: '"Camping stove" returned to owner.',
+  });
+  assert.equal(copy.message, '"Camping stove" returned to owner.');
+});
+
 test("renames existing overdue notifications by recipient role", () => {
   assert.equal(
     compactNotificationCopy({

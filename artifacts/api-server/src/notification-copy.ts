@@ -71,6 +71,10 @@ function rewriteTitle(title: string, message?: string | null): string {
 function rewriteBody(message: string): string {
   return message
     .replace(
+      /^"([^"]+)" returned to owner\. Deposit hold lifted\.$/,
+      '"$1" returned. Deposit hold lifted.',
+    )
+    .replace(
       /^"([^"]+)" is seriously overdue with (.+?)\. Please coordinate an immediate return\.$/,
       '"$1" with $2. Arrange return.',
     )

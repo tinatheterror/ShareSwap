@@ -422,6 +422,56 @@ test("owner completes a return and failed fixture cleanup rolls back before retr
   }
 });
 
+test("confirmed return with a held deposit sends one combined borrower notification", async ({ request }) => {
+  test.setTimeout(180_000);
+  const fixtureResponse = await request.post("/api/e2e/owner-return-fixture", {
+    data: { depositHeld: true },
+  });
+  expect(fixtureResponse.ok()).toBe(true);
+  const fixture = await fixtureResponse.json() as OwnerReturnFixture;
+  try {
+    expect((await request.post("/api/login", { data: fixture.owner })).ok()).toBe(true);
+    const csrfResponse = await request.get("/api/csrf-token");
+    expect(csrfResponse.ok()).toBe(true);
+    const { csrfToken } = await csrfResponse.json() as { csrfToken: string };
+    // APIRequestContext omits Secure CSRF cookies over local HTTP. Forward this
+    // isolated fixture's cookie jar explicitly; keep production CSRF unchanged.
+    const cookie = (await request.storageState()).cookies
+      .map(entry => `${entry.name}=${entry.value}`).join("; ");
+    const confirmed = await request.post(`/api/requests/${fixture.requestId}/confirm-return`, {
+      headers: { "x-csrf-token": csrfToken, cookie },
+      data: { conditionRating: 5, sameCondition: true },
+    });
+    expect(confirmed.status(), await confirmed.text()).toBe(200);
+
+    // Retrying a completed return must not generate another success alert.
+    const retry = await request.post(`/api/requests/${fixture.requestId}/confirm-return`, {
+      headers: { "x-csrf-token": csrfToken, cookie },
+      data: { conditionRating: 5, sameCondition: true },
+    });
+    expect(retry.status()).toBe(400);
+
+    type ReturnNotification = { requestId: number | null; type: string; message: string };
+    const returnAlerts = (notifications: ReturnNotification[]) => notifications.filter(notification =>
+      notification.requestId === fixture.requestId &&
+      ["return_confirmed", "security_deposit_released"].includes(notification.type),
+    );
+    const ownerResponse = await request.get("/api/notifications");
+    expect(ownerResponse.ok()).toBe(true);
+    expect(returnAlerts(await ownerResponse.json())).toHaveLength(0);
+
+    expect((await request.post("/api/login", { data: fixture.borrower })).ok()).toBe(true);
+    const borrowerResponse = await request.get("/api/notifications");
+    expect(borrowerResponse.ok()).toBe(true);
+    const alerts = returnAlerts(await borrowerResponse.json());
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].type).toBe("return_confirmed");
+    expect(alerts[0].message).toContain("Deposit hold lifted.");
+  } finally {
+    await cleanupOwnerReturnFixture(request, fixture.fixtureId);
+  }
+});
+
 test("owner sees a failed return confirmation without losing the dialog", async ({
   page,
 }) => {

@@ -17,6 +17,7 @@ import { Calendar, Coins, Shield, MapPin } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { holdTitle, holdPendingNote, holdReleaseExplainer, NOT_CHARGED_UNLESS_CLAIM } from "@/lib/depositCopy";
 
 
 // ── Deposit calculator (mirrors web lib) ─────────────────────────────────────
@@ -451,7 +452,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
                     <View style={s.splitRow}>
                       <View style={s.rowLeft}>
                         <Shield size={12} color={colors.mutedForeground} strokeWidth={2} />
-                        <Text style={[s.rowLabel, { color: colors.mutedForeground }]}>Trust-deposit</Text>
+                        <Text style={[s.rowLabel, { color: colors.mutedForeground }]}>Trust deposit (temporary hold)</Text>
                       </View>
                       {depositCalc.discountPercentage > 0 ? (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -469,6 +470,9 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
                         {depositCalc.discountPercentage}% discount from your trust score
                       </Text>
                     )}
+                    <Text style={[s.micro, { color: colors.mutedForeground }]}>
+                      {holdPendingNote(depositCalc.finalDeposit)} {NOT_CHARGED_UNLESS_CLAIM}
+                    </Text>
 
                   </View>
                 )}
@@ -550,14 +554,14 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
                   <Text style={s.chargeEmoji}>🟢</Text>
                   <Text style={[s.chargeText, { color: colors.mutedForeground }]}>
                     <Text style={{ fontFamily: "Inter_600SemiBold" }}>Trust Deposit</Text>
-                    {" "}— Authorization hold only. Released after the item is safely returned.
+                    {" "}— {holdTitle(depositCalc.finalDeposit)}, not a charge. {holdReleaseExplainer(depositCalc.finalDeposit)}
                   </Text>
                 </View>
                 <View style={s.chargeRow}>
                   <Text style={s.chargeEmoji}>🟠</Text>
                   <Text style={[s.chargeText, { color: colors.mutedForeground }]}>
                     <Text style={{ fontFamily: "Inter_600SemiBold" }}>Non-Return Charge</Text>
-                    {" "}— Charged only if the item is not returned.
+                    {" "}— Charged only if the item is not returned and a claim is opened.
                   </Text>
                 </View>
               </View>
@@ -575,7 +579,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
                   )}
                 </View>
                 <Text style={[s.checkboxLabel, { color: colors.foreground }]}>
-                  I understand I may be charged up to ${targetItem.replacementValue} if I don't return the item.
+                  I understand that if I don't return the item or a claim is opened, I may be charged up to ${targetItem.replacementValue}.
                 </Text>
               </Pressable>
             </View>

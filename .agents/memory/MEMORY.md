@@ -14,16 +14,18 @@
 - [Hybrid Stripe deposits](stripe-hybrid-deposits.md) — use exact hold deadlines when coverage fits; otherwise require explicit consent before a captured refundable deposit.
 - [Expo SDK dependency alignment](expo-sdk-dependency-alignment.md) — keep native packages and Jest preset on the app’s Expo SDK major; cross-SDK versions can duplicate native modules and break launch.
 - [Expo web CSRF cookies](expo-web-csrf-cookies.md) — cross-host Expo web mutations require the CSRF cookie to use the same cross-site policy as the session cookie.
-- [API workflow port ownership](api-workflow-port-ownership.md) — a failed managed API workflow can leave an older listener on its port; verify the live endpoint before changing authentication.
+- [Artifact port ownership](api-workflow-port-ownership.md) — old API or Metro listeners can make restarts appear healthy; verify actual process readiness.
 - [Native app live-API mismatch](native-live-api-mismatch.md) — a phone screen can hit an older published API even while the development API and database have the expected request state.
 - [Google OAuth environment boundaries](google-oauth-environment-boundaries.md) — dev sign-in must return to dev; a production callback can create a new profile instead of opening existing test history.
 - [Simulated deposit settlement](simulated-deposit-settlement.md) — simulated PaymentIntent IDs have no Stripe resource; terminal workflows must treat their external release as a no-op.
 - [Local browser-test sessions](local-browser-test-sessions.md) — real Playwright sessions over HTTP need test-only cookie settings and interruption-safe database fixture cleanup.
-- [Shared E2E fault injection](shared-e2e-fault-injection.md) — serialize tests that inject failures into a shared server's fixture cleanup; parallel workers can contaminate unrelated setups.
+- [Shared E2E isolation](shared-e2e-fault-injection.md) — isolate fault injection and account for development schedulers that can act on fixtures in the shared database.
 - [Derived-effect deduplication](derived-effect-deduplication.md) — never delete duplicate source records in a migration when reputation, rewards, or notifications may already reflect each record.
+- [Reward notification refresh](reward-notification-refresh.md) — refetch server balances for badge alerts; never add coins locally, and keep confirmed reward copy visible.
 - [Trust level follows current score](trust-level-current-score.md) — treat the current score as authoritative; saved level must change with every score write.
 - [Request chat deep links](request-chat-deep-links.md) — item-linked alerts need both the chat partner and request ID; a partner-only chat can open the wrong item.
 - [Native request-card cache behavior](native-request-card-cache.md) — a bodyless 304 can hide chat details; bypass conditional caching without custom cross-origin headers.
 - [Native session recovery](native-session-recovery.md) — resume safe views for the same account after reauthentication; never automatically replay an action.
 - [Historical grace warnings](historical-grace-warnings.md) — older generic warnings may lack penalty-type attribution; repair only from verifiable evidence.
 - [Postgres contention tests](postgres-contention-tests.md) — refresh activity snapshots inside observer transactions and follow indirect blockers when testing row-lock contention.
+- [Claim opens capture model](claim-opens-capture-model.md) — only an opened claim charges the deposit; resolution refunds; all deposit copy lives in deposit-copy.ts.

@@ -11,7 +11,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -22,7 +21,7 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { Shield, Coins, Calendar, CreditCard } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiPatch, photoUrl } from "@/lib/api";
-import { fmtCalendarDate, fmtDate as fmtDateUtil, safeDate } from "@/lib/dateUtils";
+import { fmtCalendarDate, fmtCalendarRange, fmtDate as fmtDateUtil, safeDate } from "@/lib/dateUtils";
 import { useAuth } from "@/context/AuthContext";
 import { InsufficientShareCoinsModal } from "@/components/InsufficientShareCoinsModal";
 import { PayDepositSheet } from "@/components/PayDepositSheet";
@@ -33,6 +32,11 @@ import { PostReturnReviewSheet } from "@/components/PostReturnReviewSheet";
 import CounterProposalSheet, { type CounterPayload } from "@/components/CounterProposalSheet";
 import ExtensionSheet from "@/components/ExtensionSheet";
 import { ClaimSheet } from "@/components/ClaimSheet";
+import {
+  resolveDepositPhase, depositSummaryLine, depositConfirmedStamp, claimOpenedBorrowerCopy, claimResolvedBorrowerCopy,
+  claimOpenedOwnerLine, claimResolvedOwnerLine, depositReleasedCopy, CLAIM_REVIEW_TOP, claimReviewChargedLabel,
+  CANCEL_BOOKING_MESSAGE, formatMoney, depositPhaseDescription,
+} from "@/lib/depositCopy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Message {
@@ -146,6 +150,12 @@ interface Lifecycle {
     amount: string | number | null;
     expiresAt: string | null;
     protectionReviewRequired: boolean;
+    phase?: "none" | "hold" | "charged" | "released" | "resolved";
+    chargedAmount?: number | null;
+    refundedAmount?: number | null;
+    retainedAmount?: number | null;
+    cardLast4?: string | null;
+    cardBrand?: string | null;
   };
 }
 interface LifecycleData { lifecycle: Lifecycle; claims: SecurityClaim[]; events: unknown[]; }
@@ -631,13 +641,16 @@ export default function ChatScreen() {
     const mayConfirmReturn =
       lifecycleDetails?.role === "owner" &&
       lifecycleDetails.actions.includes("confirm_return");
+    const depositInfo = lifecycleDetails?.deposit ?? null;
+    const depositPhase = resolveDepositPhase(depositInfo);
+    const depositIsRefundable = depositInfo?.mode === "refundable_charge";
     const lifecycleCopy: Record<string, { title: string; borrower: string; owner: string; color: string; bg: string }> = {
       RETURN_DUE: { title: "Return due", borrower: "Your item is due back now. Please arrange the return.", owner: "The item is due back. Contact the borrower to arrange return.", color: "#b45309", bg: "#fffbeb" },
-      OVERDUE_GRACE: { title: "Overdue grace", borrower: "Please arrange return or request an eligible extension.", owner: "The item has not yet been returned. Contact the borrower to arrange return.", color: "#b45309", bg: "#fffbeb" },
+      OVERDUE_GRACE: { title: "Overdue grace", borrower: "Please arrange return or request an eligible extension.", owner: "The item has not yet been returned. Contact the borrower to arrange return, or open a non-return claim.", color: "#b45309", bg: "#fffbeb" },
       OVERDUE: { title: "Overdue", borrower: "Please arrange return. You may request an eligible extension.", owner: "The item remains overdue. Request return or arrange a handoff.", color: "#c2410c", bg: "#fff7ed" },
       SERIOUSLY_OVERDUE: { title: "Final return warning", borrower: "Return the item now. The owner may open a non-return claim if it is not returned.", owner: "The item is seriously overdue. You may report an issue for review.", color: "#b91c1c", bg: "#fef2f2" },
-      NON_RETURN_REVIEW: { title: "Non-return review", borrower: "No charge has been made. Return the item or respond if a claim is opened.", owner: "The return is under review. You may report an issue / open a claim.", color: "#b91c1c", bg: "#fef2f2" },
-      RETURNED_PENDING_REVIEW: { title: "Returned — pending review", borrower: "The return is awaiting owner review. Lateness alone never settles your deposit.", owner: "Review the returned item. Report an issue if there is damage or loss.", color: "#0369a1", bg: "#eff6ff" },
+      NON_RETURN_REVIEW: { title: "Non-return review", borrower: depositPhase === "charged" || depositPhase === "resolved" ? "Return the item or respond to the claim. Your deposit was charged because a claim was opened." : "You have not been charged. Return the item or respond if a claim is opened.", owner: "The return is under review. You may report an issue / open a claim.", color: "#b91c1c", bg: "#fef2f2" },
+      RETURNED_PENDING_REVIEW: { title: "Returned — pending review", borrower: "The return is awaiting owner review. Lateness alone never charges your deposit.", owner: "Review the returned item. Report an issue if there is damage or loss.", color: "#0369a1", bg: "#eff6ff" },
     };
     const stageInfo = lifecycleCopy[overdueStage];
 
@@ -688,7 +701,7 @@ export default function ChatScreen() {
               <Feather name="box" size={20} color={colors.mutedForeground} />
             )}
           </View>
-          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
             {/* Name row with status badge pushed to top-right */}
             <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
               <Text style={[card.itemName, { color: colors.foreground, flex: 1 }]} numberOfLines={2}>
@@ -704,7 +717,7 @@ export default function ChatScreen() {
             {/* Who / what role */}
             <View style={card.detailRow}>
               <Feather name="user" size={12} color={colors.mutedForeground} />
-              <Text style={[card.detailText, { color: colors.mutedForeground }]}>
+              <Text style={[card.detailText, card.detailTextTight, { color: colors.mutedForeground }]}>
                 {isOwner && partner
                   ? `${partner.displayName || partner.username} wants to ${request.requestType === "GIFT" ? "claim gift" : (request.requestType?.toLowerCase() ?? "borrow")}`
                   : `You requested to ${request.requestType === "GIFT" ? "claim gift" : (request.requestType?.toLowerCase() ?? "borrow")}`}
@@ -713,19 +726,17 @@ export default function ChatScreen() {
 
             {/* Dates */}
             {(bookedStartDate || bookedEndDate) && (
-              <View style={{ gap: 1 }}>
+              <View>
                 <View style={card.detailRow}>
                   <Feather name="clock" size={12} color={colors.mutedForeground} />
-                  <Text style={[card.detailText, { color: colors.mutedForeground }]}>
+                  <Text style={[card.detailText, card.detailTextTight, { color: colors.mutedForeground }]}>
                     {(status === "IN_PROGRESS" || status === "RETURN_REQUESTED") ? "Booked: " : ""}
-                    {fmtCalendarDate(bookedStartDate)} – {fmtCalendarDate(bookedEndDate)}
+                    {fmtCalendarRange(bookedStartDate, bookedEndDate)}
+                    {handoffIsComplete
+                      ? ` · Handoff${handoffCompletedAt ? `: ${fmtDate(handoffCompletedAt)}` : ""}`
+                      : ""}
                   </Text>
                 </View>
-                {handoffIsComplete && (
-                  <Text style={[card.detailText, { color: colors.mutedForeground, paddingLeft: 17 }]}>
-                    Handoff completed{handoffCompletedAt ? `: ${fmtDate(handoffCompletedAt)}` : ""}
-                  </Text>
-                )}
               </View>
             )}
 
@@ -733,10 +744,10 @@ export default function ChatScreen() {
             {isBorrowType && request.depositMethod && (
               <View style={card.detailRow}>
                 <Shield size={12} color={colors.mutedForeground} strokeWidth={2} />
-                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
-                  {"Deposit "}
-                  {request.depositMethod === "in_app" ? "in-app" : "in-person"}
-                  {depositAmt != null ? `: $${depositAmt}` : ""}
+                <Text style={[card.detailText, card.detailTextTight, { color: colors.mutedForeground }]}>
+                  {request.depositMethod === "in_app" && depositInfo
+                    ? (depositSummaryLine(depositInfo, depositAmt != null ? Number(depositAmt) : null) ?? "Deposit: in-app")
+                    : `Deposit ${request.depositMethod === "in_app" ? "in-app" : "in-person"}${depositAmt != null ? `: ${depositAmt}` : ""}`}
                 </Text>
               </View>
             )}
@@ -744,9 +755,9 @@ export default function ChatScreen() {
             {/* ShareCoins */}
             {coinAmt != null && (
               <View style={card.detailRow}>
-                <Coins size={12} color={PRIMARY} strokeWidth={2} />
-                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
-                  <Text style={{ color: PRIMARY, fontFamily: "Inter_600SemiBold" }}>{coinAmt}</Text>
+                <Coins size={12} color={colors.mutedForeground} strokeWidth={2} />
+                <Text style={[card.detailText, card.detailTextTight, { color: colors.mutedForeground }]}>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>{coinAmt}</Text>
                   {" ShareCoins"}
                 </Text>
               </View>
@@ -759,37 +770,56 @@ export default function ChatScreen() {
         {stageInfo && (
           <View style={[card.lifecycle, { backgroundColor: stageInfo.bg, borderColor: stageInfo.color + "55" }]}>
             <View style={card.lifecycleTitleRow}>
-              <Feather name={overdueStage === "RETURNED_PENDING_REVIEW" ? "check-circle" : "alert-circle"} size={15} color={stageInfo.color} />
-              <Text style={[card.lifecycleTitle, { color: stageInfo.color }]}>{stageInfo.title}</Text>
-            </View>
-            <Text style={[card.lifecycleText, { color: stageInfo.color }]}>{isBorrower ? stageInfo.borrower : stageInfo.owner}</Text>
-            {returnDeadline && <Text style={[card.lifecycleText, { color: stageInfo.color }]}>Return deadline: {fmtDate(returnDeadline)}{lateBy ? ` · ${lateBy} late` : ""}</Text>}
-            {overdueStage !== "NON_RETURN_REVIEW" && (
-              <Text style={[card.lifecycleText, { color: stageInfo.color, fontFamily: "Inter_500Medium" }]}>A late return never automatically settles a security deposit.</Text>
-            )}
-          </View>
-        )}
-        {lifecycleDetails?.deposit.status && (
-          <View style={[card.depositLifecycle, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-            <Shield size={14} color={colors.mutedForeground} />
-            <View style={{ flex: 1 }}>
-              <Text style={[card.lifecycleTitle, { color: colors.foreground }]}>Security deposit · {String(lifecycleDetails.deposit.status).replace(/_/g, " ")}</Text>
-              <Text style={[card.depositText, { color: colors.mutedForeground }]}>
-                {lifecycleDetails.deposit.mode ? `${lifecycleDetails.deposit.mode.replace(/_/g, " ")} · ` : ""}${Number(lifecycleDetails.deposit.amount ?? 0).toFixed(2)}
-                {lifecycleDetails.deposit.expiresAt ? ` · authorization until ${fmtDate(lifecycleDetails.deposit.expiresAt)}` : ""}
+              <Feather name={overdueStage === "RETURNED_PENDING_REVIEW" ? "check-circle" : "alert-circle"} size={15} color={stageInfo.color} style={{ marginTop: 0.5 }} />
+              <Text style={[card.lifecycleText, { color: stageInfo.color, flex: 1 }]}>
+                <Text style={[card.lifecycleTitle, { color: stageInfo.color }]}>{stageInfo.title}: </Text>
+                {isBorrower
+                  ? stageInfo.borrower
+                  : overdueStage === "NON_RETURN_REVIEW" && lateBy
+                    ? `${lateBy} overdue. You may open a claim to report an issue.`
+                    : stageInfo.owner}
               </Text>
-              {lifecycleDetails.deposit.protectionReviewRequired && <Text style={[card.depositText, { color: "#b45309" }]}>Protection review required</Text>}
             </View>
+            {returnDeadline && !(overdueStage === "NON_RETURN_REVIEW" && !isBorrower && lateBy) && <Text style={[card.lifecycleText, { color: stageInfo.color, paddingLeft: 21 }]}>Return deadline: {fmtDate(returnDeadline)}{lateBy ? ` · ${lateBy} late` : ""}</Text>}
+            {overdueStage !== "NON_RETURN_REVIEW" && (
+              <Text style={[card.lifecycleText, { color: stageInfo.color, fontFamily: "Inter_500Medium", paddingLeft: 21 }]}>A late return never automatically charges your deposit.</Text>
+            )}
           </View>
         )}
         {claim && (
           <View style={[card.claim, { borderColor: "#c7d2fe", backgroundColor: "#eef2ff" }]}>
+            {isBorrower && (depositPhase === "charged" || depositPhase === "resolved") && !depositIsRefundable && (
+              <View testID="claim-deposit-summary" style={{ gap: 3, paddingBottom: 6, marginBottom: 2, borderBottomWidth: 1, borderBottomColor: "#c7d2fe" }}>
+                <Text style={[card.lifecycleTitle, { color: "#3730a3" }]}>{CLAIM_REVIEW_TOP.heading}</Text>
+                <Text style={[card.lifecycleTitle, { color: "#b91c1c", fontSize: 15 }]}>{claimReviewChargedLabel(depositInfo?.chargedAmount ?? depositInfo?.amount)}</Text>
+                {depositPhase === "resolved" && (
+                  <Text style={[card.lifecycleText, { color: "#4338ca" }]}>
+                    Refunded: {formatMoney(depositInfo?.refundedAmount ?? 0)} · Retained: {formatMoney(depositInfo?.retainedAmount ?? 0)}
+                  </Text>
+                )}
+                <Text style={[card.lifecycleTitle, { color: "#3730a3", marginTop: 4 }]}>{CLAIM_REVIEW_TOP.whyTitle}</Text>
+                <Text style={[card.lifecycleText, { color: "#4338ca" }]}>{CLAIM_REVIEW_TOP.whyBody}</Text>
+                {depositPhase === "charged" && (
+                  <>
+                    <Text style={[card.lifecycleTitle, { color: "#3730a3", marginTop: 4 }]}>{CLAIM_REVIEW_TOP.nextTitle}</Text>
+                    <Text style={[card.lifecycleText, { color: "#4338ca" }]}>{CLAIM_REVIEW_TOP.nextBody}</Text>
+                  </>
+                )}
+              </View>
+            )}
+            {isOwner && !isBorrower && (depositPhase === "charged" || depositPhase === "resolved") && (
+              <Text testID="claim-owner-deposit-state" style={[card.lifecycleText, { color: "#4338ca", fontFamily: "Inter_600SemiBold" }]}>
+                {depositPhase === "charged"
+                  ? claimOpenedOwnerLine(depositInfo?.chargedAmount ?? depositInfo?.amount)
+                  : claimResolvedOwnerLine(depositInfo?.refundedAmount ?? 0, depositInfo?.retainedAmount ?? 0)}
+              </Text>
+            )}
             <Text style={[card.lifecycleTitle, { color: "#3730a3" }]}>Claim #{claim.id} · {claim.status.replace(/_/g, " ")}</Text>
             <Text style={[card.lifecycleText, { color: "#4338ca" }]}>{claim.claimType.replace(/_/g, " ")} · Requested ${Number(claim.requestedAmount).toFixed(2)}{claim.approvedAmount != null ? ` · Approved $${Number(claim.approvedAmount).toFixed(2)}` : ""}</Text>
             <Text style={[card.lifecycleText, { color: "#4338ca" }]}>{claim.reason}</Text>
             {claim.responseDeadlineAt && claim.status === "CUSTOMER_RESPONSE_PENDING" && <Text style={[card.lifecycleText, { color: "#4338ca" }]}>Respond by {fmtDate(claim.responseDeadlineAt)}</Text>}
             {claim.decisionReason && <Text style={[card.lifecycleText, { color: "#4338ca" }]}>Decision note: {claim.decisionReason}</Text>}
-            {claim.settlementStatus && <Text style={[card.lifecycleText, { color: "#4338ca" }]}>Settlement: {claim.settlementStatus.replace(/_/g, " ")}</Text>}
+            {claim.settlementStatus && <Text style={[card.lifecycleText, { color: "#4338ca" }]}>Claim status: {claim.settlementStatus.replace(/_/g, " ")}</Text>}
             {mayRespondToClaim && claim.status === "CUSTOMER_RESPONSE_PENDING" && (
               <View style={{ gap: 7, marginTop: 3 }}>
                 <TextInput testID="claim-response" value={claimResponse} onChangeText={setClaimResponse} multiline placeholder="Add your response…" placeholderTextColor="#6366f1"
@@ -822,21 +852,21 @@ export default function ChatScreen() {
                     </View>
                   </View>
                 )}
-                <Pressable testID="arrange-return" style={[card.btn, { borderColor: colors.border }]} onPress={() => setText(isBorrower ? "I'd like to arrange the return. What time works for handoff?" : "Please arrange return of the item. What time can you hand it back?")}>
-                  <Feather name="message-circle" size={14} color={colors.foreground} /><Text style={[card.btnLabel, { color: colors.foreground }]}>{isBorrower ? "Contact owner / arrange return" : "Contact borrower / request return"}</Text>
+                <Pressable testID="arrange-return" style={[card.btn, card.btnCompact, { borderColor: colors.border }]} onPress={() => setText(isBorrower ? "I'd like to arrange the return. What time works for handoff?" : "Please arrange return of the item. What time can you hand it back?")}>
+                  <Feather name="message-circle" size={12} color={colors.foreground} /><Text style={[card.btnLabel, card.btnLabelCompact, { color: colors.foreground }]}>{isBorrower ? "Contact owner / arrange return" : "Contact borrower / request return"}</Text>
                 </Pressable>
                 {isBorrower && overdueStage !== "RETURNED_PENDING_REVIEW" && (
                   <Pressable testID="overdue-return" style={[card.btn, { backgroundColor: "#2563eb", borderColor: "#2563eb" }]} onPress={() => setShowReturnSheet(true)}>
                     <Feather name="rotate-ccw" size={14} color="#fff" /><Text style={[card.btnLabel, { color: "#fff" }]}>Confirm / request return</Text>
                   </Pressable>
                 )}
-                {isBorrower && ["OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE"].includes(overdueStage) && !hasPendingExtension && !hasAcceptedExtension && (
+                {isBorrower && ["RETURN_DUE", "OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE"].includes(overdueStage) && !hasPendingExtension && !hasAcceptedExtension && (
                   <Pressable testID="overdue-extension" style={[card.btn, { borderColor: colors.border }]} onPress={() => setShowExtensionSheet(true)}>
                     <Feather name="clock" size={14} color={colors.foreground} /><Text style={[card.btnLabel, { color: colors.foreground }]}>Request eligible extension</Text>
                   </Pressable>
                 )}
-                {mayOpenClaim && <Pressable testID="open-claim" style={[card.btn, { backgroundColor: "#dc2626", borderColor: "#dc2626" }]} onPress={() => setShowClaimSheet(true)}>
-                  <Feather name="flag" size={14} color="#fff" /><Text style={[card.btnLabel, { color: "#fff" }]}>Report an issue / Open a claim</Text>
+                {mayOpenClaim && <Pressable testID="open-claim" style={[card.btn, card.btnCompact, { backgroundColor: "#dc2626", borderColor: "#dc2626" }]} onPress={() => setShowClaimSheet(true)}>
+                  <Feather name="flag" size={12} color="#fff" /><Text style={[card.btnLabel, card.btnLabelCompact, { color: "#fff" }]}>Report an issue / Open a claim</Text>
                 </Pressable>}
               </View>
             )}
@@ -985,12 +1015,12 @@ export default function ChatScreen() {
               </Pressable>
             )}
 
-            {/* DEPOSIT_CONFIRMED: borrower can still cancel (deposit will be refunded) */}
+            {/* DEPOSIT_CONFIRMED: borrower can still cancel (temporary hold is released) */}
             {status === "DEPOSIT_CONFIRMED" && isBorrower && (
               <Pressable
                 style={{ alignItems: "center", paddingVertical: 6 }}
                 onPress={() =>
-                  Alert.alert("Cancel this booking?", "Your deposit will be refunded automatically.", [
+                  Alert.alert("Cancel this booking?", depositIsRefundable ? "Your refundable deposit charge will be refunded automatically." : CANCEL_BOOKING_MESSAGE, [
                     { text: "Keep booking", style: "cancel" },
                     { text: "Cancel", style: "destructive", onPress: () => cancelMutation.mutate() },
                   ])
@@ -1055,7 +1085,7 @@ export default function ChatScreen() {
             {isOwner && status === "ACCEPTED" && request.depositMethod === "in_app" && (
               <View style={[card.infoBanner, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                 <Text style={[card.infoBannerText, { color: colors.mutedForeground }]}>
-                  Waiting for the borrower to confirm their in-app deposit.
+                  Waiting for the borrower to place their temporary deposit hold.
                 </Text>
               </View>
             )}
@@ -1228,12 +1258,12 @@ export default function ChatScreen() {
             {mayConfirmReturn && (
               <Pressable
                 testID="confirm-return"
-                style={[card.btn, { backgroundColor: "#16a34a", borderColor: "#16a34a" }]}
+                style={[card.btn, card.btnCompact, { backgroundColor: "#16a34a", borderColor: "#16a34a" }]}
                 onPress={() => setShowConfirmReturnSheet(true)}
                 disabled={anyMutating}
               >
-                <Feather name="check-circle" size={14} color="#fff" />
-                <Text style={[card.btnLabel, { color: "#fff" }]}>Confirm return</Text>
+                <Feather name="check-circle" size={12} color="#fff" />
+                <Text style={[card.btnLabel, card.btnLabelCompact, { color: "#fff" }]}>Confirm return</Text>
               </Pressable>
             )}
             {status === "RETURN_REQUESTED" && isBorrower && (
@@ -1370,17 +1400,14 @@ export default function ChatScreen() {
         </View>
       </View>
 
-      {/* Request card (fixed between header and messages, scrollable when tall) */}
+      {/* Request card (pinned between header and messages, always shown in full) */}
       {request && (
-        <ScrollView
-          style={[styles.cardScroll, { borderBottomColor: colors.border }]}
-          contentContainerStyle={{ padding: 12 }}
-          nestedScrollEnabled
-          keyboardShouldPersistTaps="handled"
+        <View
+          style={[styles.cardScroll, { borderBottomColor: colors.border, padding: 12 }]}
           testID="pinned-request-card"
         >
           {renderRequestCard()}
-        </ScrollView>
+        </View>
       )}
       {reqId && !request && (
         <View style={[styles.cardScroll, { borderBottomColor: colors.border, padding: 12 }]}>
@@ -1466,7 +1493,7 @@ export default function ChatScreen() {
                 et === "terms_accepted" ? `✅ ${actor} accepted the new terms` :
                 et === "terms_declined" ? `❌ ${actor} declined the new terms` :
                 et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
-                et === "deposit_confirmed" ? "🔒 Deposit secured" :
+                et === "deposit_confirmed" ? depositConfirmedStamp(msg.metadata as { mode?: string | null }) :
                 et === "extension_accepted" ? `✅ Extension accepted${extDate ? ` — new return date: ${fmtCalendarDate(extDate)}` : ""}` :
                 et === "extension_declined" ? `❌ Extension declined` :
                 et === "extension_requested" ? null :
@@ -1566,6 +1593,18 @@ export default function ChatScreen() {
                     );
                   })()
                 : null;
+
+              if (et === "claim_opened" || et === "claim_resolved" || et === "deposit_released") {
+                return (
+                  <DepositEventCard
+                    eventType={et}
+                    metadata={msg.metadata ?? {}}
+                    content={msg.content}
+                    isOwnerView={isOwner && !isBorrower}
+                    colors={colors}
+                  />
+                );
+              }
 
               return (
                 <View style={styles.eventWrap}>
@@ -1856,6 +1895,74 @@ export default function ChatScreen() {
 
 
 // ── Card styles ───────────────────────────────────────────────────────────────
+function DepositEventCard({ eventType, metadata, content, isOwnerView, colors }: {
+  eventType: "claim_opened" | "claim_resolved" | "deposit_released";
+  metadata: Record<string, unknown>;
+  content: string;
+  isOwnerView: boolean;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const n = (k: string) => (metadata[k] == null ? null : Number(metadata[k]));
+  const last4 = (metadata.cardLast4 as string | null | undefined) ?? null;
+  let emoji = "🚩", accent = "#b91c1c", bg = "#fef2f2";
+  let eyebrow = "", title = "", body = "", detail = "", footer = "";
+  let rows: { label: string; value: string }[] = [];
+  if (eventType === "claim_opened") {
+    const amount = n("amount");
+    if (isOwnerView) {
+      eyebrow = "Claim opened";
+      body = amount != null ? claimOpenedOwnerLine(amount) : content;
+    } else {
+      const c = claimOpenedBorrowerCopy({ amount, cardLast4: last4 });
+      ({ eyebrow, title, body, detail, footer } = c);
+      if (amount == null) body = content;
+    }
+  } else if (eventType === "claim_resolved") {
+    emoji = "⚖️"; accent = "#4338ca"; bg = "#eef2ff";
+    const charged = n("chargedAmount"), refunded = n("refundedAmount"), retained = n("retainedAmount");
+    if (isOwnerView || charged == null) {
+      eyebrow = "Claim resolved";
+      body = refunded != null && retained != null ? claimResolvedOwnerLine(refunded, retained) : content;
+      if (!isOwnerView) { /* fall back to server content when amounts are missing */ }
+      if (isOwnerView && charged != null) rows = [
+        { label: "Charged", value: formatMoney(charged) },
+        { label: "Refunded", value: formatMoney(refunded ?? 0) },
+        { label: "Retained", value: formatMoney(retained ?? 0) },
+      ];
+    } else {
+      const c = claimResolvedBorrowerCopy({ chargedAmount: charged, refundedAmount: refunded, retainedAmount: retained, cardLast4: last4, outcome: metadata.outcome as string | undefined });
+      ({ eyebrow, title, body, detail, rows } = c);
+      if ((retained ?? 0) > 0 && (refunded ?? 0) <= 0) { accent = "#b45309"; bg = "#fffbeb"; }
+      else accent = "#15803d", bg = "#f0fdf4";
+    }
+  } else {
+    emoji = "✅"; accent = "#15803d"; bg = "#f0fdf4";
+    const amount = n("amount");
+    const c = depositReleasedCopy(amount);
+    title = c.title;
+    body = amount != null ? c.body : content;
+  }
+  return (
+    <View testID={`deposit-event-${eventType}`} style={{ alignSelf: "center", maxWidth: "92%", marginVertical: 6, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: accent + "66", backgroundColor: bg, gap: 4 }}>
+      {!!eyebrow && <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: accent, textTransform: "uppercase", letterSpacing: 0.5 }}>{emoji} {eyebrow}</Text>}
+      {!!title && <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: accent }}>{eyebrow ? "" : emoji + " "}{title}</Text>}
+      {!!body && <Text style={{ fontSize: 13, fontFamily: isOwnerView && !title ? "Inter_600SemiBold" : "Inter_500Medium", color: colors.foreground }}>{!eyebrow && !title ? emoji + " " : ""}{body}</Text>}
+      {!!detail && <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{detail}</Text>}
+      {rows.length > 0 && (
+        <View style={{ gap: 2, marginTop: 2 }}>
+          {rows.map((r) => (
+            <View key={r.label} style={{ flexDirection: "row", justifyContent: "space-between", gap: 16 }}>
+              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{r.label}</Text>
+              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{r.value}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+      {!!footer && <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{footer}</Text>}
+    </View>
+  );
+}
+
 const card = StyleSheet.create({
   wrap: {
     borderWidth: 1,
@@ -1878,7 +1985,7 @@ const card = StyleSheet.create({
     flexShrink: 0,
   },
   thumbImg: { width: 44, height: 44 },
-  itemName: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 4 },
+  itemName: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
   typeBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   typeBadgeText: { fontSize: 10, fontFamily: "Inter_500Medium", textTransform: "uppercase" },
   statusBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
@@ -1891,6 +1998,7 @@ const card = StyleSheet.create({
   },
   detailRow: { flexDirection: "row", alignItems: "flex-start", gap: 5 },
   detailText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 17 },
+  detailTextTight: { lineHeight: 15 },
   actionsWrap: {
     borderTopWidth: StyleSheet.hairlineWidth,
     padding: 12,
@@ -1908,6 +2016,9 @@ const card = StyleSheet.create({
     borderWidth: 1,
   },
   btnLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  // ~25% shorter than the default button (paddingVertical 10 → 6, smaller label)
+  btnCompact: { paddingVertical: 6 },
+  btnLabelCompact: { fontSize: 11 },
   counterBanner: {
     borderWidth: 1,
     borderRadius: 8,
@@ -1926,12 +2037,10 @@ const card = StyleSheet.create({
   infoBannerText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
   lifecycleLoading: { paddingVertical: 8, alignItems: "center" },
   lifecycleError: { fontSize: 11, paddingHorizontal: 12, paddingBottom: 6 },
-  lifecycle: { marginHorizontal: 12, marginBottom: 10, padding: 10, borderRadius: 9, borderWidth: 1, gap: 4 },
-  lifecycleTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  lifecycle: { marginHorizontal: 12, marginBottom: 10, paddingVertical: 7, paddingHorizontal: 10, borderRadius: 9, borderWidth: 1, gap: 2 },
+  lifecycleTitleRow: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
   lifecycleTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", textTransform: "capitalize" },
   lifecycleText: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
-  depositLifecycle: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginHorizontal: 12, marginBottom: 10, padding: 10, borderWidth: 1, borderRadius: 9 },
-  depositText: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2, textTransform: "capitalize" },
   claim: { marginHorizontal: 12, marginBottom: 10, padding: 10, borderRadius: 9, borderWidth: 1, gap: 4 },
   claimInput: { minHeight: 56, borderWidth: 1, borderRadius: 8, padding: 8, fontSize: 12, textAlignVertical: "top" },
   pinDisplay: {
@@ -1980,7 +2089,7 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 1, flexWrap: "nowrap" },
   metaText: { fontSize: 10, fontFamily: "Inter_400Regular" },
   metaSep: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  cardScroll: { maxHeight: 320, borderBottomWidth: StyleSheet.hairlineWidth },
+  cardScroll: { borderBottomWidth: StyleSheet.hairlineWidth },
   centered: { flex: 1, alignItems: "center", justifyContent: "center" },
   messageList: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 8 },
   bubble: {

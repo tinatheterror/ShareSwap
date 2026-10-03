@@ -14,3 +14,17 @@ mtime_ms = 1790877926342
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:17c64ebc-4359-4add-a3e5-c73b7d69f2c1/99713c4b-62dd-4fdd-a238-302d99f2929e/45c80b2f-4721-4fa4-99e5-9c22f9eb4a96"
 storage_version_token = "1790877954210441"
 content_type = "image/png"
+
+[[outputs]]
+id = "jz9wVXdwyrie0lC-C6ZrX"
+uri = "file://attached_assets/development/shareswap-dev-build-qr.png"
+type = "image"
+title = "ShareSwap development-build QR code"
+description = "Scan with your phone camera to open the running development version in your installed ShareSwap development build. This QR is for the development build, not Expo Go."
+logical_id = "33ed9080-425f-454b-86cd-39455c573ed1"
+content_hash = "sha256:47efbd2e3f95decefea434f7212a4f79f1321f546c0bfe91ee8d768c7ca37bf6"
+size = 8211
+mtime_ms = 1790969797676
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:17c64ebc-4359-4add-a3e5-c73b7d69f2c1/33ed9080-425f-454b-86cd-39455c573ed1/ff0bd1c9-80e0-4356-b2ed-af23e31bf2af"
+storage_version_token = "1790969807833229"
+content_type = "image/png"

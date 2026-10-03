@@ -36,7 +36,7 @@ export async function awardAchievementOnce(award: BadgeAward, reviewTx?: any): P
       userId: award.userId,
       type: "badge_earned",
       title: `🏅 Badge Unlocked: ${award.title}`,
-      message: `${award.description} +1 ShareCoin awarded!`,
+      message: `+1 ShareCoin earned. ${award.description}`,
       link: "/achievements",
       isRead: false,
       reviewId: award.reviewId,

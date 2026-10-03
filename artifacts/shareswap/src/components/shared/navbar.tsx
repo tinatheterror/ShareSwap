@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link, useLocation } from "wouter";
-import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, Home, User, LogOut, Mail, MessageSquareText, ChevronRight, Star, TrendingUp, ShieldAlert, DollarSign, Unlock, Flag, Truck, Gift, AlertTriangle, Clock, AlertCircle, ShieldCheck, ArrowLeftRight, UserCheck } from "lucide-react";
+import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, Home, User, LogOut, Mail, MessageSquareText, ChevronRight, Star, TrendingUp, ShieldAlert, DollarSign, Unlock, Flag, Truck, Gift, AlertTriangle, Clock, AlertCircle, ShieldCheck, ArrowLeftRight, UserCheck, CreditCard, Undo2, Scale } from "lucide-react";
 import { HeartPeopleIcon } from "@/components/ui/heart-people-icon";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
@@ -23,6 +23,8 @@ import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popu
 import { useUserJot } from "@/hooks/use-userjot";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { formatDistanceToNow } from "date-fns";
+import { badgeNotificationMessage } from "@/lib/badge-notification";
+import { fetchAccountNotifications, useWalletNotificationRefresh } from "@/hooks/use-wallet-notification-refresh";
 
 interface Notification {
   id: number;
@@ -63,6 +65,10 @@ function getNotificationIcon(type: string) {
   if (type === "trust_score_changed") return <TrendingUp className="h-4 w-4 text-blue-500" />;
   if (type === "new_review_received") return <Star className="h-4 w-4 text-yellow-500" />;
   if (type === "referral_joined") return <Users className="h-4 w-4 text-teal-500" />;
+  if (type === "security_deposit_charged" || type === "security_claim_opened_owner") return <CreditCard className="h-4 w-4 text-red-600" />;
+  if (type === "security_deposit_refunded") return <Undo2 className="h-4 w-4 text-green-600" />;
+  if (type === "security_deposit_retained") return <Scale className="h-4 w-4 text-orange-600" />;
+  if (type === "deposit_hold_released") return <Unlock className="h-4 w-4 text-blue-600" />;
   if (type === "security_deposit_released") return <Unlock className="h-4 w-4 text-green-500" />;
   if (type === "payment_received") return <DollarSign className="h-4 w-4 text-green-500" />;
   if (type === "verification_failed") return <ShieldAlert className="h-4 w-4 text-red-500" />;
@@ -92,7 +98,7 @@ function NotificationItem({ n, onAction }: { n: Notification; onAction: (n: Noti
         </p>
         {n.message && (
           <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
-            {n.message}
+            {badgeNotificationMessage(n)}
           </p>
         )}
         <p className="text-[10px] text-muted-foreground/50 mt-1">
@@ -140,17 +146,27 @@ function NotificationBell() {
   const [, navigate] = useLocation();
   const prevNotifIdsRef = useRef<Set<number>>(new Set());
   const initializedRef = useRef(false);
+  const notificationUserRef = useRef<number | undefined>(undefined);
 
-  const { data: allNotifications = [] } = useQuery<Notification[]>({
-    queryKey: ["/api/notifications"],
+  const { data: allNotifications = [], dataUpdatedAt: notificationsUpdatedAt } = useQuery<Notification[]>({
+    queryKey: ["/api/notifications", user?.id],
+    queryFn: ({ signal }) => fetchAccountNotifications<Notification>(user!.id, signal),
     enabled: !!user?.id,
     refetchInterval: 30000,
   });
+  useWalletNotificationRefresh(user?.id, allNotifications, notificationsUpdatedAt);
 
   // Play a sound when new notifications arrive.
   useEffect(() => {
-    if (!allNotifications.length) return;
-    const currentIds = new Set(allNotifications.map((n) => n.id));
+    if (notificationUserRef.current !== user?.id) {
+      notificationUserRef.current = user?.id;
+      initializedRef.current = false;
+      prevNotifIdsRef.current = new Set();
+    }
+    if (!user?.id) return;
+    const accountNotifications = allNotifications.filter((n) => n.userId === user.id);
+    if (!accountNotifications.length) return;
+    const currentIds = new Set(accountNotifications.map((n) => n.id));
 
     if (!initializedRef.current) {
       // First load — seed the ref so we can detect genuinely new ones later.
@@ -159,16 +175,13 @@ function NotificationBell() {
       return;
     }
 
-    const newNotifs = allNotifications.filter((n) => !prevNotifIdsRef.current.has(n.id));
+    const newNotifs = accountNotifications.filter((n) => !prevNotifIdsRef.current.has(n.id));
     if (newNotifs.length > 0) {
       playNotificationSound();
-      if (newNotifs.some((n) => n.type === "sharecoin_earned")) {
-        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      }
     }
 
     prevNotifIdsRef.current = currentIds;
-  }, [allNotifications]);
+  }, [allNotifications, user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -188,22 +201,11 @@ function NotificationBell() {
   }, [user?.id]);
 
   const handleNotificationClick = (n: Notification) => {
-    if (["trust_score_changed", "milestone_achieved", "badge_earned", "level_up"].includes(n.type)
-      && !(n.type === "trust_score_changed" && n.requestId && /\boverdue\b/i.test(n.message))) {
-      if (n.type === "trust_score_changed") {
-        const increaseMatch = n.message.match(/(?:went up by|\+)(\d+)\s*point/);
-        const decreaseMatch = n.message.match(/dropped by (\d+)\s*point/);
-        const currentScore = user?.reputationScore ?? 0;
-        if (increaseMatch) {
-          const delta = parseInt(increaseMatch[1]);
-          navigate(`/achievements?from=${Math.max(0, currentScore - delta)}`);
-          return;
-        } else if (decreaseMatch) {
-          const delta = parseInt(decreaseMatch[1]);
-          navigate(`/achievements?from=${currentScore + delta}`);
-          return;
-        }
-      }
+    if (n.type === "trust_score_changed") {
+      navigate("/score-history");
+      return;
+    }
+    if (["milestone_achieved", "badge_earned", "level_up"].includes(n.type)) {
       navigate("/achievements");
       return;
     }

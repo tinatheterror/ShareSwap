@@ -29,6 +29,7 @@ import {
   Star,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import { NOT_CHARGED_UNLESS_CLAIM, formatMoney, holdPendingNotice, holdReleasedBody, phaseFromStatus } from "@/lib/deposit-copy";
 
 interface TransactionDetail {
   id: number;
@@ -183,12 +184,12 @@ function buildTimeline(tx: TransactionDetail): TimelineEvent[] {
   }
   if (tx.depositAuthorizedAt) {
     events.push({
-      label: "Security deposit held",
+      label: "Temporary deposit hold placed",
       timestamp: tx.depositAuthorizedAt,
       icon: <Lock className="h-4 w-4 text-white" />,
       iconBg: "bg-purple-500",
       metadata: tx.trustDepositAmount
-        ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} held`
+        ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} temporary hold — not charged`
         : undefined,
     });
   }
@@ -252,14 +253,14 @@ function buildTimeline(tx: TransactionDetail): TimelineEvent[] {
         : undefined,
     });
   }
-  if (tx.depositReleasedAt) {
+  if (tx.depositReleasedAt && !["captured", "settled"].includes((tx.depositStatus ?? "").toLowerCase())) {
     events.push({
-      label: "Security deposit hold lifted",
+      label: "Deposit hold released",
       timestamp: tx.depositReleasedAt,
       icon: <Unlock className="h-4 w-4 text-white" />,
       iconBg: "bg-green-600",
       metadata: tx.trustDepositAmount
-        ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} hold lifted`
+        ? holdReleasedBody(tx.trustDepositAmount)
         : undefined,
     });
   }
@@ -544,30 +545,42 @@ export default function TransactionDetailPage() {
                           className="text-xs capitalize"
                         >
                           {tx.depositStatus === "authorized" || tx.depositStatus === "held"
-                            ? "On hold"
+                            ? "Temporary hold"
                             : tx.depositStatus === "released"
-                            ? "Hold lifted"
+                            ? "Hold released"
                             : tx.depositStatus === "captured"
-                            ? "Captured"
+                            ? "Charged (claim opened)"
+                            : tx.depositStatus === "settled"
+                            ? "Claim resolved"
                             : tx.depositStatus ?? "Pending"}
                         </Badge>
                       </div>
                     </div>
                   )}
 
+                  {phaseFromStatus(tx.depositStatus) === "hold" && tx.trustDepositAmount && (
+                    <p className="text-xs text-muted-foreground pb-1" data-testid="text-tx-deposit-hold-note">
+                      {holdPendingNotice(tx.trustDepositAmount)} {NOT_CHARGED_UNLESS_CLAIM}
+                    </p>
+                  )}
+                  {phaseFromStatus(tx.depositStatus) === "charged" && tx.trustDepositAmount && (
+                    <p className="text-xs text-red-600 pb-1" data-testid="text-tx-deposit-charged-note">
+                      {formatMoney(tx.trustDepositAmount)} was charged because a claim was opened. It may be refunded depending on the claim outcome.
+                    </p>
+                  )}
                   {(tx.depositAuthorizedAt || tx.depositReleasedAt) && (
                     <div className="border-t pt-3 mt-1 space-y-1.5">
                       {tx.depositAuthorizedAt && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                           <Lock className="h-3.5 w-3.5" />
-                          Authorization placed on{" "}
+                          Temporary hold placed on{" "}
                           {format(new Date(tx.depositAuthorizedAt), "MMM d, yyyy 'at' h:mm a")}
                         </p>
                       )}
-                      {tx.depositReleasedAt && (
+                      {tx.depositReleasedAt && !["captured", "settled"].includes((tx.depositStatus ?? "").toLowerCase()) && (
                         <p className="text-xs text-green-600 flex items-center gap-1.5">
                           <Unlock className="h-3.5 w-3.5" />
-                          Hold lifted on{" "}
+                          Hold released on{" "}
                           {format(new Date(tx.depositReleasedAt), "MMM d, yyyy 'at' h:mm a")}
                         </p>
                       )}

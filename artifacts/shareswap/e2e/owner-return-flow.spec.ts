@@ -466,7 +466,7 @@ test("confirmed return with a held deposit sends one combined borrower notificat
     const alerts = returnAlerts(await borrowerResponse.json());
     expect(alerts).toHaveLength(1);
     expect(alerts[0].type).toBe("return_confirmed");
-    expect(alerts[0].message).toContain("Deposit hold lifted.");
+    expect(alerts[0].message).toContain("Temporary hold released.");
   } finally {
     await cleanupOwnerReturnFixture(request, fixture.fixtureId);
   }

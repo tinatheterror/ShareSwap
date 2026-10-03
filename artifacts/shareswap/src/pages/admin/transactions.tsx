@@ -58,14 +58,14 @@ interface OverrideTarget { tx: AdminTransaction; action: Action }
 
 const ACTION_LABELS: Record<Action, string> = {
   complete: "Mark as completed",
-  release_deposit: "Release deposit",
+  release_deposit: "Release deposit hold",
   cancel: "Cancel transaction",
 };
 
 const ACTION_DESCRIPTIONS: Record<Action, string> = {
   complete: "This will force the transaction to COMPLETED status and mark the item as available again.",
-  release_deposit: "This will cancel the Stripe payment intent and mark the deposit as released.",
-  cancel: "This will set the status to DECLINED, release any deposit, and restore item availability.",
+  release_deposit: "This will cancel the Stripe authorization and mark the temporary deposit hold as released. The borrower is not charged.",
+  cancel: "This will set the status to DECLINED, release any temporary deposit hold, and restore item availability.",
 };
 
 export default function AdminTransactionsPage() {
@@ -164,7 +164,7 @@ export default function AdminTransactionsPage() {
                         <span className="flex items-center gap-1">
                           <DollarSign className="h-3 w-3" />
                           ${parseFloat(tx.trustDepositAmount).toFixed(2)} deposit
-                          {tx.depositStatus && <span className="ml-1 font-medium">({tx.depositStatus})</span>}
+                          {tx.depositStatus && <span className="ml-1 font-medium">({tx.depositStatus === "authorized" || tx.depositStatus === "held" ? "temporary hold" : tx.depositStatus === "captured" ? "charged — claim opened" : tx.depositStatus === "released" ? "hold released" : tx.depositStatus === "settled" ? "claim resolved" : tx.depositStatus})</span>}
                         </span>
                       )}
                       {tx.startDate && <span>{format(new Date(tx.startDate), "MMM d")} – {tx.endDate ? format(new Date(tx.endDate), "MMM d, yyyy") : "?"}</span>}
@@ -191,7 +191,7 @@ export default function AdminTransactionsPage() {
                         onClick={() => setOverrideTarget({ tx, action: "release_deposit" })}
                       >
                         <Unlock className="h-3 w-3 mr-1" />
-                        Release
+                        Release hold
                       </Button>
                     ) : null}
                     {tx.status !== "COMPLETED" && tx.status !== "DECLINED" && (

@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -12,6 +12,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet } from "@/lib/api";
@@ -290,13 +291,9 @@ export default function AchievementsScreen() {
   const earnedBadges = badges.filter((b) => b.earned);
   const unearnedBadges = badges.filter((b) => !b.earned);
 
-  const handleBadgePress = (badge: BadgeItem) => {
-    Alert.alert(
-      `${badge.icon} ${badge.name}`,
-      `${badge.description}\n\nHow to earn:\n${badge.requirement}`,
-      [{ text: badge.earned ? "✓ Earned" : "Got it" }]
-    );
-  };
+  // In-app modal instead of Alert.alert, which is a no-op on react-native-web.
+  const [selectedBadge, setSelectedBadge] = useState<BadgeItem | null>(null);
+  const handleBadgePress = (badge: BadgeItem) => setSelectedBadge(badge);
 
   if (!user) {
     return (
@@ -317,22 +314,7 @@ export default function AchievementsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
-            paddingTop: insets.top + (isWeb ? 8 : 0),
-          },
-        ]}
-      >
-        <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={10}>
-          <Feather name="chevron-left" size={26} color={colors.foreground} />
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Achievements</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader title="Achievements" />
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 90 }]}
         showsVerticalScrollIndicator={false}
@@ -494,6 +476,69 @@ export default function AchievementsScreen() {
           You're part of a growing community of sharers.
         </Text>
       </ScrollView>
+
+      <Modal
+        visible={!!selectedBadge}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedBadge(null)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setSelectedBadge(null)}>
+          {selectedBadge && (
+            <Pressable
+              style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => {}}
+            >
+              <View style={styles.modalHeader}>
+                <View
+                  style={[
+                    styles.modalIconWrap,
+                    {
+                      backgroundColor: selectedBadge.earned ? selectedBadge.earnedBg : colors.muted,
+                      borderColor: selectedBadge.earned ? selectedBadge.earnedFg + "40" : colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={styles.modalEmoji}>{selectedBadge.icon}</Text>
+                </View>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>{selectedBadge.name}</Text>
+                  <View
+                    style={[
+                      styles.modalStatusPill,
+                      { backgroundColor: selectedBadge.earned ? "#ccfbf1" : colors.muted },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.modalStatusText,
+                        { color: selectedBadge.earned ? "#0f766e" : colors.mutedForeground },
+                      ]}
+                    >
+                      {selectedBadge.earned ? "✓ Earned" : "Locked"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <Text style={[styles.modalDescription, { color: colors.mutedForeground }]}>
+                {selectedBadge.description}
+              </Text>
+              <View style={[styles.modalRequirement, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.modalRequirementLabel, { color: colors.mutedForeground }]}>How to earn</Text>
+                <Text style={[styles.modalRequirementText, { color: colors.foreground }]}>
+                  {selectedBadge.requirement}
+                </Text>
+              </View>
+              <Pressable
+                style={[styles.modalClose, { backgroundColor: colors.primary }]}
+                onPress={() => setSelectedBadge(null)}
+              >
+                <Text style={styles.modalCloseText}>Got it</Text>
+              </Pressable>
+            </Pressable>
+          )}
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -570,6 +615,22 @@ const styles = StyleSheet.create({
   badgeTile: { width: "30%", borderRadius: 12, borderWidth: 1, padding: 10, alignItems: "center", gap: 4 },
   badgeEmoji: { fontSize: 22 },
   badgeTitle: { fontSize: 10, fontFamily: "Inter_500Medium", textAlign: "center", lineHeight: 13 },
+
+  // Badge detail modal
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", padding: 24 },
+  modalCard: { width: "100%", maxWidth: 360, borderRadius: 20, borderWidth: 1, padding: 18, gap: 12 },
+  modalHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  modalIconWrap: { width: 48, height: 48, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  modalEmoji: { fontSize: 26 },
+  modalTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  modalStatusPill: { alignSelf: "flex-start", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  modalStatusText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  modalDescription: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  modalRequirement: { borderRadius: 10, padding: 10, gap: 2 },
+  modalRequirementLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5 },
+  modalRequirementText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  modalClose: { borderRadius: 12, paddingVertical: 11, alignItems: "center" },
+  modalCloseText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
   // Misc
   emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold" },

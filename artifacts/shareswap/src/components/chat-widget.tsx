@@ -63,6 +63,11 @@ import {
 } from "@stripe/react-stripe-js";
 import { getStripePromise } from "@/lib/stripe-client";
 import { RequestLifecyclePanel } from "@/components/request-lifecycle-panel";
+import {
+  CLAIM_CHARGED_HEADLINE, CLAIM_OPENED_CONVERSION, CLAIM_OPENED_REFUND_NOTE, CLAIM_OPENED_TITLE, CLAIM_RESOLVED_PREVIOUSLY_CHARGED,
+  EVENT_ICONS, cardSuffix, claimOpenedChargedLine, claimOpenedOwnerLine, claimOutcome, claimRefundedLine, claimResolvedOwnerLine,
+  claimResolvedTitle, claimRetainedLine, depositConfirmedStampLabel, formatMoney, toAmount,
+} from "@/lib/deposit-copy";
 
 const stripePromise = getStripePromise();
 
@@ -134,6 +139,16 @@ type Message = {
     declinedByRole?: string;
     requestType?: string;
     itemName?: string;
+    mode?: string;
+    claimId?: number;
+    amount?: number | string | null;
+    chargedAmount?: number | string | null;
+    refundedAmount?: number | string | null;
+    retainedAmount?: number | string | null;
+    cardLast4?: string | null;
+    cardBrand?: string | null;
+    outcome?: "refunded_full" | "refunded_partial" | "retained_full";
+    itemTitle?: string;
   };
   requestId?: number;
 };
@@ -272,10 +287,74 @@ function DepositPaymentForm({
           disabled={!stripe || isProcessing}
           className="flex-1 bg-primary hover:bg-primary/90"
         >
-          {isProcessing ? "Processing..." : "Authorize Deposit"}
+          {isProcessing ? "Processing..." : "Place deposit hold"}
         </Button>
       </div>
     </form>
+  );
+}
+
+function ClaimEventCard({ eventType, metadata, content, viewerIsBorrower }: {
+  eventType: "claim_opened" | "claim_resolved";
+  metadata?: Message["metadata"];
+  content: string;
+  viewerIsBorrower: boolean;
+}) {
+  const md = metadata ?? {};
+  if (eventType === "claim_opened") {
+    const amount = toAmount(md.amount ?? md.chargedAmount);
+    if (!viewerIsBorrower) {
+      return (
+        <div className="w-full max-w-sm mx-auto rounded-lg border border-red-200 bg-red-50 p-3 text-center" data-testid="event-claim-opened-owner">
+          <p className="text-xs font-semibold text-red-800">{EVENT_ICONS.claim_opened} {amount != null ? claimOpenedOwnerLine(amount) : content}</p>
+        </div>
+      );
+    }
+    return (
+      <div className="w-full max-w-sm mx-auto rounded-lg border border-red-300 bg-red-50 p-3 text-left space-y-1" data-testid="event-claim-opened-borrower">
+        <p className="text-xs font-bold uppercase tracking-wide text-red-700">{EVENT_ICONS.claim_opened} {CLAIM_OPENED_TITLE}</p>
+        <p className="text-sm font-semibold text-red-900">{CLAIM_CHARGED_HEADLINE}</p>
+        {amount != null && <p className="text-sm text-red-900">{claimOpenedChargedLine(amount, md.cardLast4)}</p>}
+        <p className="text-xs text-red-800">{CLAIM_OPENED_CONVERSION}</p>
+        <p className="text-xs text-red-800">{CLAIM_OPENED_REFUND_NOTE}</p>
+      </div>
+    );
+  }
+  const charged = toAmount(md.chargedAmount);
+  const refunded = toAmount(md.refundedAmount) ?? 0;
+  const retained = toAmount(md.retainedAmount) ?? 0;
+  const outcome = md.outcome ?? claimOutcome({ refundedAmount: refunded, retainedAmount: retained });
+  if (!viewerIsBorrower) {
+    return (
+      <div className="w-full max-w-sm mx-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-center" data-testid="event-claim-resolved-owner">
+        <p className="text-xs font-semibold text-slate-800">{EVENT_ICONS.claim_resolved} {claimResolvedOwnerLine({ refundedAmount: refunded, retainedAmount: retained })}</p>
+      </div>
+    );
+  }
+  const refundedTone = outcome !== "retained_full";
+  return (
+    <div className={`w-full max-w-sm mx-auto rounded-lg border p-3 text-left space-y-1 ${refundedTone ? "border-green-300 bg-green-50" : "border-orange-300 bg-orange-50"}`} data-testid="event-claim-resolved-borrower">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-700">{EVENT_ICONS.claim_resolved} Claim resolved</p>
+      <p className="text-sm font-semibold text-slate-900">{claimResolvedTitle(outcome)}</p>
+      {outcome === "refunded_full" && <p className="text-sm text-slate-900">{claimRefundedLine(refunded || charged, md.cardLast4)}</p>}
+      {outcome === "refunded_partial" && (
+        <>
+          <p className="text-sm text-slate-900">{formatMoney(refunded)} refunded to your card{cardSuffix(md.cardLast4)}.</p>
+          <p className="text-sm text-slate-900">{claimRetainedLine(retained)}</p>
+        </>
+      )}
+      {outcome === "retained_full" && (
+        <p className="text-sm text-slate-900">{formatMoney(retained)} of your {formatMoney(charged ?? retained)} security deposit was retained based on the claim outcome.</p>
+      )}
+      <p className="text-xs text-slate-700">{CLAIM_RESOLVED_PREVIOUSLY_CHARGED}</p>
+      {charged != null && (
+        <dl className="text-xs text-slate-800 pt-1 space-y-0.5" data-testid="claim-resolved-breakdown">
+          <div className="flex justify-between"><dt>Charged</dt><dd className="font-medium">{formatMoney(charged)}</dd></div>
+          <div className="flex justify-between"><dt>Refunded</dt><dd className="font-medium">{formatMoney(refunded)}</dd></div>
+          <div className="flex justify-between"><dt>Retained</dt><dd className="font-medium">{formatMoney(retained)}</dd></div>
+        </dl>
+      )}
+    </div>
   );
 }
 
@@ -947,7 +1026,7 @@ export function ChatWidget() {
     switch (status) {
       case "PENDING": return iAmRequester ? "Waiting for response" : "Needs your response";
       case "ACCEPTED": return "Accepted";
-      case "DEPOSIT_CONFIRMED": return "Deposit confirmed";
+      case "DEPOSIT_CONFIRMED": return "Booking confirmed";
       case "IN_PROGRESS": return "In progress";
       case "RETURN_REQUESTED": return "Return requested";
       case "COMPLETED": return "Completed";
@@ -1881,11 +1960,13 @@ export function ChatWidget() {
                         et === "terms_accepted" ? `✅ ${actor} accepted the new terms` :
                         et === "terms_declined" ? `❌ ${actor} declined the new terms` :
                         et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
-                        et === "deposit_confirmed" ? "🔒 Deposit secured" :
+                        et === "deposit_confirmed" ? depositConfirmedStampLabel({ mode: msg.metadata?.mode, refundable: (msg.metadata as any)?.refundable === true }) :
+                        et === "deposit_released" ? `${EVENT_ICONS.deposit_released} ${msg.content}` :
                         et === "extension_accepted" ? `✅ Extension accepted${extDateFmt ? ` — new return date: ${extDateFmt}` : ""}` :
                         et === "extension_declined" ? `❌ Extension declined` :
                         et === "extension_requested" ? null :
                         et === "counter_proposed" ? null :
+                        et === "claim_opened" || et === "claim_resolved" ? null :
                         msg.content;
 
                       const extReqDays = msg.metadata?.days as number | undefined;
@@ -1933,7 +2014,11 @@ export function ChatWidget() {
                                 )}
                               </div>
                             ) : (
-                              <span className="text-xs text-muted-foreground font-semibold">{eventLabel}</span>
+                              eventLabel ? <span className="text-xs text-muted-foreground font-semibold">{eventLabel}</span> : null
+                            )}
+
+                            {(et === "claim_opened" || et === "claim_resolved") && (
+                              <ClaimEventCard eventType={et} metadata={msg.metadata} content={msg.content} viewerIsBorrower={!!relatedRequest && relatedRequest.requesterId === user.id} />
                             )}
 
                             {et === "counter_proposed" && msg.metadata && (() => {
@@ -2643,8 +2728,8 @@ export function ChatWidget() {
             setShowRentalDepositModal(false);
             setSelectedRequest(null);
             toast({
-              title: "Rental deposit secured!",
-              description: "Coordinate with the owner to pick up your rental.",
+              title: "Rental booking confirmed",
+              description: "Your deposit is a temporary hold, not a charge. Coordinate with the owner to pick up your rental.",
             });
           }}
         />
@@ -2942,7 +3027,7 @@ export function ChatWidget() {
             <DialogTitle>Cancel this booking?</DialogTitle>
             <DialogDescription>
               {cancelConfirmRequest?.status === "ACCEPTED" && "The owner has already accepted your request."}
-              {cancelConfirmRequest?.status === "DEPOSIT_CONFIRMED" && "Your deposit will be refunded automatically."}
+              {cancelConfirmRequest?.status === "DEPOSIT_CONFIRMED" && "Your deposit hold will be released automatically — you will not be charged."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:items-stretch">

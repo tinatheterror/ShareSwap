@@ -44,7 +44,7 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<void>;
   register: (opts: { email: string; password: string; fullName?: string; referralCode?: string }) => Promise<void>;
   logout: () => Promise<void>;
-  refetchUser: () => Promise<void>;
+  refetchUser: () => Promise<number | null>;
   resendVerification: () => Promise<void>;
   /** Set user state directly from a response payload (e.g. after OAuth token exchange) */
   setUserData: (user: User) => void;
@@ -58,7 +58,7 @@ const AuthContext = createContext<AuthContextValue>({
   login: async () => {},
   register: async () => {},
   logout: async () => {},
-  refetchUser: async () => {},
+  refetchUser: async () => null,
   resendVerification: async () => {},
   setUserData: () => {},
 });
@@ -89,28 +89,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => onSessionExpired(expireSession), [expireSession]);
 
-  const fetchUser = useCallback(async () => {
+  const fetchUser = useCallback(async (): Promise<number | null> => {
     const generation = authGeneration.current;
     try {
       const data = await apiGet<User>("/api/user");
-      if (generation !== authGeneration.current) return;
+      if (generation !== authGeneration.current) return null;
       setUser(data);
+      queryClient.setQueryData(["/api/user", data.id], data);
       if (!hadSession.current) setApiSession(true);
       hadSession.current = true;
       // Persist the fact that the user has an active session.
-      await AsyncStorage.setItem(HAS_SESSION_KEY, "1");
+      await AsyncStorage.setItem(HAS_SESSION_KEY, "1").catch(() => {});
+      return data.id;
     } catch (err: unknown) {
-      if (generation !== authGeneration.current) return;
+      if (generation !== authGeneration.current) return null;
       const status = (err as { status?: number })?.status;
       if (status === 401) {
         // Only flag as expired when the user had a prior session.
         // This avoids showing the banner on a fresh install / clean logout.
         expireSession();
       }
+      return null;
     } finally {
       setIsLoading(false);
     }
-  }, [expireSession]);
+  }, [expireSession, queryClient]);
 
   useEffect(() => {
     let mounted = true;
@@ -123,6 +126,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => { if (mounted) void fetchUser(); });
     return () => { mounted = false; };
   }, [fetchUser]);
+
+  // Keep context-backed balance consumers (header badges, wallet widgets, etc.)
+  // in sync when another observer refreshes the account-scoped user query.
+  // The account and auth-generation checks reject stale data after sign-out or
+  // an account switch; this only observes cache writes and never starts polling.
+  useEffect(() => {
+    const accountId = user?.id;
+    if (accountId === undefined) return;
+    const generation = authGeneration.current;
+    return queryClient.getQueryCache().subscribe((event) => {
+      if (
+        generation !== authGeneration.current ||
+        event.type !== "updated" ||
+        event.action.type !== "success" ||
+        event.query.queryKey[0] !== "/api/user" ||
+        event.query.queryKey[1] !== accountId
+      ) return;
+
+      const cachedUser = event.query.state.data as User | undefined;
+      if (!cachedUser || cachedUser.id !== accountId) return;
+      setUser((current) =>
+        current?.id === accountId ? { ...current, ...cachedUser } : current,
+      );
+    });
+  }, [queryClient, user]);
 
   const clearSessionExpired = useCallback(() => {
     setSessionExpired(false);
@@ -158,6 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authGeneration.current++;
       setApiSession(true);
       setUser(authenticatedUser);
+      queryClient.setQueryData(["/api/user", authenticatedUser.id], authenticatedUser);
       hadSession.current = true;
       await AsyncStorage.setItem(HAS_SESSION_KEY, "1");
       await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "email");
@@ -165,7 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Register Expo push token with the server after successful login
       registerPushToken().catch(() => {});
     },
-    [getDeviceFingerprint],
+    [getDeviceFingerprint, queryClient],
   );
 
   const register = useCallback(
@@ -220,10 +249,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authGeneration.current++;
     setApiSession(true);
     setUser(data);
+    queryClient.setQueryData(["/api/user", data.id], data);
     hadSession.current = true;
     setSessionExpired(false);
     AsyncStorage.setItem(HAS_SESSION_KEY, "1").catch(() => {});
-  }, []);
+  }, [queryClient]);
 
   return (
     <AuthContext.Provider

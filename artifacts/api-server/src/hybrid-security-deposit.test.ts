@@ -30,3 +30,16 @@ test("routes expose consent-only fallback and no renter renewal route or renewal
   assert.doesNotMatch(source, /\/api\/requests\/:requestId\/renew-deposit/);
   assert.doesNotMatch(source, /processExpiringDepositHolds\(\{ stripeClient: stripe \}\)/);
 });
+
+test("borrow deposit preparation serializes retries and reads Charge details separately from creation", async () => {
+  const source = await readFile(new URL("./routes/routes.ts", import.meta.url), "utf8");
+  const borrowRoute = source.slice(source.indexOf('app.post("/api/stripe/create-deposit-hold"'));
+  const holdCreation = borrowRoute.slice(
+    borrowRoute.indexOf("const result = await db.transaction("),
+    borrowRoute.indexOf("const captureBefore = getPaymentIntentCaptureBefore(paymentIntent)"),
+  );
+  assert.match(holdCreation, /capture_method: "manual"/);
+  assert.match(holdCreation, /FOR UPDATE/);
+  assert.match(holdCreation, /prepareDepositAuthorization\(/);
+  assert.doesNotMatch(holdCreation, /expand:/);
+});

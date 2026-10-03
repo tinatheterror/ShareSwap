@@ -2,7 +2,7 @@
  * PayDepositSheet
  *
  * Bottom-sheet modal for the BORROW + in_app deposit flow on native.
- * Mirrors the web TrustDepositModal: charge platform fee → create deposit
+ * Mirrors the web TrustDepositModal: charge platform fee → place temporary deposit
  * hold (off-session using saved card) → record in DB.
  *
  * No Stripe SDK needed — all payment operations are off-session and
@@ -26,6 +26,8 @@ import { Shield, Lock, Coins, CheckCircle } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { apiPost, apiGet } from "@/lib/api";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
+import { paymentErrorMessage } from "@/lib/payment-error";
+import { holdTitle, holdPendingNote, holdReleaseExplainer, holdPlacedMessage, HOLD_COVERAGE_NOTE, DEPOSIT_HOLD_FAILURE_NOTE } from "@/lib/depositCopy";
 
 const PRIMARY = "#0d9488";
 
@@ -97,6 +99,7 @@ export function PayDepositSheet({
 
   const [processing, setProcessing] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
+  const [succeededRefundable, setSucceededRefundable] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refundableConsent, setRefundableConsent] = useState<{
     message: string;
@@ -175,6 +178,7 @@ export function PayDepositSheet({
       });
 
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      setSucceededRefundable(false);
       setSucceeded(true);
       onSuccess();
     } catch (e: unknown) {
@@ -185,7 +189,8 @@ export function PayDepositSheet({
         paymentError.consentEndpoint
       ) {
         setRefundableConsent({
-          message: paymentError.consentMessage || "This deposit needs to be collected as a refundable payment.",
+          message: paymentError.consentMessage ||
+            `Your trust deposit requires a refundable payment of $${Number(paymentError.depositAmount ?? depositAmount).toFixed(2)} because your card’s authorization window doesn’t provide enough coverage for this borrow.`,
           endpoint: paymentError.consentEndpoint,
           amount: Number(paymentError.depositAmount ?? depositAmount),
         });
@@ -199,14 +204,7 @@ export function PayDepositSheet({
         );
         return;
       }
-      const msg = paymentError.message ?? "";
-      if (msg.toLowerCase().includes("payment method") || msg.toLowerCase().includes("no card")) {
-        setError("No payment card on file. Please add a card in the Settings tab first, then try again.");
-      } else if (msg.toLowerCase().includes("sharecoins") || msg.toLowerCase().includes("insufficient")) {
-        setError("You don't have enough ShareCoins to confirm this borrow. Earn more ShareCoins by sharing your items.");
-      } else {
-        setError(msg || "Payment failed. Please try again.");
-      }
+      setError(paymentErrorMessage(paymentError));
     } finally {
       setProcessing(false);
     }
@@ -231,6 +229,7 @@ export function PayDepositSheet({
       }
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
       setRefundableConsent(null);
+      setSucceededRefundable(true);
       setSucceeded(true);
       onSuccess();
     } catch (e: unknown) {
@@ -242,7 +241,7 @@ export function PayDepositSheet({
             : "Your refundable deposit payment is still pending. Check Payment Settings and try again once it is complete.",
         );
       } else {
-        setError(paymentError.message || "The refundable deposit payment could not be completed.");
+        setError(paymentErrorMessage(paymentError));
       }
     } finally {
       setProcessing(false);
@@ -254,6 +253,7 @@ export function PayDepositSheet({
   const handleClose = useCallback(() => {
     if (processing) return;
     setSucceeded(false);
+    setSucceededRefundable(false);
     setError(null);
     setRefundableConsent(null);
     onClose();
@@ -279,11 +279,14 @@ export function PayDepositSheet({
             /* ── Success ─────────────────────────────────────────────────────── */
             <View style={s.successWrap}>
               <CheckCircle size={48} color={PRIMARY} strokeWidth={1.5} />
-              <Text style={[s.successTitle, { color: colors.foreground }]}>Deposit secured!</Text>
+              <Text style={[s.successTitle, { color: colors.foreground }]}>{succeededRefundable ? "Refundable deposit charged" : "Temporary hold placed"}</Text>
               <Text style={[s.successSub, { color: colors.mutedForeground }]}>
                 Your borrow of{" "}
                 <Text style={{ fontFamily: "Inter_600SemiBold" }}>{item.name}</Text>
-                {" "}is confirmed.
+                {" "}is confirmed.{" "}
+                {succeededRefundable
+                  ? `Your ${"$" + depositAmount.toFixed(2)} refundable deposit was charged to your card.`
+                  : holdPlacedMessage(depositAmount.toFixed(2))}
               </Text>
 
               <View style={[s.breakdownBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -296,11 +299,11 @@ export function PayDepositSheet({
                 </View>
                 <View style={[s.divider, { backgroundColor: colors.border }]} />
                 <View style={s.breakdownRow}>
-                   <Text style={[s.breakdownLabel, { color: colors.mutedForeground }]}>Trust deposit</Text>
-                  <Text style={[s.breakdownValue, { color: "#2563eb" }]}>${depositAmount.toFixed(2)} hold</Text>
+                   <Text style={[s.breakdownLabel, { color: colors.mutedForeground }]}>{succeededRefundable ? "Refundable deposit" : "Trust deposit"}</Text>
+                  <Text style={[s.breakdownValue, { color: "#2563eb" }]}>{succeededRefundable ? `${depositAmount.toFixed(2)} charged` : `${depositAmount.toFixed(2)} temporary hold`}</Text>
                 </View>
                 <Text style={[s.breakdownNote, { color: colors.mutedForeground }]}>
-                  Deposit hold lifted automatically on safe return
+                  {succeededRefundable ? "Refunded after the item is returned in good condition." : holdReleaseExplainer(depositAmount.toFixed(2))}
                 </Text>
               </View>
 
@@ -379,13 +382,16 @@ export function PayDepositSheet({
                        Trust deposit
                     </Text>
                     <Text style={[s.breakdownNote, { color: "#2563eb", marginTop: 2 }]}>
-                      Authorization hold only — Lifted automatically on safe return.
+                      {holdTitle(depositAmount.toFixed(2))}. {holdPendingNote(depositAmount.toFixed(2))}
                     </Text>
                   </View>
                   <Text style={[s.breakdownValue, { color: colors.foreground }]}>
                     ${depositAmount.toFixed(2)}
                   </Text>
                 </View>
+                <Text style={[s.breakdownNote, { color: colors.mutedForeground }]}>
+                  {holdReleaseExplainer(depositAmount.toFixed(2))} {HOLD_COVERAGE_NOTE}
+                </Text>
               </View>
 
               {/* ShareCoins note */}
@@ -400,6 +406,7 @@ export function PayDepositSheet({
               {error && (
                 <View style={s.errorBox}>
                   <Text style={s.errorText}>{error}</Text>
+                  <Text style={[s.errorText, { marginTop: 4 }]}>{DEPOSIT_HOLD_FAILURE_NOTE}</Text>
                 </View>
               )}
 
@@ -416,8 +423,8 @@ export function PayDepositSheet({
                     <Lock size={16} color="#fff" strokeWidth={2} style={{ marginRight: 6 }} />
                     <Text style={s.primaryBtnText}>
                       {feeWaived
-                        ? `Authorise hold — ${feeWaiverLabel.toLowerCase()}`
-                        : `Pay $${platformFee.toFixed(2)} + authorise hold`}
+                        ? `Place ${holdTitle(depositAmount.toFixed(2))} — ${feeWaiverLabel.toLowerCase()}`
+                        : `Pay ${platformFee.toFixed(2)} + place temporary hold`}
                     </Text>
                   </>
                 )}

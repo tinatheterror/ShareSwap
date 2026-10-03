@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost } from "@/lib/api";
@@ -79,6 +80,7 @@ export default function GamesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScreenHeader title="Play Games" />
       {!user ? (
         <View style={styles.centered}>
           <Feather name="lock" size={40} color={colors.mutedForeground} />

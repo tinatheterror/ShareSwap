@@ -11,10 +11,12 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { paymentErrorMessage } from "@/lib/payment-error";
 import { Tag, Shield, Truck, Loader2, CreditCard, Info, RefreshCw } from "lucide-react";
 import { calculateRentalDeposit, calculateRentalRate, calculateRentalPrice, getDiscountLabel } from "@/lib/rental-calculator";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { getStripePromise } from "@/lib/stripe-client";
+import { HOLD_COVERAGE_NOTE, NOT_CHARGED_UNLESS_CLAIM, formatMoney, holdPendingNotice, holdReleaseExplainer, temporaryHoldLabel } from "@/lib/deposit-copy";
 
 const stripePromise = getStripePromise();
 type DepositConsent = { consentMessage: string; depositAmount: number; consentEndpoint: string };
@@ -66,7 +68,7 @@ function RefundablePaymentAuthentication({ clientSecret, onAuthenticated, onCanc
     setIsProcessing(true);
     const { error, paymentIntent } = await stripe.confirmPayment({ elements, redirect: "if_required" });
     if (error || paymentIntent?.status !== "succeeded") {
-      toast({ title: "Authentication required", description: error?.message || "The refundable payment was not completed.", variant: "destructive" });
+      toast({ title: "Authentication required", description: paymentErrorMessage(error ?? { requiresAction: true }), variant: "destructive" });
       setIsProcessing(false);
       return;
     }
@@ -97,13 +99,13 @@ function SavedCardConfirmForm(props: FormProps) {
     try {
       const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret);
       if (error) {
-        toast({ title: "Payment Failed", description: error.message, variant: "destructive" });
+        toast({ title: "Payment Failed", description: paymentErrorMessage(error), variant: "destructive" });
         setIsProcessing(false);
       } else if (paymentIntent && (paymentIntent.status === "succeeded" || paymentIntent.status === "requires_capture")) {
         onSuccess(paymentIntent.id);
       }
     } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Payment processing failed", variant: "destructive" });
+      toast({ title: "Error", description: paymentErrorMessage(err), variant: "destructive" });
       setIsProcessing(false);
     }
   };
@@ -114,7 +116,8 @@ function SavedCardConfirmForm(props: FormProps) {
       <div className="flex items-center gap-2 rounded-md bg-blue-50 border border-blue-100 px-3 py-2.5 text-xs text-blue-700">
         <Info className="h-3.5 w-3.5 shrink-0 text-blue-500" />
         <span>
-          The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is an <span className="font-medium">authorization hold</span> — your card is not charged. The hold is lifted automatically when you return the item in good condition.
+          <span className="block mb-1"><span className="font-medium">{temporaryHoldLabel(depositAmount)}.</span> {holdPendingNotice(depositAmount)} {holdReleaseExplainer(depositAmount)}</span>
+          <span className="block mb-1">{HOLD_COVERAGE_NOTE}</span>
           The <span className="font-medium">${totalChargedToday.toFixed(2)} rental and fee total</span> is charged today.
         </span>
       </div>
@@ -126,7 +129,7 @@ function SavedCardConfirmForm(props: FormProps) {
           ) : (
             <>
               <span className="flex items-center gap-1.5 leading-none"><CreditCard className="h-4 w-4" />Pay ${totalChargedToday.toFixed(2)}</span>
-              <span className="text-[10px] opacity-75 font-normal leading-none -mt-0.5">Plus a separate authorization hold</span>
+              <span className="text-[10px] opacity-75 font-normal leading-none -mt-0.5">Plus a separate {formatMoney(depositAmount)} temporary hold</span>
             </>
           )}
         </Button>
@@ -196,7 +199,7 @@ function BreakdownRows({ rentalPrice, rentalSubtotal, discountPct, discountAmoun
           </span>
           <span className="font-medium">${depositAmount.toFixed(2)}</span>
         </div>
-        <p className="text-[10px] text-gray-400 mt-0.5">Authorization hold only — not charged unless damage reported</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">Temporary hold only — {NOT_CHARGED_UNLESS_CLAIM}</p>
       </div>
 
       {/* Total */}
@@ -241,7 +244,7 @@ function PayAndConfirmForm({
       if (error) {
         toast({
           title: "Payment Failed",
-          description: error.message,
+          description: paymentErrorMessage(error),
           variant: "destructive",
         });
         setIsProcessing(false);
@@ -251,7 +254,7 @@ function PayAndConfirmForm({
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.message || "Payment processing failed",
+        description: paymentErrorMessage(err),
         variant: "destructive",
       });
       setIsProcessing(false);
@@ -264,7 +267,8 @@ function PayAndConfirmForm({
       <div className="flex gap-2 rounded-md bg-blue-50 border border-blue-100 px-3 py-2.5 text-xs text-blue-700">
         <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-500" />
         <span>
-          The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is an <span className="font-medium">authorization hold</span> — your card is not charged. The hold is lifted automatically when you return the item in good condition.
+          <span className="block mb-1"><span className="font-medium">{temporaryHoldLabel(depositAmount)}.</span> {holdPendingNotice(depositAmount)} {holdReleaseExplainer(depositAmount)}</span>
+          <span className="block mb-1">{HOLD_COVERAGE_NOTE}</span>
           The <span className="font-medium">${(rentalPrice + processingFee + deliveryFee).toFixed(2)} rental and fee total</span> is charged today.
         </span>
       </div>
@@ -272,7 +276,7 @@ function PayAndConfirmForm({
       <div className="flex gap-2 pt-1">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1" data-testid="button-cancel-rental-payment">Cancel</Button>
         <Button type="submit" disabled={!stripe || isProcessing} className="flex-1 bg-green-600 hover:bg-green-700 text-white" data-testid="button-pay-rental-and-authorize-deposit">
-          {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : <><CreditCard className="h-4 w-4 mr-2" />Pay rental & authorize deposit</>}
+          {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : <><CreditCard className="h-4 w-4 mr-2" />Pay rental & place deposit hold</>}
         </Button>
       </div>
     </form>
@@ -341,7 +345,7 @@ export function RentalDepositModal({
         setInitError(null);
         return;
       }
-      setInitError(error.message || "Failed to initialize payment");
+      setInitError(paymentErrorMessage(error));
     },
   });
 
@@ -352,7 +356,7 @@ export function RentalDepositModal({
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      toast({ title: "Booking confirmed!", description: "Your refundable deposit payment and rental have been secured." });
+      toast({ title: "Booking confirmed!", description: "Your rental is confirmed and your refundable deposit was charged. It is refunded after a safe return unless a claim is opened." });
       onSuccess(data.nextStep || "await_handoff");
     },
     onError: (error: any) => {
@@ -360,7 +364,7 @@ export function RentalDepositModal({
         setAuthenticationClientSecret(error.clientSecret);
         return;
       }
-      toast({ title: "Refundable payment failed", description: error.message || "Unable to complete the refundable payment.", variant: "destructive" });
+      toast({ title: "Refundable payment failed", description: paymentErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -378,7 +382,7 @@ export function RentalDepositModal({
     onSuccess: (data) => {
       toast({
         title: "Booking confirmed!",
-        description: "Your rental payment is confirmed and your deposit authorization hold is secured.",
+        description: `Your rental payment is confirmed and a ${temporaryHoldLabel(depositAmount)} was placed. You were not charged for the deposit.`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       onSuccess(data.nextStep || "await_handoff");
@@ -386,7 +390,7 @@ export function RentalDepositModal({
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to confirm booking",
+        description: paymentErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -428,7 +432,7 @@ export function RentalDepositModal({
                 <span className="text-gray-600">Refundable deposit payment</span>
                 <span className="font-semibold">${consent.depositAmount.toFixed(2)}</span>
               </div>
-              <p className="text-xs text-gray-500 mb-4">This is a refundable payment, not an authorization hold. It is returned after a safe return.</p>
+              <p className="text-xs text-gray-500 mb-4">This is a real, refundable charge — not a temporary hold. It is refunded after a safe return unless a claim is opened.</p>
               {authenticationClientSecret ? (
                 <Elements stripe={stripePromise} options={{ clientSecret: authenticationClientSecret }}>
                   <RefundablePaymentAuthentication clientSecret={authenticationClientSecret} onAuthenticated={() => confirmRefundableMutation.mutate()} onCancel={handleClose} />

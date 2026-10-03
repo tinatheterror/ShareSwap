@@ -57,6 +57,22 @@ function ChatPollingProbe() {
   return null;
 }
 
+let walletBalance: number | undefined;
+let refreshWallet: (() => Promise<unknown>) | undefined;
+
+function WalletPollingProbe() {
+  const { user } = useAuth();
+  const query = useQuery({
+    queryKey: ["/api/user", user?.id],
+    queryFn: () => apiGet<typeof activeUser & { shareCoins: number }>("/api/user"),
+    enabled: !!user,
+    refetchInterval: false,
+  });
+  walletBalance = user?.shareCoins;
+  refreshWallet = query.refetch;
+  return null;
+}
+
 function renderAuth(queryClient: QueryClient) {
   let tree!: renderer.ReactTestRenderer;
   act(() => {
@@ -95,6 +111,143 @@ afterEach(() => {
 });
 
 describe("mobile session expiration", () => {
+  it("reports user refresh success and synchronizes the account-scoped wallet cache", async () => {
+    await AsyncStorage.setItem("has_session", "1");
+    let userFetches = 0;
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      if (!String(input).includes("/api/user")) {
+        throw new Error(`Unexpected request: ${String(input)}`);
+      }
+      userFetches += 1;
+      if (userFetches === 3) {
+        return jsonResponse({ error: "Temporary failure" }, 503);
+      }
+      return jsonResponse({
+        ...activeUser,
+        shareCoins: userFetches === 1 ? 8 : 9,
+      });
+    });
+    global.fetch = fetchMock as typeof fetch;
+
+    const queryClient = createQueryClient();
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderAuth(queryClient);
+      await settleEffects();
+    });
+
+    expect(authState.user?.shareCoins).toBe(8);
+    expect(queryClient.getQueryData(["/api/user", activeUser.id])).toMatchObject({ shareCoins: 8 });
+
+    await act(async () => {
+      await expect(authState.refetchUser()).resolves.toBe(activeUser.id);
+      await settleEffects();
+    });
+    expect(authState.user?.shareCoins).toBe(9);
+    expect(queryClient.getQueryData(["/api/user", activeUser.id])).toMatchObject({ shareCoins: 9 });
+
+    await act(async () => {
+      await expect(authState.refetchUser()).resolves.toBeNull();
+      await settleEffects();
+    });
+    expect(authState.user?.shareCoins).toBe(9);
+
+    act(() => tree.unmount());
+    queryClient.clear();
+  });
+
+  it("shows an independently refreshed server balance to context consumers and ignores late old-account cache data", async () => {
+    await AsyncStorage.setItem("has_session", "1");
+    let serverUser = { ...activeUser, shareCoins: 8 };
+    let deferNextUserResponse = false;
+    let releaseLateResponse: (() => void) | undefined;
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      if (!String(input).includes("/api/user")) {
+        throw new Error(`Unexpected request: ${String(input)}`);
+      }
+      if (deferNextUserResponse) {
+        deferNextUserResponse = false;
+        const lateUser = { ...serverUser, shareCoins: 99 };
+        return new Promise<Response>((resolve) => {
+          releaseLateResponse = () => resolve(jsonResponse(lateUser));
+        });
+      }
+      return jsonResponse(serverUser);
+    });
+    global.fetch = fetchMock as typeof fetch;
+
+    const queryClient = createQueryClient();
+    let tree!: renderer.ReactTestRenderer;
+    try {
+      await act(async () => {
+        tree = renderer.create(
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <AuthStateProbe />
+              <WalletPollingProbe />
+            </AuthProvider>
+          </QueryClientProvider>,
+        );
+        await settleEffects();
+      });
+
+      expect(authState.user?.shareCoins).toBe(8);
+      expect(walletBalance).toBe(8);
+
+      serverUser = { ...serverUser, shareCoins: 17 };
+      await act(async () => {
+        await refreshWallet?.();
+        await settleEffects();
+      });
+      expect(queryClient.getQueryData(["/api/user", activeUser.id])).toMatchObject({ shareCoins: 17 });
+      expect(walletBalance).toBe(17);
+
+      const newAccount = {
+        id: 42,
+        username: "riley",
+        email: "riley@example.com",
+        shareCoins: 3,
+      };
+      serverUser = newAccount;
+      deferNextUserResponse = true;
+      let lateRefresh!: Promise<unknown>;
+      act(() => {
+        // Attach rejection handling immediately: switching accounts advances
+        // the API session epoch, so this old request must reject on completion.
+        lateRefresh = queryClient.fetchQuery({
+          queryKey: ["/api/user", activeUser.id],
+          queryFn: () => apiGet<typeof activeUser & { shareCoins: number }>("/api/user"),
+          staleTime: 0,
+        }).catch((error: unknown) => error);
+      });
+      await act(async () => {
+        await settleEffects();
+      });
+      expect(releaseLateResponse).toBeDefined();
+
+      act(() => authState.setUserData(newAccount));
+      expect(walletBalance).toBe(3);
+
+      // Resolve the previous account's actual query after switching accounts.
+      await act(async () => {
+        releaseLateResponse?.();
+        await expect(lateRefresh).resolves.toMatchObject({ status: 401 });
+        await settleEffects();
+      });
+      act(() => {
+        queryClient.setQueryData(["/api/user", activeUser.id], {
+          ...activeUser,
+          shareCoins: 99,
+        });
+      });
+      expect(authState.user).toMatchObject({ id: 42, shareCoins: 3 });
+      expect(walletBalance).toBe(3);
+    } finally {
+      if (tree) act(() => tree.unmount());
+      queryClient.clear();
+    }
+  });
+
   it("does not treat a fresh signed-out 401 as an expired session", async () => {
     const fetchMock = jest.fn().mockResolvedValue(jsonResponse({ error: "Unauthorized" }, 401));
     global.fetch = fetchMock as typeof fetch;

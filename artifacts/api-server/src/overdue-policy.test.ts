@@ -3,7 +3,9 @@ import test from "node:test";
 import {
   daysOverdueAgainstDueDate,
   isBorrowingRestricted,
+  claimAllowedAtStage,
   isSeriousOverdue,
+  overdueStageAt,
   overdueLevel,
 } from "./overdue-policy.js";
 
@@ -44,4 +46,23 @@ test("calendar thresholds are not delayed by a daylight-saving transition", () =
   } finally {
     process.env.TZ = previousTimeZone;
   }
+});
+test("claims open from 24 hours overdue (overdue grace) onward", () => {
+  const deadline = new Date("2026-08-01T12:00:00.000Z");
+  const at = (hours: number) => overdueStageAt(deadline, new Date(deadline.getTime() + hours * 3_600_000));
+  assert.equal(at(23), "RETURN_DUE");
+  assert.equal(at(24), "OVERDUE_GRACE");
+  for (const claimType of ["non_return", "lost", "damage", "missing_components"]) {
+    assert.equal(claimAllowedAtStage(claimType, at(23)), false, `${claimType} blocked before 24h`);
+    for (const hours of [24, 72, 7 * 24, 15 * 24]) {
+      assert.equal(claimAllowedAtStage(claimType, at(hours)), true, `${claimType} allowed at ${hours}h`);
+    }
+  }
+});
+
+test("non-return claims are not allowed before the item is overdue or after return", () => {
+  for (const stage of ["ACTIVE", "RETURN_DUE", "RETURNED_PENDING_REVIEW", null]) {
+    assert.equal(claimAllowedAtStage("non_return", stage), false);
+  }
+  assert.equal(claimAllowedAtStage("damage", "RETURNED_PENDING_REVIEW"), true);
 });

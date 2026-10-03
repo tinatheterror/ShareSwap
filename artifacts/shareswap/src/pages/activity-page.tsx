@@ -6,13 +6,14 @@ import { useLocation } from "wouter";
 import {
   Bell, Package, Heart, AlertCircle, CheckCircle2, ArrowLeftRight, Shield,
   Trophy, TrendingUp, Coins, Clock, Flag, Truck, Gift, FileText, Star,
-  RotateCcw, Users, Unlock, DollarSign, ShieldAlert, Zap, ChevronRight,
+  RotateCcw, Users, Unlock, DollarSign, ShieldAlert, Zap, ChevronRight, CreditCard, Undo2, Scale,
 } from "lucide-react";
 import type { SelectNotification } from "@db/schema";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow, isToday, isThisWeek } from "date-fns";
+import { badgeNotificationMessage } from "@/lib/badge-notification";
 
 // ─── Types & constants ────────────────────────────────────────────────────────
 
@@ -26,6 +27,7 @@ const TRANSACTION_TYPES = new Set([
   "handoff_dispute", "handoff_disputed", "handoff_flagged",
   "return_initiated", "return_confirmed", "return_initiated",
   "dispute_opened", "dispute_resolved", "security_claim_opened", "claim_decided", "claim_settled",
+  "security_deposit_charged", "security_claim_opened_owner", "security_deposit_refunded", "security_deposit_retained", "deposit_hold_released",
   "delivery_confirmed", "courier_issue",
   "gift_handoff_pending", "gift_completed",
 ]);
@@ -62,8 +64,8 @@ function matchesTab(type: string, tab: Tab): boolean {
 // ─── Smart routing (single source of truth) ───────────────────────────────────
 
 export function getNotificationRoute(n: SelectNotification): { type: "chat"; requestId: number } | { type: "url"; url: string } | null {
-  if (["trust_score_changed", "milestone_achieved", "badge_earned", "level_up"].includes(n.type)
-    && !(n.type === "trust_score_changed" && n.requestId && /\boverdue\b/i.test(n.message))) {
+  if (n.type === "trust_score_changed") return { type: "url", url: "/score-history" };
+  if (["milestone_achieved", "badge_earned", "level_up"].includes(n.type)) {
     return { type: "url", url: "/achievements" };
   }
   if (n.type === "sharecoin_earned") return { type: "url", url: "/wallet" };
@@ -94,6 +96,10 @@ function getIcon(type: string) {
     case "handoff_pending": return <Clock className={`${cls} text-amber-500`} />;
     case "handoff_dispute": case "handoff_disputed": case "dispute_opened": return <AlertCircle className={`${cls} text-red-500`} />;
     case "security_claim_opened": case "claim_decided": return <ShieldAlert className={`${cls} text-red-600`} />;
+    case "security_deposit_charged": case "security_claim_opened_owner": return <CreditCard className={`${cls} text-red-600`} />;
+    case "security_deposit_refunded": return <Undo2 className={`${cls} text-green-600`} />;
+    case "security_deposit_retained": return <Scale className={`${cls} text-orange-600`} />;
+    case "deposit_hold_released": return <Unlock className={`${cls} text-blue-600`} />;
     case "claim_settled": return <Shield className={`${cls} text-green-600`} />;
     case "handoff_flagged": return <Flag className={`${cls} text-orange-500`} />;
     case "gift_handoff_pending": case "gift_completed": return <Gift className={`${cls} text-pink-500`} />;
@@ -171,7 +177,7 @@ function ActivityRow({
           </span>
         </div>
         {n.message && (
-          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{badgeNotificationMessage(n)}</p>
         )}
       </div>
 

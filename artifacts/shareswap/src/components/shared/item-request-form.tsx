@@ -794,7 +794,7 @@ export function ItemRequestForm({
                                 </p>
                               )}
                               <p className="text-[10px] text-gray-400 mt-0.5">
-                                Authorization hold only
+                                ${depositCalc.finalDeposit} temporary card hold — not charged unless a claim is opened
                               </p>
                               <p className="text-[10px] text-muted-foreground mt-0.5">
                                 Processing fee: $
@@ -930,7 +930,7 @@ export function ItemRequestForm({
                         <span className="text-gray-600">
                           <span className="font-medium">Trust Deposit</span>{" "}
                           <span className="italic">
-                            — Authorization hold only. Released after the item is safely returned.
+                            — Temporary card hold, not a charge. Released after the item is returned normally; not charged unless a claim is opened.
                           </span>
                         </span>
                       </div>
@@ -992,7 +992,7 @@ export function ItemRequestForm({
                         <span className="text-green-500">🟢</span>
                         <span className="text-gray-600">
                           <span className="font-medium">Security Deposit</span>{" "}
-                          — Authorization hold only. Released after the item is safely returned.
+                          — Temporary card hold, not a charge. Released after the item is returned normally; not charged unless a claim is opened.
                         </span>
                       </div>
                       <div className="flex items-center gap-2">

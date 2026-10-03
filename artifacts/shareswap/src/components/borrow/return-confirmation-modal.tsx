@@ -196,19 +196,19 @@ export function ReturnConfirmationModal({
       } else if (isEarlyReturn && isRental) {
         toast({
           title: "Item returned early. Rental period is completed.",
-          description: `Deposit hold lifted. Full rental fee was charged.`,
+          description: `Deposit hold released — you were not charged for the deposit. Full rental fee was charged.`,
         });
       } else if (isEarlyReturn) {
         toast({
-          title: "Item returned early. Deposit hold lifted.",
-          description: `The security deposit hold has been lifted — nothing was charged.`,
+          title: "Item returned early. Deposit hold released.",
+          description: `The temporary security deposit hold has been released. You were not charged.`,
         });
       } else {
         toast({
           title: "Return confirmed!",
           description: isRental
-            ? `Deposit hold lifted. Rental earnings added to your balance.`
-            : `The security deposit hold has been lifted — nothing was charged.`,
+            ? `Deposit hold released — you were not charged for the deposit. Rental earnings added to your balance.`
+            : `The temporary security deposit hold has been released. You were not charged.`,
         });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
@@ -245,7 +245,7 @@ export function ReturnConfirmationModal({
               <p className="text-sm text-gray-600">
                 {isRental
                   ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
-                  : "You're returning this item early. No penalty applies. The authorization hold will be released once the owner confirms its safe return."}
+                  : "You're returning this item early. No penalty applies. The temporary deposit hold will be released once the owner confirms its safe return — you will not be charged."}
               </p>
             )}
 
@@ -332,7 +332,7 @@ export function ReturnConfirmationModal({
               <p className="text-sm text-blue-600 mt-1">
                 {isRental
                   ? "You keep the full rental amount — no refund for unused days."
-                  : "No ShareCoins deducted for early return. Borrower's deposit hold will be released."}
+                  : "No ShareCoins deducted for early return. Borrower's temporary deposit hold will be released."}
               </p>
             </div>
           )}
@@ -439,9 +439,11 @@ export function ReturnConfirmationModal({
                       This will open a dispute
                     </h4>
                     <p className="text-xs text-red-600 mt-1">
-                      Since you reported damage, we'll hold the{" "}
+                      Since you reported damage, the{" "}
                       {isRental ? "renter's" : "borrower's"} ${depositAmount}{" "}
-                      deposit while we review. Both parties will be contacted to
+                      deposit hold will be converted into a charge while we review.
+                      It is refunded if the claim is resolved in the{" "}
+                      {isRental ? "renter's" : "borrower's"} favor. Both parties will be contacted to
                       resolve this.
                     </p>
                   </div>

@@ -28,6 +28,22 @@ export function fmtCalendarDate(
 }
 
 /**
+ * Format a calendar date range. Collapses the end to just the day when both
+ * dates fall in the same month and year ("Jun 7–11").
+ */
+export function fmtCalendarRange(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): string {
+  const s = start ? /^(\d{4})-(\d{2})-(\d{2})/.exec(start) : null;
+  const e = end ? /^(\d{4})-(\d{2})-(\d{2})/.exec(end) : null;
+  if (s && e && s[1] === e[1] && s[2] === e[2]) {
+    return `${fmtCalendarDate(start)}–${Number(e[3])}`;
+  }
+  return `${fmtCalendarDate(start)} – ${fmtCalendarDate(end)}`;
+}
+
+/**
  * Format a nullable date string for display. Returns "–" for null/undefined/invalid.
  * Handles both "YYYY-MM-DD" and full ISO timestamp inputs safely on iOS.
  */

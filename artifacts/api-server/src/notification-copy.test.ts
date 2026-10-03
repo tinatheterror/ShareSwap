@@ -38,10 +38,10 @@ test("combined return notice preserves deposit release even with a long item nam
   for (const name of ["Hermes scarf", "Camping stove", "A very long item name that must be shortened"]) {
     const copy = compactNotificationCopy({
       title: "Return Confirmed",
-      message: `"${name}" returned to owner. Deposit hold lifted.`,
+      message: `"${name}" returned to owner. Temporary hold released.`,
     });
     assert.equal(copy.title, "Return Confirmed");
-    assert.match(copy.message, /returned\. Deposit hold lifted\.$/);
+    assert.match(copy.message, /returned\. Hold released\.$/);
     assert.ok(copy.message.length <= notificationCopyLimits.body);
   }
 });
@@ -57,10 +57,10 @@ test("in-person return notice does not gain a deposit release claim", () => {
 test("pending return copy keeps both the release and pending state visible", () => {
   for (const name of ["Camping stove", "A very long item name that must be shortened"]) {
     const copy = compactNotificationCopy({
-      title: "Deposit Released",
-      message: `"${name}" — deposit hold lifted; return confirmation is pending while we finish updating your request.`,
+      title: "Deposit hold released",
+      message: `"${name}" — temporary hold released; return confirmation is pending while we finish updating your request.`,
     });
-    assert.match(copy.message, /Hold lifted\. Return pending:/);
+    assert.match(copy.message, /Hold released\. Return pending:/);
     assert.ok(copy.message.length <= notificationCopyLimits.body);
   }
 });
@@ -68,11 +68,11 @@ test("pending return copy keeps both the release and pending state visible", () 
 test("partially released return copy does not imply the entire deposit was released", () => {
   const copy = compactNotificationCopy({
     title: "Deposit Release Pending",
-    message: '"A very long item name that must be shortened" — part of the deposit hold was released; return confirmation is pending while we reconcile the remaining hold.',
+    message: '"A very long item name that must be shortened" — part of the temporary hold was released; return confirmation is pending while we release the rest.',
   });
   assert.match(copy.message, /^Partial release; return pending:/);
   assert.ok(copy.message.length <= notificationCopyLimits.body);
-  assert.doesNotMatch(copy.message, /Hold lifted/);
+  assert.doesNotMatch(copy.message, /Hold released/);
 });
 
 test("renames existing overdue notifications by recipient role", () => {
@@ -104,4 +104,10 @@ test("renames existing overdue notifications by recipient role", () => {
     }).title,
     "Serious overdue: 15d - Return to Owner",
   );
+});
+test("charge, refund and hold-release notices keep their full wording", () => {
+  const body = "A $105 security deposit was charged to your card because a claim was opened for your Tineco vacuum mop. The charge will remain while the claim is reviewed and may be refunded depending on the outcome.";
+  const copy = compactNotificationCopy({ type: "security_deposit_charged", title: "Security deposit charged", message: body });
+  assert.equal(copy.message, body);
+  assert.equal(copy.title, "Security deposit charged");
 });

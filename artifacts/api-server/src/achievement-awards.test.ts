@@ -53,6 +53,7 @@ test("simultaneous claims for one badge pay one coin and send one notification",
   assert.equal(coins[0].amount, "1");
   assert.equal(alerts.length, 1);
   assert.equal(alerts[0].type, "badge_earned");
+  assert.equal(alerts[0].message, "+1 ShareCoin earned. Concurrency test badge");
   assert.equal(account.shareCoins, "1.00");
 });
 
@@ -117,5 +118,6 @@ test("a late notification failure rolls back the badge and reward, leaving the a
   assert.equal(retried.coins[0].amount, "1");
   assert.equal(retried.alerts.length, 1);
   assert.equal(retried.alerts[0].type, "badge_earned");
+  assert.equal(retried.alerts[0].message, "+1 ShareCoin earned. Rollback test badge");
   assert.equal(retried.account.shareCoins, "1.00");
 });

@@ -5,7 +5,9 @@ export const OVERDUE_POLICY = {
   seriousOverdueHours: 7 * 24,
   nonReturnReviewHours: 15 * 24,
   borrowerResponseHours: 72,
-  claimDecisionBufferHours: 72,
+  // No claim-review buffer: opening a claim captures the deposit, so review is
+  // not constrained by the authorization window.
+  claimDecisionBufferHours: 0,
   CAPTURE_OPERATION_SAFETY_BUFFER_MINUTES: 15,
   maxExtensionDays: 3,
   BORROW_RESTRICTION_DAYS: 7,
@@ -37,6 +39,15 @@ export function overdueStageAt(deadline: Date | null | undefined, now: Date, inp
   if (hours >= p.overdueHours) return "OVERDUE";
   if (hours >= p.graceHours) return "OVERDUE_GRACE";
   return "RETURN_DUE";
+}
+
+const OVERDUE_CLAIM_STAGES: readonly string[] = ["OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW"];
+
+/** Owners may open a claim once the item is 24+ hours overdue; damage/missing claims are also allowed after a return. */
+export function claimAllowedAtStage(claimType: string, stage: string | null | undefined): boolean {
+  const s = stage || "";
+  if (OVERDUE_CLAIM_STAGES.includes(s)) return true;
+  return !["non_return", "lost"].includes(claimType) && s === "RETURNED_PENDING_REVIEW";
 }
 
 export type OverdueLevel = "on_time" | "overdue" | "restricted" | "serious";

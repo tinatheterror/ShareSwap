@@ -47,7 +47,8 @@ import {
   releaseDepositTerminalClaim,
   resolveClaimedDepositIntents,
 } from "../deposit-renewal-service";
-import { reconcileClaimDeadlines, reconcileSettlementOperation, releaseRejectedClaim, settleApprovedClaim } from "../security-claims-service";
+import { ensureClaimDepositCaptured, reconcileClaimDeadlines, reconcileSettlementOperation, releaseRejectedClaim, settleApprovedClaim } from "../security-claims-service";
+import * as depositCopy from "../deposit-copy";
 import { validateBorrowPeriod } from "../borrow-period";
 import { compactNotificationCopy } from "../notification-copy";
 import {
@@ -87,6 +88,8 @@ import { CooldownChecker } from "../cooldown-checker";
 import { csrfProtection, setCsrfToken } from "../csrf";
 import OpenAI from "openai";
 import Stripe from "stripe";
+import { prepareDepositAuthorization } from "../deposit-authorization";
+import { publicPaymentFailure } from "../public-payment-error";
 import { 
   awardBorrowReturnPoints, 
   awardSwapCompletionPoints, 
@@ -107,6 +110,7 @@ import { calculateAIValuation, getTierBand, type ItemValuationInput } from "../a
 import { calculateReplacementValueAndTier } from "../replacement-value";
 import {
   OVERDUE_POLICY,
+  claimAllowedAtStage,
   daysOverdueAgainstDueDate,
   isBorrowingRestricted,
   isSeriousOverdue,
@@ -1025,10 +1029,12 @@ type RentalPaymentHoldStripeClient = {
   };
 };
 
-// Conservative defaults: one day to process the return plus three days to
-// initiate/review a claim. Both are deployment-configurable.
+// The hold covers the scheduled return date plus one day of return processing.
+// There is no additional claim-review buffer: a claim captures the deposit when
+// it is opened, so review is not limited by the authorization window. Both
+// values stay deployment-configurable.
 const RETURN_PROCESSING_BUFFER_HOURS = Math.max(0, Number(process.env.DEPOSIT_RETURN_PROCESSING_BUFFER_HOURS ?? 24));
-const CLAIM_REVIEW_BUFFER_HOURS = Math.max(0, Number(process.env.DEPOSIT_CLAIM_REVIEW_BUFFER_HOURS ?? 72));
+const CLAIM_REVIEW_BUFFER_HOURS = Math.max(0, Number(process.env.DEPOSIT_CLAIM_REVIEW_BUFFER_HOURS ?? 0));
 // Extended authorization is opt-in.  Without an explicit provider configuration
 // we only use the ordinary, conservative authorization window for preselection.
 const configuredAuthorizationHours = Number(process.env.STRIPE_EXTENDED_AUTHORIZATION_WINDOW_HOURS);
@@ -1042,7 +1048,28 @@ function requiredDepositProtectionEnd(endDate: Date | null): Date | null {
   return new Date(endDate.getTime() + (RETURN_PROCESSING_BUFFER_HOURS + CLAIM_REVIEW_BUFFER_HOURS) * 60 * 60 * 1000);
 }
 
-function refundableConsentBody(requestId: number, depositAmount: number, requiredProtectionEnd: Date | null, reason: string) {
+/** Chat stamp for a placed deposit. depositMode lets clients choose "Temporary hold placed" vs "Refundable deposit charged". */
+function depositConfirmedMessage(args: { senderId: number; receiverId: number; requestId: number; mode: string | null | undefined; amount: number | string | null | undefined }) {
+  const refundable = args.mode === "refundable_charge";
+  const amount = Number(args.amount ?? 0);
+  return {
+    senderId: args.senderId, receiverId: args.receiverId, requestId: args.requestId, messageType: "event" as const,
+    content: refundable ? depositCopy.refundableChargedChat(amount) : depositCopy.holdPlacedChat(amount),
+    metadata: { eventType: "deposit_confirmed", depositMode: refundable ? "refundable_charge" : "authorization", mode: refundable ? "refundable_charge" : "authorization", amount },
+  };
+}
+
+function depositReleasedMessage(args: { senderId: number; receiverId: number; requestId: number; amount: number | string | null | undefined; mode?: string | null }) {
+  const amount = Number(args.amount ?? 0);
+  const refundable = args.mode === "refundable_charge";
+  return {
+    senderId: args.senderId, receiverId: args.receiverId, requestId: args.requestId, messageType: "event" as const,
+    content: refundable ? depositCopy.refundableRefundedChat(amount) : depositCopy.holdReleasedChat(amount),
+    metadata: { eventType: "deposit_released", depositMode: refundable ? "refundable_charge" : "authorization", amount },
+  };
+}
+
+function refundableConsentBody(requestId: number, depositAmount: number, requiredProtectionEnd: Date | null, reason: string, kind: "rental" | "borrow" = "rental") {
   return {
     depositMode: "refundable_charge",
     selectionState: "consent_required",
@@ -1050,7 +1077,7 @@ function refundableConsentBody(requestId: number, depositAmount: number, require
     depositAmount,
     requiredProtectionEnd: requiredProtectionEnd?.toISOString() ?? null,
     consentRequired: true,
-    consentMessage: `Your security deposit requires a refundable payment of $${depositAmount.toFixed(2)} because your card’s authorization window doesn’t provide enough coverage for this rental.`,
+    consentMessage: depositCopy.refundableConsentMessage(depositAmount, kind),
     consentEndpoint: `/api/requests/${requestId}/confirm-refundable-deposit`,
   };
 }
@@ -1152,16 +1179,13 @@ export async function createRentalPaymentHold({
     let attemptNum = request.depositHoldAttemptNum || 0;
     let reuseExistingPI: string | null = null;
     if (request.depositHoldAttemptId) {
-      try {
-        const priorPI = await stripeClient.paymentIntents.retrieve(request.depositHoldAttemptId);
-        if (priorPI.status === "canceled") {
-          attemptNum += 1;
-        } else {
-          reuseExistingPI = priorPI.id;
-        }
-      } catch (_) {
-        // Prior PI is unretrievable (e.g. deleted test-mode data) — treat as dead and move on.
+      // A failed lookup is not proof of cancellation. Propagate it rather than
+      // advancing the attempt key and potentially authorizing a second hold.
+      const priorPI = await stripeClient.paymentIntents.retrieve(request.depositHoldAttemptId);
+      if (priorPI.status === "canceled") {
         attemptNum += 1;
+      } else {
+        reuseExistingPI = priorPI.id;
       }
     }
 
@@ -1260,29 +1284,22 @@ export async function createRentalPaymentHold({
     paymentIntentParams.setup_future_usage = "off_session";
   }
 
-  const paymentIntent = await stripeClient.paymentIntents.create(paymentIntentParams, {
-    // Deterministic key scoped to this attempt: resubmitting the same hold request within
-    // the same attempt (e.g. a page refresh before the user finishes paying) reuses the
-    // same PaymentIntent instead of opening a second authorization on the borrower's card.
-    // `attemptNum` only advances once a prior attempt's PI is found to be terminally
-    // cancelled (see the lock/lookup above), so a genuinely new attempt gets a fresh PI
-    // instead of Stripe forever returning the dead one.
-    idempotencyKey: `deposit-hold-${requestId}-${attemptNum}-${Math.round(depositAmount * 100)}-${Math.round((rentalAmount || 0) * 100)}-${Math.round((processingFee || 0) * 100)}`,
+  const { paymentIntent } = await prepareDepositAuthorization({
+    stripeClient,
+    parameters: paymentIntentParams,
+    attemptNumber: attemptNum,
+    keyForAttempt: (number) => `deposit-hold-${requestId}-${number}-${Math.round(depositAmount * 100)}-${Math.round((rentalAmount || 0) * 100)}-${Math.round((processingFee || 0) * 100)}`,
+    onAttempt: async ({ attemptNumber, paymentIntentId }) => {
+      await db.update(itemRequests).set({
+        depositHoldAttemptId: paymentIntentId,
+        depositHoldAttemptNum: attemptNumber,
+        depositMode: "authorization",
+        depositSelectionState: "hold_attempted",
+        depositSelectionReason: null,
+        depositRequiredProtectionEnd: requiredProtectionEnd,
+      }).where(eq(itemRequests.id, requestId));
+    },
   });
-
-  // Record this attempt so a future create-payment-hold call for this request (e.g. after
-  // a failed off-session rental charge cancels this PI) can tell it needs a fresh attempt.
-  await db
-    .update(itemRequests)
-    .set({
-      depositHoldAttemptId: paymentIntent.id,
-      depositHoldAttemptNum: attemptNum,
-      depositMode: "authorization",
-      depositSelectionState: "hold_attempted",
-      depositSelectionReason: null,
-      depositRequiredProtectionEnd: requiredProtectionEnd,
-    })
-    .where(eq(itemRequests.id, requestId));
 
   const alreadyConfirmed =
     hasSavedCard &&
@@ -1378,7 +1395,7 @@ export async function confirmRefundableDeposit({
         depositAmount: String(pricing.depositAmount), requiredProtectionEnd: requiredProtectionEnd?.toISOString() ?? "",
         rentalAmount: String((pricing as any).rentalAmount || 0), processingFee: String((pricing as any).processingFee || 0),
       },
-      description: `Refundable security deposit for ShareSwap request #${requestId}`,
+      description: depositCopy.stripeRefundableChargeDescription(requestId),
     }, { idempotencyKey: `refundable-deposit-${requestId}-${Math.round(pricing.depositAmount * 100)}` });
     if (intent.status !== "succeeded") {
       return {
@@ -1596,7 +1613,7 @@ export async function confirmRentalDeposit({
         // Release the deposit hold since the rental charge failed — don't leave the
         // borrower's card authorized for a booking that was never actually paid for.
         try { await stripeClient.paymentIntents.cancel(paymentIntentId); } catch (_) {}
-        return { status: 402, error: "Failed to charge the rental fee: " + chargeError.message, depositReleased: true };
+        return { status: 402, ...publicPaymentFailure(chargeError), depositReleased: true };
       }
     }
 
@@ -1686,13 +1703,10 @@ export async function confirmRentalDeposit({
     }
 
     // Notify both parties that the deposit authorization is in place
-    await tx.insert(messages).values({
-      content: "🔒 Security deposit authorized — your card is not charged unless damage is reported.",
-      senderId: request.items.ownerId!,
-      receiverId: request.item_requests.requesterId,
-      messageType: "system",
-      requestId,
-    });
+    await tx.insert(messages).values(depositConfirmedMessage({
+      senderId: request.items.ownerId!, receiverId: request.item_requests.requesterId, requestId,
+      mode: updated.depositMode, amount: updated.trustDepositAmount,
+    }));
 
     return { status: 200, request: updated };
   });
@@ -6707,6 +6721,12 @@ Respond with ONLY the category name, nothing else.`
         trustDiscountPercentage: itemRequests.trustDiscountPercentage,
         shareCoinAmount: itemRequests.shareCoinAmount,
         depositStatus: itemRequests.depositStatus,
+        depositCapturedAmount: itemRequests.depositCapturedAmount,
+        depositRefundedAmount: itemRequests.depositRefundedAmount,
+        depositRetainedAmount: itemRequests.depositRetainedAmount,
+        depositCardLast4: itemRequests.depositCardLast4,
+        depositCardBrand: itemRequests.depositCardBrand,
+        depositMode: itemRequests.depositMode,
         depositAuthorizationExpiresAt: itemRequests.depositAuthorizationExpiresAt,
         depositRenewalStatus: itemRequests.depositRenewalStatus,
         depositRenewalAttemptedAt: itemRequests.depositRenewalAttemptedAt,
@@ -6810,6 +6830,12 @@ Respond with ONLY the category name, nothing else.`
       trustDiscountPercentage: r.trustDiscountPercentage,
       shareCoinAmount: r.shareCoinAmount,
       depositStatus: r.depositStatus,
+      depositCapturedAmount: r.depositCapturedAmount,
+      depositRefundedAmount: r.depositRefundedAmount,
+      depositRetainedAmount: r.depositRetainedAmount,
+      depositCardLast4: r.depositCardLast4,
+      depositCardBrand: r.depositCardBrand,
+      depositPhase: depositCopy.depositLifecycleView({ mode: r.depositMode, status: r.depositStatus, amount: r.trustDepositAmount, capturedAmount: r.depositCapturedAmount, refundedAmount: r.depositRefundedAmount, retainedAmount: r.depositRetainedAmount }).phase,
       depositAuthorizationExpiresAt: r.depositAuthorizationExpiresAt,
       depositRenewalStatus: r.depositRenewalStatus,
       depositRenewalAttemptedAt: r.depositRenewalAttemptedAt,
@@ -7987,49 +8013,73 @@ Respond with ONLY the category name, nothing else.`
     try {
       const requestId = Number(req.body?.requestId);
       if (!Number.isInteger(requestId)) return res.status(400).json({ error: "Invalid request ID" });
-      const [row] = await db.select({ request: itemRequests, item: items, reputation: users.reputationScore })
-        .from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).innerJoin(users, eq(users.id, itemRequests.requesterId))
-        .where(eq(itemRequests.id, requestId)).limit(1);
-      if (!row) return res.status(404).json({ error: "Request not found" });
-      if (row.request.requesterId !== req.user.id || row.request.requestType !== "BORROW" || row.request.status !== "ACCEPTED") {
-        return res.status(403).json({ error: "Only the accepted borrower may prepare this deposit" });
-      }
-      const calculation = computeAuthoritativeBorrowDeposit(row.item, row.reputation);
-      const protectionEnd = requiredDepositProtectionEnd(row.request.endDate);
-      if (protectionEnd && protectionEnd.getTime() > Date.now() + PRECHECK_AUTHORIZATION_WINDOW_HOURS * 3600000) {
-        await db.update(itemRequests).set({ depositMode: "refundable_charge", depositSelectionState: "consent_required", depositSelectionReason: "request_exceeds_authorization_window", depositRequiredProtectionEnd: protectionEnd }).where(eq(itemRequests.id, requestId));
-        return res.status(409).json(refundableConsentBody(requestId, calculation.amount, protectionEnd, "request_exceeds_authorization_window"));
-      }
-      const [userRecord] = await db.select({ stripeCustomerId: users.stripeCustomerId, stripePaymentMethodId: users.stripePaymentMethodId })
-        .from(users).where(eq(users.id, req.user.id)).limit(1);
-      if (!userRecord?.stripeCustomerId || !userRecord.stripePaymentMethodId) {
-        return res.status(400).json({ error: "No payment method on file. Please add a card in Settings." });
-      }
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: calculation.amount * 100,
-        currency: "usd",
-        capture_method: "manual",
-        customer: userRecord.stripeCustomerId,
-        payment_method: userRecord.stripePaymentMethodId,
-        confirm: true,
-        off_session: true,
-        metadata: {
-          type: "borrow_security_deposit", requestId: String(requestId), userId: String(req.user.id),
-          depositAmount: String(calculation.amount),
-        },
-        description: `Security deposit hold for ShareSwap request #${requestId}`,
-      }, { idempotencyKey: `borrow-deposit-hold-${requestId}-${calculation.amount * 100}` });
-      const captureBefore = getPaymentIntentCaptureBefore(paymentIntent);
-      if (paymentIntent.status !== "requires_capture" || !captureBefore || (protectionEnd && captureBefore < protectionEnd)) {
-        if (paymentIntent.status === "requires_capture") await stripe.paymentIntents.cancel(paymentIntent.id);
-        await db.update(itemRequests).set({ depositMode: "refundable_charge", depositSelectionState: "consent_required", depositSelectionReason: "authorization_window_insufficient", depositRequiredProtectionEnd: protectionEnd }).where(eq(itemRequests.id, requestId));
-        return res.status(409).json(refundableConsentBody(requestId, calculation.amount, protectionEnd, "authorization_window_insufficient"));
-      }
-      await db.update(itemRequests).set({ depositHoldAttemptId: paymentIntent.id, depositMode: "authorization", depositSelectionState: "hold_attempted", depositRequiredProtectionEnd: protectionEnd }).where(eq(itemRequests.id, requestId));
-      res.json({ paymentIntentId: paymentIntent.id, depositAmount: calculation.amount, baseDepositAmount: calculation.base, discountPercentage: calculation.discount, trustScore: calculation.trust, depositMode: "authorization", captureBefore: captureBefore.toISOString() });
+      const result = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);
+        const [row] = await tx.select({ request: itemRequests, item: items, reputation: users.reputationScore })
+          .from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).innerJoin(users, eq(users.id, itemRequests.requesterId))
+          .where(eq(itemRequests.id, requestId)).limit(1);
+        if (!row) return { status: 404, body: { error: "Request not found" } };
+        if (row.request.requesterId !== req.user.id || row.request.requestType !== "BORROW" || row.request.status !== "ACCEPTED") {
+          return { status: 403, body: { error: "Only the accepted borrower may prepare this deposit" } };
+        }
+        const calculation = computeAuthoritativeBorrowDeposit(row.item, row.reputation);
+        const protectionEnd = requiredDepositProtectionEnd(row.request.endDate);
+        if (protectionEnd && protectionEnd.getTime() > Date.now() + PRECHECK_AUTHORIZATION_WINDOW_HOURS * 3600000) {
+          await tx.update(itemRequests).set({ depositMode: "refundable_charge", depositSelectionState: "consent_required", depositSelectionReason: "request_exceeds_authorization_window", depositRequiredProtectionEnd: protectionEnd }).where(eq(itemRequests.id, requestId));
+          return { status: 409, body: refundableConsentBody(requestId, calculation.amount, protectionEnd, "request_exceeds_authorization_window", "borrow") };
+        }
+        const [userRecord] = await tx.select({ stripeCustomerId: users.stripeCustomerId, stripePaymentMethodId: users.stripePaymentMethodId })
+          .from(users).where(eq(users.id, req.user.id)).limit(1);
+        if (!userRecord?.stripeCustomerId || !userRecord.stripePaymentMethodId) {
+          return { status: 400, body: { error: "No payment method on file. Please add a card in Settings." } };
+        }
+        let paymentIntent: Stripe.PaymentIntent;
+        try {
+          ({ paymentIntent } = await prepareDepositAuthorization({
+            stripeClient: stripe,
+            attemptNumber: row.request.depositHoldAttemptNum || 0,
+            paymentIntentId: row.request.depositHoldAttemptId,
+            keyForAttempt: (number) => `borrow-deposit-hold-${requestId}-${calculation.amount * 100}${number ? `-attempt-${number}` : ""}`,
+            onAttempt: async ({ attemptNumber, paymentIntentId }) => {
+              await tx.update(itemRequests).set({
+                depositHoldAttemptNum: attemptNumber,
+                depositHoldAttemptId: paymentIntentId,
+              }).where(eq(itemRequests.id, requestId));
+            },
+            parameters: {
+              amount: calculation.amount * 100,
+              currency: "usd",
+              capture_method: "manual",
+              customer: userRecord.stripeCustomerId,
+              payment_method: userRecord.stripePaymentMethodId,
+              confirm: true,
+              off_session: true,
+              metadata: {
+                type: "borrow_security_deposit", requestId: String(requestId), userId: String(req.user.id),
+                depositAmount: String(calculation.amount),
+              },
+              description: depositCopy.stripeHoldDescription(requestId),
+            },
+          }));
+        } catch (error: any) {
+          // Commit the known attempt even after an indeterminate provider error.
+          // A retry must inspect/replay that attempt, not create a second hold.
+          req.log.error({ err: error, requestId }, "Error preparing borrow deposit");
+          return { status: 500, body: publicPaymentFailure(error) };
+        }
+        const captureBefore = getPaymentIntentCaptureBefore(paymentIntent);
+        if (paymentIntent.status !== "requires_capture" || !captureBefore || (protectionEnd && captureBefore < protectionEnd)) {
+          if (paymentIntent.status === "requires_capture") await stripe.paymentIntents.cancel(paymentIntent.id);
+          await tx.update(itemRequests).set({ depositMode: "refundable_charge", depositSelectionState: "consent_required", depositSelectionReason: "authorization_window_insufficient", depositRequiredProtectionEnd: protectionEnd }).where(eq(itemRequests.id, requestId));
+          return { status: 409, body: refundableConsentBody(requestId, calculation.amount, protectionEnd, "authorization_window_insufficient", "borrow") };
+        }
+        await tx.update(itemRequests).set({ depositHoldAttemptId: paymentIntent.id, depositMode: "authorization", depositSelectionState: "hold_attempted", depositSelectionReason: null, depositRequiredProtectionEnd: protectionEnd }).where(eq(itemRequests.id, requestId));
+        return { status: 200, body: { paymentIntentId: paymentIntent.id, depositAmount: calculation.amount, baseDepositAmount: calculation.base, discountPercentage: calculation.discount, trustScore: calculation.trust, depositMode: "authorization", captureBefore: captureBefore.toISOString() } };
+      });
+      res.status(result.status).json(result.body);
     } catch (error: any) {
       console.error("Error creating deposit hold:", error);
-      res.status(500).json({ error: "Failed to create deposit hold: " + error.message });
+      res.status(500).json(publicPaymentFailure(error));
     }
   });
 
@@ -8086,7 +8136,7 @@ Respond with ONLY the category name, nothing else.`
       res.json({ chargeId: paymentIntent.id, amount: platformFeeAmount });
     } catch (error: any) {
       console.error("Error charging platform fee:", error);
-      res.status(500).json({ error: "Failed to charge platform fee: " + error.message });
+      res.status(500).json(publicPaymentFailure(error));
     }
   });
 
@@ -8231,7 +8281,7 @@ Respond with ONLY the category name, nothing else.`
       res.json({
         success: true,
         canceled: canceledPayment.status === "canceled",
-        message: "Deposit hold released successfully",
+        message: "Deposit hold released. You were not charged.",
       });
     } catch (error: any) {
       console.error("Error canceling deposit:", error);
@@ -8683,7 +8733,7 @@ Respond with ONLY the category name, nothing else.`
       return res.status(result.status).json(result.body);
     } catch (error: any) {
       console.error("Error creating rental payment hold:", error);
-      res.status(500).json({ error: "Failed to create rental payment: " + error.message });
+      res.status(500).json(publicPaymentFailure(error));
     }
   });
 
@@ -8727,7 +8777,7 @@ Respond with ONLY the category name, nothing else.`
       return res.status(result.status).json(result.body);
     } catch (error: any) {
       console.error("Error confirming refundable deposit:", error);
-      return res.status(500).json({ error: "Failed to confirm refundable deposit" });
+      return res.status(500).json(publicPaymentFailure(error));
     }
   });
 
@@ -8870,7 +8920,7 @@ Respond with ONLY the category name, nothing else.`
         const protectionEnd = requiredDepositProtectionEnd(request.item_requests.endDate);
         if (!depositAuthorizationExpiresAt || (protectionEnd && depositAuthorizationExpiresAt < protectionEnd)) {
           await stripe.paymentIntents.cancel(paymentIntentId);
-          return res.status(409).json(refundableConsentBody(requestId, borrowCalculation?.amount ?? Number(depositAmount), protectionEnd, "authorization_window_insufficient"));
+          return res.status(409).json(refundableConsentBody(requestId, borrowCalculation?.amount ?? Number(depositAmount), protectionEnd, "authorization_window_insufficient", "borrow"));
         }
       }
 
@@ -8899,13 +8949,10 @@ Respond with ONLY the category name, nothing else.`
 
       // Notify both parties that the deposit authorization is in place (only for in-app Stripe holds)
       if (paymentIntentId) {
-        await db.insert(messages).values({
-          content: "🔒 Security deposit authorized — your card is not charged unless damage is reported.",
-          senderId: request.items.ownerId!,
-          receiverId: request.item_requests.requesterId,
-          messageType: "system",
-          requestId,
-        });
+        await db.insert(messages).values(depositConfirmedMessage({
+          senderId: request.items.ownerId!, receiverId: request.item_requests.requesterId, requestId,
+          mode: "authorization", amount: borrowCalculation?.amount ?? Number(depositAmount),
+        }));
       }
 
       res.json({
@@ -9121,13 +9168,10 @@ Respond with ONLY the category name, nothing else.`
 
       // If a Stripe deposit was held, confirm its release in the chat
       if (request.item_requests.depositPaymentIntentId && request.item_requests.depositMethod !== "in_person") {
-        await db.insert(messages).values({
-          content: "🔒 Security deposit hold has been lifted — nothing was charged.",
-          senderId: request.items.ownerId!,
-          receiverId: request.item_requests.requesterId,
-          messageType: "system",
-          requestId,
-        });
+        await db.insert(messages).values(depositReleasedMessage({
+          senderId: request.items.ownerId!, receiverId: request.item_requests.requesterId, requestId,
+          amount: request.item_requests.trustDepositAmount, mode: request.item_requests.depositMode,
+        }));
       }
 
       // Apply cancellation penalty to the cancelling user (with grace pass for first offense)
@@ -10379,7 +10423,7 @@ Respond with ONLY the category name, nothing else.`
           .where(eq(items.id, row.items.id));
 
         await db.insert(messages).values({
-          content: "⏰ Transaction expired. Deposit authorization was not completed in time.",
+          content: depositCopy.TRANSACTION_EXPIRED_HOLD_CHAT,
           senderId: ownerId2,
           receiverId: requesterId2,
           messageType: "system",
@@ -10388,8 +10432,8 @@ Respond with ONLY the category name, nothing else.`
 
         const itemShort = row.items.name.length > 22 ? row.items.name.slice(0, 22) + "…" : row.items.name;
         await db.insert(notifications).values([
-          { userId: ownerId2, type: "request_expired", title: "Transaction Expired", message: `"${itemShort}" — deposit authorization was not completed in time.`, itemId: row.items.id, requestId: reqId },
-          { userId: requesterId2, type: "request_expired", title: "Transaction Expired", message: `"${itemShort}" — deposit authorization was not completed in time.`, itemId: row.items.id, requestId: reqId },
+          { userId: ownerId2, type: "request_expired", title: "Transaction Expired", message: depositCopy.transactionExpiredHoldBody(itemShort), itemId: row.items.id, requestId: reqId },
+          { userId: requesterId2, type: "request_expired", title: "Transaction Expired", message: depositCopy.transactionExpiredHoldBody(itemShort), itemId: row.items.id, requestId: reqId },
         ]);
 
         depositExpiredCount++;
@@ -10489,13 +10533,10 @@ Respond with ONLY the category name, nothing else.`
         });
 
         if (row.item_requests.depositPaymentIntentId && row.item_requests.depositMethod !== "in_person") {
-          await db.insert(messages).values({
-            content: "🔒 Security deposit hold has been lifted — nothing was charged.",
-            senderId: ownerId2,
-            receiverId: requesterId2,
-            messageType: "system",
-            requestId: reqId,
-          });
+          await db.insert(messages).values(depositReleasedMessage({
+            senderId: ownerId2, receiverId: requesterId2, requestId: reqId,
+            amount: row.item_requests.trustDepositAmount, mode: row.item_requests.depositMode,
+          }));
         }
 
         const itemShort = row.items.name.length > 22 ? row.items.name.slice(0, 22) + "…" : row.items.name;
@@ -10873,7 +10914,7 @@ Respond with ONLY the category name, nothing else.`
           })
         : undefined;
       if (activeClaim) {
-        return res.json({ success: true, returnedPendingReview: true, message: "Return recorded. The existing claim remains under review; deposit protection was not released." });
+        return res.json({ success: true, returnedPendingReview: true, message: depositCopy.RETURN_RECORDED_WITH_CLAIM });
       }
       // Handle dispute if owner reports damage
       if (triggerDispute) {
@@ -10917,16 +10958,21 @@ Respond with ONLY the category name, nothing else.`
           // Keep legacy DISPUTED visibility while making the report an actual
           // claim; only a later admin decision can make it settlement-eligible.
           const requestedAmount = Number(currentRequest.trustDepositAmount || 0);
+          let disputeClaimId: number | null = null;
           if (requestedAmount > 0) {
-            await db.insert(securityClaims).values({
+            const [disputeClaim] = await db.insert(securityClaims).values({
               requestId, ownerId: request.items.ownerId!, borrowerId: request.item_requests.requesterId,
               claimType: "damage", reason: conditionNotes || "Item returned in damaged condition",
               evidence: disputePhotoUrl ? [disputePhotoUrl] : [], requestedAmount: requestedAmount.toFixed(2),
               depositPaymentIntentId: currentRequest.depositPaymentIntentId,
               status: "CUSTOMER_RESPONSE_PENDING", borrowerNotifiedAt: new Date(),
               responseDeadlineAt: new Date(Date.now() + 72 * 3_600_000),
-            });
+            }).returning({ id: securityClaims.id });
+            disputeClaimId = disputeClaim.id;
           }
+          // Reporting damage opens a claim: the deposit is charged now (never earlier).
+          // On failure the claim stays open and capture is retried by admin paths.
+          if (disputeClaimId) await captureDepositForOpenedClaim(disputeClaimId, requestId);
 
         // Mark item as unavailable until dispute resolved
         await db
@@ -10939,7 +10985,7 @@ Respond with ONLY the category name, nothing else.`
           userId: request.item_requests.requesterId,
           type: "dispute_opened",
           title: "Dispute Opened",
-          message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" — deposit held pending dispute review.`,
+          message: depositCopy.disputeOpenedNotice(request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name),
           link: `/requests`,
         });
 
@@ -10947,7 +10993,7 @@ Respond with ONLY the category name, nothing else.`
         const ownerId_disp = request.items.ownerId!;
         const borrowerId_disp = request.item_requests.requesterId;
         await db.insert(messages).values({
-          content: `🔴 Dispute opened — security deposit is on hold pending review. Our team will contact both parties within 24 hours.`,
+          content: depositCopy.DISPUTE_OPENED_CHAT,
           senderId: ownerId_disp,
           receiverId: borrowerId_disp,
           messageType: "system",
@@ -10958,7 +11004,7 @@ Respond with ONLY the category name, nothing else.`
           success: true,
           request: disputed,
           disputeOpened: true,
-          message: "Dispute opened. Deposit held pending review.",
+          message: depositCopy.DISPUTE_OPENED_RESPONSE,
         });
       }
 
@@ -11427,6 +11473,12 @@ Respond with ONLY the category name, nothing else.`
           trustDepositBaseAmount: itemRequests.trustDepositBaseAmount,
           trustDiscountPercentage: itemRequests.trustDiscountPercentage,
           depositStatus: itemRequests.depositStatus,
+          depositCapturedAmount: itemRequests.depositCapturedAmount,
+          depositRefundedAmount: itemRequests.depositRefundedAmount,
+          depositRetainedAmount: itemRequests.depositRetainedAmount,
+          depositCardLast4: itemRequests.depositCardLast4,
+          depositCardBrand: itemRequests.depositCardBrand,
+          depositMode: itemRequests.depositMode,
           depositAuthorizedAt: itemRequests.depositAuthorizedAt,
           depositReleasedAt: itemRequests.depositReleasedAt,
           // Rental
@@ -11493,7 +11545,13 @@ Respond with ONLY the category name, nothing else.`
         .limit(1);
 
       if (!row) return res.status(404).json({ error: "Transaction not found" });
-      res.json(row);
+      res.json({
+        ...row,
+        depositPhase: depositCopy.depositLifecycleView({
+          mode: (row as any).depositMode, status: row.depositStatus, amount: (row as any).trustDepositAmount,
+          capturedAmount: row.depositCapturedAmount, refundedAmount: row.depositRefundedAmount, retainedAmount: row.depositRetainedAmount,
+        }).phase,
+      });
     } catch (error) {
       console.error("Error fetching item request detail:", error);
       res.status(500).json({ error: "Failed to fetch transaction" });
@@ -11531,12 +11589,38 @@ Respond with ONLY the category name, nothing else.`
         claimDecisionDeadlineAt: r.claimDecisionDeadlineAt,
         settlementStartDeadlineAt: r.settlementStartDeadlineAt,
         role, actions,
-        deposit: { mode: r.depositMode, status: r.depositStatus, amount: r.trustDepositAmount, expiresAt: r.depositAuthorizationExpiresAt, protectionReviewRequired: r.depositRenewalStatus === "protection_review_required" },
+        deposit: {
+          mode: r.depositMode, status: r.depositStatus, amount: r.trustDepositAmount, expiresAt: r.depositAuthorizationExpiresAt, protectionReviewRequired: r.depositRenewalStatus === "protection_review_required",
+          ...depositCopy.depositLifecycleView({
+            mode: r.depositMode, status: r.depositStatus, amount: r.trustDepositAmount, capturedAmount: r.depositCapturedAmount,
+            refundedAmount: r.depositRefundedAmount, retainedAmount: r.depositRetainedAmount, cardLast4: r.depositCardLast4, cardBrand: r.depositCardBrand,
+          }),
+          // true while an open claim's deposit charge has not completed (retryable)
+          capturePending: r.depositMode === "authorization" && r.depositStatus !== "captured" && claims.some(c => ["OPEN", "CUSTOMER_RESPONSE_PENDING", "UNDER_REVIEW", "APPROVED", "PROCESSING"].includes(c.status)),
+        },
       },
       claims: claims.map(c => ({ id: c.id, claimType: c.claimType, status: c.status, reason: c.reason, evidence: c.evidence, borrowerResponse: c.borrowerResponse, requestedAmount: c.requestedAmount, approvedAmount: c.approvedAmount, decisionReason: c.decisionReason, responseDeadlineAt: c.responseDeadlineAt, settlementStatus: c.settlementStatus, createdAt: c.createdAt, decidedAt: c.decidedAt })),
       events: events.map(e => ({ eventType: e.eventType, createdAt: e.createdAt })),
     });
   });
+
+  async function captureDepositForOpenedClaim(claimId: number, requestId: number) {
+    try {
+      const outcome = await ensureClaimDepositCaptured(claimId, stripe as any);
+      if (outcome.status === "captured") {
+        return { status: "captured" as const, chargedAmount: outcome.chargedAmount, cardLast4: outcome.cardLast4, cardBrand: outcome.cardBrand };
+      }
+      console.error(`[claims] deposit capture pending for claim ${claimId}: ${outcome.reason}`);
+      const [info] = await db.select({ borrowerId: securityClaims.borrowerId, name: items.name })
+        .from(securityClaims).innerJoin(itemRequests, eq(itemRequests.id, securityClaims.requestId))
+        .innerJoin(items, eq(items.id, itemRequests.itemId)).where(eq(securityClaims.id, claimId)).limit(1);
+      if (info) await db.insert(notifications).values({ userId: info.borrowerId, requestId, ...depositCopy.claimOpenedPendingCharge(info.name) });
+      return { status: "pending" as const, chargedAmount: null, cardLast4: null, cardBrand: null, indeterminate: outcome.indeterminate };
+    } catch (error) {
+      console.error(`[claims] deposit capture failed for claim ${claimId}:`, error);
+      return { status: "pending" as const, chargedAmount: null, cardLast4: null, cardBrand: null, indeterminate: false };
+    }
+  }
 
   app.post("/api/requests/:id/claims", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -11554,12 +11638,12 @@ Respond with ONLY the category name, nothing else.`
         if (!row) throw Object.assign(new Error("Request not found"), { status: 404 });
         if (row.ownerId !== req.user.id) throw Object.assign(new Error("Only the owner can open a claim"), { status: 403 });
         if (!row.pi || row.depositOperation === "terminal_action" || !["authorized", "held", "disputed", "SECURED_REFUNDABLE", "secured_refundable"].includes(row.depositStatus || ""))
-          throw Object.assign(new Error("No secured unsettled platform deposit is available"), { status: 409 });
+          throw Object.assign(new Error("No temporary hold or charged deposit is available for this request"), { status: 409 });
         const nonReturn = ["non_return", "lost"].includes(claimType);
-        if (nonReturn && !["SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW"].includes(row.stage || ""))
-          throw Object.assign(new Error("Non-return claims require serious overdue review"), { status: 409 });
-        if (!nonReturn && !["RETURNED_PENDING_REVIEW", "SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW"].includes(row.stage || ""))
-          throw Object.assign(new Error("Damage/missing claims require return review or serious overdue"), { status: 409 });
+        if (nonReturn && !claimAllowedAtStage(claimType, row.stage))
+          throw Object.assign(new Error("Non-return claims require the item to be at least 24 hours overdue"), { status: 409 });
+        if (!nonReturn && !claimAllowedAtStage(claimType, row.stage))
+          throw Object.assign(new Error("Damage/missing claims require return review or the item to be at least 24 hours overdue"), { status: 409 });
         if (requestedAmount > Number(row.deposit || 0)) throw Object.assign(new Error("Claim cannot exceed the security deposit"), { status: 400 });
         const [existing] = await tx.select({ id: securityClaims.id }).from(securityClaims).where(and(eq(securityClaims.requestId, requestId), inArray(securityClaims.status, ["OPEN", "CUSTOMER_RESPONSE_PENDING", "UNDER_REVIEW", "APPROVED", "PROCESSING"]))).limit(1);
         if (existing) throw Object.assign(new Error("An active claim already exists"), { status: 409 });
@@ -11576,11 +11660,16 @@ Respond with ONLY the category name, nothing else.`
             settlementStartDeadlineAt: new Date(decisionDeadline.getTime() - OVERDUE_POLICY.CAPTURE_OPERATION_SAFETY_BUFFER_MINUTES * 60_000),
           }).where(eq(itemRequests.id, requestId));
         }
-        await tx.insert(notifications).values({ userId: row.borrowerId, type: "security_claim_opened", title: "Security claim opened", message: "The owner reported an issue. You can respond before it is reviewed.", requestId });
         await tx.insert(requestLifecycleEvents).values({ requestId, eventType: "CLAIM_OPENED", actorId: req.user.id, idempotencyKey: `claim-opened-${created.id}`, details: { claimId: created.id } });
         return created;
       });
-      res.status(201).json(claim);
+      // Opening a claim is the explicit trigger that charges the deposit. This
+      // runs after the claim row committed (no DB transaction is open across the
+      // Stripe call). If it cannot complete the claim stays open with a retryable
+      // pending-capture state; the borrower is never shown "charged" without a
+      // real capture.
+      const depositCapture = await captureDepositForOpenedClaim(claim.id, requestId);
+      res.status(201).json({ ...claim, depositCapture });
     } catch (error: any) { res.status(error.status || 500).json({ error: error.message || "Could not open claim" }); }
   });
 
@@ -11602,6 +11691,11 @@ Respond with ONLY the category name, nothing else.`
       depositAmount: itemRequests.trustDepositAmount,
       depositStatus: itemRequests.depositStatus,
       returnDeadline: itemRequests.endDate,
+      chargedAmount: itemRequests.depositCapturedAmount,
+      refundedAmount: itemRequests.depositRefundedAmount,
+      retainedAmount: itemRequests.depositRetainedAmount,
+      cardLast4: itemRequests.depositCardLast4,
+      cardBrand: itemRequests.depositCardBrand,
     }).from(securityClaims)
       .innerJoin(itemRequests, eq(itemRequests.id, securityClaims.requestId))
       .orderBy(asc(securityClaims.createdAt));
@@ -11620,6 +11714,12 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(securityClaims.id, Number(req.params.id))).limit(1);
       if (!limit) return res.status(404).json({ error: "Claim not found" });
       if (amount > Number(limit.deposit || 0)) return res.status(400).json({ error: "Approved amount cannot exceed the security deposit" });
+    }
+    if (approved) {
+      // The deposit must really be charged before a claim can retain any of it.
+      // Idempotent: a no-op when it was already charged at claim open.
+      const ensured = await ensureClaimDepositCaptured(Number(req.params.id), stripe as any);
+      if (ensured.status !== "captured") return res.status(409).json({ error: `The security deposit has not been charged yet; retry shortly. ${ensured.reason}` });
     }
     let claim: typeof securityClaims.$inferSelect | undefined;
     try {
@@ -11649,7 +11749,7 @@ Respond with ONLY the category name, nothing else.`
     if (!claim) return res.status(409).json({ error: "Claim is not eligible for decision" });
     if (!approved) {
       try { await releaseRejectedClaim(claim.id, stripe as any); }
-      catch (error: any) { return res.status(409).json({ error: error.message || "Claim rejected but deposit release requires review" }); }
+      catch (error: any) { return res.status(409).json({ error: error.message || "Claim rejected but the deposit return requires review" }); }
     }
     res.json(claim);
   });
@@ -12220,7 +12320,7 @@ Respond with ONLY the category name, nothing else.`
             const lateHours = Math.max(0, Math.floor((now.getTime() - new Date(request.endDate).getTime()) / 3_600_000));
             const stageCopy: Record<string, { title: string; borrowerTitle?: string; ownerTitle?: string; borrower: string; owner: string }> = {
               RETURN_DUE: { title: "Return due", borrowerTitle: "Return Item to Owner", ownerTitle: "Get Your Item Back", borrower: `"${item.name}" is due now. Please arrange return.`, owner: `"${item.name}" is due for return.` },
-              OVERDUE_GRACE: { title: "Return overdue", borrowerTitle: "Overdue - Return Item to Owner", ownerTitle: "Overdue - Get Your Item Back", borrower: `"${item.name}" is overdue by ${lateHours} hours. Please arrange return.`, owner: `"${item.name}" has not yet been returned.` },
+              OVERDUE_GRACE: { title: "Return overdue", borrowerTitle: "Overdue - Return Item to Owner", ownerTitle: "Overdue - Get Your Item Back", borrower: `"${item.name}" is overdue by ${lateHours} hours. Please arrange return.`, owner: `"${item.name}" has not yet been returned. You may now open a non-return claim.` },
               OVERDUE: { title: "Return overdue", borrowerTitle: "Overdue - Return Item to Owner", ownerTitle: "Overdue - Get Your Item Back", borrower: `"${item.name}" is overdue. Arrange return or request an extension.`, owner: `"${item.name}" remains overdue.` },
               SERIOUSLY_OVERDUE: { title: "Final return warning", borrower: `"${item.name}" is significantly overdue. The owner may open a non-return claim.`, owner: `"${item.name}" is significantly overdue; you may report an issue.` },
               NON_RETURN_REVIEW: { title: "Non-return review", borrower: `"${item.name}" is under non-return review. This is not a charge; return it or respond to a claim.`, owner: `"${item.name}" is eligible for non-return review; you may open a claim.` },
@@ -14341,6 +14441,9 @@ Respond with ONLY the category name, nothing else.`
         });
       }
 
+      if (request.item_requests.depositStatus === "captured") {
+        return res.status(409).json({ error: "The deposit was charged when the claim was opened. Resolve the claim from the claims queue to refund it." });
+      }
       const ownerId = request.items.ownerId!;
       const borrowerId = request.item_requests.requesterId;
       const terminalClaim = await claimDepositTerminalAction(
@@ -14380,8 +14483,8 @@ Respond with ONLY the category name, nothing else.`
         notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
         // Notify both parties
         await db.insert(notifications).values([
-          { userId: borrowerId, type: "dispute_resolved", title: "Dispute Resolved", message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" return reviewed. Deposit released to you.`, itemId: request.items.id, requestId },
-          { userId: ownerId, type: "dispute_resolved", title: "Dispute Resolved", message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" return reviewed. Deposit released to borrower.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "dispute_resolved", title: "Dispute Resolved", message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" return reviewed. No claim was upheld; you were not charged.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "dispute_resolved", title: "Dispute Resolved", message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" return reviewed. No claim was upheld; the borrower's hold was released.`, itemId: request.items.id, requestId },
         ]);
       } else {
         // Capture deposit in favour of owner (damage confirmed)
@@ -14429,8 +14532,8 @@ Respond with ONLY the category name, nothing else.`
         }
 
         await db.insert(notifications).values([
-          { userId: ownerId, type: "dispute_resolved", title: "Dispute Resolved In Your Favour", message: `Damage confirmed for "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}". Deposit added to your balance.`, itemId: request.items.id, requestId },
-          { userId: borrowerId, type: "dispute_resolved", title: "Dispute Resolved", message: `Damage confirmed for "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}". Your deposit has been charged.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "dispute_resolved", title: "Dispute Resolved In Your Favour", message: `Damage confirmed for "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}". The charged deposit was added to your balance.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "dispute_resolved", title: "Dispute Resolved", message: `Damage confirmed for "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}". Your security deposit was charged.`, itemId: request.items.id, requestId },
         ]);
       }
 

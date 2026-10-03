@@ -53,11 +53,15 @@ interface FakePaymentIntent {
   payment_method: string | null;
   metadata: Record<string, string>;
   capture_method: string;
-  latest_charge: { payment_method_details: { card: { capture_before: number } } };
+  latest_charge: {
+    id: string;
+    payment_method_details: { card: { capture_before?: number } };
+  } | string | null;
 }
 
 function createFakeStripe(options?: {
   onCreatePaymentIntent?: (params: any) => { throwError?: Error; status?: string } | void;
+  captureBefore?: number | null;
 }) {
   const store = new Map<string, FakePaymentIntent>();
   let seq = 0;
@@ -65,8 +69,22 @@ function createFakeStripe(options?: {
     customersCreate: [] as any[],
     paymentIntentsCreate: [] as any[],
     paymentIntentsRetrieve: [] as string[],
+    paymentIntentsRetrieveParameters: [] as { expand?: string[] }[],
     paymentIntentsCancel: [] as string[],
   };
+
+  // Stripe returns a Charge ID unless latest_charge is explicitly expanded.
+  // Keep the stored details separate so retrieval can request expansion later.
+  function response(pi: FakePaymentIntent, params?: { expand?: string[] }) {
+    return {
+      ...pi,
+      latest_charge:
+        pi.latest_charge && typeof pi.latest_charge !== "string" &&
+        !params?.expand?.includes("latest_charge")
+          ? pi.latest_charge.id
+          : pi.latest_charge,
+    };
+  }
 
   return {
     calls,
@@ -108,19 +126,24 @@ function createFakeStripe(options?: {
           metadata: params.metadata || {},
           capture_method: params.capture_method || "automatic",
           latest_charge: {
-            // A real confirmed card authorization returns this exact deadline.
-            // Keep it comfortably past the short fixture's protected return.
-            payment_method_details: { card: { capture_before: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60 } },
+            id: `ch_test_${seq}`,
+            payment_method_details: {
+              card: options?.captureBefore === null ? {} : {
+                capture_before: options?.captureBefore ??
+                  Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+              },
+            },
           },
         };
         store.set(id, pi);
-        return pi as any;
+        return response(pi, params) as any;
       },
-      retrieve: async (id: string) => {
+      retrieve: async (id: string, params?: { expand?: string[] }) => {
         calls.paymentIntentsRetrieve.push(id);
+        calls.paymentIntentsRetrieveParameters.push(params ?? {});
         const pi = store.get(id);
         if (!pi) throw new Error(`No such payment_intent: '${id}'`);
-        return pi as any;
+        return response(pi, params) as any;
       },
       cancel: async (id: string) => {
         calls.paymentIntentsCancel.push(id);
@@ -249,6 +272,8 @@ test("createRentalPaymentHold creates a manual-capture PaymentIntent for the dep
 
     const { params } = fakeStripe.calls.paymentIntentsCreate[0];
     assert.equal(params.capture_method, "manual", "deposit hold must use manual capture, not an immediate charge");
+    assert.equal(params.expand, undefined, "keep creation parameters compatible with earlier idempotent attempts");
+    assert.deepEqual(fakeStripe.calls.paymentIntentsRetrieveParameters[0].expand, ["latest_charge"], "read the exact deadline separately");
     assert.equal(params.amount, 5000, "hold amount must equal the deposit only (in cents): $50.00");
     assert.equal(params.metadata.type, "rental_payment_deposit");
     assert.equal(params.metadata.depositAmount, "50");
@@ -262,6 +287,112 @@ test("createRentalPaymentHold creates a manual-capture PaymentIntent for the dep
     // The PI Stripe actually created must itself be an uncaptured hold, not a charge.
     const createdPI = fakeStripe.store.get(result.body.paymentIntentId)!;
     assert.equal(createdPI.status, "requires_capture", "hold PI must be authorized, not captured");
+    assert.deepEqual(fakeStripe.calls.paymentIntentsCancel, [], "a sufficient authorization must not be canceled");
+    const [requestAfter] = await db.select().from(itemRequests).where(eq(itemRequests.id, requestId));
+    assert.equal(requestAfter.depositMode, "authorization");
+    assert.equal(requestAfter.depositSelectionState, "hold_attempted");
+  } finally {
+    await cleanupRequest(requestId, renterId);
+  }
+});
+
+test("a verified hold deadline shorter than the protection period still requires refundable-payment consent", async () => {
+  const { requestId, renterId } = await makeAcceptedRequest();
+  try {
+    const fakeStripe = createFakeStripe({
+      // The hold only needs to cover return date + 1 day (no claim-review buffer),
+      // so use a deadline that is clearly shorter than that.
+      captureBefore: Math.floor(Date.now() / 1000) + 60 * 60,
+    });
+    const result = await createRentalPaymentHold({
+      requestId, userId: renterId, confirmIfSaved: true, stripeClient: fakeStripe as any,
+    });
+    assert.equal(result.status, 409);
+    assert.equal(result.body.consentRequired, true);
+    assert.equal(result.body.selectionReason, "authorization_window_insufficient");
+    assert.equal(fakeStripe.calls.paymentIntentsCreate.length, 1, "no refundable charge without consent");
+    const holdId = [...fakeStripe.store.keys()][0];
+    assert.deepEqual(fakeStripe.calls.paymentIntentsCancel, [holdId]);
+    assert.equal(fakeStripe.store.get(holdId)!.status, "canceled");
+    const [requestAfter] = await db.select().from(itemRequests).where(eq(itemRequests.id, requestId));
+    assert.equal(requestAfter.depositSelectionState, "consent_required");
+    assert.equal(requestAfter.status, "ACCEPTED");
+    assert.equal(requestAfter.depositPaymentIntentId, null);
+  } finally {
+    await cleanupRequest(requestId, renterId);
+  }
+});
+
+test("retrying a valid rental authorization reuses the same hold", async () => {
+  const { requestId, renterId } = await makeAcceptedRequest();
+  try {
+    const fakeStripe = createFakeStripe();
+    const args = { requestId, userId: renterId, confirmIfSaved: true, stripeClient: fakeStripe as any };
+    const first = await createRentalPaymentHold(args);
+    const retry = await createRentalPaymentHold(args);
+    assert.equal(first.status, 200);
+    assert.equal(retry.status, 200);
+    assert.equal(retry.body.paymentIntentId, first.body.paymentIntentId);
+    assert.equal(fakeStripe.calls.paymentIntentsCreate.length, 1);
+    assert.deepEqual(fakeStripe.calls.paymentIntentsCancel, []);
+  } finally {
+    await cleanupRequest(requestId, renterId);
+  }
+});
+
+test("an indeterminate rental hold lookup never advances the attempt or authorizes a second hold", async () => {
+  const { requestId, renterId } = await makeAcceptedRequest();
+  try {
+    const fakeStripe = createFakeStripe();
+    const args = { requestId, userId: renterId, confirmIfSaved: true, stripeClient: fakeStripe as any };
+    const first = await createRentalPaymentHold(args);
+    assert.equal(first.status, 200);
+    fakeStripe.paymentIntents.retrieve = async () => { throw new Error("Stripe read timed out"); };
+    await assert.rejects(createRentalPaymentHold(args), /read timed out/);
+    assert.equal(fakeStripe.calls.paymentIntentsCreate.length, 1);
+    assert.deepEqual(fakeStripe.calls.paymentIntentsCancel, []);
+    const [requestAfter] = await db.select().from(itemRequests).where(eq(itemRequests.id, requestId));
+    assert.equal(requestAfter.depositHoldAttemptNum, 0);
+    assert.equal(requestAfter.depositHoldAttemptId, first.body.paymentIntentId);
+  } finally {
+    await cleanupRequest(requestId, renterId);
+  }
+});
+
+test("an expanded Charge with no verifiable deadline still fails safely without charging a refundable deposit", async () => {
+  const { requestId, renterId } = await makeAcceptedRequest();
+  try {
+    const fakeStripe = createFakeStripe({ captureBefore: null });
+    const result = await createRentalPaymentHold({
+      requestId, userId: renterId, confirmIfSaved: true, stripeClient: fakeStripe as any,
+    });
+    assert.equal(result.status, 409);
+    assert.equal(result.body.consentRequired, true);
+    assert.equal(result.body.selectionReason, "authorization_window_insufficient");
+    assert.equal(fakeStripe.calls.paymentIntentsCreate[0].params.expand, undefined);
+    assert.deepEqual(fakeStripe.calls.paymentIntentsRetrieveParameters[0].expand, ["latest_charge"]);
+    assert.equal(fakeStripe.calls.paymentIntentsCreate.length, 1, "no automatic refundable charge");
+    assert.equal(fakeStripe.calls.paymentIntentsCancel.length, 1);
+  } finally {
+    await cleanupRequest(requestId, renterId);
+  }
+});
+
+test("long rentals still require consent before creating any Stripe authorization or charge", async () => {
+  const { requestId, renterId } = await makeAcceptedRequest();
+  try {
+    await db.update(itemRequests).set({
+      endDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
+    }).where(eq(itemRequests.id, requestId));
+    const fakeStripe = createFakeStripe();
+    const result = await createRentalPaymentHold({
+      requestId, userId: renterId, confirmIfSaved: true, stripeClient: fakeStripe as any,
+    });
+    assert.equal(result.status, 409);
+    assert.equal(result.body.consentRequired, true);
+    assert.equal(result.body.selectionReason, "request_exceeds_authorization_window");
+    assert.deepEqual(fakeStripe.calls.paymentIntentsCreate, []);
+    assert.deepEqual(fakeStripe.calls.paymentIntentsCancel, []);
   } finally {
     await cleanupRequest(requestId, renterId);
   }

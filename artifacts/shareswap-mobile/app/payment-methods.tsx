@@ -162,7 +162,7 @@ export default function PaymentMethodsScreen() {
           </View>
           <View>
             <Text style={[styles.pageTitle, { color: colors.foreground }]}>Payment Methods</Text>
-            <Text style={[styles.pageSubtitle, { color: colors.mutedForeground }]}>For deposits and rentals</Text>
+            <Text style={[styles.pageSubtitle, { color: colors.mutedForeground }]}>For deposit holds and rentals</Text>
           </View>
         </View>
 

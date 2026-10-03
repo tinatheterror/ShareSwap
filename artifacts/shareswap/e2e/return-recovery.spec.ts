@@ -96,7 +96,7 @@ test("a released deposit survives a failed return save and retries update the sa
       type: "return_confirmed",
       title: "Return Confirmed",
     });
-    expect(completed[0].message).toContain("Deposit hold lifted.");
+    expect(completed[0].message).toContain("Temporary hold released.");
     expect(completed[0].message.toLowerCase()).not.toContain("pending");
   } finally {
     await cleanupOwnerReturnFixture(request, fixture.fixtureId);

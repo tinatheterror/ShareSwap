@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { db, itemRequests, items, notifications } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { sendPushToUser } from "./push-notifications";
+import * as depositCopy from "./deposit-copy";
 
 const RENEWAL_WINDOW_MS = 36 * 60 * 60 * 1000;
 const ACTIVE_DEPOSIT_STATUSES = ["authorized", "held", "disputed"];
@@ -114,7 +115,7 @@ export async function resolveClaimedDepositIntents(
         });
         return;
       }
-      throw new Error("Deposit authorization was already captured and cannot be released");
+      throw new Error("The deposit was already charged and cannot be released as a hold; it must be refunded");
     }
     if (intent.status === "canceled") return;
     await assertClaimOwnership();
@@ -136,7 +137,7 @@ export async function resolveClaimedDepositIntents(
     const current = await stripeClient.paymentIntents.retrieve(request.depositPaymentIntentId);
     if (current.status === "succeeded") return;
     if (current.status === "canceled") {
-      throw new Error("Deposit authorization was already released and cannot be captured");
+      throw new Error("The temporary hold was already released and cannot be charged");
     }
     await assertClaimOwnership();
     await stripeClient.paymentIntents.capture(request.depositPaymentIntentId);
@@ -194,9 +195,9 @@ export function getPaymentIntentCaptureBefore(paymentIntent: any): Date | null {
 function safeRenewalError(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error || "Unknown payment error");
   if (/authentication|declin|insufficient|expired|payment method|card/i.test(raw)) {
-    return "Your saved card could not renew the security deposit authorization.";
+    return depositCopy.RENEWAL_CARD_ERROR;
   }
-  return "The security deposit authorization could not be renewed automatically.";
+  return depositCopy.RENEWAL_GENERIC_ERROR;
 }
 
 async function markRenewalFailure(
@@ -255,14 +256,14 @@ async function markRenewalFailure(
     const recipients = [
       {
         userId: request.requesterId,
-        title: "Deposit authorization needs attention",
-        body: `We couldn't renew the security deposit hold for "${item.name}". Retry now or update your saved payment method.`,
+        title: "Temporary deposit hold needs attention",
+        body: depositCopy.renewalFailedBorrowerBody(item.name),
       },
       ...(item.ownerId && item.ownerId !== request.requesterId
         ? [{
             userId: item.ownerId,
-            title: "Deposit authorization needs attention",
-            body: `The security deposit hold for "${item.name}" could not be renewed. The renter has been asked to update their payment method.`,
+            title: "Temporary deposit hold needs attention",
+            body: depositCopy.renewalFailedOwnerBody(item.name),
           }]
         : []),
     ];
@@ -498,7 +499,7 @@ export async function renewDepositHold({
         userId: request.requesterId.toString(),
         renewalOf: oldPaymentIntentId,
       },
-      description: `Renewed ShareSwap security deposit for request #${requestId}`,
+      description: depositCopy.stripeRenewedHoldDescription(requestId),
       expand: ["latest_charge"],
     } as any, {
       idempotencyKey: `deposit-renewal-${requestId}-${oldPaymentIntentId}`,

@@ -243,7 +243,7 @@ export function ReturnConfirmationSheet({
             <Text style={[ss.sub, { color: colors.mutedForeground }]}>
               {isRental
                 ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
-                : "You're returning this item early. No penalty applies. The authorization hold will be released once the owner confirms its safe return."}
+                : "You're returning this item early. No penalty applies. Your temporary deposit hold will be released once the owner confirms its safe return. You will not be charged."}
             </Text>
           )}
 
@@ -334,7 +334,7 @@ export function ReturnConfirmationSheet({
                 <Text style={{ color: "#1d4ed8", fontSize: 13, flex: 1 }}>
                   {isRental
                     ? "You keep the full rental amount — no refund for unused days."
-                    : "No ShareCoins deducted for early return. Borrower's deposit hold will be released."}
+                    : "No ShareCoins deducted for early return. The borrower's temporary deposit hold will be released (they will not be charged)."}
                 </Text>
               </View>
             )}
@@ -453,9 +453,9 @@ export function ReturnConfirmationSheet({
                       This will open a dispute
                     </Text>
                     <Text style={{ color: "#dc2626", fontSize: 12, marginTop: 3 }}>
-                      Since you reported damage, we'll hold the{" "}
-                      {isRental ? "renter's" : "borrower's"} ${depositAmount ?? "–"} deposit while
-                      we review. Both parties will be contacted to resolve this.
+                      Since you reported damage, a claim will be opened. The{" "}
+                      {isRental ? "renter's" : "borrower's"} ${depositAmount ?? "–"} deposit may be charged while
+                      the claim is reviewed. Both parties will be contacted to resolve this.
                     </Text>
                   </View>
                   {/* Photo evidence — matches web's camera/file input */}

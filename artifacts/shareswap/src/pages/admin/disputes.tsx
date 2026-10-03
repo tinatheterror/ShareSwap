@@ -16,6 +16,7 @@ import {
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatMoney } from "@/lib/deposit-copy";
 import { AlertTriangle, CheckCircle, XCircle, Star, Package, User, DollarSign, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -44,6 +45,7 @@ interface SecurityClaim {
   requestedAmount: string; approvedAmount: string | null; status: string; settlementStatus: string | null;
   decisionReason: string | null; responseDeadlineAt: string | null; depositAmount: string | null;
   depositStatus: string | null;
+  chargedAmount?: number | string | null; refundedAmount?: number | string | null; retainedAmount?: number | string | null;
 }
 
 function StarRating({ rating }: { rating: number | null }) {
@@ -86,7 +88,7 @@ export default function AdminDisputesPage() {
   });
   const settleMutation = useMutation({
     mutationFn: async (id: number) => { const res = await apiRequest("POST", `/api/admin/claims/${id}/settle`, {}); if (!res.ok) throw new Error((await res.json()).error || "Could not settle claim"); return res.json(); },
-    onSuccess: () => { toast({ title: "Approved claim settlement started" }); queryClient.invalidateQueries({ queryKey: ["/api/admin/claims"] }); },
+    onSuccess: () => { toast({ title: "Claim resolution started", description: "The refundable remainder is being refunded to the borrower." }); queryClient.invalidateQueries({ queryKey: ["/api/admin/claims"] }); },
     onError: (e: Error) => toast({ title: "Settlement needs review", description: e.message, variant: "destructive" }),
   });
 
@@ -100,8 +102,8 @@ export default function AdminDisputesPage() {
         title: "Dispute resolved",
         description:
           decision === "owner"
-            ? "Deposit captured — damage confirmed."
-            : "Deposit released back to borrower.",
+            ? "Charged deposit retained for the owner — damage confirmed."
+            : "Deposit refunded or hold released for the borrower.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/disputes"] });
     },
@@ -119,7 +121,7 @@ export default function AdminDisputesPage() {
           <div>
             <h1 className="text-2xl font-bold">Return Disputes</h1>
             <p className="text-sm text-muted-foreground">
-              Review legacy disputes and dedicated security claims. Lateness never automatically settles a deposit.
+              Review legacy disputes and dedicated security claims. Lateness never automatically charges a deposit; deposits are charged only when a claim is opened.
             </p>
           </div>
           <Badge className="ml-auto bg-amber-100 text-amber-800 text-sm">
@@ -135,11 +137,12 @@ export default function AdminDisputesPage() {
               <div className="flex justify-between gap-2"><div><p className="font-semibold">Claim #{claim.id} · {claim.claimType.replaceAll("_", " ")}</p><p className="text-sm text-muted-foreground">Request #{claim.requestId}</p></div><Badge>{claim.status.replaceAll("_", " ")}</Badge></div>
               <p className="text-sm">{claim.reason}</p>
               {claim.evidence?.length > 0 && <p className="text-xs text-muted-foreground">Evidence: {claim.evidence.join(", ")}</p>}
-              <div className="text-sm">Requested: <b>${Number(claim.requestedAmount).toFixed(2)}</b> · Deposit protection: ${deposit.toFixed(2)} · Deposit: {claim.depositStatus || "unknown"}</div>
+              <div className="text-sm">Requested: <b>${Number(claim.requestedAmount).toFixed(2)}</b> · Security deposit: ${deposit.toFixed(2)} · Deposit state: {claim.depositStatus === "captured" ? "Charged (claim opened)" : claim.depositStatus === "authorized" || claim.depositStatus === "held" ? "Temporary hold" : claim.depositStatus === "released" ? "Hold released" : claim.depositStatus === "settled" ? "Claim resolved" : (claim.depositStatus || "unknown")}</div>
+              {(claim.chargedAmount != null || claim.refundedAmount != null || claim.retainedAmount != null) && <p className="text-xs" data-testid={`claim-amounts-${claim.id}`}>Charged: <b>{formatMoney(claim.chargedAmount ?? (claim.depositStatus === "captured" ? deposit : 0))}</b> · Refunded: <b>{formatMoney(claim.refundedAmount ?? 0)}</b> · Retained: <b>{formatMoney(claim.retainedAmount ?? 0)}</b></p>}
               {claim.responseDeadlineAt && <p className="text-xs text-muted-foreground">Borrower response deadline: {format(new Date(claim.responseDeadlineAt), "MMM d, yyyy p")}</p>}
-              <p className="text-xs text-muted-foreground">Settlement: {claim.settlementStatus || "not settled"}{["MANUAL_REVIEW", "EXPIRED_UNSECURED"].includes(claim.settlementStatus || "") && " — authorization cannot be relied on; manual review required."}</p>
-              {claim.approvedAmount && <p className="text-sm">Approved amount: <b>${Number(claim.approvedAmount).toFixed(2)}</b>{claim.decisionReason ? ` · ${claim.decisionReason}` : ""}</p>}
-              <div className="flex flex-wrap gap-2">{canDecide && <Button data-testid={`button-decide-claim-${claim.id}`} onClick={() => { setDeciding(claim); setDecision("approve"); setApprovedAmount(claim.requestedAmount); setDecisionReason(""); }}>Review decision</Button>}{claim.status === "APPROVED" && <Button data-testid={`button-settle-claim-${claim.id}`} variant="outline" disabled={settleMutation.isPending} onClick={() => settleMutation.mutate(claim.id)}>Settle approved claim</Button>}</div>
+              <p className="text-xs text-muted-foreground">Settlement: {claim.settlementStatus || "not settled"}{["MANUAL_REVIEW", "EXPIRED_UNSECURED"].includes(claim.settlementStatus || "") && " — the deposit could not be confirmed as charged; manual review required."}</p>
+              {claim.approvedAmount && <p className="text-sm">Amount to retain: <b>${Number(claim.approvedAmount).toFixed(2)}</b>{claim.decisionReason ? ` · ${claim.decisionReason}` : ""}</p>}
+              <div className="flex flex-wrap gap-2">{canDecide && <Button data-testid={`button-decide-claim-${claim.id}`} onClick={() => { setDeciding(claim); setDecision("approve"); setApprovedAmount(claim.requestedAmount); setDecisionReason(""); }}>Review decision</Button>}{claim.status === "APPROVED" && <Button data-testid={`button-settle-claim-${claim.id}`} variant="outline" disabled={settleMutation.isPending} onClick={() => settleMutation.mutate(claim.id)}>Finalize refund of remainder</Button>}</div>
             </CardContent></Card>;
           })}
         </section>
@@ -271,7 +274,7 @@ export default function AdminDisputesPage() {
                     disabled={resolveMutation.isPending}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    Release to borrower
+                    Refund / release to borrower
                   </Button>
                   <Button
                     className="flex-1 bg-red-600 hover:bg-red-700 text-white"
@@ -279,7 +282,7 @@ export default function AdminDisputesPage() {
                     disabled={resolveMutation.isPending}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
-                    Capture for owner
+                    Retain for owner
                   </Button>
                 </div>
               </CardContent>
@@ -293,13 +296,13 @@ export default function AdminDisputesPage() {
           <DialogHeader>
             <DialogTitle>
               {resolving?.decision === "borrower"
-                ? "Release deposit to borrower?"
-                : "Capture deposit for owner?"}
+                ? "Refund deposit to borrower?"
+                : "Retain deposit for owner?"}
             </DialogTitle>
             <DialogDescription>
               {resolving?.decision === "borrower"
-                ? "The security deposit will be released back to the borrower. This confirms the item was returned in acceptable condition."
-                : "The security deposit will be captured and paid to the owner. This confirms damage was found and the owner's claim is valid."}{" "}
+                ? "The borrower's security deposit will be refunded in full (or the temporary hold released if it was never charged). This confirms the item was returned in acceptable condition."
+                : "The charged security deposit will be retained for the owner. This confirms damage was found and the owner's claim is valid."}{" "}
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
@@ -317,9 +320,9 @@ export default function AdminDisputesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={!!deciding} onOpenChange={(open) => !open && setDeciding(null)}><DialogContent><DialogHeader><DialogTitle>Review claim #{deciding?.id}</DialogTitle><DialogDescription>Deciding a claim does not settle it. Use the separate settlement action after approval.</DialogDescription></DialogHeader>
-        <Label className="text-sm font-medium">Decision<select data-testid="select-claim-decision" className="mt-1 w-full h-10 border rounded px-2" value={decision} onChange={e => setDecision(e.target.value as "approve" | "reject")}><option value="approve">Approve</option><option value="reject">Reject</option></select></Label>
-        {decision === "approve" && <Label className="text-sm font-medium">Approved amount (maximum ${Number(deciding?.depositAmount || 0).toFixed(2)})<Input data-testid="input-approved-amount" type="number" min="0.01" max={Number(deciding?.depositAmount || 0)} step="0.01" value={approvedAmount} onChange={e => setApprovedAmount(e.target.value)} /></Label>}
+      <Dialog open={!!deciding} onOpenChange={(open) => !open && setDeciding(null)}><DialogContent><DialogHeader><DialogTitle>Review claim #{deciding?.id}</DialogTitle><DialogDescription>The security deposit was charged when the claim was opened. Approving retains the amount below and refunds the remainder; rejecting refunds the full charged deposit.</DialogDescription></DialogHeader>
+        <Label className="text-sm font-medium">Decision<select data-testid="select-claim-decision" className="mt-1 w-full h-10 border rounded px-2" value={decision} onChange={e => setDecision(e.target.value as "approve" | "reject")}><option value="approve">Approve — retain amount, refund remainder</option><option value="reject">Reject — refund full deposit</option></select></Label>
+        {decision === "approve" && <Label className="text-sm font-medium">Amount to retain (maximum ${Number(deciding?.depositAmount || 0).toFixed(2)})<Input data-testid="input-approved-amount" type="number" min="0.01" max={Number(deciding?.depositAmount || 0)} step="0.01" value={approvedAmount} onChange={e => setApprovedAmount(e.target.value)} /></Label>}
         <Label className="text-sm font-medium">Decision reason<Textarea data-testid="input-decision-reason" value={decisionReason} onChange={e => setDecisionReason(e.target.value)} /></Label>
         <DialogFooter><Button variant="outline" onClick={() => setDeciding(null)}>Cancel</Button><Button data-testid="button-confirm-claim-decision" disabled={!decisionReason.trim() || (decision === "approve" && (!approvedAmount || Number(approvedAmount) > Number(deciding?.depositAmount || 0))) || decisionMutation.isPending} onClick={() => decisionMutation.mutate()}>{decisionMutation.isPending ? "Saving…" : "Record decision"}</Button></DialogFooter></DialogContent></Dialog>
     </AdminLayout>

@@ -320,7 +320,17 @@ test("persists the return release operation before Stripe and releases current a
   assert.equal(final.request.returnConditionOk, false);
   assert.equal(final.notices.length, 1);
   assert.equal(final.notices[0].title, "Return Confirmed");
-  assert.equal(final.messages.length, 1);
+  assert.equal(final.messages.filter((m) => m.messageType === "system").length, 1);
+  assert.match(final.messages.find((m) => m.messageType === "system")!.content, /Temporary hold released\. You were not charged\./);
+  // No claim was opened: a distinct "hold released" event + notification, never "refunded".
+  const released = final.messages.find((m) => (m.metadata as any)?.eventType === "deposit_released")!;
+  assert.match(released.content, /^Deposit hold released — \$[\d.]+ temporary hold released\. You were not charged\.$/);
+  assert.equal((released.metadata as any).depositMode, "authorization");
+  assert.ok((released.metadata as any).amount > 0);
+  const releaseNotices = await db.select().from(notifications).where(and(eq(notifications.requestId, request.id), eq(notifications.type, "deposit_hold_released")));
+  assert.equal(releaseNotices.length, 1);
+  assert.equal(releaseNotices[0].title, "Deposit hold released");
+  assert.match(releaseNotices[0].message, /temporary hold released\. You were not charged\.$/);
 });
 
 test("a captured refundable deposit is discovered and refunded, unlike an already-canceled authorization", async (t) => {
@@ -411,7 +421,7 @@ test("a final transaction rollback leaves an indeterminate operation and retry u
   assert.equal(afterRollback.operations.length, 1);
   assert.equal(afterRollback.operations[0].status, "INDETERMINATE");
   assert.equal(afterRollback.notices.length, 1);
-  assert.equal(afterRollback.notices[0].title, "Deposit Released");
+  assert.equal(afterRollback.notices[0].title, "Deposit hold released");
   assert.equal(afterRollback.messages.length, 0);
   const [itemAfterRollback] = await db.select().from(items)
     .where(eq(items.id, request.itemId!));
@@ -534,7 +544,7 @@ test("partial, pending, and failed refunds never mark the deposit released befor
   assert.equal(partialState.request.depositStatus, "SECURED_REFUNDABLE");
   assert.equal(partialState.operations[0].status, "INDETERMINATE");
   assert.equal(partialState.notices.length, 1);
-  assert.match(partialState.notices[0].message, /part of the deposit hold was released/);
+  assert.match(partialState.notices[0].message, /part of the temporary hold was released/);
 
   const failedFixture = await fixture(t, {
     mode: "refundable_charge",

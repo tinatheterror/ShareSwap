@@ -68,19 +68,32 @@ function rewriteTitle(title: string, message?: string | null): string {
     );
 }
 
-function rewriteBody(message: string): string {
+function rewriteBody(message: string, isBadge = false): string {
+  // Legacy badge messages put the confirmed coin credit after a long
+  // description. Move it before fitting, or the API/push response drops it
+  // before clients have a chance to preserve it.
+  const badgeReward = /\+1\s+ShareCoin\s+(?:awarded!|earned[.!]?)(?=\s|$)/i;
+  if (isBadge && badgeReward.test(message)) {
+    const description = message.replace(badgeReward, "").trim()
+      .replace(/^(Completed \d+ exchanges) — .+$/, "$1.");
+    message = `+1 ShareCoin earned.${description ? ` ${description}` : ""}`;
+  }
   return message
     .replace(
-      /^"([^"]+)" — deposit hold lifted; return confirmation is pending while we finish updating your request\.$/,
-      'Hold lifted. Return pending: "$1".',
+      /^"([^"]+)" — temporary hold released; return confirmation is pending while we finish updating your request\.$/,
+      'Hold released. Return pending: "$1".',
     )
     .replace(
-      /^"([^"]+)" — part of the deposit hold was released; return confirmation is pending while we reconcile the remaining hold\.$/,
+      /^"([^"]+)" — part of the temporary hold was released; return confirmation is pending while we release the rest\.$/,
       'Partial release; return pending: "$1".',
     )
     .replace(
-      /^"([^"]+)" returned to owner\. Deposit hold lifted\.$/,
-      '"$1" returned. Deposit hold lifted.',
+      /^"([^"]+)" returned to owner\. Temporary hold released\.$/,
+      '"$1" returned. Hold released.',
+    )
+    .replace(
+      /^"([^"]+)" returned to owner\. Refundable deposit refunded\.$/,
+      '"$1" returned. Deposit refunded.',
     )
     .replace(
       /^"([^"]+)" is seriously overdue with (.+?)\. Please coordinate an immediate return\.$/,
@@ -120,7 +133,18 @@ function rewriteBody(message: string): string {
     );
 }
 
-export function compactNotificationCopy<T extends { title?: string | null; message?: string | null }>(
+/**
+ * Deposit charge/refund/hold-release notices carry amounts and the
+ * "not charged" / "charged" distinction. Compacting them would drop exactly
+ * that wording, so their bodies are delivered in full.
+ */
+const FULL_BODY_TYPES = new Set([
+  "security_deposit_charged", "security_claim_opened_owner", "security_claim_opened",
+  "security_deposit_refunded", "security_deposit_retained", "security_claim_rejected",
+  "deposit_hold_released", "deposit_unsecured", "deposit_renewal_failed",
+]);
+
+export function compactNotificationCopy<T extends { title?: string | null; message?: string | null; type?: string | null }>(
   notification: T,
 ): T {
   return {
@@ -128,8 +152,13 @@ export function compactNotificationCopy<T extends { title?: string | null; messa
     title: notification.title
       ? fitAtWord(rewriteTitle(notification.title, notification.message), TITLE_LIMIT)
       : notification.title,
-    message: notification.message
-      ? fitAtWord(rewriteBody(notification.message), BODY_LIMIT)
+    message: notification.message && notification.type && FULL_BODY_TYPES.has(notification.type)
+      ? notification.message
+      : notification.message
+      ? fitAtWord(rewriteBody(
+          notification.message,
+          notification.type === "badge_earned" || /\bBadge Unlocked:/i.test(notification.title ?? ""),
+        ), BODY_LIMIT)
       : notification.message,
   };
 }

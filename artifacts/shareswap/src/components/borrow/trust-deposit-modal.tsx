@@ -10,6 +10,8 @@ import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 import { format } from "date-fns";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { getStripePromise } from "@/lib/stripe-client";
+import { paymentErrorMessage } from "@/lib/payment-error";
+import { HOLD_COVERAGE_NOTE, NOT_CHARGED_UNLESS_CLAIM, REFUNDABLE_CHARGE_NOTE, formatMoney, holdPendingNotice, holdReleaseExplainer, temporaryHoldLabel } from "@/lib/deposit-copy";
 
 const stripePromise = getStripePromise();
 
@@ -26,7 +28,7 @@ function RefundablePaymentAuthentication({ clientSecret, onAuthenticated, onCanc
     setIsProcessing(true);
     const { error, paymentIntent } = await stripe.confirmPayment({ elements, redirect: "if_required" });
     if (error || !paymentIntent || paymentIntent.status !== "succeeded") {
-      toast({ title: "Authentication required", description: error?.message || "The refundable payment was not completed.", variant: "destructive" });
+      toast({ title: "Authentication required", description: paymentErrorMessage(error ?? { requiresAction: true }), variant: "destructive" });
       setIsProcessing(false);
       return;
     }
@@ -173,7 +175,7 @@ export function TrustDepositModal({
       }
       toast({
         title: "Payment failed",
-        description: error.message || "Failed to process deposit",
+        description: paymentErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -197,7 +199,7 @@ export function TrustDepositModal({
         setAuthenticationClientSecret(error.clientSecret);
         return;
       }
-      toast({ title: "Refundable payment failed", description: error.message || "Unable to complete the refundable payment.", variant: "destructive" });
+      toast({ title: "Refundable payment failed", description: paymentErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -219,14 +221,14 @@ export function TrustDepositModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && !succeeded && onClose()}>
       <DialogContent className="sm:max-w-xs p-0 rounded-2xl overflow-hidden">
         <VisuallyHidden>
-          <DialogTitle>{succeeded ? "Deposit secured" : isRental ? "Confirm your rental" : "Confirm your borrow"}</DialogTitle>
+          <DialogTitle>{succeeded ? (consent ? "Refundable deposit charged" : "Temporary hold placed") : isRental ? "Confirm your rental" : "Confirm your borrow"}</DialogTitle>
         </VisuallyHidden>
 
         {succeeded ? (
           /* ── Success screen ── */
           <div className="flex flex-col px-7 pt-8 pb-7 text-center">
             <p className="text-3xl mb-2">✅</p>
-            <p className="text-lg font-bold text-gray-900 mb-1" data-testid="text-deposit-success">Deposit secured</p>
+            <p className="text-lg font-bold text-gray-900 mb-1" data-testid="text-deposit-success">{isRental ? "Rental confirmed" : "Borrow confirmed"}</p>
             <p className="text-sm text-gray-400 mb-6">{isRental ? "Your rental is confirmed for" : "Your borrow is confirmed for"}</p>
 
             <p className={`text-base font-semibold text-gray-900 ${request.startDate && request.endDate ? "mb-1" : "mb-6"}`}>{item.name}</p>
@@ -246,9 +248,9 @@ export function TrustDepositModal({
               </div>
               <div className="flex justify-between text-sm text-gray-500">
                 <span>{isRental ? "Security deposit" : "Trust deposit"}</span>
-                <span className="font-medium text-gray-800">${depositAmount.toFixed(2)} <span className="text-xs font-normal text-blue-500">{consent ? "refundable payment" : "authorization hold"}</span></span>
+                <span className="font-medium text-gray-800">${depositAmount.toFixed(2)} <span className="text-xs font-normal text-blue-500">{consent ? "refundable charge" : "temporary hold"}</span></span>
               </div>
-              <p className="text-xs text-gray-400 italic pt-1 border-t border-gray-200">{consent ? "Refundable payment returned after a safe return" : "Authorization hold lifted automatically on safe return"}</p>
+              <p className="text-xs text-gray-400 italic pt-1 border-t border-gray-200" data-testid="text-deposit-success-explainer">{consent ? REFUNDABLE_CHARGE_NOTE : `${holdPendingNotice(depositAmount)} ${holdReleaseExplainer(depositAmount)}`}</p>
             </div>
 
             <div className="text-left mb-6">
@@ -289,7 +291,7 @@ export function TrustDepositModal({
             <div className="bg-gray-50 rounded-xl p-4 mb-4 flex justify-between text-sm">
               <span className="text-gray-600">Refundable deposit payment</span><span className="font-semibold">${consent.depositAmount.toFixed(2)}</span>
             </div>
-            <p className="text-xs text-gray-500 text-center mb-4">This is a payment, not an authorization hold. It is refundable after the item is returned safely.</p>
+            <p className="text-xs text-gray-500 text-center mb-4">This is a real, refundable charge — not a temporary hold. It is refunded after the item is returned safely unless a claim is opened.</p>
             {authenticationClientSecret ? (
               <Elements stripe={stripePromise} options={{ clientSecret: authenticationClientSecret }}>
                 <RefundablePaymentAuthentication clientSecret={authenticationClientSecret} onAuthenticated={() => confirmRefundableMutation.mutate()} onCancel={onClose} />
@@ -330,15 +332,17 @@ export function TrustDepositModal({
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-gray-700 font-medium">{isRental ? "Security deposit" : "Trust deposit"}</p>
-                  <p className="text-xs text-blue-500">Authorization hold only</p>
+                  <p className="text-xs text-blue-500">{temporaryHoldLabel(depositAmount)} · not charged unless a claim is opened</p>
                 </div>
                 <span className="font-semibold text-gray-900">${depositAmount.toFixed(2)}</span>
               </div>
             </div>
 
-            <p className="text-center text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">
-              The deposit is an <span className="font-medium">authorization hold</span> — not charged. Lifted automatically on safe return.
-            </p>
+            <div className="text-center text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3 space-y-1" data-testid="text-deposit-hold-explainer">
+              <p><span className="font-medium">{holdPendingNotice(depositAmount)}</span></p>
+              <p>{holdReleaseExplainer(depositAmount)}</p>
+              <p className="text-blue-500">{HOLD_COVERAGE_NOTE}</p>
+            </div>
 
             {!isRental && (
               <p className="text-center text-xs text-gray-400 mb-4 flex items-center justify-center gap-1">
@@ -359,15 +363,15 @@ export function TrustDepositModal({
                   Processing…
                 </>
               ) : PLATFORM_FEE_WAIVED ? (
-                `Authorise hold — ${feeWaiverLabel.toLowerCase()}`
+                `Place ${formatMoney(depositAmount)} hold — ${feeWaiverLabel.toLowerCase()}`
               ) : (
-                `Pay $${platformFee.toFixed(2)} + authorise hold`
+                `Pay $${platformFee.toFixed(2)} + place ${formatMoney(depositAmount)} hold`
               )}
             </Button>
 
             <p className="text-center text-xs text-gray-300 flex items-start justify-center gap-1 mb-2">
               <Lock className="h-3 w-3 flex-shrink-0 mt-px" />
-              Deposit hold lifted on safe return — nothing extra charged
+              {NOT_CHARGED_UNLESS_CLAIM}
             </p>
 
             <Button

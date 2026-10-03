@@ -446,7 +446,7 @@ export default function SettingsScreen() {
             [
               { key: "messages" as NotifCategory, label: "Messages", hint: "New chat messages from other users" },
               { key: "requests" as NotifCategory, label: "Requests", hint: "New requests, acceptances, and counter-offers" },
-              { key: "payments" as NotifCategory, label: "Payments", hint: "Payouts, deposits, and payment confirmations" },
+              { key: "payments" as NotifCategory, label: "Payments", hint: "Payouts, deposit holds and charges, and payment confirmations" },
               { key: "achievements" as NotifCategory, label: "Achievements", hint: "Badges and milestones you've earned" },
               { key: "sharecoins" as NotifCategory, label: "ShareCoins", hint: "ShareCoin balance changes and rewards" },
               { key: "return_deadlines" as NotifCategory, label: "Return Deadlines", hint: "Reminders when borrowed items are due back" },

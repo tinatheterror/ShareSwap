@@ -15,6 +15,7 @@ import { useState } from "react";
 import { CelebrationAnimation } from "@/components/celebration-animation";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { NOT_CHARGED_UNLESS_CLAIM, formatMoney } from "@/lib/deposit-copy";
 import { formatDisplayName } from "@/lib/utils";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
@@ -164,7 +165,7 @@ function DepositPaymentForm({
           disabled={!stripe || isProcessing}
           className="flex-1 bg-primary hover:bg-primary/90"
         >
-          {isProcessing ? "Processing..." : "Authorize Deposit"}
+          {isProcessing ? "Processing..." : "Place deposit hold"}
         </Button>
       </div>
     </form>
@@ -914,7 +915,7 @@ export default function RequestsPage() {
                                 className="bg-teal-600 hover:bg-teal-700"
                               >
                                 <Shield className="h-4 w-4 mr-1" />
-                                {request.requestType === "RENT" ? "Pay Rental & Deposit" : "Pay Deposit"}
+                                {request.requestType === "RENT" ? "Pay Rental & Place Deposit Hold" : "Place Deposit Hold"}
                               </Button>
                             )}
 
@@ -1064,7 +1065,9 @@ export default function RequestsPage() {
                                   <div className="flex items-start gap-1.5 pt-1 border-t border-red-200">
                                     <Shield className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
                                     <p className="text-xs text-red-600">
-                                      Your deposit is on hold while our team reviews this claim. We'll contact both parties within 24 hours.
+                                      {request.depositStatus === "captured"
+                                        ? `Your ${formatMoney(request.trustDepositAmount)} security deposit was charged because a claim was opened. It may be refunded depending on the outcome. We'll contact both parties within 24 hours.`
+                                        : "Our team is reviewing this claim. We'll contact both parties within 24 hours."}
                                     </p>
                                   </div>
                                 </div>
@@ -1331,7 +1334,8 @@ export default function RequestsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="max-w-md w-full">
             <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Authorize Security Deposit</h3>
+              <h3 className="text-lg font-semibold mb-2">Place security deposit hold</h3>
+              <p className="text-xs text-muted-foreground mb-4">This is a temporary hold, not a charge. {NOT_CHARGED_UNLESS_CLAIM}</p>
               <Elements stripe={stripePromise} options={{ clientSecret: depositClientSecret }}>
                 <DepositPaymentForm
                   clientSecret={depositClientSecret}
@@ -1619,7 +1623,7 @@ export default function RequestsPage() {
                 <RadioGroup value={proposedDepositMethod} onValueChange={setProposedDepositMethod}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="in_app" id="cp-deposit-inapp" />
-                    <Label htmlFor="cp-deposit-inapp" className="font-normal cursor-pointer">In-app (secure payment hold)</Label>
+                    <Label htmlFor="cp-deposit-inapp" className="font-normal cursor-pointer">In-app (temporary card hold)</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="in_person" id="cp-deposit-inperson" />

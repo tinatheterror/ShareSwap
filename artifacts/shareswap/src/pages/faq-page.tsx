@@ -281,7 +281,7 @@ export default function FAQPage() {
                         { icon: Search, label: "Find & Request Item" },
                         {
                           icon: Lock,
-                          label: "Cash Trust-Deposit placed",
+                          label: "Temporary deposit hold placed",
                         },
                         { icon: MapPin, label: "Item Pickup" },
                         {
@@ -290,7 +290,7 @@ export default function FAQPage() {
                         },
                         { icon: Package, label: "Use Item With Care" },
                         { icon: CheckCircle, label: "Return Item" },
-                        { icon: Wallet, label: "Receive Deposit Back" },
+                        { icon: Wallet, label: "Deposit hold released" },
                       ].map((step, i, arr) => (
                         <div key={i} className="flex items-center gap-2">
                           <div className="flex flex-col items-center">
@@ -321,7 +321,7 @@ export default function FAQPage() {
                         { icon: ThumbsUp, label: "Approve Request" },
                         {
                           icon: Lock,
-                          label: "Cash Trust-Deposit held",
+                          label: "Borrower deposit hold placed",
                         },
                         { icon: MapPin, label: "Item Handoff" },
                         {
@@ -329,7 +329,7 @@ export default function FAQPage() {
                           label: "ShareCoins earned at handoff",
                         },
                         { icon: RotateCcw, label: "Item Returned" },
-                        { icon: Wallet, label: "Give Deposit Back" },
+                        { icon: Wallet, label: "Deposit hold released" },
                       ].map((step, i, arr) => (
                         <div key={i} className="flex items-center gap-2">
                           <div className="flex flex-col items-center">
@@ -1092,17 +1092,24 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
-                    A <span className="font-semibold">trust deposit</span> is
-                    real money temporarily held when you borrow an item. It's
-                    there to protect the lender and it's{" "}
-                    <span className="font-semibold">fully refunded</span> when
-                    the item is returned on time and in good condition.
+                    A <span className="font-semibold">trust deposit</span> is a{" "}
+                    <span className="font-semibold">temporary card hold</span>{" "}
+                    placed when you borrow an item. It's there to protect the
+                    lender. This is a temporary hold, not a charge — your card
+                    may show the amount as pending or temporarily unavailable.
+                  </p>
+                  <p>
+                    The hold covers your scheduled return date plus one extra
+                    day for return processing. After the item is returned
+                    normally, the hold is released. If a claim is opened, the
+                    deposit may be charged while the claim is reviewed, and
+                    refunded if you're not responsible.
                   </p>
                   <p className="text-sm italic text-gray-500">
                     <span className="font-medium">
                       Your deposit is not a fee
                     </span>{" "}
-                    — it's a temporary hold.
+                    — it's not charged unless a claim is opened.
                   </p>
                 </AccordionContent>
               </AccordionItem>
@@ -1163,21 +1170,21 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-2">
                   <p>
-                    A security deposit is{" "}
+                    A security deposit is a{" "}
                     <span className="font-semibold">
-                      cash held during a rental
+                      temporary card hold during a rental
                     </span>{" "}
-                    to protect the owner. It's{" "}
-                    <span className="font-semibold">fully refunded</span> when
-                    the item is returned in good condition.
+                    to protect the owner. When the item is returned normally,
+                    the hold is released and you were not charged.
                   </p>
                   <p className="text-sm">
                     AI provides a suggestion that reflects the replacement
                     coverage, but the final price is up to you.
                   </p>
                   <p className="text-sm italic text-gray-500">
-                    Deposits are held via payment authorization, not charged
-                    upfront.
+                    Deposits are a temporary hold, not a charge. Your card may
+                    show the amount as pending. Not charged unless a claim is
+                    opened.
                   </p>
                 </AccordionContent>
               </AccordionItem>
@@ -1279,7 +1286,7 @@ export default function FAQPage() {
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span>Your trust deposit is released back to you</span>
+                      <span>Your temporary deposit hold is released — you were not charged</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
@@ -1299,7 +1306,11 @@ export default function FAQPage() {
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>If an item isn't returned:</p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>The trust deposit is applied first</li>
+                    <li>
+                      If a claim is opened, the deposit is charged to your card
+                      while the claim is reviewed
+                    </li>
+                    <li>The charged deposit is applied first</li>
                     <li>
                       If needed, an additional charge may cover the remaining
                       replacement value
@@ -1331,8 +1342,8 @@ export default function FAQPage() {
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
-                        A deposit is held during each borrowing or renting
-                        transaction
+                        A temporary deposit hold is placed during each borrowing
+                        or renting transaction
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
@@ -1344,7 +1355,8 @@ export default function FAQPage() {
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
-                        If damage is reported, the deposit is temporarily held
+                        If the owner opens a claim, the deposit is charged to
+                        your card while the claim is reviewed
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
@@ -1358,14 +1370,16 @@ export default function FAQPage() {
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
-                        If damage is confirmed, funds may be used to cover
-                        repair or replacement costs
+                        If damage is confirmed, some or all of the charged
+                        deposit may be kept to cover repair or replacement
+                        costs
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
-                        If no damage is found, the full deposit is returned
+                        If you're not responsible, the applicable amount is
+                        refunded to your card
                       </span>
                     </li>
                   </ul>
@@ -1585,10 +1599,10 @@ export default function FAQPage() {
                     <p className="font-medium text-gray-700">How it works:</p>
                     <ul className="list-disc list-inside space-y-1 text-sm">
                       <li>
-                        Renter pays upfront (rental fee + security deposit)
+                        Renter pays the rental fee upfront; the security deposit is a temporary card hold, not a charge
                       </li>
                       <li>
-                        Payment is held securely — you'll see "Payment Secured"
+                        The rental payment is held until the rental is complete; the deposit hold is released after a normal return
                       </li>
                       <li>
                         After the item is safely returned and confirmed, your
@@ -1656,7 +1670,7 @@ export default function FAQPage() {
                       <ul className="text-sm space-y-1">
                         <li>• Responsibility transfers at handoff</li>
                         <li>• Both parties confirm in-person</li>
-                        <li>• Trust-deposit active immediately</li>
+                        <li>• Temporary deposit hold placed immediately</li>
                       </ul>
                     </div>
                     <div className="bg-white rounded-lg p-3">
@@ -1671,7 +1685,7 @@ export default function FAQPage() {
                         </li>
                         <li>• Sender handles courier issues</li>
                         <li>
-                          • Trust-deposit activates after delivery confirmation
+                          • Temporary deposit hold placed after delivery confirmation
                         </li>
                         <li>
                           • ShareSwap does not cover courier-related loss or

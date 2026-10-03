@@ -463,7 +463,7 @@ export default function CounterProposalSheet({
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[ss.radioTitle, { color: colors.foreground }]}>
-                            {m === "in_app" ? "In-app (secure payment hold)" : "In-person (cash at handoff)"}
+                            {m === "in_app" ? "In-app (temporary card hold)" : "In-person (cash at handoff)"}
                           </Text>
                         </View>
                       </Pressable>

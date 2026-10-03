@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, StyleShe
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiRequest } from "@/lib/api";
+import { formatMoney } from "@/lib/depositCopy";
 
 type ClaimType = "damage" | "non_return" | "lost" | "missing_components" | "other";
 const TYPES: { value: ClaimType; label: string }[] = [
@@ -71,6 +72,9 @@ export function ClaimSheet({ visible, onClose, onSubmit, isPending, depositAmoun
         <View style={[styles.handle, { backgroundColor: colors.border }]} />
         <Text style={[styles.title, { color: colors.foreground }]}>Report an issue</Text>
         <Text style={[styles.sub, { color: colors.mutedForeground }]}>Tell us what happened with the item.</Text>
+        <Text testID="claim-charge-warning" style={[styles.help, { color: "#b91c1c", paddingHorizontal: 18, marginBottom: 6 }]}>
+          Opening a claim charges the borrower's {maximum > 0 ? formatMoney(maximum) + " " : ""}security deposit to their card while the claim is reviewed. If the claim is resolved in the borrower's favor, the charged amount is refunded.
+        </Text>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.form}>
           <Text style={[styles.label, { color: colors.foreground }]}>Issue type</Text>
           <View style={styles.types}>

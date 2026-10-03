@@ -15,6 +15,7 @@
  */
 
 import React, { useState, useCallback } from "react";
+import { holdTitle, holdPendingNote, holdReleaseExplainer, holdPlacedMessage, HOLD_COVERAGE_NOTE, NOT_CHARGED_UNLESS_CLAIM, DEPOSIT_HOLD_FAILURE_NOTE } from "@/lib/depositCopy";
 import {
   ActivityIndicator,
   Modal,
@@ -30,6 +31,7 @@ import { useRouter } from "expo-router";
 import { CreditCard, CheckCircle, Shield, Tag, Truck, AlertCircle } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { apiPost } from "@/lib/api";
+import { paymentErrorMessage } from "@/lib/payment-error";
 import {
   calculateRentalRate,
   calculateRentalDeposit,
@@ -98,6 +100,7 @@ export function PayRentalSheet({
 
   const [processing, setProcessing] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
+  const [succeededRefundable, setSucceededRefundable] = useState(false);
   const [noSavedCard, setNoSavedCard] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refundableConsent, setRefundableConsent] = useState<{
@@ -124,7 +127,8 @@ export function PayRentalSheet({
   const depositAmount = lenderDeposit && lenderDeposit > 0 ? lenderDeposit : depositCalc.deposit;
   const processingFee = Math.round((rentalPrice + depositAmount) * 0.03 * 100) / 100;
   const dailyRate = days > 0 ? rentalSubtotal / days : 0;
-  const totalDueToday = rentalPrice + depositAmount + processingFee;
+  // The security deposit is a temporary hold (not a charge), so it is not part of what is charged today.
+  const totalDueToday = rentalPrice + processingFee;
   const discountLabel = getDiscountLabel(days);
 
   // ── Pay handler ──────────────────────────────────────────────────────────────
@@ -164,6 +168,7 @@ export function PayRentalSheet({
       });
 
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      setSucceededRefundable(false);
       setSucceeded(true);
       onSuccess();
     } catch (e: unknown) {
@@ -179,12 +184,9 @@ export function PayRentalSheet({
           ? "Your card needs additional authentication. Update or authenticate your card in Payment Settings, then try again."
           : "Your refundable deposit payment is still pending. Check Payment Settings and try again once it is complete.");
       } else {
-        const msg = paymentError.message ?? "";
-      if (msg.toLowerCase().includes("payment method") || msg.toLowerCase().includes("no card")) {
-        setNoSavedCard(true);
-      } else {
-        setError(msg || "Payment failed. Please try again.");
-      }
+        const message = paymentErrorMessage(paymentError);
+        if (message.startsWith("No payment card is saved.")) setNoSavedCard(true);
+        else setError(message);
       }
     } finally {
       setProcessing(false);
@@ -205,13 +207,14 @@ export function PayRentalSheet({
       }
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
       setRefundableConsent(null);
+      setSucceededRefundable(true);
       setSucceeded(true);
       onSuccess();
     } catch (e: unknown) {
       const paymentError = e as PaymentApiError;
       setError(paymentError.requiresAction
         ? "Your card needs additional authentication. Update or authenticate your card in Payment Settings, then try again."
-        : paymentError.message || "The refundable deposit payment could not be completed.");
+        : paymentErrorMessage(paymentError));
     } finally {
       setProcessing(false);
     }
@@ -222,6 +225,7 @@ export function PayRentalSheet({
   const handleClose = useCallback(() => {
     if (processing) return;
     setSucceeded(false);
+    setSucceededRefundable(false);
     setNoSavedCard(false);
     setError(null);
     setRefundableConsent(null);
@@ -251,7 +255,12 @@ export function PayRentalSheet({
               <Text style={[s.successSub, { color: colors.mutedForeground }]}>
                 Your rental of{" "}
                 <Text style={{ fontFamily: "Inter_600SemiBold" }}>{item.name}</Text>
-                {" "}has been secured.
+                {" "}is booked.
+              </Text>
+              <Text style={[s.nextStepText, { color: colors.foreground, fontFamily: "Inter_500Medium" }]}>
+                {succeededRefundable
+                  ? `Your ${depositAmount.toFixed(2)} refundable deposit was charged to your card. It is refunded after the item is returned in good condition.`
+                  : `${holdPlacedMessage(depositAmount.toFixed(2))} ${holdReleaseExplainer(depositAmount.toFixed(2))}`}
               </Text>
               <Text style={[s.nextStepText, { color: colors.mutedForeground }]}>
                 Coordinate pickup with the owner. Return here on the rental start date to confirm handoff.
@@ -266,6 +275,9 @@ export function PayRentalSheet({
             <View style={s.centeredWrap}>
               <Shield size={40} color={PRIMARY_GREEN} strokeWidth={1.5} />
               <Text style={[s.successTitle, { color: colors.foreground }]}>Confirm refundable deposit</Text>
+              <Text style={[s.nextStepText, { color: colors.foreground, textAlign: "center", fontFamily: "Inter_500Medium" }]}>
+                This is a real, refundable charge to your card, not a temporary hold.
+              </Text>
               <Text style={[s.nextStepText, { color: colors.mutedForeground, textAlign: "center" }]}>
                 {refundableConsent.message}{"\n\n"}
                 <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground }}>
@@ -375,14 +387,14 @@ export function PayRentalSheet({
                     </Text>
                   </View>
                   <Text style={[s.breakdownNote, { color: colors.mutedForeground }]}>
-                    Authorization hold only — not charged unless damage reported
+                    {holdTitle(depositAmount.toFixed(2))} — not charged. {NOT_CHARGED_UNLESS_CLAIM}
                   </Text>
                 </View>
 
                 {/* Total */}
                 <View style={[s.breakdownRow, s.subtotalRow]}>
                   <Text style={[s.breakdownLabel, { color: colors.foreground, fontFamily: "Inter_700Bold", fontSize: 14 }]}>
-                    Total due today
+                    Charged today
                   </Text>
                   <Text style={[s.breakdownValue, { color: colors.foreground, fontFamily: "Inter_700Bold", fontSize: 15 }]}>
                     ${totalDueToday.toFixed(2)}
@@ -394,18 +406,15 @@ export function PayRentalSheet({
               <View style={s.holdNote}>
                 <AlertCircle size={12} color="#2563eb" strokeWidth={2} />
                 <Text style={s.holdNoteText}>
-                  The{" "}
                   <Text style={{ fontFamily: "Inter_600SemiBold" }}>
-                    ${depositAmount.toFixed(2)} deposit
+                    ${holdTitle(depositAmount.toFixed(2))}
                   </Text>
-                  {" "}is an{" "}
-                  <Text style={{ fontFamily: "Inter_600SemiBold" }}>authorization hold</Text>
-                  {" "}— your card is not charged. Lifted automatically when you return in good condition.{" "}
+                  {". "}{holdPendingNote(depositAmount.toFixed(2))}{" "}{holdReleaseExplainer(depositAmount.toFixed(2))}{" "}{HOLD_COVERAGE_NOTE}{" "}
                   The{" "}
                   <Text style={{ fontFamily: "Inter_600SemiBold" }}>
                     ${rentalPrice.toFixed(2)} rental fee
                   </Text>
-                  {" "}is the only amount actually charged.
+                  {" "}is charged now.
                 </Text>
               </View>
 
@@ -413,6 +422,7 @@ export function PayRentalSheet({
               {error && (
                 <View style={s.errorBox}>
                   <Text style={s.errorText}>{error}</Text>
+                  <Text style={[s.errorText, { marginTop: 4 }]}>{DEPOSIT_HOLD_FAILURE_NOTE}</Text>
                 </View>
               )}
 
@@ -435,7 +445,7 @@ export function PayRentalSheet({
                   ) : (
                     <>
                       <CreditCard size={15} color="#fff" strokeWidth={2} style={{ marginRight: 5 }} />
-                      <Text style={s.primaryBtnText}>Pay ${totalDueToday.toFixed(2)}</Text>
+                      <Text style={s.primaryBtnText}>Pay ${totalDueToday.toFixed(2)} + place hold</Text>
                     </>
                   )}
                 </Pressable>

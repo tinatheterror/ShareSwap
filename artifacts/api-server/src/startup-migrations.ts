@@ -8,6 +8,7 @@ const migrationRelativePaths = [
   "lib/db/scripts/0004_overdue_claim_settlement.sql",
   "lib/db/scripts/0005_unique_review_submission.sql",
   "lib/db/scripts/0006_unique_user_achievements.sql",
+  "lib/db/scripts/0007_deposit_capture_columns.sql",
 ];
 
 async function findMigrationPath(migrationRelativePath: string) {

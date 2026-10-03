@@ -30,7 +30,7 @@ export function ShareCoinAnimation() {
 
   // Poll /api/user every 30 s — same staleTime as the rest of the app
   const { data: freshUser } = useQuery<UserCoins>({
-    queryKey: ["/api/user"],
+    queryKey: ["/api/user", user?.id],
     queryFn: () => apiGet<UserCoins>("/api/user"),
     enabled: !!user,
     refetchInterval: 30_000,

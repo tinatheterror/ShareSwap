@@ -607,7 +607,7 @@ export default function ItemDetailScreen() {
             </Text>
           </View>
           <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
-            Trust-Deposit: ${deposit}
+            Deposit: ${deposit} temporary hold (not charged unless a claim is opened)
           </Text>
           {item.replacementValue ? (
             <Text style={[styles.typeRowMicro, { color: colors.mutedForeground }]}>
@@ -646,7 +646,7 @@ export default function ItemDetailScreen() {
             ${rentPerWeek}/week
           </Text>
           <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
-            Trust-Deposit: ${deposit}
+            Deposit: ${deposit} temporary hold (not charged unless a claim is opened)
           </Text>
           {!ownerView && (
             hasPendingRent

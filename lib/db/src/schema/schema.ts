@@ -388,6 +388,15 @@ export const itemRequests = pgTable("item_requests", {
   depositOperationToken: text("deposit_operation_token"),
   depositOperationType: text("deposit_operation_type"),
   depositReleasedAt: timestamp("deposit_released_at"),
+  // Set when a claim is opened and the deposit becomes a real charge (or, for a
+  // refundable-charge deposit, when that charge is recorded against the claim).
+  depositCapturedAmount: decimal("deposit_captured_amount", { precision: 10, scale: 2 }),
+  depositCapturedAt: timestamp("deposit_captured_at"),
+  depositCardBrand: text("deposit_card_brand"),
+  depositCardLast4: text("deposit_card_last4"),
+  // Set when the claim resolves: refunded + retained = captured.
+  depositRefundedAmount: decimal("deposit_refunded_amount", { precision: 10, scale: 2 }),
+  depositRetainedAmount: decimal("deposit_retained_amount", { precision: 10, scale: 2 }),
   // Tracks the most recent deposit-hold PaymentIntent created by /api/rentals/create-payment-hold,
   // before it's confirmed (depositPaymentIntentId above is only set on successful confirmation).
   // depositHoldAttemptNum increments each time a prior attempt's PI is found to be terminally

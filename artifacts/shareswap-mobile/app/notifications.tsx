@@ -1,9 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import {
   AlertCircle, AlertTriangle, ArrowLeftRight, Bell,
-  Clock, Coins, DollarSign, Flag, Gift, Heart,
-  Package, Shield, ShieldAlert, ShieldCheck,
-  Star, TrendingUp, Truck, Unlock, UserCheck, Users,
+  Clock, Coins, CreditCard, DollarSign, Flag, Gift, Heart,
+  Package, Scale, Shield, ShieldAlert, ShieldCheck,
+  Star, TrendingUp, Truck, Undo2, Unlock, UserCheck, Users,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -18,8 +18,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useNotifications, type Notification } from "@/hooks/useNotifications";
-import { isOverdueScoreNotification, resolveNotificationChatPath } from "@/lib/notificationChat";
+import { resolveNotificationChatPath } from "@/lib/notificationChat";
+import { notificationDisplayMessage } from "@/lib/notificationCopy";
 import { safeDate } from "@/lib/dateUtils";
+import { depositNotificationKind } from "@/lib/depositCopy";
 
 // ── Time-ago helper (matches web display) ──────────────────────────────────
 function timeAgo(dateStr: string): string {
@@ -47,6 +49,12 @@ function notifIcon(type: string): { Icon: LucideIcon; color: string } {
   if (type === "return_stage_seriously_overdue_borrower" || type === "return_stage_seriously_overdue_owner") return { Icon: ShieldAlert, color: "#b91c1c" };
   if (type === "return_stage_non_return_review_borrower" || type === "return_stage_non_return_review_owner") return { Icon: Flag, color: "#b91c1c" };
   if (type === "return_stage_returned_pending_review_borrower" || type === "return_stage_returned_pending_review_owner") return { Icon: ShieldCheck, color: "#2563eb" };
+  // Deposit lifecycle: charged (red) / refunded (green) / retained (amber) / hold released (blue).
+  // Never reuse the temporary-hold icon for a captured charge.
+  if (type === "security_deposit_charged" || type === "security_claim_opened_owner") return { Icon: CreditCard, color: "#dc2626" };
+  if (type === "security_deposit_refunded")                                   return { Icon: Undo2,          color: "#16a34a" };
+  if (type === "security_deposit_retained")                                   return { Icon: Scale,          color: "#b45309" };
+  if (type === "deposit_hold_released")                                       return { Icon: Unlock,         color: "#2563eb" };
   if (type === "security_claim_opened" || type === "claim_opened") return { Icon: ShieldAlert, color: "#dc2626" };
   if (type === "security_claim_response" || type === "claim_response") return { Icon: AlertCircle, color: "#4f46e5" };
   if (type === "security_claim_approved" || type === "claim_approved") return { Icon: ShieldCheck, color: "#16a34a" };
@@ -80,7 +88,7 @@ function notifIcon(type: string): { Icon: LucideIcon; color: string } {
   if (type === "trust_score_changed")                                           return { Icon: TrendingUp,     color: "#3b82f6" };
   if (type === "new_review_received")                                           return { Icon: Star,           color: "#eab308" };
   if (type === "referral_joined")                                               return { Icon: Users,          color: "#14b8a6" };
-  if (type === "security_deposit_released")                                     return { Icon: Unlock,         color: "#22c55e" };
+  if (type === "security_deposit_released")                                     return { Icon: Unlock,         color: "#2563eb" };
   if (type === "payment_received")                                              return { Icon: DollarSign,     color: "#22c55e" };
   if (type === "verification_failed")                                            return { Icon: ShieldAlert,    color: "#ef4444" };
   if (type === "terms_accepted")                                                return { Icon: UserCheck,      color: "#14b8a6" };
@@ -119,8 +127,8 @@ function NotifRow({
             {notif.title}
           </Text>
         ) : null}
-        <Text style={[styles.rowMsg, { color: notif.isRead ? colors.mutedForeground : colors.foreground }]} numberOfLines={2}>
-          {notif.message}
+        <Text style={[styles.rowMsg, { color: notif.isRead ? colors.mutedForeground : colors.foreground }]} numberOfLines={depositNotificationKind(notif.type) ? 6 : 2}>
+          {notificationDisplayMessage(notif.type, notif.message)}
         </Text>
         <Text style={[styles.rowTime, { color: colors.mutedForeground }]}>
           {timeAgo(notif.createdAt)}
@@ -150,8 +158,11 @@ export default function NotificationsScreen() {
     if (!notif.isRead) markRead(notif.id);
 
     // Type-specific deep-links (matches web notifications-page.tsx routing)
-    if ((notif.type === "trust_score_changed" && !isOverdueScoreNotification(notif.type, notif.message, notif.requestId))
-      || notif.type === "level_up" || notif.type === "milestone_achieved" || notif.type === "badge_earned" || notif.type === "new_review_received") {
+    if (notif.type === "trust_score_changed") {
+      router.push("/score-history" as never);
+      return;
+    }
+    if (notif.type === "level_up" || notif.type === "milestone_achieved" || notif.type === "badge_earned" || notif.type === "new_review_received") {
       router.push("/achievements" as never);
       return;
     }

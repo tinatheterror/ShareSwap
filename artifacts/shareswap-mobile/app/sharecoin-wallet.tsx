@@ -29,7 +29,7 @@ export default function ShareCoinWalletScreen() {
   const topPad = isWeb ? 67 : insets.top;
 
   const { data: freshUser } = useQuery<User>({
-    queryKey: ["/api/user"],
+    queryKey: ["/api/user", user?.id],
     queryFn: () => apiGet<User>("/api/user"),
     enabled: !!user,
   });

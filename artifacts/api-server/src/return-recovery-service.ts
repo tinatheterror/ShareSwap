@@ -11,6 +11,7 @@ import {
 } from "@workspace/db";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { and, asc, eq, inArray, isNull, like, lte, or, sql } from "drizzle-orm";
+import * as depositCopy from "./deposit-copy";
 
 const RETURN_OPERATION_TYPE = "return_release";
 const RETURN_OPERATION_PREFIX = "return-release-";
@@ -538,11 +539,9 @@ async function updatePendingNotice(
   const hasPlatformDeposit = request.depositMethod !== "in_person" &&
     (!!request.depositPaymentIntentId || !!request.depositPreviousPaymentIntentId);
   const message = hasPlatformDeposit
-    ? allReleased
-      ? `"${itemName}" — deposit hold lifted; return confirmation is pending while we finish updating your request.`
-      : `"${itemName}" — part of the deposit hold was released; return confirmation is pending while we reconcile the remaining hold.`
+    ? depositCopy.returnHoldReleasedNotice(itemName, !allReleased)
     : `"${itemName}" — return confirmation is pending while we finish updating your request.`;
-  const title = hasPlatformDeposit ? "Deposit Released" : "Return Confirmation Pending";
+  const title = hasPlatformDeposit ? depositCopy.DEPOSIT_RELEASED_TITLE : "Return Confirmation Pending";
   const [existing] = await tx.select({ id: notifications.id })
     .from(notifications)
     .where(and(
@@ -891,9 +890,8 @@ async function finalizeReturn(
 
     const itemName = row.item.name.length > 20 ? `${row.item.name.slice(0, 20)}…` : row.item.name;
     const isInPerson = row.request.depositMethod === "in_person";
-    const finalNoticeMessage = isInPerson
-      ? `"${itemName}" returned to owner.`
-      : `"${itemName}" returned to owner. Deposit hold lifted.`;
+    const refundableDeposit = row.request.depositMode === "refundable_charge";
+    const finalNoticeMessage = depositCopy.returnConfirmedNotice(itemName, !isInPerson, refundableDeposit);
     const [existingNotice] = await tx.select({ id: notifications.id })
       .from(notifications)
       .where(and(
@@ -922,14 +920,30 @@ async function finalizeReturn(
     }
 
     await tx.insert(messages).values({
-      content: isInPerson
-        ? "✅ Return confirmed — item received in good condition."
-        : "✅ Return confirmed — item received in good condition. Deposit hold is lifted.",
+      content: depositCopy.returnConfirmedChat(!isInPerson, refundableDeposit),
       senderId: row.item.ownerId!,
       receiverId: row.request.requesterId!,
       messageType: "system",
       requestId,
     });
+
+    // No claim was opened: the hold is released (or a refundable charge refunded).
+    // Distinct, durable notice + chat event so the borrower can see they were not charged.
+    if (!isInPerson && (row.request.depositPaymentIntentId || row.request.depositPreviousPaymentIntentId)) {
+      const releasedAmount = Number(row.request.trustDepositAmount ?? 0);
+      const releaseNotice = refundableDeposit ? depositCopy.refundableDepositRefunded(releasedAmount) : depositCopy.depositHoldReleased(releasedAmount);
+      const [existingRelease] = await tx.select({ id: notifications.id }).from(notifications).where(and(
+        eq(notifications.requestId, requestId), eq(notifications.userId, row.request.requesterId!), eq(notifications.type, releaseNotice.type),
+      )).limit(1);
+      if (!existingRelease) {
+        await tx.insert(notifications).values({ userId: row.request.requesterId!, requestId, itemId: row.item.id, isRead: false, ...releaseNotice });
+        await tx.insert(messages).values({
+          senderId: row.item.ownerId!, receiverId: row.request.requesterId!, requestId, messageType: "event",
+          content: refundableDeposit ? depositCopy.refundableRefundedChat(releasedAmount) : depositCopy.holdReleasedChat(releasedAmount),
+          metadata: { eventType: "deposit_released", amount: releasedAmount, depositMode: refundableDeposit ? "refundable_charge" : "authorization" },
+        });
+      }
+    }
 
     await tx.update(depositSettlementOperations).set({
       status: "SETTLED",
@@ -1081,7 +1095,7 @@ export async function confirmApprovedReturn({
         status: "pending",
         depositReleased: false,
         returnRecoveryPending: true,
-        error: "The deposit release is still being reconciled. You can safely retry.",
+        error: depositCopy.RETURN_RECONCILING_ERROR,
       };
     }
 
@@ -1099,7 +1113,7 @@ export async function confirmApprovedReturn({
         status: "pending",
         depositReleased: false,
         returnRecoveryPending: true,
-        error: "The deposit release is still being reconciled. You can safely retry.",
+        error: depositCopy.RETURN_RECONCILING_ERROR,
       };
     }
 
@@ -1292,7 +1306,7 @@ export async function recoverPendingApprovedReturns({
         status: "pending",
         depositReleased: false,
         returnRecoveryPending: true,
-        error: "The deposit release is still being reconciled. You can safely retry.",
+        error: depositCopy.RETURN_RECONCILING_ERROR,
       });
       attemptedJobs += 1;
     }

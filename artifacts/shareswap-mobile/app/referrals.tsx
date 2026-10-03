@@ -12,6 +12,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
@@ -31,7 +32,7 @@ export default function ReferralsScreen() {
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
 
   const { data: user } = useQuery<User>({
-    queryKey: ["/api/user"],
+    queryKey: ["/api/user", authenticatedUser?.id],
     queryFn: () => apiGet<User>("/api/user"),
     enabled: !!authenticatedUser,
   });
@@ -81,6 +82,7 @@ export default function ReferralsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScreenHeader title="Invite Friends" />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}

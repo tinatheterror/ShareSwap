@@ -3,11 +3,12 @@ import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Bell, Package, Heart, AlertCircle, CheckCircle2, ArrowLeftRight, X, Shield, Trophy, TrendingUp, Coins, Clock, Flag, Truck, Gift, FileText, Star, RotateCcw, Users, Unlock, DollarSign, ShieldAlert } from "lucide-react";
+import { Bell, Package, Heart, AlertCircle, CheckCircle2, ArrowLeftRight, X, Shield, Trophy, TrendingUp, Coins, Clock, Flag, Truck, Gift, FileText, Star, RotateCcw, Users, Unlock, DollarSign, ShieldAlert, CreditCard, Undo2, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SelectNotification } from "@db/schema";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { badgeNotificationMessage } from "@/lib/badge-notification";
 
 interface ItemDetails {
   id: number;
@@ -53,8 +54,12 @@ export default function NotificationsPage() {
       return;
     }
 
-    if (["trust_score_changed", "milestone_achieved", "badge_earned", "new_review_received"].includes(notification.type)
-      && !(notification.type === "trust_score_changed" && notification.requestId && /\boverdue\b/i.test(notification.message))) {
+    if (notification.type === "trust_score_changed") {
+      navigate("/score-history");
+      return;
+    }
+
+    if (["milestone_achieved", "badge_earned", "new_review_received"].includes(notification.type)) {
       navigate("/achievements");
       return;
     }
@@ -148,6 +153,15 @@ export default function NotificationsPage() {
         return <Star className="h-5 w-5 text-yellow-500" />;
       case 'referral_joined':
         return <Users className="h-5 w-5 text-teal-500" />;
+      case 'security_deposit_charged':
+      case 'security_claim_opened_owner':
+        return <CreditCard className="h-5 w-5 text-red-600" data-testid="icon-deposit-charged" />;
+      case 'security_deposit_refunded':
+        return <Undo2 className="h-5 w-5 text-green-600" data-testid="icon-deposit-refunded" />;
+      case 'security_deposit_retained':
+        return <Scale className="h-5 w-5 text-orange-600" data-testid="icon-deposit-retained" />;
+      case 'deposit_hold_released':
+        return <Unlock className="h-5 w-5 text-blue-600" data-testid="icon-deposit-hold-released" />;
       case 'security_deposit_released':
         return <Unlock className="h-5 w-5 text-green-600" />;
       case 'payment_received':
@@ -213,7 +227,7 @@ export default function NotificationsPage() {
                         {notification.title}
                       </h3>
                       <p className="text-muted-foreground mt-1">
-                        {notification.message}
+                        {badgeNotificationMessage(notification)}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
                         {new Date(notification.createdAt).toLocaleString()}

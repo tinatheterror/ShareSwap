@@ -4,11 +4,25 @@ import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
 import { copyFile, rm } from "node:fs/promises";
+import { execSync } from "node:child_process";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
+
+// Identify the commit this bundle was built from so /api/healthz can answer
+// "what is deployed?". BUILD_SHA overrides git (e.g. when .git is absent).
+function resolveBuildSha() {
+  if (process.env.BUILD_SHA) return process.env.BUILD_SHA;
+  try {
+    const run = (cmd) => execSync(cmd, { cwd: artifactDir, stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    const sha = run("git rev-parse --short=12 HEAD");
+    return run("git status --porcelain").length > 0 ? `${sha}+dirty` : sha;
+  } catch {
+    return "unknown";
+  }
+}
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
@@ -103,6 +117,10 @@ async function buildAll() {
       "puppeteer-core",
       "electron",
     ],
+    define: {
+      __BUILD_SHA__: JSON.stringify(resolveBuildSha()),
+      __BUILT_AT__: JSON.stringify(new Date().toISOString()),
+    },
     sourcemap: "linked",
     plugins: [
       // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it

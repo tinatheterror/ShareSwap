@@ -88,7 +88,7 @@ import { CooldownChecker } from "../cooldown-checker";
 import { csrfProtection, setCsrfToken } from "../csrf";
 import OpenAI from "openai";
 import Stripe from "stripe";
-import { prepareDepositAuthorization } from "../deposit-authorization";
+import { prepareDepositAuthorization, depositHoldIdempotencyKey } from "../deposit-authorization";
 import { publicPaymentFailure } from "../public-payment-error";
 import { 
   awardBorrowReturnPoints, 
@@ -1288,7 +1288,8 @@ export async function createRentalPaymentHold({
     stripeClient,
     parameters: paymentIntentParams,
     attemptNumber: attemptNum,
-    keyForAttempt: (number) => `deposit-hold-${requestId}-${number}-${Math.round(depositAmount * 100)}-${Math.round((rentalAmount || 0) * 100)}-${Math.round((processingFee || 0) * 100)}`,
+    // Hash the full payload (card, metadata, fees) so a changed payload never reuses a key Stripe bound to different parameters.
+    keyForAttempt: (number) => depositHoldIdempotencyKey(`deposit-hold-${requestId}-${Math.round(depositAmount * 100)}-${Math.round((rentalAmount || 0) * 100)}-${Math.round((processingFee || 0) * 100)}`, paymentIntentParams, number),
     onAttempt: async ({ attemptNumber, paymentIntentId }) => {
       await db.update(itemRequests).set({
         depositHoldAttemptId: paymentIntentId,
@@ -8033,33 +8034,35 @@ Respond with ONLY the category name, nothing else.`
         if (!userRecord?.stripeCustomerId || !userRecord.stripePaymentMethodId) {
           return { status: 400, body: { error: "No payment method on file. Please add a card in Settings." } };
         }
+        const holdParameters: Stripe.PaymentIntentCreateParams = {
+          amount: calculation.amount * 100,
+          currency: "usd",
+          capture_method: "manual",
+          customer: userRecord.stripeCustomerId,
+          payment_method: userRecord.stripePaymentMethodId,
+          confirm: true,
+          off_session: true,
+          metadata: {
+            type: "borrow_security_deposit", requestId: String(requestId), userId: String(req.user.id),
+            depositAmount: String(calculation.amount),
+          },
+          description: depositCopy.stripeHoldDescription(requestId),
+        };
         let paymentIntent: Stripe.PaymentIntent;
         try {
           ({ paymentIntent } = await prepareDepositAuthorization({
             stripeClient: stripe,
             attemptNumber: row.request.depositHoldAttemptNum || 0,
             paymentIntentId: row.request.depositHoldAttemptId,
-            keyForAttempt: (number) => `borrow-deposit-hold-${requestId}-${calculation.amount * 100}${number ? `-attempt-${number}` : ""}`,
+            // The payload hash keeps a changed card/description/metadata from reusing a key Stripe bound to different parameters.
+            keyForAttempt: (number) => depositHoldIdempotencyKey(`borrow-deposit-hold-${requestId}-${calculation.amount * 100}`, holdParameters, number),
             onAttempt: async ({ attemptNumber, paymentIntentId }) => {
               await tx.update(itemRequests).set({
                 depositHoldAttemptNum: attemptNumber,
                 depositHoldAttemptId: paymentIntentId,
               }).where(eq(itemRequests.id, requestId));
             },
-            parameters: {
-              amount: calculation.amount * 100,
-              currency: "usd",
-              capture_method: "manual",
-              customer: userRecord.stripeCustomerId,
-              payment_method: userRecord.stripePaymentMethodId,
-              confirm: true,
-              off_session: true,
-              metadata: {
-                type: "borrow_security_deposit", requestId: String(requestId), userId: String(req.user.id),
-                depositAmount: String(calculation.amount),
-              },
-              description: depositCopy.stripeHoldDescription(requestId),
-            },
+            parameters: holdParameters,
           }));
         } catch (error: any) {
           // Commit the known attempt even after an indeterminate provider error.

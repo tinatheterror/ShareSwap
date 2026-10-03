@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { prepareDepositAuthorization } from "./deposit-authorization.js";
+import { depositHoldIdempotencyKey, prepareDepositAuthorization } from "./deposit-authorization.js";
 
 const parameters = {
   amount: 4200, currency: "usd", capture_method: "manual" as const,
@@ -137,4 +137,83 @@ test("card declines and other create errors do not cause a new key or parameter 
   assert.equal(f.calls.create.length, 1);
   assert.equal(f.calls.newIntents.length, 0);
   assert.equal(f.calls.retrieve.length, 0);
+});
+// Mirrors Stripe: a key is bound to the first create payload and rejects any different one.
+function strictStripe() {
+  const bound = new Map<string, { payload: string; id: string }>();
+  const intents = new Map<string, any>();
+  const created: string[] = [];
+  const paymentIntents = {
+    create: async (params: any, opts: any) => {
+      const payload = JSON.stringify(params);
+      const existing = bound.get(opts.idempotencyKey);
+      if (existing && existing.payload !== payload) {
+        throw Object.assign(
+          new Error("Keys for idempotent requests can only be used with the same parameters they were first used with."),
+          { type: "StripeIdempotencyError" },
+        );
+      }
+      if (existing) return intents.get(existing.id);
+      const id = `pi_${created.length}`;
+      const pi = {
+        id, status: "requires_capture", capture_method: "manual", amount: params.amount,
+        latest_charge: { id: `ch_${id}`, payment_method_details: { card: { capture_before: 2000000000 } } },
+      };
+      created.push(id);
+      intents.set(id, pi);
+      bound.set(opts.idempotencyKey, { payload, id });
+      return pi;
+    },
+    retrieve: async (id: string) => intents.get(id),
+  };
+  return { paymentIntents, created };
+}
+
+const holdKey = (params: any, attempt: number) => depositHoldIdempotencyKey("borrow-deposit-hold-123-4200", params, attempt);
+
+test("hold idempotency key is stable for identical payloads regardless of property order", () => {
+  const reordered = {
+    description: parameters.description, off_session: true, confirm: true,
+    metadata: { depositAmount: "42", type: "borrow_security_deposit", userId: "456", requestId: "123" },
+    payment_method: "pm_test", customer: "cus_test", capture_method: "manual" as const, currency: "usd", amount: 4200,
+  };
+  assert.equal(holdKey(parameters, 0), holdKey(reordered, 0));
+  assert.match(holdKey(parameters, 0), /^borrow-deposit-hold-123-4200-[0-9a-f]{16}$/);
+  assert.equal(holdKey(parameters, 2), `${holdKey(parameters, 0)}-attempt-2`);
+});
+
+test("hold idempotency key changes when payment method, description or metadata change", () => {
+  const base = holdKey(parameters, 0);
+  assert.notEqual(base, holdKey({ ...parameters, payment_method: "pm_other" }, 0));
+  assert.notEqual(base, holdKey({ ...parameters, description: "ShareSwap temporary deposit hold (not a charge) - request #123" }, 0));
+  assert.notEqual(base, holdKey({ ...parameters, metadata: { ...parameters.metadata, userId: "789" } }, 0));
+});
+
+test("a changed payload after an earlier hold attempt gets a new key instead of a Stripe idempotency error", async () => {
+  const stripe = strictStripe();
+  const run = (params: any) =>
+    prepareDepositAuthorization({
+      stripeClient: stripe as any, parameters: params,
+      keyForAttempt: (n) => holdKey(params, n),
+      onAttempt: async () => {},
+    });
+
+  const first = await run(parameters);
+  // Same request retried with a different card and reworded description (the reported bug).
+  const changed = { ...parameters, payment_method: "pm_new_card", description: "ShareSwap temporary deposit hold (not a charge) - request #123" };
+  const second = await run(changed);
+  assert.notEqual(second.paymentIntent.id, first.paymentIntent.id);
+
+  // An unchanged retry still replays the original creation rather than making another hold.
+  const replay = await run(changed);
+  assert.equal(replay.paymentIntent.id, second.paymentIntent.id);
+  assert.equal(stripe.created.length, 2);
+
+  // The previous static key (request + amount only) is what produced the failure.
+  const staticKey = (n: number) => keyForAttempt(n);
+  const legacy = strictStripe();
+  const runStatic = (params: any) =>
+    prepareDepositAuthorization({ stripeClient: legacy as any, parameters: params, keyForAttempt: staticKey, onAttempt: async () => {} });
+  await runStatic(parameters);
+  await assert.rejects(runStatic(changed), /same parameters/);
 });

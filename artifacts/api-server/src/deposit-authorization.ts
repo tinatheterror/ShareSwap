@@ -1,4 +1,31 @@
+import { createHash } from "node:crypto";
 import type Stripe from "stripe";
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
+ * Stripe binds an idempotency key to the full create payload, so the key must
+ * change whenever the payload does (card swap, description/metadata change).
+ * Identical retries hash identically and still replay the same creation.
+ */
+export function depositHoldIdempotencyKey(
+  prefix: string,
+  parameters: Stripe.PaymentIntentCreateParams,
+  attemptNumber = 0,
+): string {
+  const fingerprint = createHash("sha256").update(canonicalJson(parameters)).digest("hex").slice(0, 16);
+  return `${prefix}-${fingerprint}${attemptNumber ? `-attempt-${attemptNumber}` : ""}`;
+}
 
 type Attempt = { attemptNumber: number; paymentIntentId: string | null };
 

@@ -123,6 +123,6 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-app.use("/api/healthz", healthRouter);
+app.use("/api", healthRouter);
 
 export default app;

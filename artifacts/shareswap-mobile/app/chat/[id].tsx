@@ -22,6 +22,7 @@ import { Shield, Coins, Calendar, CreditCard } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiPatch, photoUrl } from "@/lib/api";
 import { fmtCalendarDate, fmtCalendarRange, fmtDate as fmtDateUtil, safeDate } from "@/lib/dateUtils";
+import { REQUEST_DATES_PASSED_MESSAGE, acceptBlockedByDates } from "@/lib/requestDates";
 import { useAuth } from "@/context/AuthContext";
 import { InsufficientShareCoinsModal } from "@/components/InsufficientShareCoinsModal";
 import { PayDepositSheet } from "@/components/PayDepositSheet";
@@ -81,6 +82,7 @@ interface ItemRequest {
   requestType: string;
   status: string;
   requesterId: number;
+  startDatePassed?: boolean;
   startDate: string | null;
   endDate: string | null;
   depositMethod: string | null;
@@ -952,9 +954,14 @@ export default function ChatScreen() {
                 {isOwner && (
                   <>
                     <Pressable
-                      style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 }]}
+                      style={[
+                        card.btn,
+                        { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 },
+                        acceptBlockedByDates(request) && { opacity: 0.4 },
+                      ]}
                       onPress={() => acceptMutation.mutate()}
-                      disabled={anyMutating}
+                      disabled={anyMutating || acceptBlockedByDates(request)}
+                      accessibilityState={{ disabled: anyMutating || acceptBlockedByDates(request) }}
                     >
                       {acceptMutation.isPending
                         ? <ActivityIndicator size="small" color="#fff" />
@@ -1001,6 +1008,12 @@ export default function ChatScreen() {
                   </Pressable>
                 )}
               </View>
+            )}
+            {isOwner && acceptBlockedByDates(request) &&
+              !hasPendingCounter && !iSentCounter && (
+              <Text style={[card.counterBannerText, { color: "#b45309" }]}>
+                {REQUEST_DATES_PASSED_MESSAGE}
+              </Text>
             )}
 
             {/* RENT + ACCEPTED: pay rental + deposit */}

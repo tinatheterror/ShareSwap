@@ -153,7 +153,12 @@ before(async () => {
   const app = express();
   app.use(cookieParser());
   app.use(express.json());
-  const server = registerRoutes(app, { startBackgroundJobs: false });
+  // These fixtures use fixed September 2026 dates; pin the clock so the
+  // start-date-not-in-the-past rule does not depend on when the suite runs.
+  const server = registerRoutes(app, {
+    startBackgroundJobs: false,
+    now: () => new Date("2026-09-01T12:00:00Z"),
+  });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
   assert(address && typeof address !== "string");

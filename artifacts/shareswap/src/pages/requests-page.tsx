@@ -25,6 +25,7 @@ import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sh
 import { useVerification } from "@/hooks/use-verification";
 import { getStripePromise } from "@/lib/stripe-client";
 import { RequestLifecyclePanel } from "@/components/request-lifecycle-panel";
+import { REQUEST_DATES_PASSED_MESSAGE, acceptBlockedByDates } from "@/lib/request-dates";
 
 const stripePromise = getStripePromise();
 
@@ -40,6 +41,7 @@ interface ItemRequest {
   requestType: string;
   status: string;
   message: string;
+  startDatePassed?: boolean;
   startDate: string | null;
   endDate: string | null;
   createdAt: string;
@@ -678,6 +680,7 @@ export default function RequestsPage() {
                               <Button
                                 size="sm"
                                 onClick={() => handleAcceptClick(request)}
+                                disabled={acceptBlockedByDates(request)}
                                 className="bg-pink-500 hover:bg-pink-600"
                               >
                                 <CheckCircle className="h-4 w-4 mr-1" />
@@ -700,6 +703,7 @@ export default function RequestsPage() {
                                 <Button
                                   size="sm"
                                   onClick={() => handleAcceptClick(request)}
+                                  disabled={acceptBlockedByDates(request)}
                                   className="bg-green-600 hover:bg-green-700"
                                 >
                                   <CheckCircle className="h-4 w-4 mr-1" />
@@ -730,6 +734,9 @@ export default function RequestsPage() {
                             </>
                           )}
                         </div>
+                        {acceptBlockedByDates(request) && (
+                          <p className="text-sm text-amber-700 mt-2">{REQUEST_DATES_PASSED_MESSAGE}</p>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -828,7 +835,7 @@ export default function RequestsPage() {
                                   }
                                   respondToCounterMutation.mutate({ requestId: request.id, accept: true });
                                 }}
-                                disabled={respondToCounterMutation.isPending}
+                                disabled={respondToCounterMutation.isPending || acceptBlockedByDates(request)}
                                 className="bg-green-600 hover:bg-green-700"
                               >
                                 <CheckCircle className="h-4 w-4 mr-1" />
@@ -853,6 +860,9 @@ export default function RequestsPage() {
                                 Decline
                               </Button>
                             </div>
+                            {acceptBlockedByDates(request) && (
+                              <p className="text-sm text-amber-700 mt-2">{REQUEST_DATES_PASSED_MESSAGE}</p>
+                            )}
                           </div>
                         )}
 

@@ -50,6 +50,11 @@ import {
 import { ensureClaimDepositCaptured, reconcileClaimDeadlines, reconcileSettlementOperation, releaseRejectedClaim, settleApprovedClaim } from "../security-claims-service";
 import * as depositCopy from "../deposit-copy";
 import { validateBorrowPeriod } from "../borrow-period";
+import {
+  REQUEST_DATES_PASSED_MESSAGE,
+  isStartDatePassed,
+  validateStartDateNotPast,
+} from "../request-dates";
 import { compactNotificationCopy } from "../notification-copy";
 import {
   confirmApprovedReturn,
@@ -1833,8 +1838,13 @@ async function runConfirmedReturnPostEffects(context: ReturnRecoveryContext) {
 
 export function registerRoutes(
   app: Express,
-  options: { startBackgroundJobs?: boolean } = {},
+  options: {
+    startBackgroundJobs?: boolean;
+    /** Clock for calendar-date checks; tests inject a fixed time near midnight. */
+    now?: () => Date;
+  } = {},
 ): Server {
+  const currentTime = () => (options.now ? options.now() : new Date());
   setupAuth(app);
 
   if (process.env.E2E_TEST_MODE === "true") {
@@ -6452,6 +6462,14 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
+    // Every request type: the start day must not already be over.
+    {
+      const startCheck = validateStartDateNotPast(startDate, currentTime());
+      if (!startCheck.valid) {
+        return res.status(400).json({ error: startCheck.error, code: startCheck.code });
+      }
+    }
+
     // BORROW and RENT require full verification (email + ID + payment)
     if ((requestType === "BORROW" || requestType === "RENT") && req.verificationLevel.level !== 'fully_verified') {
       return res.status(403).json({ 
@@ -6917,8 +6935,11 @@ Respond with ONLY the category name, nothing else.`
         .where(inArray(items.id, allOfferedIds));
       for (const row of offeredRows) offeredItemsMap.set(row.id, row);
     }
+    const listNow = currentTime();
     const enrichedRequests = requests.map(r => ({
       ...r,
+      // Same effective start the accept route checks; clients only display it.
+      startDatePassed: isStartDatePassed(r.counterStartDate || r.startDate, listNow),
       swapOfferedItems: r.requestType === "SWAP"
         ? (r.swapOfferedItemIds ?? []).map(id => offeredItemsMap.get(id)).filter(Boolean)
         : [],
@@ -6968,6 +6989,19 @@ Respond with ONLY the category name, nothing else.`
 
     if (!request) {
       return res.status(404).send("Request not found");
+    }
+
+    // A PENDING request whose start day is over can no longer be accepted as-is;
+    // the owner counters with new dates or declines. Accepting promotes the
+    // counter dates when present, so the effective start is the counter's.
+    if (status === "ACCEPTED" && request.item_requests.status === "PENDING") {
+      const effectiveStart = request.item_requests.counterStartDate || request.item_requests.startDate;
+      if (isStartDatePassed(effectiveStart, currentTime())) {
+        return res.status(409).json({
+          error: REQUEST_DATES_PASSED_MESSAGE,
+          code: "REQUEST_DATES_PASSED",
+        });
+      }
     }
 
     // Block acceptance if the item is currently physically out with another neighbour
@@ -7342,6 +7376,18 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
+    // Every request type: a counter that keeps (or sets) a start day that is
+    // already over is rejected, so a stale request needs genuinely new dates.
+    {
+      const startCheck = validateStartDateNotPast(
+        startDate ?? request.item_requests.startDate,
+        currentTime(),
+      );
+      if (!startCheck.valid) {
+        return res.status(400).json({ error: startCheck.error, code: startCheck.code });
+      }
+    }
+
     if (isRequester && request.item_requests.negotiationStatus !== "counter_proposed") {
       return res.status(400).json({ error: "No counter-proposal to respond to with your own counter" });
     }
@@ -7497,6 +7543,16 @@ Respond with ONLY the category name, nothing else.`
           return res.status(400).json({ error: period.error, code: period.code });
         }
       }
+      // Every request type: same start-day rule as a direct counter-proposal.
+      {
+        const startCheck = validateStartDateNotPast(
+          counter.startDate ?? request.item_requests.counterStartDate ?? request.item_requests.startDate,
+          currentTime(),
+        );
+        if (!startCheck.valid) {
+          return res.status(400).json({ error: startCheck.error, code: startCheck.code });
+        }
+      }
       const swapCounterFields = isSwap ? {
         counterSwapOwnerItemIds: Array.isArray(counter.swapOwnerItemIds) ? counter.swapOwnerItemIds.map(Number) : (request.item_requests.counterSwapOwnerItemIds ?? []),
         counterSwapRequesterItemIds: Array.isArray(counter.swapRequesterItemIds) ? counter.swapRequesterItemIds.map(Number) : (request.item_requests.counterSwapRequesterItemIds ?? []),
@@ -7573,6 +7629,15 @@ Respond with ONLY the category name, nothing else.`
       const finalDepositMethod = request.item_requests.counterDepositMethod || request.item_requests.depositMethod;
       const finalStartDate = request.item_requests.counterStartDate || request.item_requests.startDate;
       const finalEndDate = request.item_requests.counterEndDate || request.item_requests.endDate;
+
+      // Same rule as accepting directly: the countered start day is what gets
+      // promoted on acceptance, so it must not already be over.
+      if (request.item_requests.status === "PENDING" && isStartDatePassed(finalStartDate, currentTime())) {
+        return res.status(409).json({
+          error: REQUEST_DATES_PASSED_MESSAGE,
+          code: "REQUEST_DATES_PASSED",
+        });
+      }
 
       // The requester pays the ShareCoin cost for BORROW requests, regardless
       // of whether the requester or owner clicks Accept on these final terms.

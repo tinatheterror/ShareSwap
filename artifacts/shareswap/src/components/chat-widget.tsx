@@ -6,6 +6,7 @@ import { useWebSocket } from "@/hooks/use-websocket";
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDisplayName } from "@/lib/utils";
+import { REQUEST_DATES_PASSED_MESSAGE, acceptBlockedByDates } from "@/lib/request-dates";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -166,6 +167,7 @@ interface ItemRequest {
   requestType: string;
   status: string;
   message: string;
+  startDatePassed?: boolean;
   startDate: string | null;
   endDate: string | null;
   createdAt: string;
@@ -1251,6 +1253,8 @@ export function ChatWidget() {
     const iReceivedCounter = iCounterPending && request.counterProposedBy !== user?.id;
     // Terms accepted by requester — owner still needs to formally confirm
     const iTermsAccepted = request.negotiationStatus === "terms_accepted" && request.status === "PENDING";
+    // Start day already passed: the API refuses to accept (directly or a counter), so do not offer it.
+    const acceptDisabledByDates = acceptBlockedByDates(request);
 
     // Show the most recent counter terms when one is pending; otherwise show base request terms.
     // After acceptance the counter dates are promoted into startDate/endDate so those remain correct.
@@ -1432,7 +1436,7 @@ export function ChatWidget() {
                   }
                   respondToCounterMutation.mutate({ requestId: request.id, accept: true });
                 }}
-                disabled={respondToCounterMutation.isPending}
+                disabled={respondToCounterMutation.isPending || acceptDisabledByDates}
               >
                 Accept
               </Button>
@@ -1455,6 +1459,9 @@ export function ChatWidget() {
               >
                 Decline
               </Button>
+              {acceptDisabledByDates && (
+                <p className="text-[10px] text-amber-700 w-full">{REQUEST_DATES_PASSED_MESSAGE}</p>
+              )}
               {(request.counterRound ?? 0) >= 2 && (
                 <p className="text-[10px] text-muted-foreground w-full mt-0.5">
                   Counter-offer limit reached
@@ -1469,10 +1476,13 @@ export function ChatWidget() {
                   size="sm"
                   className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
                   onClick={() => handleAcceptClick(request)}
-                  disabled={acceptMutation.isPending}
+                  disabled={acceptMutation.isPending || acceptDisabledByDates}
                 >
                   {acceptMutation.isPending ? "Confirming…" : "Confirm & Accept"}
                 </Button>
+              )}
+              {isOwner && iTermsAccepted && acceptDisabledByDates && (
+                <p className="text-[10px] text-amber-700 w-full">{REQUEST_DATES_PASSED_MESSAGE}</p>
               )}
 
               {/* Owner actions for pending requests (no active counter, terms not yet agreed) */}
@@ -1482,7 +1492,7 @@ export function ChatWidget() {
                     size="sm"
                     className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
                     onClick={() => handleAcceptClick(request)}
-                    disabled={acceptMutation.isPending}
+                    disabled={acceptMutation.isPending || acceptDisabledByDates}
                   >
                     {acceptMutation.isPending ? "Accepting…" : "Accept"}
                   </Button>
@@ -1505,6 +1515,9 @@ export function ChatWidget() {
                   >
                     Decline
                   </Button>
+                  {acceptDisabledByDates && (
+                    <p className="text-[10px] text-amber-700 w-full">{REQUEST_DATES_PASSED_MESSAGE}</p>
+                  )}
                 </>
               )}
 

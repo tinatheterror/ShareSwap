@@ -51,6 +51,14 @@ import { ensureClaimDepositCaptured, reconcileClaimDeadlines, reconcileSettlemen
 import * as depositCopy from "../deposit-copy";
 import { validateBorrowPeriod } from "../borrow-period";
 import {
+  HANDOFF_SWEEP_INTERVAL_MS,
+  calcBorrowShareCoinCost,
+  processHandoffDeadlines,
+  resolveHandoffSweepMode,
+  runHandoffDeadlineSweep,
+  type HandoffDeadlineDeps,
+} from "../handoff-deadline-service";
+import {
   REQUEST_DATES_PASSED_MESSAGE,
   isStartDatePassed,
   validateStartDateNotPast,
@@ -1845,6 +1853,35 @@ export function registerRoutes(
   } = {},
 ): Server {
   const currentTime = () => (options.now ? options.now() : new Date());
+
+  // Rewards for a SWAP that the handoff deadline job auto-confirms. Runs after the
+  // transition commits; failures are logged and never undo it.
+  const handoffDeadlineDeps: HandoffDeadlineDeps = {
+    onSwapAutoConfirmed: async (swap) => {
+      try {
+        await awardShareCoinsWithFirstTimeBonus(swap.ownerId, 'SWAP', swap.itemName, 1);
+        await awardShareCoinsWithFirstTimeBonus(swap.borrowerId, 'SWAP', swap.itemName, 1);
+
+        // Apply tier-based coin offset between the two parties
+        await applySwapCoinOffset(
+          swap.ownerId, swap.borrowerId, swap.requestId,
+          swap.itemId,
+          swap.swapOfferedItemIds,
+          swap.counterSwapOwnerItemIds,
+          swap.counterSwapRequesterItemIds,
+          swap.itemName,
+        );
+
+        await awardSwapCompletionPoints(swap.ownerId, swap.borrowerId, swap.requestId, swap.itemId, swap.itemId);
+        await checkAndAwardReferralBonus(swap.ownerId, swap.requestId, 'SWAP');
+        await checkAndAwardReferralBonus(swap.borrowerId, swap.requestId, 'SWAP');
+        await checkAndAwardAchievements(swap.ownerId);
+        await checkAndAwardAchievements(swap.borrowerId);
+      } catch (swapAutoErr) {
+        console.error("Error awarding swap rewards on auto-advance:", swapAutoErr);
+      }
+    },
+  };
   setupAuth(app);
 
   if (process.env.E2E_TEST_MODE === "true") {
@@ -9335,22 +9372,6 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // ── ShareCoin borrow-cost helper ───────────────────────────────────────────
-  // end date = return day (not last usage day), so usage days = end - start (no +1)
-  // Formula: round( (weeklyPrice / 7) × days )
-  // e.g. 10 SC/week item borrowed start=Mon, return=Fri → 4 usage days → round(10/7 × 4) = 6 SC
-  function calcBorrowShareCoinCost(
-    shareCoinPrice: number,
-    startDate: Date | string | null | undefined,
-    endDate: Date | string | null | undefined,
-  ): number {
-    if (!startDate || !endDate || shareCoinPrice <= 0) return Math.max(1, shareCoinPrice);
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000));
-    return Math.max(1, Math.round((shareCoinPrice / 7) * borrowDays));
-  }
-
   // Confirm handoff (item exchanged - charges ShareCoins, starts borrow period)
   app.post("/api/requests/:requestId/handoff", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -10327,185 +10348,13 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
-      // ── Auto-advance: find requests past their deadline ──
-      // Find requests awaiting handoff confirmation with passed deadlines
-      const expiredHandoffs = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(
-          and(
-            eq(itemRequests.status, "AWAITING_HANDOFF_CONFIRM"),
-            lt(itemRequests.handoffConfirmDeadline, now)
-          )
-        );
-
-      let autoAdvancedCount = 0;
-      let flaggedCount = 0;
-
-      for (const request of expiredHandoffs) {
-        const ownerConfirmed = request.item_requests.ownerConfirmedHandoff;
-        const borrowerConfirmed = request.item_requests.borrowerConfirmedHandoff;
-        const ownerDenied = (request.item_requests as any).ownerDeniedHandoff;
-        const borrowerDenied = (request.item_requests as any).borrowerDeniedHandoff;
-        const ownerId2 = request.items.ownerId!;
-        const borrowerId2 = request.item_requests.requesterId;
-        const reqId = request.item_requests.id;
-
-        // ── Case 2: One denied, other is silent → flag for review (DO NOT auto-confirm) ──
-        if ((ownerDenied || borrowerDenied) && !ownerConfirmed && !borrowerConfirmed) {
-          await db.update(itemRequests)
-            .set({ status: "HANDOFF_FLAGGED" })
-            .where(eq(itemRequests.id, reqId));
-
-          await db.insert(messages).values({
-            content: `🚩 This exchange has been flagged for review. One party reported the item was not handed off and no response was received in time.`,
-            senderId: ownerId2,
-            receiverId: borrowerId2,
-            messageType: "system",
-            requestId: reqId,
-          });
-
-          await db.insert(notifications).values([
-            { userId: ownerId2, type: "handoff_flagged", title: "Exchange Flagged", message: `"${request.items.name.length > 22 ? request.items.name.slice(0, 22) + "…" : request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
-            { userId: borrowerId2, type: "handoff_flagged", title: "Exchange Flagged", message: `"${request.items.name.length > 22 ? request.items.name.slice(0, 22) + "…" : request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
-          ]);
-
-          flaggedCount++;
-          continue;
-        }
-
-        // ── Case 1: One confirmed, other is silent (no denial) → auto-confirm ──
-        if ((ownerConfirmed || borrowerConfirmed) && !ownerDenied && !borrowerDenied) {
-          // Use counter-proposed dates if present — they are the agreed-upon dates after negotiation
-          const effectiveStart4 = request.item_requests.counterStartDate || request.item_requests.startDate;
-          const effectiveEnd4   = request.item_requests.counterEndDate   || request.item_requests.endDate;
-          // ShareCoin amount is always based on the original booked period — never adjusted for early/late handoff
-          const shareCoinAmount = request.item_requests.requestType === "BORROW"
-          ? calcBorrowShareCoinCost(
-              parseFloat(request.items.shareCoinPrice || "0"),
-              effectiveStart4,
-              effectiveEnd4,
-            )
-          : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
-
-          if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
-            const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId2)).limit(1);
-            const currentBalance = Math.floor(parseFloat(borrower?.shareCoins || "0"));
-            if (currentBalance >= shareCoinAmount) {
-              await db.update(users).set({ shareCoins: (currentBalance - shareCoinAmount).toString() }).where(eq(users.id, borrowerId2));
-              await db.insert(shareCoinsTransactions).values({ userId: borrowerId2, amount: (-shareCoinAmount).toString(), description: `Borrowed: ${request.items.name} (auto-confirmed)`, transactionType: "BORROW_CHARGE" });
-              if (ownerId2) {
-                const [lender] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId2)).limit(1);
-                const lenderBalance = Math.floor(parseFloat(lender?.shareCoins || "0"));
-                await db.update(users).set({ shareCoins: (lenderBalance + shareCoinAmount).toString() }).where(eq(users.id, ownerId2));
-                await db.insert(shareCoinsTransactions).values({ userId: ownerId2, amount: shareCoinAmount.toString(), description: `Lent: ${request.items.name} (auto-confirmed)`, transactionType: "LEND_REWARD" });
-              }
-            }
-          }
-
-          const isAutoSwap = request.item_requests.requestType === "SWAP";
-          await db.update(itemRequests)
-            .set({ status: isAutoSwap ? "COMPLETED" : "IN_PROGRESS", handoffConfirmedAt: now, borrowPeriodStartedAt: now, actualHandoffAt: now, shareCoinsCharged: true, shareCoinsChargedAt: now, depositStatus: "held", handoffAutoAdvanced: true })
-            .where(eq(itemRequests.id, reqId));
-
-          await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
-
-          // For swaps: also mark offered/counter items from both sides as swapped + unavailable
-          if (isAutoSwap) {
-            await db.update(items).set({ isSwapped: true }).where(eq(items.id, request.items.id));
-            const autoOfferedIds: number[] = [
-              ...((request.item_requests.swapOfferedItemIds as number[] | null) ?? []),
-              ...((request.item_requests.counterSwapOwnerItemIds as number[] | null) ?? []),
-              ...((request.item_requests.counterSwapRequesterItemIds as number[] | null) ?? []),
-            ].filter((id) => typeof id === "number");
-            if (autoOfferedIds.length > 0) {
-              await db.update(items).set({ isAvailable: false, isSwapped: true }).where(inArray(items.id, autoOfferedIds));
-            }
-          }
-
-          // Award coins/milestones for SWAP at auto-confirmed handoff
-          if (isAutoSwap && ownerId2) {
-            try {
-              await awardShareCoinsWithFirstTimeBonus(ownerId2, 'SWAP', request.items.name, 1);
-              await awardShareCoinsWithFirstTimeBonus(borrowerId2, 'SWAP', request.items.name, 1);
-
-              // Apply tier-based coin offset between the two parties
-              await applySwapCoinOffset(
-                ownerId2, borrowerId2, reqId,
-                request.item_requests.itemId,
-                request.item_requests.swapOfferedItemIds as number[] | null,
-                request.item_requests.counterSwapOwnerItemIds as number[] | null,
-                request.item_requests.counterSwapRequesterItemIds as number[] | null,
-                request.items.name,
-              );
-
-              await awardSwapCompletionPoints(ownerId2, borrowerId2, reqId, request.items.id, request.items.id);
-              await checkAndAwardReferralBonus(ownerId2, reqId, 'SWAP');
-              await checkAndAwardReferralBonus(borrowerId2, reqId, 'SWAP');
-              await checkAndAwardAchievements(ownerId2);
-              await checkAndAwardAchievements(borrowerId2);
-            } catch (swapAutoErr) {
-              console.error("Error awarding swap rewards on auto-advance:", swapAutoErr);
-            }
-          }
-
-          const confirmingParty = ownerConfirmed ? "owner" : "borrower";
-          await db.insert(notifications).values([
-            { userId: borrowerId2, type: "handoff_auto_advanced", title: "Exchange Auto-Confirmed", message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId },
-            ...(ownerId2 ? [{ userId: ownerId2, type: "handoff_auto_advanced", title: "Exchange Auto-Confirmed", message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId }] : []),
-          ]);
-
-          autoAdvancedCount++;
-        }
-        // ── Case 3 / Other edge cases: both silent past deadline — skip (no deadline was set without first confirm) ──
-      }
-
-      // ── Deposit timeout: ACCEPTED requests where deposit not paid within 48hrs ──
-      const depositDeadline = new Date(now.getTime() - 48 * 3_600_000);
-      const depositExpired = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(
-          and(
-            eq(itemRequests.status, "ACCEPTED"),
-            eq(itemRequests.depositMethod, "in_app"),
-            inArray(itemRequests.requestType, ["RENT", "BORROW"]),
-            lt(itemRequests.acceptedAt, depositDeadline)
-          )
-        );
-
-      let depositExpiredCount = 0;
-      for (const row of depositExpired) {
-        const reqId = row.item_requests.id;
-        const ownerId2 = row.items.ownerId!;
-        const requesterId2 = row.item_requests.requesterId;
-
-        await db.update(itemRequests)
-          .set({ status: "CANCELLED", unarchivedAt: new Date() })
-          .where(eq(itemRequests.id, reqId));
-
-        await db.update(items)
-          .set({ isAvailable: true, updatedAt: new Date() })
-          .where(eq(items.id, row.items.id));
-
-        await db.insert(messages).values({
-          content: depositCopy.TRANSACTION_EXPIRED_HOLD_CHAT,
-          senderId: ownerId2,
-          receiverId: requesterId2,
-          messageType: "system",
-          requestId: reqId,
-        });
-
-        const itemShort = row.items.name.length > 22 ? row.items.name.slice(0, 22) + "…" : row.items.name;
-        await db.insert(notifications).values([
-          { userId: ownerId2, type: "request_expired", title: "Transaction Expired", message: depositCopy.transactionExpiredHoldBody(itemShort), itemId: row.items.id, requestId: reqId },
-          { userId: requesterId2, type: "request_expired", title: "Transaction Expired", message: depositCopy.transactionExpiredHoldBody(itemShort), itemId: row.items.id, requestId: reqId },
-        ]);
-
-        depositExpiredCount++;
-      }
+      // ── Auto-advance (confirm / flag) and the 48h deposit-payment timeout ──
+      // Shared with the server interval; see handoff-deadline-service.ts.
+      const {
+        autoAdvancedCount,
+        flaggedCount,
+        depositExpiredCount,
+      } = await processHandoffDeadlines(handoffDeadlineDeps, { now });
 
       // ── Both-silent handoff timeout: AWAITING_HANDOFF_CONFIRM, neither confirmed, 48hrs past start date ──
       const handoffSilentDeadline = new Date(now.getTime() - 48 * 3_600_000);
@@ -12572,6 +12421,22 @@ Respond with ONLY the category name, nothing else.`
       setInterval(runOverdueReminderSweep, 6 * 60 * 60 * 1000);
       void runReturnRecoverySweep();
       setInterval(() => void runReturnRecoverySweep(), 60 * 1000);
+
+      // Handoff auto-confirm / flag / 48h deposit timeout. HANDOFF_DEADLINE_SWEEP_MODE:
+      // "dry-run" (default: logs what it would change), "live", or "off".
+      const handoffSweepMode = resolveHandoffSweepMode(process.env.HANDOFF_DEADLINE_SWEEP_MODE);
+      if (handoffSweepMode !== "off") {
+        console.log(`[handoff-deadlines] server sweep mode: ${handoffSweepMode}`);
+        const runHandoffSweep = async () => {
+          try {
+            await runHandoffDeadlineSweep(handoffDeadlineDeps, handoffSweepMode);
+          } catch (error) {
+            console.error("[handoff-deadlines] sweep failed:", error);
+          }
+        };
+        void runHandoffSweep();
+        setInterval(() => void runHandoffSweep(), HANDOFF_SWEEP_INTERVAL_MS);
+      }
     }, 30 * 1000);
   }
 

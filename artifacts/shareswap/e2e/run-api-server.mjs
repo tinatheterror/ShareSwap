@@ -15,7 +15,10 @@ const log = createWriteStream(logPath, {
 const command = process.env.E2E_API_SERVER_COMMAND ?? "pnpm";
 const args = process.env.E2E_API_SERVER_ARGS
   ? JSON.parse(process.env.E2E_API_SERVER_ARGS)
-  : ["--filter", "@workspace/api-server", "run", "dev"];
+  : [
+      "--filter", "@workspace/api-server", "exec", "sh", "-c",
+      "NODE_ENV=development pnpm run build --e2e && NODE_ENV=development node --enable-source-maps ./.cache/e2e-dist/index.mjs",
+    ];
 const child = spawn(
   command,
   args,

@@ -29,7 +29,7 @@ class RestartableApi {
         // Spawn the actual API executable, not pnpm's multi-process dev tree.
         E2E_API_SERVER_COMMAND: process.execPath,
         E2E_API_SERVER_ARGS: JSON.stringify([
-          "--enable-source-maps", resolve("../api-server/dist/index.mjs"),
+          "--enable-source-maps", resolve("../api-server/.cache/e2e-dist/index.mjs"),
         ]),
       },
       stdio: ["ignore", "ignore", "pipe"],

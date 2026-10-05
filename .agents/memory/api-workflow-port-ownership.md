@@ -14,3 +14,9 @@ The same stale-child problem can affect Expo: a restart may report success becau
 **Why:** Workflow status and an open port do not prove that the restarted process is serving the current preview.
 
 **How to apply:** Confirm actual readiness in Metro's logs, verify the existing listener belongs to the same artifact, and stop only that stale process before restarting the managed workflow. Do not accept a different port or create a duplicate workflow.
+
+Browser-test API builds must use output separate from the preview/deployment API bundle.
+
+**Why:** Concurrent test and managed-workflow builds can delete each other's output between compilation and startup. This can produce both missing-entrypoint and directory-not-empty errors, take down the API, and surface as "Failed to fetch" during login.
+
+**How to apply:** Keep every browser-test server, including restart tests, on isolated build output. Verify that preparing a test bundle leaves the preview bundle unchanged before attributing a login network failure to authentication.

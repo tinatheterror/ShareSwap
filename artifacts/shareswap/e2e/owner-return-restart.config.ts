@@ -21,7 +21,7 @@ export default defineConfig({
   },
   webServer: {
     cwd: "..",
-    command: "pnpm --filter @workspace/api-server run build && PORT=4174 BASE_PATH=/ API_PROXY_TARGET=http://127.0.0.1:4182 pnpm run dev",
+    command: "pnpm --filter @workspace/api-server run build --e2e && PORT=4174 BASE_PATH=/ API_PROXY_TARGET=http://127.0.0.1:4182 pnpm run dev",
     url: "http://127.0.0.1:4174",
     reuseExistingServer: false,
     timeout: 120_000,

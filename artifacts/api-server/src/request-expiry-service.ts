@@ -31,7 +31,7 @@ import * as copy from "./request-expiry-copy";
 // Expiry is checked wherever a request is read or redeemed (expireRequestIfDue,
 // guardHandoffWindow, expireDueRequestsForUser) and, separately, by
 // runRequestExpirySweep. Nothing in this module schedules itself: the sweep only
-// runs if something calls it.
+// runs if something calls it (scripts/run-scheduled-jobs.ts, from a Scheduled Deployment).
 //
 // Races are settled by the same fence the cancel flow uses. The expiry claims the
 // row (claimDepositTerminalAction: row lock + operation token), re-checks status
@@ -413,8 +413,18 @@ export interface RequestExpiryCandidate {
 
 export interface RequestExpirySweepOptions {
   now?: Date;
-  /** Select and report only; change nothing. */
+  /** Select and report only; change nothing (no expiry and no reminders). */
   dryRun?: boolean;
+  /** Report what would expire but do not expire it. Reminders still go out unless `reminders` is false. */
+  expireDryRun?: boolean;
+  /** Send the "hand off soon" reminder. Default true. When false, reminder candidates are not even reported. */
+  reminders?: boolean;
+  /**
+   * Only expire requests whose cutoff passed no more than this long ago. Older ones are
+   * left for the silent cleanup script so a first run never notifies about long-dead requests.
+   * Unset = no limit.
+   */
+  maxCutoffAgeMs?: number;
   /** Restrict to these requests (tests, so they never touch unrelated rows). */
   onlyRequestIds?: number[];
 }
@@ -430,7 +440,8 @@ export interface RequestExpirySweepResult {
 /**
  * One pass over every unfulfilled BORROW/RENT request: expire what is past its
  * cutoff, and remind both people about what is inside the reminder window.
- * Nothing calls this on a schedule; enabling a sweep is a separate decision.
+ * No in-process timer calls this; scripts/run-scheduled-jobs.ts does, with expiry in dry-run
+ * and reminders on until someone switches it live (SCHEDULED_JOBS_EXPIRY_MODE).
  */
 export async function runRequestExpirySweep(
   deps: RequestExpiryDeps,
@@ -438,11 +449,15 @@ export async function runRequestExpirySweep(
 ): Promise<RequestExpirySweepResult> {
   const now = options.now ?? new Date();
   const dryRun = options.dryRun === true;
+  const expireDryRun = dryRun || options.expireDryRun === true;
+  const remindersEnabled = options.reminders !== false;
+  const oldestCutoffMs =
+    options.maxCutoffAgeMs === undefined ? null : now.getTime() - options.maxCutoffAgeMs;
   const result: RequestExpirySweepResult = {
     expiredCount: 0,
     remindedCount: 0,
     failedCount: 0,
-    dryRun,
+    dryRun: expireDryRun,
     candidates: [],
   };
 
@@ -465,14 +480,16 @@ export async function runRequestExpirySweep(
     const nowMs = now.getTime();
 
     if (nowMs > cutoff.getTime()) {
+      if (oldestCutoffMs !== null && cutoff.getTime() < oldestCutoffMs) continue;
       result.candidates.push({ requestId: request.id, action: "expire", itemName: row.items.name, cutoff });
-      if (dryRun) continue;
+      if (expireDryRun) continue;
       const outcome = await expireRequestIfDue(request.id, deps, now);
       if (outcome.status === "expired") result.expiredCount++;
       if (outcome.status === "failed") result.failedCount++;
       continue;
     }
 
+    if (!remindersEnabled) continue;
     const reminderDue = nowMs >= cutoff.getTime() - HANDOFF_REMINDER_LEAD_MS && !request.expiryReminderSentAt;
     if (!reminderDue) continue;
     result.candidates.push({ requestId: request.id, action: "remind", itemName: row.items.name, cutoff });

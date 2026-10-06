@@ -31,7 +31,12 @@ async function buildAll() {
   await rm(distDir, { recursive: true, force: true });
 
   await esbuild({
-    entryPoints: [path.resolve(artifactDir, "src/index.ts")],
+    // Named entries keep the server at dist/index.mjs; the scheduled-jobs script (run by a
+    // Scheduled Deployment, see src/scripts/run-scheduled-jobs.ts) is dist/run-scheduled-jobs.mjs.
+    entryPoints: {
+      index: path.resolve(artifactDir, "src/index.ts"),
+      "run-scheduled-jobs": path.resolve(artifactDir, "src/scripts/run-scheduled-jobs.ts"),
+    },
     platform: "node",
     bundle: true,
     format: "esm",

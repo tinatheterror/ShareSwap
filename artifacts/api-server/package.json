@@ -7,6 +7,8 @@
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
+    "jobs:run": "tsx src/scripts/run-scheduled-jobs.ts --dry-run",
+    "jobs:run:live": "tsx src/scripts/run-scheduled-jobs.ts --live",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "migrate-push-tokens": "tsx src/scripts/migrate-push-tokens.ts",
     "reviews:duplicates": "tsx src/scripts/repair-duplicate-reviews.ts",

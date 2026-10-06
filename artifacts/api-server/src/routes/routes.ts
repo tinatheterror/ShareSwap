@@ -56,7 +56,10 @@ import {
   guardHandoffWindow,
   isDueForExpiry,
   requestHandoffCutoff,
+  runRequestExpirySweep,
   type RequestExpiryDeps,
+  type RequestExpirySweepOptions,
+  type RequestExpirySweepResult,
 } from "../request-expiry-service";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
@@ -67,6 +70,7 @@ import {
   resolveHandoffSweepMode,
   runHandoffDeadlineSweep,
   type HandoffDeadlineDeps,
+  type HandoffDeadlineResult,
 } from "../handoff-deadline-service";
 import {
   REQUEST_DATES_PASSED_MESSAGE,
@@ -1854,12 +1858,31 @@ async function runConfirmedReturnPostEffects(context: ReturnRecoveryContext) {
   if (item.ownerId) await checkAndAwardAchievements(item.ownerId);
 }
 
+/**
+ * The background passes that live inside registerRoutes (they close over the Stripe
+ * client, push and reward hooks). The scheduled-jobs script receives them through
+ * `onScheduledJobs` so it runs exactly the code the API process would, without a
+ * second copy. Unlike the in-process timers, these let errors propagate so a run can
+ * record a failure.
+ */
+export interface ScheduledJobRunners {
+  runReturnRecovery(): Promise<{ checked: number; completed: number; pending: number }>;
+  runOverdueReminders(): Promise<{ remindersCreated: number }>;
+  runHandoffSweep(
+    mode: "dry-run" | "live",
+    log: (line: string) => void,
+  ): Promise<HandoffDeadlineResult>;
+  runExpirySweep(options: RequestExpirySweepOptions): Promise<RequestExpirySweepResult>;
+}
+
 export function registerRoutes(
   app: Express,
   options: {
     startBackgroundJobs?: boolean;
     /** Clock for calendar-date checks; tests inject a fixed time near midnight. */
     now?: () => Date;
+    /** Receives the background-pass runners once they are defined (see ScheduledJobRunners). */
+    onScheduledJobs?: (jobs: ScheduledJobRunners) => void;
   } = {},
 ): Server {
   const currentTime = () => (options.now ? options.now() : new Date());
@@ -12601,6 +12624,19 @@ Respond with ONLY the category name, nothing else.`
       console.error("[return-recovery] sweep failed:", error);
     }
   };
+  options.onScheduledJobs?.({
+    runReturnRecovery: async () => {
+      const { checked, completed, pending } = await recoverPendingApprovedReturns({
+        stripeClient: stripe as any,
+        onCompleted: runConfirmedReturnPostEffects,
+        limit: 3,
+      });
+      return { checked, completed, pending };
+    },
+    runOverdueReminders: () => processReturnReminders(),
+    runHandoffSweep: (mode, log) => runHandoffDeadlineSweep(handoffDeadlineDeps, mode, log),
+    runExpirySweep: (sweepOptions) => runRequestExpirySweep(requestExpiryDeps, sweepOptions),
+  });
   if (
     options.startBackgroundJobs !== false &&
     process.env.E2E_TEST_MODE !== "true"

@@ -769,7 +769,8 @@ test("sweep: reminds both people once, a few hours before the cutoff", async () 
   assert.equal(first.remindedCount, 1);
   const reminders = await notes(id, "handoff_deadline_reminder");
   assert.deepEqual(reminders.map((n) => n.userId).sort(), [ownerId, borrowerId].sort());
-  assert.match(reminders[0].message, /Confirm it in the app by Oct 4, 11:59 PM or the request expires/);
+  assert.equal(reminders[0].message, "Handed off? Confirm by Oct 4, 11:59 PM or it expires.");
+  assert.match(reminders[0].title, /^Hand off soon: /);
   assert.deepEqual(pushes.sort(), [ownerId, borrowerId].sort());
   assert.equal((await load(id)).status, "DEPOSIT_CONFIRMED", "a reminder changes nothing else");
 
@@ -825,4 +826,57 @@ test("sweep: a dry run reports what it would do and changes nothing", async () =
   assert.equal((await notes(soon.id)).length, 0);
   assert.equal((await load(soon.id)).expiryReminderSentAt, null);
   assert.deepEqual(stripe.calls, { cancel: [], refunds: [], capture: [] });
+});
+
+test("sweep: expireDryRun reports expiries without applying them, while reminders still go out", async () => {
+  const dueRequest = await newRequest({ status: "DEPOSIT_CONFIRMED", depositPaymentIntentId: "pi_exp_dry", depositStatus: "authorized", depositMode: "authorization" });
+  const soon = await newRequest({ depositMethod: "in_person" });
+  const stripe = fakeStripe();
+
+  const due = await runRequestExpirySweep(stripe.deps, { now: ONE_SECOND_AFTER, expireDryRun: true, onlyRequestIds: [dueRequest.id] });
+  assert.deepEqual(due.candidates.map((c) => [c.requestId, c.action]), [[dueRequest.id, "expire"]]);
+  assert.equal(due.expiredCount, 0);
+  assert.equal(due.dryRun, true);
+  assert.equal((await load(dueRequest.id)).status, "DEPOSIT_CONFIRMED");
+
+  const reminded = await runRequestExpirySweep(stripe.deps, { now: THREE_HOURS_BEFORE, expireDryRun: true, onlyRequestIds: [soon.id] });
+  assert.equal(reminded.remindedCount, 1);
+  assert.equal((await notes(soon.id, "handoff_deadline_reminder")).length, 2);
+  assert.deepEqual(stripe.calls, { cancel: [], refunds: [], capture: [] }, "no money moves while expiry is a dry run");
+});
+
+test("sweep: reminders can be switched off without touching expiry", async () => {
+  const soon = await newRequest({ depositMethod: "in_person" });
+  const off = await runRequestExpirySweep(noStripe().deps, { now: THREE_HOURS_BEFORE, reminders: false, onlyRequestIds: [soon.id] });
+  assert.equal(off.remindedCount, 0);
+  assert.deepEqual(off.candidates, []);
+  assert.equal((await notes(soon.id)).length, 0);
+  assert.equal((await load(soon.id)).expiryReminderSentAt, null);
+
+  const dueRequest = await newRequest({ depositMethod: "in_person" });
+  const expired = await runRequestExpirySweep(noStripe().deps, { now: ONE_SECOND_AFTER, reminders: false, onlyRequestIds: [dueRequest.id] });
+  assert.equal(expired.expiredCount, 1);
+});
+
+test("sweep: maxCutoffAgeMs leaves long-expired requests for the silent cleanup", async () => {
+  const stale = await newRequest({ depositMethod: "in_person" });
+  const DAY = 86_400_000;
+
+  const tooOld = await runRequestExpirySweep(noStripe().deps, {
+    now: new Date(CUTOFF.getTime() + 4 * DAY),
+    maxCutoffAgeMs: 3 * DAY,
+    onlyRequestIds: [stale.id],
+  });
+  assert.deepEqual(tooOld.candidates, []);
+  assert.equal(tooOld.expiredCount, 0);
+  assert.equal((await load(stale.id)).status, "ACCEPTED");
+  assert.equal((await notes(stale.id)).length, 0, "no notification about a request that died days ago");
+
+  const recent = await runRequestExpirySweep(noStripe().deps, {
+    now: new Date(CUTOFF.getTime() + 2 * DAY),
+    maxCutoffAgeMs: 3 * DAY,
+    onlyRequestIds: [stale.id],
+  });
+  assert.equal(recent.expiredCount, 1);
+  assert.equal((await load(stale.id)).status, "EXPIRED");
 });

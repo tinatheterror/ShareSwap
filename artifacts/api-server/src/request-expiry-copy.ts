@@ -49,10 +49,26 @@ export function expiredOwnerNotice(itemName: string, cutoff: Date) {
   };
 }
 
+/**
+ * The item name in the reminder title is cut at a word boundary, never with an ellipsis (an
+ * ellipsis followed by punctuation reads as a typo). The body is fixed text plus the deadline
+ * so notification-copy's 54-character cap can never cut the deadline off.
+ */
+const REMINDER_NAME_LIMIT = 40;
+
+function reminderItemName(name: string | null | undefined): string {
+  const clean = (name || "your item").trim().replace(/\s+/g, " ");
+  if (clean.length <= REMINDER_NAME_LIMIT) return clean;
+  const slice = clean.slice(0, REMINDER_NAME_LIMIT + 1);
+  const lastSpace = slice.lastIndexOf(" ");
+  const cut = lastSpace >= 12 ? slice.slice(0, lastSpace) : clean.slice(0, REMINDER_NAME_LIMIT);
+  return cut.replace(/[\s,;:—–-]+$/g, "");
+}
+
 /** Sent to both people a few hours before the cutoff, while nobody has confirmed a handoff. */
 export function handoffReminder(itemName: string, cutoff: Date) {
   return {
-    title: "Hand off soon",
-    message: `Already handed off ${shortItemName(itemName, 22)}? Confirm it in the app by ${formatHandoffCutoff(cutoff)} or the request expires.`,
+    title: `Hand off soon: ${reminderItemName(itemName)}`,
+    message: `Handed off? Confirm by ${formatHandoffCutoff(cutoff)} or it expires.`,
   };
 }

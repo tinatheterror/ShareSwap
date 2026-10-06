@@ -498,6 +498,12 @@ export const itemRequests = pgTable("item_requests", {
   // The thread stays active until 14 days after this timestamp with no unread messages.
   unarchivedAt: timestamp("unarchived_at"),
 
+  // Expiry: set when a BORROW/RENT request passes its late-handoff cutoff with no
+  // handoff and moves to EXPIRED. The reminder timestamp makes the pre-cutoff
+  // "hand off soon" notification at-most-once. See request-expiry-service.ts.
+  expiredAt: timestamp("expired_at"),
+  expiryReminderSentAt: timestamp("expiry_reminder_sent_at"),
+
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   itemIdx: index("item_requests_item_id_idx").on(table.itemId),

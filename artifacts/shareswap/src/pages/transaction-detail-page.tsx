@@ -116,6 +116,7 @@ function statusLabel(status: string): string {
     COMPLETED: "Completed",
     REJECTED: "Rejected",
     CANCELLED: "Cancelled",
+    EXPIRED: "Expired",
     DEPOSIT_FAILED: "Deposit Failed",
     HANDOFF_DISPUTED: "Handoff Disputed",
     DISPUTED: "Disputed",

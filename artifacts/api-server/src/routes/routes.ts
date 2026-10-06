@@ -49,6 +49,15 @@ import {
 } from "../deposit-renewal-service";
 import { ensureClaimDepositCaptured, reconcileClaimDeadlines, reconcileSettlementOperation, releaseRejectedClaim, settleApprovedClaim } from "../security-claims-service";
 import * as depositCopy from "../deposit-copy";
+import {
+  EXPIRABLE_REQUEST_TYPES,
+  EXPIRABLE_STATUSES,
+  expireDueRequestsForUser,
+  guardHandoffWindow,
+  requestHandoffCutoff,
+  type RequestExpiryDeps,
+} from "../request-expiry-service";
+import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
 import {
   HANDOFF_SWEEP_INTERVAL_MS,
@@ -1853,6 +1862,68 @@ export function registerRoutes(
   } = {},
 ): Server {
   const currentTime = () => (options.now ? options.now() : new Date());
+
+  // Request expiry (see request-expiry-service.ts). Used by read/redeem-time checks;
+  // no scheduled expiry sweep is started from here.
+  const requestExpiryDeps: RequestExpiryDeps = {
+    stripe: stripe as any,
+    onItemFreed: (itemId, itemName) => notifyAvailabilitySubscribers(itemId, itemName),
+    push: (userId, payload) => sendPushToUser(userId, payload, "requests"),
+  };
+
+  /**
+   * A deposit hold the borrower authorized just before the request expired would
+   * otherwise sit on their card until Stripe's own release. Only a live,
+   * uncaptured authorization that belongs to this request and user is cancelled.
+   */
+  const releaseOrphanedHold = async (requestId: number, userId: number, paymentIntentId: unknown) => {
+    if (typeof paymentIntentId !== "string" || !paymentIntentId.startsWith("pi_")) return;
+    try {
+      const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      if (
+        intent.status === "requires_capture" &&
+        intent.metadata?.requestId === String(requestId) &&
+        intent.metadata?.userId === String(userId)
+      ) {
+        await stripe.paymentIntents.cancel(paymentIntentId, undefined, {
+          idempotencyKey: `expire-orphan-${requestId}-${paymentIntentId}`,
+        } as any);
+      }
+    } catch (error) {
+      console.error(`[request-expiry] could not release hold ${paymentIntentId} for expired request ${requestId}:`, error);
+    }
+  };
+
+  /**
+   * Responds 410 and returns true when this request is past its handoff window.
+   * Only the request's own two people are told anything (and can trigger the
+   * expiry check); anyone else falls through to the route's normal 403/404.
+   */
+  const rejectIfHandoffWindowClosed = async (
+    requestId: number,
+    res: any,
+    userId: number,
+    paymentIntentId?: unknown,
+  ): Promise<boolean> => {
+    if (!Number.isInteger(requestId)) return false;
+    const [party] = await db
+      .select({ requesterId: itemRequests.requesterId, ownerId: items.ownerId })
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(eq(itemRequests.id, requestId))
+      .limit(1);
+    if (!party || (party.requesterId !== userId && party.ownerId !== userId)) return false;
+    const guard = await guardHandoffWindow(requestId, requestExpiryDeps, currentTime());
+    if (!guard.blocked) return false;
+    if (paymentIntentId) await releaseOrphanedHold(requestId, userId, paymentIntentId);
+    res.status(410).json({
+      error: guard.error,
+      code: guard.code,
+      expired: true,
+      handoffCutoffAt: guard.cutoff?.toISOString() ?? null,
+    });
+    return true;
+  };
 
   // Rewards for a SWAP that the handoff deadline job auto-confirms. Runs after the
   // transition commits; failures are logged and never undo it.
@@ -5801,8 +5872,16 @@ Respond with ONLY the category name, nothing else.`
     const userId = req.user.id;
     const showArchived = req.query.archived === "true";
 
+    try {
+      await expireDueRequestsForUser(userId, requestExpiryDeps, currentTime());
+    } catch (error) {
+      console.error("[request-expiry] read-time expiry check failed:", error);
+    }
+
     // Statuses considered "archived" (transaction done — read-only history)
     const ARCHIVED_STATUSES = ["COMPLETED", "COMPLETED_EARLY", "CANCELLED", "DECLINED"];
+    // An expired request's chat stays active this long after expiry or its last message.
+    const EXPIRED_CHAT_ACTIVE_MS = 7 * 24 * 60 * 60 * 1000;
 
 
     // --- Gather all item requests involving this user ---
@@ -5818,6 +5897,7 @@ Respond with ONLY the category name, nothing else.`
         status: itemRequests.status,
         negotiationStatus: itemRequests.negotiationStatus,
         unarchivedAt: itemRequests.unarchivedAt,
+        expiredAt: itemRequests.expiredAt,
         createdAt: itemRequests.createdAt,
       })
       .from(itemRequests)
@@ -5925,7 +6005,19 @@ Respond with ONLY the category name, nothing else.`
     // Determine effective archive status for each request.
     // A status-archived thread surfaces in the active inbox while it has unread messages.
     // Once all messages are read, it re-archives immediately.
-    const isEffectivelyArchived = (r: { status: string; unarchivedAt: Date | null }, unread: number): boolean => {
+    const isEffectivelyArchived = (
+      r: { id: number; status: string; unarchivedAt: Date | null; expiredAt: Date | null },
+      unread: number,
+    ): boolean => {
+      if (r.status === "EXPIRED") {
+        // Auto-archives 7 days after expiry with no new messages; any new message
+        // (which moves lastTime forward) brings the chat back into the active inbox.
+        const lastActivityMs = Math.max(
+          r.expiredAt?.getTime() ?? 0,
+          reqMsgMap.get(r.id)?.lastTime.getTime() ?? 0,
+        );
+        return currentTime().getTime() - lastActivityMs > EXPIRED_CHAT_ACTIVE_MS;
+      }
       if (!ARCHIVED_STATUSES.includes(r.status)) return false;
       if (!r.unarchivedAt) return true;
       return unread === 0; // re-archive as soon as all messages are read
@@ -6756,6 +6848,14 @@ Respond with ONLY the category name, nothing else.`
       return res.sendStatus(401);
     }
 
+    // Expiry is also checked on read, so a request past its cutoff is never shown as
+    // still open just because no background job has run yet.
+    try {
+      await expireDueRequestsForUser(req.user.id, requestExpiryDeps, currentTime());
+    } catch (error) {
+      console.error("[request-expiry] read-time expiry check failed:", error);
+    }
+
     const rawRows = await db
       .select({
         id: itemRequests.id,
@@ -6818,6 +6918,7 @@ Respond with ONLY the category name, nothing else.`
         ownerConfirmedHandoff: itemRequests.ownerConfirmedHandoff,
         borrowerConfirmedHandoff: itemRequests.borrowerConfirmedHandoff,
         handoffConfirmDeadline: itemRequests.handoffConfirmDeadline,
+        expiredAt: itemRequests.expiredAt,
          handoffConfirmedAt: itemRequests.handoffConfirmedAt,
         actualHandoffAt: itemRequests.actualHandoffAt,
         actualReturnAt: itemRequests.actualReturnAt,
@@ -6916,6 +7017,7 @@ Respond with ONLY the category name, nothing else.`
       ownerConfirmedHandoff: r.ownerConfirmedHandoff,
       borrowerConfirmedHandoff: r.borrowerConfirmedHandoff,
       handoffConfirmDeadline: r.handoffConfirmDeadline,
+      expiredAt: r.expiredAt,
        actualHandoffAt: r.actualHandoffAt ?? r.handoffConfirmedAt,
       actualReturnAt: r.actualReturnAt,
       ownerConfirmedReturn: r.ownerConfirmedReturn,
@@ -6973,8 +7075,20 @@ Respond with ONLY the category name, nothing else.`
       for (const row of offeredRows) offeredItemsMap.set(row.id, row);
     }
     const listNow = currentTime();
-    const enrichedRequests = requests.map(r => ({
+    const enrichedRequests = requests.map(r => {
+      const handoffCutoff = (EXPIRABLE_REQUEST_TYPES as readonly string[]).includes(r.requestType)
+        ? requestHandoffCutoff(r)
+        : null;
+      const isOpenForHandoff = (EXPIRABLE_STATUSES as readonly string[]).includes(r.status);
+      return {
       ...r,
+      // Exact late-handoff cutoff (an ISO instant), shown to people as "Hand off by Oct 4, 11:59 PM".
+      // Only an open request has a deadline label; an expired one keeps the instant for history.
+      handoffCutoffAt: handoffCutoff && (isOpenForHandoff || r.status === "EXPIRED") ? handoffCutoff.toISOString() : null,
+      handoffDeadlineLabel: handoffCutoff && isOpenForHandoff ? handoffDeadlineLabel(handoffCutoff) : null,
+      expiredMessage: r.status === "EXPIRED" ? requestExpiredError(handoffCutoff) : null,
+      // The borrower can start over from an expired request with the old details prefilled.
+      canRequestAgain: r.status === "EXPIRED" && r.requesterId === req.user.id,
       // Same effective start the accept route checks; clients only display it.
       startDatePassed: isStartDatePassed(r.counterStartDate || r.startDate, listNow),
       swapOfferedItems: r.requestType === "SWAP"
@@ -6989,7 +7103,8 @@ Respond with ONLY the category name, nothing else.`
       counterSwapRequesterItems: r.requestType === "SWAP"
         ? (r.counterSwapRequesterItemIds ?? []).map(id => offeredItemsMap.get(id)).filter(Boolean)
         : [],
-    }));
+      };
+    });
 
     // Sort to prioritize verified requesters for pending requests (owner sees verified first)
     const sortedRequests = enrichedRequests.sort((a, b) => {
@@ -7333,7 +7448,24 @@ Respond with ONLY the category name, nothing else.`
   // Helper: generate and store a handoff PIN for a newly-accepted request
   async function issueHandoffPin(requestId: number) {
     const pin = generateHandoffPin();
-    const pinExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // The code lives exactly as long as the request can still be fulfilled: it dies
+    // at the late-handoff cutoff. Requests without dates keep the 24h default.
+    const [pinRequest] = await db
+      .select({
+        requestType: itemRequests.requestType,
+        startDate: itemRequests.startDate,
+        endDate: itemRequests.endDate,
+        counterStartDate: itemRequests.counterStartDate,
+        counterEndDate: itemRequests.counterEndDate,
+      })
+      .from(itemRequests)
+      .where(eq(itemRequests.id, requestId))
+      .limit(1);
+    const handoffCutoff =
+      pinRequest && (EXPIRABLE_REQUEST_TYPES as readonly string[]).includes(pinRequest.requestType)
+        ? requestHandoffCutoff(pinRequest)
+        : null;
+    const pinExpiresAt = handoffCutoff ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
     await db.update(itemRequests)
       .set({ handoffPin: pin, pinExpiresAt, pinUsed: false, pinAttempts: 0 } as any)
       .where(eq(itemRequests.id, requestId));
@@ -8833,6 +8965,7 @@ Respond with ONLY the category name, nothing else.`
       if (!requestId) {
         return res.status(400).json({ error: "Invalid request parameters" });
       }
+      if (await rejectIfHandoffWindowClosed(Number(requestId), res, req.user.id)) return;
 
       const result = await createRentalPaymentHold({ requestId, userId: req.user.id, confirmIfSaved });
       return res.status(result.status).json(result.body);
@@ -8855,6 +8988,7 @@ Respond with ONLY the category name, nothing else.`
       if (!paymentIntentId) {
         return res.status(400).json({ error: "Payment intent ID is required" });
       }
+      if (await rejectIfHandoffWindowClosed(requestId, res, req.user.id, paymentIntentId)) return;
 
       const result = await confirmRentalDeposit({ requestId, userId: req.user.id, paymentIntentId });
       // Older core outcomes use top-level error fields; hybrid consent uses an
@@ -8878,6 +9012,7 @@ Respond with ONLY the category name, nothing else.`
       if (!Number.isInteger(requestId)) {
         return res.status(400).json({ error: "Invalid request ID" });
       }
+      if (await rejectIfHandoffWindowClosed(requestId, res, req.user.id)) return;
       const result = await confirmRefundableDeposit({ requestId, userId: req.user.id });
       return res.status(result.status).json(result.body);
     } catch (error: any) {
@@ -8949,6 +9084,7 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const requestId = parseInt(req.params.requestId);
+      if (await rejectIfHandoffWindowClosed(requestId, res, req.user.id, req.body?.paymentIntentId)) return;
       const { 
         depositAmount, 
         baseDepositAmount, 
@@ -9049,8 +9185,19 @@ Respond with ONLY the category name, nothing else.`
           platformFeeChargeId: platformFeeChargeId ?? null,
           shareCoinAmount: shareCoinAmount?.toString(),
         })
-        .where(eq(itemRequests.id, requestId))
+        // Conditional so a request that expired (or is being expired) mid-payment is
+        // never revived; the fresh authorization is released instead.
+        .where(and(
+          eq(itemRequests.id, requestId),
+          eq(itemRequests.status, "ACCEPTED"),
+          isNull(itemRequests.depositOperationToken),
+        ))
         .returning();
+
+      if (!updated) {
+        await releaseOrphanedHold(requestId, req.user.id, paymentIntentId);
+        return res.status(409).json({ error: "This request changed before the deposit could be confirmed. Your card was not charged." });
+      }
 
       // Notify both parties that the deposit authorization is in place (only for in-app Stripe holds)
       if (paymentIntentId) {
@@ -9380,6 +9527,7 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const requestId = parseInt(req.params.requestId);
+      if (await rejectIfHandoffWindowClosed(requestId, res, req.user.id)) return;
       const { confirmedBy } = req.body; // 'owner' or 'borrower'
       
       const [request] = await db
@@ -9649,12 +9797,21 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
-      // Update the request
+      // Update the request. Conditional on the status we validated and on no deposit
+      // operation being in flight, so a request that is being expired at the deadline
+      // is never advanced: whichever of the two commits first wins.
       const [updated] = await db
         .update(itemRequests)
         .set(updateData)
-        .where(eq(itemRequests.id, requestId))
+        .where(and(
+          eq(itemRequests.id, requestId),
+          eq(itemRequests.status, request.item_requests.status),
+          isNull(itemRequests.depositOperationToken),
+        ))
         .returning();
+      if (!updated) {
+        return res.status(409).json({ error: "This request changed before the handoff could be recorded. Please refresh and try again." });
+      }
 
       // Send notification to the other party
       const otherPartyId = isOwner ? request.item_requests.requesterId : request.items.ownerId;
@@ -9846,6 +10003,7 @@ Respond with ONLY the category name, nothing else.`
 
       if (!request) return res.status(404).json({ error: "Request not found" });
       if (request.items.ownerId !== req.user.id) return res.status(403).json({ error: "Only the owner can view the handoff PIN" });
+      if (await rejectIfHandoffWindowClosed(requestId, res, req.user.id)) return;
 
       const pin = (request.item_requests as any).handoffPin;
       const pinExpiresAt = (request.item_requests as any).pinExpiresAt;
@@ -9866,6 +10024,8 @@ Respond with ONLY the category name, nothing else.`
     try {
       const requestId = parseInt(req.params.requestId);
       const { pin } = req.body;
+      // A dead code gets a clear "this request expired" answer, not a generic invalid-code one.
+      if (await rejectIfHandoffWindowClosed(requestId, res, req.user.id)) return;
 
       const [request] = await db
         .select()
@@ -9921,6 +10081,36 @@ Respond with ONLY the category name, nothing else.`
       const isSwapPin = requestType === "SWAP";
       const isGiftOrSwapPin = isGiftPin || isSwapPin;
 
+      // GIFT / SWAP → mark as COMPLETED immediately; BORROW/RENT → IN_PROGRESS (period begins)
+      const newStatus = isGiftOrSwapPin ? "COMPLETED" : "IN_PROGRESS";
+
+      // Claim the handoff first, with a conditional update, so it is decided before any
+      // ShareCoins move. If the deadline expiry (or a second redemption of the same code)
+      // got there first this matches no row and nothing below runs.
+      const [claimedHandoff] = await db.update(itemRequests).set({
+        status: newStatus,
+        handoffConfirmedAt: now,
+        ...(isGiftOrSwapPin ? { completedAt: now } : { borrowPeriodStartedAt: now }),
+        actualHandoffAt: now,
+        shareCoinsCharged: !isGiftOrSwapPin,
+        shareCoinsChargedAt: isGiftOrSwapPin ? null : now,
+        depositStatus: isGiftOrSwapPin ? null : "held",
+        ownerConfirmedHandoff: true,
+        ownerConfirmedHandoffAt: now,
+        borrowerConfirmedHandoff: true,
+        borrowerConfirmedHandoffAt: now,
+        pinUsed: true,
+        confirmationMethod: "pin",
+      } as any).where(and(
+        eq(itemRequests.id, requestId),
+        eq(itemRequests.status, request.item_requests.status),
+        isNull(itemRequests.depositOperationToken),
+        sql`${itemRequests.pinUsed} IS NOT TRUE`,
+      )).returning({ id: itemRequests.id });
+      if (!claimedHandoff) {
+        return res.status(409).json({ error: "This request changed before the code could be used. Please refresh and try again." });
+      }
+
       // For BORROW, charge/earn ShareCoins at handoff
       // Use counter-proposed dates if present — they are the agreed-upon dates after negotiation
       if (requestType === "BORROW") {
@@ -9963,25 +10153,6 @@ Respond with ONLY the category name, nothing else.`
           if (ownerId) await db.insert(messages).values({ content: `🪙 ${coinLabel} earned`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId, metadata: { visibleToUserId: ownerId } });
         }
       }
-
-      // GIFT / SWAP → mark as COMPLETED immediately; BORROW/RENT → IN_PROGRESS (period begins)
-      const newStatus = isGiftOrSwapPin ? "COMPLETED" : "IN_PROGRESS";
-
-      await db.update(itemRequests).set({
-        status: newStatus,
-        handoffConfirmedAt: now,
-        ...(isGiftOrSwapPin ? { completedAt: now } : { borrowPeriodStartedAt: now }),
-        actualHandoffAt: now,
-        shareCoinsCharged: !isGiftOrSwapPin,
-        shareCoinsChargedAt: isGiftOrSwapPin ? null : now,
-        depositStatus: isGiftOrSwapPin ? null : "held",
-        ownerConfirmedHandoff: true,
-        ownerConfirmedHandoffAt: now,
-        borrowerConfirmedHandoff: true,
-        borrowerConfirmedHandoffAt: now,
-        pinUsed: true,
-        confirmationMethod: "pin",
-      } as any).where(eq(itemRequests.id, requestId));
 
       await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
 
@@ -10092,6 +10263,7 @@ Respond with ONLY the category name, nothing else.`
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const requestId = parseInt(req.params.requestId);
+      if (await rejectIfHandoffWindowClosed(requestId, res, req.user.id)) return;
       const [request] = await db
         .select()
         .from(itemRequests)
@@ -10178,7 +10350,14 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
-      await db.update(itemRequests).set(updateData).where(eq(itemRequests.id, requestId));
+      const [denied] = await db.update(itemRequests).set(updateData).where(and(
+        eq(itemRequests.id, requestId),
+        eq(itemRequests.status, request.item_requests.status),
+        isNull(itemRequests.depositOperationToken),
+      )).returning({ id: itemRequests.id });
+      if (!denied) {
+        return res.status(409).json({ error: "This request changed before your response could be recorded. Please refresh and try again." });
+      }
 
       const ownerId = request.items.ownerId!;
       const borrowerId = request.item_requests.requesterId;

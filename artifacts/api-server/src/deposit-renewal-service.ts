@@ -87,6 +87,10 @@ export async function resolveClaimedDepositIntents(
   claim: Extract<DepositTerminalClaim, { status: "claimed" }>,
   stripeClient: DepositRenewalStripeClient,
   action: "cancel" | "capture",
+  options: {
+    /** Deterministic Stripe idempotency key for each cancel, so retries replay instead of racing. */
+    cancelIdempotencyKey?: (paymentIntentId: string) => string;
+  } = {},
 ) {
   const { request } = claim;
   const assertClaimOwnership = async () => {
@@ -119,7 +123,13 @@ export async function resolveClaimedDepositIntents(
     }
     if (intent.status === "canceled") return;
     await assertClaimOwnership();
-    await stripeClient.paymentIntents.cancel(paymentIntentId);
+    if (options.cancelIdempotencyKey) {
+      await stripeClient.paymentIntents.cancel(paymentIntentId, undefined, {
+        idempotencyKey: options.cancelIdempotencyKey(paymentIntentId),
+      });
+    } else {
+      await stripeClient.paymentIntents.cancel(paymentIntentId);
+    }
   };
 
   if (request.depositPreviousPaymentIntentId) {

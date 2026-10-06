@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { photoUrl } from "@/lib/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -91,7 +91,7 @@ const CONDITION_LABELS: Record<string, string> = {
 };
 
 export default function ItemDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, requestAgain } = useLocalSearchParams<{ id: string; requestAgain?: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -125,6 +125,16 @@ export default function ItemDetailScreen() {
     queryFn: () => apiGet<ItemDetail>(`/api/items/${id}`),
     enabled: !!id,
   });
+
+  // "Request again" from an expired request lands here; a borrow reopens the sheet.
+  // The old dates have passed, so the sheet starts fresh and the borrower picks new ones.
+  const requestAgainHandled = useRef(false);
+  useEffect(() => {
+    if (requestAgainHandled.current || requestAgain !== "BORROW" || !item || !user) return;
+    if ((item as any).ownerId === user.id) return;
+    requestAgainHandled.current = true;
+    setShowBorrowSheet(true);
+  }, [requestAgain, item, user]);
 
   const isCurrentlyOut = !!item?.isCurrentlyOut;
   const isCooldownActive = !!item?.isCooldownActive;

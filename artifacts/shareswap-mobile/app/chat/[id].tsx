@@ -83,6 +83,12 @@ interface ItemRequest {
   status: string;
   requesterId: number;
   startDatePassed?: boolean;
+  // GET /api/requests: exact late-handoff cutoff + server-built label ("Hand off by Oct 4, 11:59 PM").
+  handoffCutoffAt?: string | null;
+  handoffDeadlineLabel?: string | null;
+  // Set on EXPIRED requests; canRequestAgain is true only for the borrower.
+  expiredMessage?: string | null;
+  canRequestAgain?: boolean;
   startDate: string | null;
   endDate: string | null;
   depositMethod: string | null;
@@ -216,13 +222,14 @@ function getStatusInfo(status: string): StatusInfo {
     case "COMPLETED_EARLY":      return { label: "Completed ✓",      color: "#15803d", bg: "#dcfce7" };
     case "DECLINED":             return { label: "Declined",          color: "#991b1b", bg: "#fee2e2" };
     case "CANCELLED":            return { label: "Cancelled",         color: "#6b7280", bg: "#f3f4f6" };
+    case "EXPIRED":              return { label: "Expired",           color: "#475569", bg: "#e2e8f0" };
     case "DISPUTED":             return { label: "Disputed ⚠️",      color: "#c2410c", bg: "#ffedd5" };
     default:                     return { label: status.replace(/_/g, " "), color: "#374151", bg: "#f3f4f6" };
   }
 }
 
 const PRIMARY = "#0DCEA1";
-const TERMINAL = ["COMPLETED", "COMPLETED_EARLY", "DECLINED", "CANCELLED", "DISPUTED"];
+const TERMINAL = ["COMPLETED", "COMPLETED_EARLY", "DECLINED", "CANCELLED", "EXPIRED", "DISPUTED"];
 function formatLateHours(hours: number): string | null {
   if (hours <= 0) return null;
   if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"}`;
@@ -742,6 +749,26 @@ export default function ChatScreen() {
               </View>
             )}
 
+            {/* Late-handoff deadline while the request is still open */}
+            {request.handoffDeadlineLabel && (
+              <View style={card.detailRow}>
+                <Feather name="alert-circle" size={12} color="#b45309" />
+                <Text style={[card.detailText, card.detailTextTight, { color: "#b45309" }]}>
+                  {request.handoffDeadlineLabel}
+                </Text>
+              </View>
+            )}
+
+            {/* Expired: say so plainly */}
+            {status === "EXPIRED" && request.expiredMessage && (
+              <View style={card.detailRow}>
+                <Feather name="clock" size={12} color={colors.mutedForeground} />
+                <Text style={[card.detailText, card.detailTextTight, { color: colors.mutedForeground }]}>
+                  {request.expiredMessage}
+                </Text>
+              </View>
+            )}
+
             {/* Deposit method — always shown for BORROW */}
             {isBorrowType && request.depositMethod && (
               <View style={card.detailRow}>
@@ -1025,6 +1052,22 @@ export default function ChatScreen() {
               >
                 <CreditCard size={14} color="#fff" strokeWidth={2} />
                 <Text style={[card.btnLabel, { color: "#fff" }]}>Pay & Confirm Booking</Text>
+              </Pressable>
+            )}
+
+            {/* EXPIRED: the borrower can start over with the old details filled in */}
+            {status === "EXPIRED" && isBorrower && request.canRequestAgain && request.item?.id != null && (
+              <Pressable
+                style={[card.btn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                onPress={() =>
+                  router.push({
+                    pathname: "/item/[id]",
+                    params: { id: String(request.item!.id), requestAgain: request.requestType },
+                  } as never)
+                }
+              >
+                <Feather name="rotate-ccw" size={14} color="#fff" />
+                <Text style={[card.btnLabel, { color: "#fff" }]}>Request again</Text>
               </Pressable>
             )}
 

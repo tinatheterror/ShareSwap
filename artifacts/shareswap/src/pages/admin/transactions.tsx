@@ -47,11 +47,12 @@ const STATUS_COLORS: Record<string, string> = {
   RETURN_REQUESTED: "bg-purple-100 text-purple-800",
   COMPLETED: "bg-gray-100 text-gray-700",
   DECLINED: "bg-red-100 text-red-800",
+  EXPIRED: "bg-slate-200 text-slate-700",
   DISPUTED: "bg-red-100 text-red-800",
   HANDOFF_DISPUTED: "bg-orange-100 text-orange-800",
 };
 
-const ALL_STATUSES = ["PENDING","ACCEPTED","DEPOSIT_CONFIRMED","IN_PROGRESS","RETURN_REQUESTED","COMPLETED","DECLINED","DISPUTED","HANDOFF_DISPUTED","AWAITING_HANDOFF_CONFIRM"];
+const ALL_STATUSES = ["PENDING","ACCEPTED","DEPOSIT_CONFIRMED","IN_PROGRESS","RETURN_REQUESTED","COMPLETED","DECLINED","EXPIRED","DISPUTED","HANDOFF_DISPUTED","AWAITING_HANDOFF_CONFIRM"];
 
 type Action = "complete" | "release_deposit" | "cancel";
 interface OverrideTarget { tx: AdminTransaction; action: Action }
@@ -172,7 +173,7 @@ export default function AdminTransactionsPage() {
                     </div>
                   </div>
                   <div className="flex flex-col gap-1.5 flex-shrink-0">
-                    {tx.status !== "COMPLETED" && tx.status !== "DECLINED" && (
+                    {tx.status !== "COMPLETED" && tx.status !== "DECLINED" && tx.status !== "EXPIRED" && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -194,7 +195,7 @@ export default function AdminTransactionsPage() {
                         Release hold
                       </Button>
                     ) : null}
-                    {tx.status !== "COMPLETED" && tx.status !== "DECLINED" && (
+                    {tx.status !== "COMPLETED" && tx.status !== "DECLINED" && tx.status !== "EXPIRED" && (
                       <Button
                         size="sm"
                         variant="outline"

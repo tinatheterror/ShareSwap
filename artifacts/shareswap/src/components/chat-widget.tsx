@@ -168,6 +168,12 @@ interface ItemRequest {
   status: string;
   message: string;
   startDatePassed?: boolean;
+  // Late-handoff cutoff (ISO instant) and the server-built label, e.g. "Hand off by Oct 4, 11:59 PM".
+  handoffCutoffAt?: string | null;
+  handoffDeadlineLabel?: string | null;
+  // Set on EXPIRED requests; canRequestAgain is true only for the borrower.
+  expiredMessage?: string | null;
+  canRequestAgain?: boolean;
   startDate: string | null;
   endDate: string | null;
   createdAt: string;
@@ -1037,6 +1043,7 @@ export function ChatWidget() {
       case "HANDOFF_DISPUTED": return "Disputed";
       case "DISPUTED": return "Damage dispute";
       case "HANDOFF_FLAGGED": return "Flagged for review";
+      case "EXPIRED": return "Expired";
       default: return status || "";
     }
   };
@@ -1236,6 +1243,8 @@ export function ChatWidget() {
         return "bg-orange-100 text-orange-800";
       case "COMPLETED":
         return "bg-gray-100 text-gray-800";
+      case "EXPIRED":
+        return "bg-slate-200 text-slate-700";
       default:
         return "bg-gray-100 text-gray-600";
     }
@@ -1327,6 +1336,14 @@ export function ChatWidget() {
                   <span>You requested to {request.requestType.toLowerCase()}</span>
                 )}
               </div>
+              {request.handoffDeadlineLabel && (
+                <div className="text-xs text-amber-700 mb-0.5" data-testid={`handoff-deadline-${request.id}`}>
+                  ⏰ {request.handoffDeadlineLabel}
+                </div>
+              )}
+              {request.status === "EXPIRED" && request.expiredMessage && (
+                <div className="text-xs text-muted-foreground mb-0.5">{request.expiredMessage}</div>
+              )}
               {/* Swap: 3-column layout — offered | arrows | requested */}
               {request.requestType === "SWAP" && (() => {
                 // Use counter items when a counter exists, otherwise originals
@@ -1881,6 +1898,37 @@ export function ChatWidget() {
                   </button>
                 </div>
               )}
+
+              {/* Request again — the borrower can start over from an expired request */}
+              {(() => {
+                const expiredRequest = activeConversationRequestId
+                  ? requests.find((r) => r.id === activeConversationRequestId)
+                  : requests.find((r) => r.requesterId === user?.id && r.item.ownerId === selectedConversation && r.status === "EXPIRED");
+                if (!expiredRequest || expiredRequest.status !== "EXPIRED" || !expiredRequest.canRequestAgain) return null;
+                return (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200" data-testid="request-again-banner">
+                    <RotateCcw className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
+                    <span className="text-xs text-slate-700 flex-1">{expiredRequest.expiredMessage || "This request expired."}</span>
+                    <Button
+                      size="sm"
+                      className="h-6 text-xs px-2"
+                      onClick={() => {
+                        // Old dates have passed, so only the other details are carried over.
+                        sessionStorage.setItem("shareswap_resend_prefill", JSON.stringify({
+                          itemId: expiredRequest.itemId,
+                          requestType: expiredRequest.requestType,
+                          deliveryMethod: expiredRequest.deliveryMethod,
+                          depositMethod: expiredRequest.depositMethod,
+                        }));
+                        setIsOpen(false);
+                        navigate(`/items/${expiredRequest.itemId}`);
+                      }}
+                    >
+                      Request again
+                    </Button>
+                  </div>
+                );
+              })()}
 
               {isLoadingMessages ? (
                 <div className="flex-1 flex items-center justify-center">

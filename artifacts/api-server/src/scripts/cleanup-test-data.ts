@@ -18,7 +18,7 @@ export const FIXTURE_PREFIXES = [
   "review-route-concurrency-",
   "review-concurrency-",
 ] as const;
-export const PROTECTED_REQUEST_IDS = [2468, 4275, 4276] as const;
+export const PROTECTED_REQUEST_IDS = [2468] as const;
 
 const ACTIVE_HANDOFF_STATUSES = [
   "ACCEPTED", "IN_PROGRESS", "HANDOFF_CONFIRMED", "DEPOSIT_CONFIRMED",
@@ -53,6 +53,20 @@ export interface Plan {
   /** Rows in other tables that reference rows being deleted. */
   dependents: { table: string; column: string; parent: string; onDelete: string; count: number; sample: string[] }[];
   visibleInFeed: { id: number; name: string; why: string }[];
+  /** share_coins_transactions owned by a fixture user that is being deleted. */
+  shareCoins: number[];
+  /** What those fixture ShareCoin rows add up to, and whether any real user could be touched. */
+  shareCoinImpact: {
+    rows: number;
+    totalAmount: string;
+    byPrefix: Record<string, { rows: number; total: string }>;
+    realUserRowsPointingAtFixtureReviews: number[];
+    realUsersInReviewsWithFixtures: number[];
+  };
+  /** Every foreign key that points at the tables in scope, with how many rows reference what is being deleted. */
+  allForeignKeys: { child: string; column: string; parent: string; onDelete: string; count: number; inScope: boolean }[];
+  /** Integer columns that look like ids but have no foreign key (informational). */
+  softReferences: { table: string; column: string; parent: string; count: number; sample: string[] }[];
 }
 
 const ints = (rows: any[], key = "id"): number[] => rows.map((r) => Number(r[key]));
@@ -176,8 +190,56 @@ export async function buildPlan(db: Queryable): Promise<Plan> {
   ).rows;
   for (const i of namedButOutside) violations.push(`item ${i.id}: fixture-style name but owned by user ${i.owner_id} outside the prefixes`);
 
+  // ShareCoin ledger rows: only rows whose owner is a fixture user being deleted. A row that also
+  // points (review_id, no FK) at a review with a non-fixture end, or that belongs to a real user but
+  // points at a review being deleted, touches a non-fixture user and blocks --apply.
+  const coinRows = (
+    await db.query(
+      `select s.id, s.user_id, s.amount, s.review_id, r.reviewer_id, r.reviewed_user_id
+         from share_coins_transactions s left join user_reviews r on r.id = s.review_id
+        where s.user_id = any($1::int[]) or s.review_id = any($2::int[]) order by s.id`,
+      [users, reviews],
+    )
+  ).rows;
+  const shareCoins: number[] = [];
+  const realUserRowsPointingAtFixtureReviews: number[] = [];
+  for (const row of coinRows) {
+    const owned = row.user_id != null && users.includes(Number(row.user_id));
+    if (!owned) {
+      realUserRowsPointingAtFixtureReviews.push(Number(row.id));
+      violations.push(`share_coins_transactions ${row.id}: belongs to user ${row.user_id} (not a fixture user being deleted) but points at a review being deleted`);
+      continue;
+    }
+    if (row.review_id != null && (!isFixture(row.reviewer_id) || !isFixture(row.reviewed_user_id))) {
+      violations.push(`share_coins_transactions ${row.id}: points at review ${row.review_id}, which has a non-fixture user`);
+      continue;
+    }
+    shareCoins.push(Number(row.id));
+  }
+  const coinOwners = new Map<number, string>(
+    (await db.query(`select id, username from users where id = any($1::int[])`, [users])).rows.map((u) => [Number(u.id), String(u.username)]),
+  );
+  const byPrefix: Record<string, { rows: number; total: string }> = {};
+  let grand = 0;
+  for (const row of coinRows.filter((r) => shareCoins.includes(Number(r.id)))) {
+    const prefix = FIXTURE_PREFIXES.find((p) => (coinOwners.get(Number(row.user_id)) ?? "").startsWith(p)) ?? "(none)";
+    const entry = (byPrefix[prefix] ??= { rows: 0, total: "0" });
+    entry.rows++;
+    entry.total = (Number(entry.total) + Number(row.amount)).toFixed(2);
+    grand += Number(row.amount);
+  }
+  const shareCoinImpact: Plan["shareCoinImpact"] = {
+    rows: shareCoins.length,
+    totalAmount: grand.toFixed(2),
+    byPrefix,
+    realUserRowsPointingAtFixtureReviews,
+    realUsersInReviewsWithFixtures: mixedReviews.flatMap((r) => [r.reviewerId, r.reviewedUserId]).filter((x): x is number => x != null && !prefixUsers.includes(x)),
+  };
+
   // Rows elsewhere that point at what we would delete (discovered from the foreign keys).
-  const sets: Record<string, number[]> = { users, items, item_requests: requests, notifications, messages, user_reviews: reviews };
+  const sets: Record<string, number[]> = {
+    users, items, item_requests: requests, notifications, messages, user_reviews: reviews, share_coins_transactions: shareCoins,
+  };
   const fks = (
     await db.query(
       `select ch.relname as child, a.attname as col, pa.relname as parent,
@@ -193,9 +255,13 @@ export async function buildPlan(db: Queryable): Promise<Plan> {
     )
   ).rows;
   const dependents: Plan["dependents"] = [];
+  const allForeignKeys: Plan["allForeignKeys"] = [];
   for (const fk of fks) {
     const parentIds = sets[fk.parent];
-    if (!parentIds.length) continue;
+    if (!parentIds.length) {
+      allForeignKeys.push({ child: fk.child, column: fk.col, parent: fk.parent, onDelete: fk.on_delete, count: 0, inScope: fk.child in sets });
+      continue;
+    }
     const childIsInScope = fk.child in sets;
     const exclude = childIsInScope ? `and not ((to_jsonb(t)->>'id')::int = any($2::int[]))` : "";
     const params: unknown[] = [parentIds];
@@ -209,8 +275,47 @@ export async function buildPlan(db: Queryable): Promise<Plan> {
     const count = Number(
       (await db.query(`select count(*)::int as n from "${fk.child}" t where t."${fk.col}" = any($1::int[]) ${exclude}`, params)).rows[0].n,
     );
+    allForeignKeys.push({ child: fk.child, column: fk.col, parent: fk.parent, onDelete: fk.on_delete, count, inScope: fk.child in sets });
     if (count > 0) {
       dependents.push({ table: fk.child, column: fk.col, parent: fk.parent, onDelete: fk.on_delete, count, sample: rows.map((r) => String(r.id)) });
+    }
+  }
+
+  // Columns that look like ids but have no foreign key: informational, never blocking.
+  const fkColumns = new Set(fks.map((f) => `${f.child}.${f.col}`));
+  const allFkColumns = new Set(
+    (
+      await db.query(
+        `select ch.relname as child, a.attname as col from pg_constraint con
+           join pg_class ch on ch.oid = con.conrelid
+           join pg_attribute a on a.attrelid = con.conrelid and a.attnum = any(con.conkey) where con.contype = 'f'`,
+      )
+    ).rows.map((r) => `${r.child}.${r.col}`),
+  );
+  const candidateCols = (
+    await db.query(
+      `select c.table_name, c.column_name from information_schema.columns c
+         join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name and t.table_type = 'BASE TABLE'
+        where c.table_schema = 'public' and c.data_type in ('integer', 'bigint') and c.column_name <> 'id'
+          and c.column_name ~ '(^|_)(user|requester|owner|sender|receiver|payer|reviewer|borrower|recipient|actor|item|request|transaction)_?id$'
+        order by c.table_name, c.column_name`,
+    )
+  ).rows;
+  const softReferences: Plan["softReferences"] = [];
+  for (const col of candidateCols) {
+    const key = `${col.table_name}.${col.column_name}`;
+    if (fkColumns.has(key) || allFkColumns.has(key)) continue;
+    const parent = /item_?id$/.test(col.column_name) ? "items" : /(request|transaction)_?id$/.test(col.column_name) ? "item_requests" : "users";
+    const parentIds = sets[parent];
+    if (!parentIds.length) continue;
+    const inScope = col.table_name in sets;
+    const exclude = inScope ? `and not ((to_jsonb(t)->>'id')::int = any($2::int[]))` : "";
+    const params: unknown[] = [parentIds];
+    if (inScope) params.push(sets[col.table_name]);
+    const n = Number((await db.query(`select count(*)::int as n from "${col.table_name}" t where t."${col.column_name}" = any($1::int[]) ${exclude}`, params)).rows[0].n);
+    if (n > 0) {
+      const sample = (await db.query(`select to_jsonb(t)->>'id' as id from "${col.table_name}" t where t."${col.column_name}" = any($1::int[]) ${exclude} limit 10`, params)).rows;
+      softReferences.push({ table: col.table_name, column: col.column_name, parent, count: n, sample: sample.map((r) => String(r.id)) });
     }
   }
 
@@ -235,7 +340,7 @@ export async function buildPlan(db: Queryable): Promise<Plan> {
   }));
 
   return {
-    users, items, requests, notifications, messages, reviews,
+    users, items, requests, notifications, messages, reviews, shareCoins, shareCoinImpact, allForeignKeys, softReferences,
     keptUsers, keptItems, keptRequests, keptNotifications, keptMessages, keptReviews, mixedReviews,
     violations, dependents, visibleInFeed: visible,
   };
@@ -266,6 +371,7 @@ export function printPlan(plan: Plan) {
   printIds("user_reviews", plan.reviews);
   printIds("item_requests", plan.requests);
   printIds("items", plan.items);
+  printIds("share_coins", plan.shareCoins);
   printIds("users", plan.users);
   console.log("\nMatched a prefix but KEPT because a protected request depends on them:");
   printIds("users", plan.keptUsers);
@@ -283,6 +389,12 @@ export function printPlan(plan: Plan) {
       : "  0",
   );
 
+  const impact = plan.shareCoinImpact;
+  console.log(`\nShareCoin impact: ${impact.rows} fixture ledger row(s), net ${impact.totalAmount} coins`);
+  for (const [prefix, v] of Object.entries(impact.byPrefix)) console.log(`  ${prefix}: ${v.rows} row(s), net ${v.total}`);
+  console.log(`  real-user ledger rows pointing at a fixture review: ${impact.realUserRowsPointingAtFixtureReviews.length ? impact.realUserRowsPointingAtFixtureReviews.join(", ") : "0"}`);
+  console.log(`  real users in a review with a fixture user: ${impact.realUsersInReviewsWithFixtures.length ? [...new Set(impact.realUsersInReviewsWithFixtures)].join(", ") : "0"}`);
+
   console.log("\nLinked to a user outside the prefixes:");
   console.log(plan.violations.length ? plan.violations.map((v) => `  ! ${v}`).join("\n") : "  none: every selected row belongs only to fixture users");
 
@@ -291,6 +403,14 @@ export function printPlan(plan: Plan) {
   for (const d of plan.dependents) {
     console.log(`  ${d.onDelete === "CASCADE" || d.onDelete.startsWith("SET") ? " " : "!"} ${d.table}.${d.column} -> ${d.parent}: ${d.count} row(s) [ON DELETE ${d.onDelete}] ids ${d.sample.join(", ")}${d.count > d.sample.length ? ", ..." : ""}`);
   }
+
+  console.log(`\nEvery foreign key pointing at the tables in scope (${plan.allForeignKeys.length}); rows = still referencing what would be deleted:`);
+  for (const fk of plan.allForeignKeys) {
+    console.log(`  ${fk.count ? "!" : " "} ${fk.child}.${fk.column} -> ${fk.parent} [${fk.onDelete}]${fk.inScope ? " (deleted too)" : ""}: ${fk.count}`);
+  }
+  console.log("\nId-like columns with NO foreign key that still point at what would be deleted (informational):");
+  if (!plan.softReferences.length) console.log("  none");
+  for (const r of plan.softReferences) console.log(`  ${r.table}.${r.column} -> ${r.parent}: ${r.count} row(s) ids ${r.sample.join(", ")}${r.count > r.sample.length ? ", ..." : ""}`);
 
   console.log("\nFixture items currently visible in the browse feed (GET /api/items rules):");
   if (!plan.visibleInFeed.length) console.log("  none");
@@ -327,6 +447,7 @@ async function main() {
         ["user_reviews", "user_reviews", plan.reviews],
         ["item_requests", "item_requests", plan.requests],
         ["items", "items", plan.items],
+        ["share_coins_transactions", "share_coins_transactions", plan.shareCoins],
         ["users", "users", plan.users],
       ];
       for (const [label, table, ids] of steps) {

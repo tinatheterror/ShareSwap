@@ -336,8 +336,9 @@ test("overdue/expiry sweep never charges: it only marks an uncharged hold unsecu
   const charged = await fixture("authorization", "UNDER_REVIEW", 0, 100, { captured: true });
   await db.update(itemRequests).set({ claimDecisionDeadlineAt: new Date(Date.now() - 1000), depositAuthorizationExpiresAt: new Date(Date.now() - 1000) })
     .where(eq(itemRequests.id, charged.request.id));
-  assert.equal(reconcileClaimDeadlines.length <= 1, true, "the sweep takes no Stripe client");
-  await reconcileClaimDeadlines(new Date());
+  // Scoped to this test's own requests: the sweep must never touch rows it did not create.
+  const swept = await reconcileClaimDeadlines(new Date(), { onlyRequestIds: requestIds });
+  assert.ok(swept.checked <= requestIds.length, "the sweep only looked at this test's requests");
   const [holdAfter] = await db.select().from(itemRequests).where(eq(itemRequests.id, hold.request.id));
   const [chargedAfter] = await db.select().from(itemRequests).where(eq(itemRequests.id, charged.request.id));
   assert.equal(holdAfter.depositStatus, "EXPIRED_UNSECURED");

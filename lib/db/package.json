@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
+    "./schema": "./src/schema/index.ts",
+    "./test-database-guard": "./src/test-database-guard.ts"
   },
   "scripts": {
     "push": "drizzle-kit push --force --config ./drizzle.config.ts",

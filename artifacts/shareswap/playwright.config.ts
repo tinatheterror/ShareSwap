@@ -1,4 +1,9 @@
 import { defineConfig } from "@playwright/test";
+import { enforceTestDatabase } from "../../lib/db/src/test-database-guard";
+
+// The e2e API server and specs write to the database: refuse to start unless it is approved for tests.
+// With TEST_DATABASE_URL set this also points DATABASE_URL at it for every process started below.
+enforceTestDatabase(process.env);
 
 const apiServerLogPath = "test-results/api-server.log";
 

@@ -485,9 +485,17 @@ export async function markClaimDecisionDeadline(requestId: number, captureBefore
  * an elapsed or expired temporary hold only marks the hold unsecured. Deposits
  * that a claim already charged are not constrained by the authorization window.
  */
-export async function reconcileClaimDeadlines(now = new Date()) {
+export async function reconcileClaimDeadlines(
+  now = new Date(),
+  /** Restrict the pass to these requests (tests, so they never touch unrelated rows). */
+  options: { onlyRequestIds?: number[] } = {},
+) {
+  if (options.onlyRequestIds && options.onlyRequestIds.length === 0) return { checked: 0, expired: 0 };
   const rows = await db.select({ id: itemRequests.id, expires: itemRequests.depositAuthorizationExpiresAt, depositStatus: itemRequests.depositStatus, requesterId: itemRequests.requesterId })
-    .from(itemRequests).where(eq(itemRequests.depositMode, "authorization"));
+    .from(itemRequests).where(and(
+      eq(itemRequests.depositMode, "authorization"),
+      ...(options.onlyRequestIds ? [inArray(itemRequests.id, options.onlyRequestIds)] : []),
+    ));
   let expired = 0;
   for (const row of rows) {
     if (["captured", "settled", "released"].includes(row.depositStatus || "")) continue;

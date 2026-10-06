@@ -416,6 +416,8 @@ test("an expired chat stays active for 7 days, archives, and returns on a new me
     ((await (await client.request(`/api/inbox?archived=${archived}`)).json()) as any[]).filter((t) => t.requestId === id);
   const day = 86_400_000;
   const expiredAt = (await load(id)).expiredAt!;
+  // The system messages were stamped with the real clock; the test clock is injected, so line them up.
+  await db.update(messages).set({ createdAt: expiredAt }).where(eq(messages.requestId, id));
 
   clock = new Date(expiredAt.getTime() + 6 * day);
   assert.equal((await inbox(borrower, false)).length, 1, "active on day 6");
@@ -441,4 +443,61 @@ test("an expired chat stays active for 7 days, archives, and returns on a new me
   assert.equal((await inbox(borrower, false)).length, 1, "still active 6 days after that message");
   clock = new Date(expiredAt.getTime() + 16 * day);
   assert.equal((await inbox(borrower, true)).length, 1, "archived again 8 days after it");
+});
+
+// ── Availability ignores requests past their cutoff, before any status update ─
+
+test("booked-dates and item detail stop counting a request once it is past its cutoff", async () => {
+  clock = OCT_4_LAST_SECOND_PDT;
+  const { id, itemId } = await newRequest({ status: "ACCEPTED" });
+
+  let booked = (await (await stranger.request(`/api/items/${itemId}/booked-dates`)).json()) as any[];
+  assert.deepEqual(booked, [{ startDate: "2026-10-02", endDate: "2026-10-05" }], "still blocking on the last second");
+  let detail = (await (await stranger.request(`/api/items/${itemId}`)).json()) as any;
+  assert.equal(detail.isCurrentlyOut, true);
+
+  clock = OCT_5_FIRST_SECOND_PDT; // past the cutoff; nothing has expired the request
+  booked = (await (await stranger.request(`/api/items/${itemId}/booked-dates`)).json()) as any[];
+  assert.deepEqual(booked, [], "dates are free as soon as the cutoff passes");
+  detail = (await (await stranger.request(`/api/items/${itemId}`)).json()) as any;
+  assert.equal(detail.isCurrentlyOut, false);
+  assert.equal(detail.activeRequestEndDate, null);
+
+  // These two reads only filter; they must not expire anything themselves.
+  const row = await load(id);
+  assert.equal(row.status, "ACCEPTED");
+  assert.equal(row.expiredAt, null);
+});
+
+test("a past-cutoff request keeps blocking when it is not expirable (handoff already confirmed, or not BORROW/RENT)", async () => {
+  clock = OCT_5_FIRST_SECOND_PDT;
+  const confirmed = await newRequest({ status: "AWAITING_HANDOFF_CONFIRM" });
+  const gift = await newRequest({ status: "ACCEPTED", requestType: "GIFT", startDate: null, endDate: null });
+
+  const confirmedBooked = (await (await stranger.request(`/api/items/${confirmed.itemId}/booked-dates`)).json()) as any[];
+  assert.equal(confirmedBooked.length, 1);
+  const confirmedDetail = (await (await stranger.request(`/api/items/${confirmed.itemId}`)).json()) as any;
+  assert.equal(confirmedDetail.isCurrentlyOut, true);
+
+  const giftDetail = (await (await stranger.request(`/api/items/${gift.itemId}`)).json()) as any;
+  assert.equal(giftDetail.isCurrentlyOut, true);
+});
+
+test("one stale request does not hide a live one on the same item", async () => {
+  clock = OCT_5_FIRST_SECOND_PDT;
+  const stale = await newRequest({ status: "ACCEPTED" });
+  await db.insert(itemRequests).values({
+    itemId: stale.itemId,
+    requesterId: borrowerId,
+    requestType: "BORROW",
+    status: "ACCEPTED",
+    startDate: new Date("2026-10-20T00:00:00.000Z"),
+    endDate: new Date("2026-10-25T00:00:00.000Z"),
+  }).returning({ id: itemRequests.id }).then(([r]) => requestIds.push(r.id));
+
+  const booked = (await (await stranger.request(`/api/items/${stale.itemId}/booked-dates`)).json()) as any[];
+  assert.deepEqual(booked, [{ startDate: "2026-10-20", endDate: "2026-10-25" }]);
+  const detail = (await (await stranger.request(`/api/items/${stale.itemId}`)).json()) as any;
+  assert.equal(detail.isCurrentlyOut, true);
+  assert.equal(detail.activeRequestEndDate?.toString().slice(0, 10), "2026-10-25");
 });

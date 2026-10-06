@@ -483,6 +483,65 @@ test("a Stripe failure leaves the request open and retryable, and the retry reus
   assert.equal((await load(id)).status, "EXPIRED");
 });
 
+test("a failed expiry is logged, and an intent Stripe does not know (like pi_test_1) leaves the request unexpired", async () => {
+  const { id, itemId } = await newRequest({
+    status: "DEPOSIT_CONFIRMED", depositPaymentIntentId: "pi_test_1", depositStatus: "authorized", depositMode: "authorization",
+  });
+  const stripe = fakeStripe();
+  (stripe.deps.stripe as any).paymentIntents.retrieve = async (intentId: string) => {
+    throw Object.assign(new Error(`No such payment_intent: '${intentId}'`), { code: "resource_missing" });
+  };
+
+  const logged: string[] = [];
+  const realError = console.error;
+  console.error = (...args: unknown[]) => { logged.push(args.map(String).join(" ")); };
+  let outcome;
+  try {
+    outcome = await expireRequestIfDue(id, stripe.deps, ONE_SECOND_AFTER);
+  } finally {
+    console.error = realError;
+  }
+
+  assert.equal(outcome.status, "failed");
+  assert.equal(logged.length, 1);
+  assert.match(logged[0], new RegExp(`request ${id}`));
+  assert.match(logged[0], /pi_test_1/);
+  assert.match(logged[0], /No such payment_intent/);
+  const request = await load(id);
+  assert.equal(request.status, "DEPOSIT_CONFIRMED");
+  assert.equal(request.expiredAt, null);
+  assert.equal(request.depositStatus, "authorized", "we do not claim a release that never happened");
+  assert.equal(request.depositOperationToken, null);
+  assert.equal(await itemAvailable(itemId), false);
+  assert.equal((await notes(id, "request_expired")).length, 0);
+  assert.deepEqual(stripe.calls, { cancel: [], refunds: [], capture: [] });
+});
+
+test("silent expiry releases the hold and frees the item but notifies nobody and dates everything at the cutoff", async () => {
+  const { id, itemId } = await newRequest({
+    status: "DEPOSIT_CONFIRMED", depositPaymentIntentId: "pi_silent", depositStatus: "authorized", depositMode: "authorization",
+  });
+  const stripe = fakeStripe();
+  const pushed: number[] = [];
+  const freed: number[] = [];
+  const deps = { ...stripe.deps, push: (userId: number) => { pushed.push(userId); }, onItemFreed: (i: number) => { freed.push(i); } };
+
+  const outcome = await expireRequestIfDue(id, deps, ONE_SECOND_AFTER, { silent: true });
+  assert.equal(outcome.status, "expired");
+  assert.deepEqual(stripe.calls.cancel.map((c) => c.id), ["pi_silent"]);
+  const request = await load(id);
+  assert.equal(request.status, "EXPIRED");
+  assert.equal(request.depositStatus, "released");
+  assert.equal(request.expiredAt?.getTime(), (outcome as { cutoff: Date }).cutoff.getTime());
+  assert.equal(await itemAvailable(itemId), true);
+  assert.equal((await notes(id)).length, 0);
+  assert.deepEqual(pushed, []);
+  assert.deepEqual(freed, []);
+  const messagesForRequest = await chat(id);
+  assert.ok(messagesForRequest.length > 0);
+  assert.ok(messagesForRequest.every((m) => m.isRead && m.createdAt?.getTime() === request.expiredAt?.getTime()));
+});
+
 test("a rental refund failure also leaves the request open and retryable", async () => {
   const { id } = await newRequest({ requestType: "RENT", status: "DEPOSIT_CONFIRMED", depositMethod: "in_person" });
   await db.insert(rentalPayouts).values({

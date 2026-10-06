@@ -149,6 +149,16 @@ async function refundUpfrontFees(
   return refunded;
 }
 
+export interface ExpireOptions {
+  /**
+   * Historical cleanup: money is still released and the item still frees up, but nobody is
+   * notified (no bell notification, push or availability alert). The request is stamped as
+   * expired at its cutoff, and its chat messages are dated then, so an old chat does not
+   * look new or restart the 7-day archive clock.
+   */
+  silent?: boolean;
+}
+
 /**
  * Expire one request if (and only if) it is due. Safe to call on every read and
  * redemption, from several processes at once, and again after a failure.
@@ -157,7 +167,9 @@ export async function expireRequestIfDue(
   requestId: number,
   deps: RequestExpiryDeps,
   now: Date = new Date(),
+  options: ExpireOptions = {},
 ): Promise<ExpireOutcome> {
+  const silent = options.silent === true;
   const [row] = await db
     .select()
     .from(itemRequests)
@@ -198,7 +210,13 @@ export async function expireRequestIfDue(
     // Drop the claim so the next read or sweep retries; every Stripe call above
     // uses a deterministic idempotency key, so the retry cannot double-act.
     await releaseDepositTerminalClaim(claim).catch(() => {});
-    return { status: "failed", requestId, error: error instanceof Error ? error.message : String(error) };
+    const message = error instanceof Error ? error.message : String(error);
+    // The request stays unexpired and its deposit untouched in our records; logged here so
+    // every caller (read, redeem, sweep) leaves a trace.
+    console.error(
+      `[request-expiry] could not expire request ${requestId} (deposit intent ${request.depositPaymentIntentId ?? "none"}); left unexpired, will retry: ${message}`,
+    );
+    return { status: "failed", requestId, error: message };
   }
 
   const ownerId = row.items.ownerId!;
@@ -210,7 +228,7 @@ export async function expireRequestIfDue(
       .update(itemRequests)
       .set({
         status: copy.REQUEST_EXPIRED_STATUS,
-        expiredAt: now,
+        expiredAt: silent ? cutoff : now,
         // The handoff code dies with the request.
         handoffPin: null,
         depositStatus: hadDeposit ? "released" : null,
@@ -260,6 +278,7 @@ export async function expireRequestIfDue(
       receiverId: borrowerId,
       messageType: "system",
       requestId,
+      ...(silent ? { createdAt: cutoff, isRead: true } : {}),
     });
     if (hadDeposit && request.depositMethod !== "in_person") {
       await tx.insert(messages).values({
@@ -271,6 +290,7 @@ export async function expireRequestIfDue(
         receiverId: borrowerId,
         messageType: "system",
         requestId,
+        ...(silent ? { createdAt: cutoff, isRead: true } : {}),
       });
     }
 
@@ -279,6 +299,7 @@ export async function expireRequestIfDue(
       feeRefunded,
     });
     const ownerNotice = copy.expiredOwnerNotice(row.items.name, cutoff);
+    if (silent) return { borrowerNotice, ownerNotice };
     await tx.insert(notifications).values([
       { userId: borrowerId, type: copy.REQUEST_EXPIRED_NOTIFICATION_TYPE, title: borrowerNotice.title, message: borrowerNotice.message, itemId: row.items.id, requestId },
       { userId: ownerId, type: copy.REQUEST_EXPIRED_NOTIFICATION_TYPE, title: ownerNotice.title, message: ownerNotice.message, itemId: row.items.id, requestId },
@@ -292,12 +313,12 @@ export async function expireRequestIfDue(
     return { status: "busy", requestId, reason: "Request changed before it could expire" };
   }
 
-  if (deps.push) {
+  if (!silent && deps.push) {
     const data = { screen: "chat", requestId, itemId: row.items.id };
     await Promise.resolve(deps.push(borrowerId, { title: finalized.borrowerNotice.title, body: finalized.borrowerNotice.message, data })).catch(() => {});
     await Promise.resolve(deps.push(ownerId, { title: finalized.ownerNotice.title, body: finalized.ownerNotice.message, data })).catch(() => {});
   }
-  if (deps.onItemFreed) {
+  if (!silent && deps.onItemFreed) {
     await Promise.resolve(deps.onItemFreed(row.items.id, row.items.name)).catch(() => {});
   }
   return { status: "expired", requestId, cutoff };
@@ -333,9 +354,6 @@ export async function guardHandoffWindow(
   if (!isDueForExpiry(request, now)) return { blocked: false };
 
   const outcome = await expireRequestIfDue(requestId, deps, now);
-  if (outcome.status === "failed") {
-    console.error(`[request-expiry] could not expire request ${requestId}: ${outcome.error}`);
-  }
   const cutoff = requestHandoffCutoff(request);
   return {
     blocked: true,
@@ -377,9 +395,6 @@ export async function expireDueRequestsForUser(
     try {
       const outcome = await expireRequestIfDue(row.id, deps, now);
       if (outcome.status === "expired") expired++;
-      if (outcome.status === "failed") {
-        console.error(`[request-expiry] could not expire request ${row.id}: ${outcome.error}`);
-      }
     } catch (error) {
       console.error(`[request-expiry] error expiring request ${row.id}:`, error);
     }

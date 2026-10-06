@@ -54,6 +54,7 @@ import {
   EXPIRABLE_STATUSES,
   expireDueRequestsForUser,
   guardHandoffWindow,
+  isDueForExpiry,
   requestHandoffCutoff,
   type RequestExpiryDeps,
 } from "../request-expiry-service";
@@ -5317,6 +5318,8 @@ Respond with ONLY the category name, nothing else.`
           counterStartDate: itemRequests.counterStartDate,
           counterEndDate: itemRequests.counterEndDate,
           negotiationStatus: itemRequests.negotiationStatus,
+          status: itemRequests.status,
+          requestType: itemRequests.requestType,
         })
         .from(itemRequests)
         .where(
@@ -5326,7 +5329,11 @@ Respond with ONLY the category name, nothing else.`
           )
         );
 
+      // A BORROW/RENT request past its handoff cutoff can no longer be fulfilled, so it
+      // stops blocking dates now, before anything has moved it to EXPIRED.
+      const now = currentTime();
       const result = bookings
+        .filter((b) => !isDueForExpiry(b, now))
         .map((b) => {
           // Use counter dates when a counter is pending, otherwise use committed dates
           const start = b.negotiationStatus === "counter_proposed"
@@ -5419,9 +5426,12 @@ Respond with ONLY the category name, nothing else.`
 
     // Attach isCurrentlyOut — true when item is committed to a neighbour (ACCEPTED or physically out)
     const activeHandoffSt = ['ACCEPTED','IN_PROGRESS','HANDOFF_CONFIRMED','DEPOSIT_CONFIRMED','AWAITING_HANDOFF_CONFIRM','HANDOFF_DISPUTED','DISPUTED'];
-    const activeReq = await db.select({ id: itemRequests.id, endDate: itemRequests.endDate, counterEndDate: itemRequests.counterEndDate, requestType: itemRequests.requestType }).from(itemRequests)
-      .where(and(eq(itemRequests.itemId, itemId), sql`${itemRequests.status} = ANY(ARRAY[${sql.raw(activeHandoffSt.map(s=>`'${s}'`).join(','))}])`))
-      .limit(1);
+    // Requests past their handoff cutoff no longer hold the item, even before they are marked EXPIRED.
+    const itemNow = currentTime();
+    const activeReq = (await db.select({ id: itemRequests.id, endDate: itemRequests.endDate, counterEndDate: itemRequests.counterEndDate, startDate: itemRequests.startDate, counterStartDate: itemRequests.counterStartDate, status: itemRequests.status, requestType: itemRequests.requestType }).from(itemRequests)
+      .where(and(eq(itemRequests.itemId, itemId), sql`${itemRequests.status} = ANY(ARRAY[${sql.raw(activeHandoffSt.map(s=>`'${s}'`).join(','))}])`)))
+      .filter((r) => !isDueForExpiry(r, itemNow))
+      .slice(0, 1);
     const isCurrentlyOut = activeReq.length > 0;
     // Use counter-proposed end date if set (negotiated terms), falling back to original end date
     const activeRequestEndDate: string | null = (activeReq[0]?.counterEndDate ?? activeReq[0]?.endDate as any) ?? null;

@@ -73,6 +73,7 @@ import {
   type HandoffDeadlineResult,
 } from "../handoff-deadline-service";
 import { shouldRunBackgroundJobs } from "../background-jobs-gate";
+import { backgroundJobs } from "../background-jobs-registry";
 import { withOverlapGuard } from "../overlap-guard";
 import { startRequestExpirySweepTimer } from "../request-expiry-timer";
 import {
@@ -12648,11 +12649,11 @@ Respond with ONLY the category name, nothing else.`
     // Only in a deployment or with BACKGROUND_JOBS=on: these act on the database DATABASE_URL names.
     shouldRunBackgroundJobs(process.env)
   ) {
-    setTimeout(() => {
+    backgroundJobs.setTimeout(() => {
       void runOverdueReminderSweep();
-      setInterval(() => void runOverdueReminderSweep(), 6 * 60 * 60 * 1000);
+      backgroundJobs.setInterval(() => void runOverdueReminderSweep(), 6 * 60 * 60 * 1000);
       void runReturnRecoverySweep();
-      setInterval(() => void runReturnRecoverySweep(), 60 * 1000);
+      backgroundJobs.setInterval(() => void runReturnRecoverySweep(), 60 * 1000);
 
       // Optional request-expiry sweep, OFF unless EXPIRY_SWEEP_TIMER=on (see request-expiry-timer.ts):
       // expiry is always a dry run; the 4h reminder follows SCHEDULED_JOBS_EXPIRY_REMINDERS.
@@ -12675,7 +12676,7 @@ Respond with ONLY the category name, nothing else.`
           }
         });
         void runHandoffSweep();
-        setInterval(() => void runHandoffSweep(), HANDOFF_SWEEP_INTERVAL_MS);
+        backgroundJobs.setInterval(() => void runHandoffSweep(), HANDOFF_SWEEP_INTERVAL_MS);
       }
     }, 30 * 1000);
   }

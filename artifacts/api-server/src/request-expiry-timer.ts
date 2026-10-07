@@ -1,3 +1,4 @@
+import { backgroundJobs } from "./background-jobs-registry";
 import { withOverlapGuard } from "./overlap-guard";
 import type { RequestExpirySweepOptions, RequestExpirySweepResult } from "./request-expiry-service";
 import { buildExpirySweepOptions, resolveRemindersEnabled } from "./scripts/run-scheduled-jobs";
@@ -13,7 +14,7 @@ export interface ExpirySweepTimerDeps {
   env: NodeJS.ProcessEnv;
   sweep: (options: RequestExpirySweepOptions) => Promise<RequestExpirySweepResult>;
   now: () => Date;
-  /** Defaults to setInterval. */
+  /** Defaults to the background-jobs registry's setInterval (cleared on shutdown). */
   schedule?: (run: () => void, everyMs: number) => unknown;
   log?: (line: string) => void;
   logError?: (line: string, error: unknown) => void;
@@ -28,7 +29,7 @@ export function startRequestExpirySweepTimer(deps: ExpirySweepTimerDeps): { tick
   if (!isExpirySweepTimerEnabled(deps.env.EXPIRY_SWEEP_TIMER)) return null;
   const log = deps.log ?? console.log;
   const logError = deps.logError ?? console.error;
-  const schedule = deps.schedule ?? ((run, everyMs) => setInterval(run, everyMs));
+  const schedule = deps.schedule ?? ((run, everyMs) => backgroundJobs.setInterval(run, everyMs));
   const reminders = resolveRemindersEnabled(deps.env.SCHEDULED_JOBS_EXPIRY_REMINDERS);
   log(`[request-expiry] in-process sweep ON: expiry dry-run, reminders ${reminders ? "on" : "off"}`);
 

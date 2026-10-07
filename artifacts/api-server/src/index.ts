@@ -7,6 +7,9 @@ import { initializeAchievements, initializeSubscriptionPlans } from "./init-achi
 import { startRateLimitCleanup } from "./auth";
 import { applyStartupMigrations } from "./startup-migrations";
 import { backgroundJobsBootLine } from "./background-jobs-gate";
+import { backgroundJobs } from "./background-jobs-registry";
+import { installShutdownHandlers } from "./shutdown";
+import { pool } from "@workspace/db";
 
 const rawPort = process.env["PORT"];
 
@@ -43,6 +46,19 @@ async function start() {
   httpServer.listen(port, "0.0.0.0", () => {
     logger.info({ port }, "Server listening");
     startRateLimitCleanup();
+  });
+
+  // SIGTERM/SIGINT: stop the timers and let running ticks finish, close the server, end the pool.
+  installShutdownHandlers(process, {
+    registry: backgroundJobs,
+    closeServer: () =>
+      new Promise<void>((resolve) => {
+        httpServer.close(() => resolve());
+        httpServer.closeIdleConnections?.();
+      }),
+    closePool: () => pool.end(),
+    exit: (code) => process.exit(code),
+    log: (line) => logger.info(line),
   });
 
   httpServer.on("error", (err: NodeJS.ErrnoException) => {

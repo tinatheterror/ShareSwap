@@ -22,6 +22,7 @@ import { sendVerificationEmail, sendPasswordResetEmail } from "./sendgrid";
 import { computeActiveStatus, computeResponseTime } from "./user-stats";
 import { resolveGoogleOAuthCallbackURL } from "./google-oauth-config";
 import { shouldRunBackgroundJobs } from "./background-jobs-gate";
+import { backgroundJobs } from "./background-jobs-registry";
 import { withOverlapGuard } from "./overlap-guard";
 
 // ---------------------------------------------------------------------------
@@ -99,9 +100,9 @@ export function startRateLimitCleanup(env: NodeJS.ProcessEnv = process.env): boo
   });
 
   // Run once shortly after startup, then on the regular cadence.
-  setTimeout(() => {
+  backgroundJobs.setTimeout(() => {
     void runCleanup();
-    setInterval(() => void runCleanup(), INTERVAL_MS);
+    backgroundJobs.setInterval(() => void runCleanup(), INTERVAL_MS);
   }, 60 * 1000); // first run 1 minute after boot
   return true;
 }

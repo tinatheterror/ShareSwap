@@ -6,6 +6,7 @@ import { initializeSampleGames } from "./init-games";
 import { initializeAchievements, initializeSubscriptionPlans } from "./init-achievements";
 import { startRateLimitCleanup } from "./auth";
 import { applyStartupMigrations } from "./startup-migrations";
+import { backgroundJobsBootLine } from "./background-jobs-gate";
 
 const rawPort = process.env["PORT"];
 
@@ -23,6 +24,9 @@ async function start() {
   // Apply idempotent SQL before any route or background worker can access new
   // columns. This also covers deployed instances where drizzle-kit is absent.
   await applyStartupMigrations();
+
+  // One line saying whether the in-process timers run in this process, and why.
+  logger.info(backgroundJobsBootLine(process.env));
 
   setupStorageRoutes(app);
   const httpServer = registerRoutes(app);

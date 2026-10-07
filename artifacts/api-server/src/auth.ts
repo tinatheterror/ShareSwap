@@ -21,6 +21,8 @@ import { fromZodError } from "zod-validation-error";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./sendgrid";
 import { computeActiveStatus, computeResponseTime } from "./user-stats";
 import { resolveGoogleOAuthCallbackURL } from "./google-oauth-config";
+import { shouldRunBackgroundJobs } from "./background-jobs-gate";
+import { withOverlapGuard } from "./overlap-guard";
 
 // ---------------------------------------------------------------------------
 // Postgres-backed rate-limit store
@@ -74,10 +76,13 @@ function ensureRateLimitTable(): Promise<void> {
 // fast.  It runs every 10 minutes and logs the number of rows removed so
 // ops can monitor table health.
 // ---------------------------------------------------------------------------
-export function startRateLimitCleanup(): void {
+// Returns false (and schedules nothing) unless background jobs are on for this process: a
+// deployment, or BACKGROUND_JOBS=on (see background-jobs-gate.ts).
+export function startRateLimitCleanup(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (!shouldRunBackgroundJobs(env)) return false;
   const INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
-  const runCleanup = async () => {
+  const runCleanup = withOverlapGuard("rate-limit-cleanup", async () => {
     try {
       const result = await pool.query<{ count: string }>(
         `DELETE FROM rate_limit_store
@@ -91,13 +96,14 @@ export function startRateLimitCleanup(): void {
     } catch (err) {
       console.error("[rate-limit-cleanup] Cleanup failed:", err);
     }
-  };
+  });
 
   // Run once shortly after startup, then on the regular cadence.
   setTimeout(() => {
-    runCleanup();
-    setInterval(runCleanup, INTERVAL_MS);
+    void runCleanup();
+    setInterval(() => void runCleanup(), INTERVAL_MS);
   }, 60 * 1000); // first run 1 minute after boot
+  return true;
 }
 
 export class PostgresRateLimitStore implements Store {

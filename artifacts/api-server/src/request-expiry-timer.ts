@@ -1,3 +1,4 @@
+import { withOverlapGuard } from "./overlap-guard";
 import type { RequestExpirySweepOptions, RequestExpirySweepResult } from "./request-expiry-service";
 import { buildExpirySweepOptions, resolveRemindersEnabled } from "./scripts/run-scheduled-jobs";
 
@@ -32,7 +33,8 @@ export function startRequestExpirySweepTimer(deps: ExpirySweepTimerDeps): { tick
   log(`[request-expiry] in-process sweep ON: expiry dry-run, reminders ${reminders ? "on" : "off"}`);
 
   let reported = new Set<string>();
-  const tick = async () => {
+  // A tick that is still running (a slow sweep) makes the next one skip rather than overlap it.
+  const tick = withOverlapGuard("request-expiry", async () => {
     try {
       const result = await deps.sweep(buildExpirySweepOptions("dry-run", reminders, deps.now()));
       // Log each would-expire candidate once while it stays a candidate.
@@ -50,8 +52,8 @@ export function startRequestExpirySweepTimer(deps: ExpirySweepTimerDeps): { tick
     } catch (error) {
       logError("[request-expiry] sweep failed:", error);
     }
-  };
+  }, log);
   void tick();
   schedule(() => void tick(), EXPIRY_SWEEP_TIMER_INTERVAL_MS);
-  return { tick };
+  return { tick: async () => void (await tick()) };
 }

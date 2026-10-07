@@ -72,6 +72,8 @@ import {
   type HandoffDeadlineDeps,
   type HandoffDeadlineResult,
 } from "../handoff-deadline-service";
+import { shouldRunBackgroundJobs } from "../background-jobs-gate";
+import { withOverlapGuard } from "../overlap-guard";
 import { startRequestExpirySweepTimer } from "../request-expiry-timer";
 import {
   REQUEST_DATES_PASSED_MESSAGE,
@@ -12602,12 +12604,14 @@ Respond with ONLY the category name, nothing else.`
 
     // Native clients check on launch, resume, and while active. This sweep only
     // sends reminders; overdue status must never capture or renew a deposit.
-  const runOverdueReminderSweep = () => {
-    processReturnReminders().catch((error) =>
-      console.error("Error running overdue reminder sweep:", error),
-    );
-  };
-  const runReturnRecoverySweep = async () => {
+  const runOverdueReminderSweep = withOverlapGuard("overdue-reminders", async () => {
+    try {
+      await processReturnReminders();
+    } catch (error) {
+      console.error("Error running overdue reminder sweep:", error);
+    }
+  });
+  const runReturnRecoverySweep = withOverlapGuard("return-recovery", async () => {
     try {
       const result = await recoverPendingApprovedReturns({
         stripeClient: stripe as any,
@@ -12624,7 +12628,7 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("[return-recovery] sweep failed:", error);
     }
-  };
+  });
   options.onScheduledJobs?.({
     runReturnRecovery: async () => {
       const { checked, completed, pending } = await recoverPendingApprovedReturns({
@@ -12640,11 +12644,13 @@ Respond with ONLY the category name, nothing else.`
   });
   if (
     options.startBackgroundJobs !== false &&
-    process.env.E2E_TEST_MODE !== "true"
+    process.env.E2E_TEST_MODE !== "true" &&
+    // Only in a deployment or with BACKGROUND_JOBS=on: these act on the database DATABASE_URL names.
+    shouldRunBackgroundJobs(process.env)
   ) {
     setTimeout(() => {
-      runOverdueReminderSweep();
-      setInterval(runOverdueReminderSweep, 6 * 60 * 60 * 1000);
+      void runOverdueReminderSweep();
+      setInterval(() => void runOverdueReminderSweep(), 6 * 60 * 60 * 1000);
       void runReturnRecoverySweep();
       setInterval(() => void runReturnRecoverySweep(), 60 * 1000);
 
@@ -12661,13 +12667,13 @@ Respond with ONLY the category name, nothing else.`
       const handoffSweepMode = resolveHandoffSweepMode(process.env.HANDOFF_DEADLINE_SWEEP_MODE);
       if (handoffSweepMode !== "off") {
         console.log(`[handoff-deadlines] server sweep mode: ${handoffSweepMode}`);
-        const runHandoffSweep = async () => {
+        const runHandoffSweep = withOverlapGuard("handoff-deadlines", async () => {
           try {
             await runHandoffDeadlineSweep(handoffDeadlineDeps, handoffSweepMode);
           } catch (error) {
             console.error("[handoff-deadlines] sweep failed:", error);
           }
-        };
+        });
         void runHandoffSweep();
         setInterval(() => void runHandoffSweep(), HANDOFF_SWEEP_INTERVAL_MS);
       }

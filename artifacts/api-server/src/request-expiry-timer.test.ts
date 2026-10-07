@@ -24,6 +24,9 @@ const emptyResult = (overrides: Partial<RequestExpirySweepResult> = {}): Request
   ...overrides,
 });
 
+/** Lets the unawaited startup sweep finish; a tick fired while it runs is skipped by the overlap guard. */
+const settle = () => new Promise<void>((resolve) => setImmediate(resolve));
+
 function harness(env: NodeJS.ProcessEnv, results: Array<RequestExpirySweepResult | Error> = []) {
   const sweepCalls: RequestExpirySweepOptions[] = [];
   const scheduled: Array<{ run: () => void; everyMs: number }> = [];
@@ -76,6 +79,7 @@ test("switched on, it sweeps once right away and then every minute", async () =>
   const h = harness({ EXPIRY_SWEEP_TIMER: "on" });
   assert.ok(h.timer);
   assert.equal(h.sweepCalls.length, 1, "first sweep runs at startup");
+  await settle();
   assert.equal(h.scheduled.length, 1);
   assert.equal(h.scheduled[0].everyMs, EXPIRY_SWEEP_TIMER_INTERVAL_MS);
   assert.equal(EXPIRY_SWEEP_TIMER_INTERVAL_MS, 60_000);
@@ -112,6 +116,7 @@ test("each would-expire request is logged once while it stays a candidate, and a
     emptyResult({ candidates: [candidate(2)] }), // 1 left the list
     emptyResult({ candidates: [candidate(1), candidate(2)] }), // 1 is back: logged again
   ]);
+  await settle();
   await h.timer!.tick();
   await h.timer!.tick();
   await h.timer!.tick();
@@ -131,15 +136,81 @@ test("reminder candidates are not logged as would-expire, and sent reminders are
       candidates: [{ requestId: 7, action: "remind", itemName: "Tent", cutoff: CUTOFF }],
     }),
   ]);
-  await h.timer!.tick();
+  await settle(); // the startup sweep carries this result
   assert.equal(h.logs.some((l) => l.includes("would expire")), false);
   assert.ok(h.logs.includes("[request-expiry] sweep reminded=1 failed=0"));
 });
 
 test("a failing sweep is logged and the next tick still runs", async () => {
   const h = harness({ EXPIRY_SWEEP_TIMER: "on" }, [new Error("db down"), emptyResult()]);
+  await settle();
   await h.timer!.tick();
   assert.equal(h.sweepCalls.length, 2);
   assert.equal(h.errors.length, 1);
   assert.equal(h.errors[0], "[request-expiry] sweep failed:");
+});
+
+// ── Overlap guard: a slow sweep makes the next tick skip instead of running beside it ──────────
+
+function slowSweepHarness() {
+  const releases: Array<(result: RequestExpirySweepResult | Error) => void> = [];
+  const scheduled: Array<() => void> = [];
+  const logs: string[] = [];
+  const errors: string[] = [];
+  let sweepCalls = 0;
+  const timer = startRequestExpirySweepTimer({
+    env: { EXPIRY_SWEEP_TIMER: "on" },
+    now: () => NOW,
+    sweep: () => {
+      sweepCalls++;
+      return new Promise<RequestExpirySweepResult>((resolve, reject) => {
+        releases.push((r) => (r instanceof Error ? reject(r) : resolve(r)));
+      });
+    },
+    schedule: (run) => void scheduled.push(run),
+    log: (line) => void logs.push(line),
+    logError: (line) => void errors.push(line),
+  });
+  return { timer, releases, scheduled, logs, errors, calls: () => sweepCalls };
+}
+
+test("a tick that fires while the previous sweep is still running is skipped and logged", async () => {
+  const h = slowSweepHarness();
+  assert.equal(h.calls(), 1, "the startup sweep is running");
+
+  h.scheduled[0](); // interval tick 1
+  h.scheduled[0](); // interval tick 2
+  await h.timer!.tick(); // a direct tick too
+  assert.equal(h.calls(), 1, "no second sweep started beside the first");
+  const skips = h.logs.filter((l) => l.includes("skipping this tick"));
+  assert.equal(skips.length, 3);
+  assert.equal(skips[0], "[request-expiry] previous run still in progress; skipping this tick (1 skipped so far)");
+
+  h.releases[0](emptyResult());
+  await new Promise((resolve) => setImmediate(resolve));
+  h.scheduled[0]();
+  assert.equal(h.calls(), 2, "once the first sweep finished, the next tick runs");
+  h.releases[1](emptyResult());
+});
+
+test("a sweep that fails frees the guard so the next tick runs", async () => {
+  const h = slowSweepHarness();
+  h.releases[0](new Error("db down"));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.errors.length, 1);
+  h.scheduled[0]();
+  assert.equal(h.calls(), 2);
+  h.releases[1](emptyResult());
+});
+
+test("skipped ticks do not repeat would-expire logging or lose the already-reported set", async () => {
+  const candidate = { requestId: 1, action: "expire" as const, itemName: "Tent", cutoff: CUTOFF };
+  const h = slowSweepHarness();
+  h.scheduled[0](); // skipped
+  h.releases[0](emptyResult({ candidates: [candidate] }));
+  await new Promise((resolve) => setImmediate(resolve));
+  h.scheduled[0](); // second real sweep, same candidate
+  h.releases[1](emptyResult({ candidates: [candidate] }));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.logs.filter((l) => l.includes("would expire")).length, 1);
 });

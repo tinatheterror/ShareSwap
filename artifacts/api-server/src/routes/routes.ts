@@ -72,6 +72,7 @@ import {
   type HandoffDeadlineDeps,
   type HandoffDeadlineResult,
 } from "../handoff-deadline-service";
+import { startRequestExpirySweepTimer } from "../request-expiry-timer";
 import {
   REQUEST_DATES_PASSED_MESSAGE,
   isStartDatePassed,
@@ -12646,6 +12647,14 @@ Respond with ONLY the category name, nothing else.`
       setInterval(runOverdueReminderSweep, 6 * 60 * 60 * 1000);
       void runReturnRecoverySweep();
       setInterval(() => void runReturnRecoverySweep(), 60 * 1000);
+
+      // Optional request-expiry sweep, OFF unless EXPIRY_SWEEP_TIMER=on (see request-expiry-timer.ts):
+      // expiry is always a dry run; the 4h reminder follows SCHEDULED_JOBS_EXPIRY_REMINDERS.
+      startRequestExpirySweepTimer({
+        env: process.env,
+        sweep: (options) => runRequestExpirySweep(requestExpiryDeps, options),
+        now: currentTime,
+      });
 
       // Handoff auto-confirm / flag / 48h deposit timeout. HANDOFF_DEADLINE_SWEEP_MODE:
       // "dry-run" (default: logs what it would change), "live", or "off".

@@ -19,6 +19,7 @@ import {
   runRequestExpirySweep,
   type RequestExpiryDeps,
 } from "./request-expiry-service.js";
+import { buildExpirySweepOptions } from "./scripts/run-scheduled-jobs";
 
 // Oct 2–5 (the agreed dates) → cutoff Oct 4 23:59:59 in Vancouver (PDT, UTC-7)
 // = 2026-10-05T06:59:59Z. Request dates never move; only the cutoff matters here.
@@ -777,6 +778,35 @@ test("sweep: reminds both people once, a few hours before the cutoff", async () 
   const second = await runRequestExpirySweep(deps, { now: new Date(THREE_HOURS_BEFORE.getTime() + 3_600_000), onlyRequestIds: [id] });
   assert.equal(second.remindedCount, 0);
   assert.equal((await notes(id, "handoff_deadline_reminder")).length, 2, "at most once");
+});
+
+test("sweep: the 4h reminder is claimed by expiry_reminder_sent_at, so repeated sweeps send exactly one", async () => {
+  const { id } = await newRequest({ status: "DEPOSIT_CONFIRMED", depositMethod: "in_person" });
+  const pushes: number[] = [];
+  const deps = { ...noStripe().deps, push: (userId: number) => void pushes.push(userId) };
+  // The options the in-process timer uses: reminders on, expiry a dry run.
+  const timerOptions = (now: Date) => ({ ...buildExpirySweepOptions("dry-run", true, now), onlyRequestIds: [id] });
+
+  assert.equal((await load(id)).expiryReminderSentAt, null);
+
+  const first = await runRequestExpirySweep(deps, timerOptions(THREE_HOURS_BEFORE));
+  assert.equal(first.remindedCount, 1);
+  assert.deepEqual(first.candidates.map((c) => c.action), ["remind"]);
+  assert.equal((await load(id)).expiryReminderSentAt?.getTime(), THREE_HOURS_BEFORE.getTime());
+
+  // Same instant again, then a minute and an hour later: still one reminder.
+  for (const now of [THREE_HOURS_BEFORE, new Date(THREE_HOURS_BEFORE.getTime() + 60_000), new Date(THREE_HOURS_BEFORE.getTime() + 3_600_000)]) {
+    const again = await runRequestExpirySweep(deps, timerOptions(now));
+    assert.equal(again.remindedCount, 0);
+    assert.deepEqual(again.candidates, [], "a request already reminded is not even reported");
+  }
+
+  const reminders = await notes(id, "handoff_deadline_reminder");
+  assert.equal(reminders.length, 2, "one for the owner, one for the borrower, and no more");
+  assert.deepEqual(reminders.map((n) => n.userId).sort(), [ownerId, borrowerId].sort());
+  assert.deepEqual(pushes.sort(), [ownerId, borrowerId].sort(), "one push each");
+  assert.equal((await load(id)).expiryReminderSentAt?.getTime(), THREE_HOURS_BEFORE.getTime(), "the claim is never re-stamped");
+  assert.equal((await load(id)).status, "DEPOSIT_CONFIRMED", "reminders never expire anything");
 });
 
 test("sweep: concurrent reminder runs send one reminder", async () => {

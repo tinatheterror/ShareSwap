@@ -6,7 +6,7 @@ import {
   isExpirySweepTimerEnabled,
   startRequestExpirySweepTimer,
 } from "./request-expiry-timer";
-import { EXPIRY_SWEEP_MAX_CUTOFF_AGE_MS } from "./scripts/run-scheduled-jobs";
+import { EXPIRY_SWEEP_MAX_CUTOFF_AGE_MS } from "./scheduled-job-options";
 
 // The in-process request-expiry timer is an opt-in: EXPIRY_SWEEP_TIMER=on. Off by default. When on,
 // expiry is always a dry run and reminders follow SCHEDULED_JOBS_EXPIRY_REMINDERS. No database here:

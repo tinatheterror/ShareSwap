@@ -1,7 +1,7 @@
 import { backgroundJobs } from "./background-jobs-registry";
 import { withOverlapGuard } from "./overlap-guard";
 import type { RequestExpirySweepOptions, RequestExpirySweepResult } from "./request-expiry-service";
-import { buildExpirySweepOptions, resolveRemindersEnabled } from "./scripts/run-scheduled-jobs";
+import { buildExpirySweepOptions, resolveRemindersEnabled } from "./scheduled-job-options";
 
 export const EXPIRY_SWEEP_TIMER_INTERVAL_MS = 60 * 1000;
 

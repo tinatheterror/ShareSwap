@@ -19,7 +19,7 @@ import {
   runRequestExpirySweep,
   type RequestExpiryDeps,
 } from "./request-expiry-service.js";
-import { buildExpirySweepOptions } from "./scripts/run-scheduled-jobs";
+import { buildExpirySweepOptions } from "./scheduled-job-options";
 
 // Oct 2–5 (the agreed dates) → cutoff Oct 4 23:59:59 in Vancouver (PDT, UTC-7)
 // = 2026-10-05T06:59:59Z. Request dates never move; only the cutoff matters here.

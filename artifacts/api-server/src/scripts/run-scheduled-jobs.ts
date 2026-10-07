@@ -1,5 +1,16 @@
 import { pathToFileURL } from "node:url";
 import type { ScheduledJobRunners } from "../routes/routes";
+import {
+  EXPIRY_SWEEP_MAX_CUTOFF_AGE_MS,
+  buildExpirySweepOptions,
+  resolveJobMode,
+  resolveRemindersEnabled,
+  type JobMode,
+} from "../scheduled-job-options";
+
+// Re-exported so existing imports (and this script's tests) keep working.
+export { EXPIRY_SWEEP_MAX_CUTOFF_AGE_MS, buildExpirySweepOptions, resolveJobMode, resolveRemindersEnabled };
+export type { JobMode };
 
 // One entry point for the Scheduled Deployment (cron `* * * * *`, command
 // `node artifacts/api-server/dist/run-scheduled-jobs.mjs`; locally `pnpm jobs:run`).
@@ -31,12 +42,6 @@ export const LOCK_NAME = "shareswap:scheduled-jobs";
 export const RUN_TIMEOUT_MS = 5 * 60_000;
 /** Cron jitter: a job "every 10 min" is due after 9m30s so it does not drift to every 11. */
 export const DUE_TOLERANCE_MS = 30_000;
-/**
- * The expiry sweep only acts on requests whose cutoff passed within this window; older ones
- * are for scripts/expire-stale-requests.ts (silent), so a first run cannot notify about
- * long-dead requests. Same window as the handoff sweep.
- */
-export const EXPIRY_SWEEP_MAX_CUTOFF_AGE_MS = 3 * 24 * 3_600_000;
 export const OVERDUE_REMINDER_EVERY_MS = 6 * 3_600_000;
 export const RATE_LIMIT_CLEANUP_EVERY_MS = 10 * 60_000;
 const MAX_REPORTED_LINES = 500;
@@ -117,30 +122,6 @@ export function liveWarning(env: NodeJS.ProcessEnv): string {
 }
 
 // ── Switches ────────────────────────────────────────────────────────────────────
-
-export type JobMode = "off" | "dry-run" | "live";
-
-export function resolveJobMode(raw: string | undefined): JobMode {
-  const value = raw?.trim().toLowerCase();
-  if (value === "live") return "live";
-  if (value === "off") return "off";
-  return "dry-run";
-}
-
-export function resolveRemindersEnabled(raw: string | undefined): boolean {
-  const value = raw?.trim().toLowerCase();
-  return !(value === "off" || value === "false" || value === "0" || value === "no");
-}
-
-/** Expiry stays a dry run unless explicitly live; reminders are controlled separately. */
-export function buildExpirySweepOptions(mode: Exclude<JobMode, "off">, reminders: boolean, now: Date) {
-  return {
-    now,
-    expireDryRun: mode !== "live",
-    reminders,
-    maxCutoffAgeMs: EXPIRY_SWEEP_MAX_CUTOFF_AGE_MS,
-  };
-}
 
 // ── Gating and de-duplication ───────────────────────────────────────────────────
 
@@ -583,7 +564,18 @@ export async function main(
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+/**
+ * True only when this file is the process entry point AND is named like the script. The name check
+ * matters: when another entry (dist/index.mjs, the API server) bundles this module, import.meta.url
+ * is that bundle's URL and equals process.argv[1], which would otherwise run main() inside the server.
+ */
+export function isScheduledJobsEntryPoint(metaUrl: string, argv1: string | undefined): boolean {
+  if (!argv1) return false;
+  if (!/(^|[\\/])run-scheduled-jobs\.(ts|mjs|js)$/.test(argv1)) return false;
+  return metaUrl === pathToFileURL(argv1).href;
+}
+
+if (isScheduledJobsEntryPoint(import.meta.url, process.argv[1])) {
   main().then(
     (code) => process.exit(code),
     (err) => {

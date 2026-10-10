@@ -567,7 +567,7 @@ test("a job_switches row for request-expiry-on-read beats the environment", asyn
       await borrower.request("/api/requests");
       assert.equal((await load(id)).status, "DEPOSIT_CONFIRMED", "row off beats env live");
     });
-    await pool.query("UPDATE job_switches SET mode = 'live', max_cutoff_age_ms = 1000 WHERE job_name = 'request-expiry-on-read'");
+    await pool.query("UPDATE job_switches SET mode = 'live', max_cutoff_age_ms = 1000, updated_by = 'test', note = 'test fixture' WHERE job_name = 'request-expiry-on-read'");
     await withReadMode("off", async () => {
       clock = new Date(OCT_5_FIRST_SECOND_PDT.getTime() + 60_000);
       await borrower.request("/api/requests");

@@ -46,7 +46,10 @@ before(async () => {
   savedTimerRuns = (await pool.query("SELECT * FROM scheduled_job_runs WHERE job_name = ANY($1)", [names.map(timerRunName)])).rows;
   await pool.query("DELETE FROM job_switches WHERE job_name = ANY($1)", [names]);
   await pool.query("DELETE FROM scheduled_job_runs WHERE job_name = ANY($1)", [names.map(timerRunName)]);
-  for (const [name, mode] of ROWS) await pool.query("INSERT INTO job_switches (job_name, mode) VALUES ($1, $2)", [name, mode]);
+  // A live row must say who set it and why (job_switches_live_needs_attribution).
+  for (const [name, mode] of ROWS) {
+    await pool.query("INSERT INTO job_switches (job_name, mode, updated_by, note) VALUES ($1, $2, $3, $4)", [name, mode, mode === "live" ? "test" : null, mode === "live" ? "test fixture" : null]);
+  }
 
   const [owner, borrower] = await db
     .insert(users)

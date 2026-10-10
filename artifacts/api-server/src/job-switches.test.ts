@@ -13,6 +13,7 @@ import {
   resolveReadExpiryPolicy,
   type SwitchQuery,
 } from "./job-switches";
+import { guardedJob } from "./guarded-job";
 import { JOB_SWITCHES_SQL, createTableIfMissing, ensureJobSwitchesTable } from "./startup-migrations";
 
 const rowQuery = (row: Record<string, unknown> | null): SwitchQuery => async () => ({ rows: row ? [row] : [] });
@@ -52,7 +53,7 @@ test("a row wins over the environment; no row falls back to it", async () => {
   assert.deepEqual(await resolveJobSwitch("j", "live", rowQuery({ mode: "off", max_cutoff_age_ms: null })), {
     ok: true, mode: "off", maxCutoffAgeMs: null, source: "table",
   });
-  assert.deepEqual(await resolveJobSwitch("j", "off", rowQuery({ mode: "live", max_cutoff_age_ms: "259200000" })), {
+  assert.deepEqual(await resolveJobSwitch("j", "off", rowQuery({ mode: "live", max_cutoff_age_ms: "259200000", updated_by: "test", note: "test fixture" })), {
     ok: true, mode: "live", maxCutoffAgeMs: 259_200_000, source: "table",
   });
   assert.deepEqual(await resolveJobSwitch("j", "dry-run", rowQuery(null)), {
@@ -63,7 +64,7 @@ test("a row wins over the environment; no row falls back to it", async () => {
 test("an unreadable table, or an invalid row, is a failure, never a mode", async () => {
   const unreadable = await resolveJobSwitch("j", "live", failingQuery());
   assert.equal(unreadable.ok, false);
-  for (const row of [{ mode: "enabled" }, { mode: null }, { mode: "live", max_cutoff_age_ms: "0" }, { mode: "live", max_cutoff_age_ms: "-5" }, { mode: "live", max_cutoff_age_ms: "abc" }]) {
+  for (const row of [{ mode: "enabled" }, { mode: null }, { mode: "live", max_cutoff_age_ms: "0", updated_by: "test", note: "test fixture" }, { mode: "live", max_cutoff_age_ms: "-5", updated_by: "test", note: "test fixture" }, { mode: "live", max_cutoff_age_ms: "abc", updated_by: "test", note: "test fixture" }]) {
     const decision = await resolveJobSwitch("j", "live", rowQuery(row));
     assert.equal(decision.ok, false, JSON.stringify(row));
   }
@@ -97,9 +98,9 @@ test("the read policy follows the row for request-expiry-on-read, with its max c
 
 test("a row can loosen the environment as well as tighten it", async () => {
   const deployment = { REPLIT_DEPLOYMENT: "1" }; // environment default: dry-run
-  assert.equal((await resolveReadExpiryPolicy(deployment, rowQuery({ mode: "live", max_cutoff_age_ms: null }))).mode, "live");
+  assert.equal((await resolveReadExpiryPolicy(deployment, rowQuery({ mode: "live", max_cutoff_age_ms: null, updated_by: "test", note: "test fixture" }))).mode, "live");
   assert.equal((await resolveReadExpiryPolicy(deployment, rowQuery({ mode: "off", max_cutoff_age_ms: null }))).mode, "off");
-  assert.equal((await resolveReadExpiryPolicy({}, rowQuery({ mode: "live", max_cutoff_age_ms: null }))).mode, "live", "even outside a deployment");
+  assert.equal((await resolveReadExpiryPolicy({}, rowQuery({ mode: "live", max_cutoff_age_ms: null, updated_by: "test", note: "test fixture" }))).mode, "live", "even outside a deployment");
 });
 
 // ── Last-run recording ──────────────────────────────────────────────────────────
@@ -177,7 +178,7 @@ test("the table rejects a bad mode or a non-positive max cutoff age, and reads b
   const name = `test-switch-${process.pid}-${Date.now()}`;
   jobNames.push(name);
   await assert.rejects(pool.query("INSERT INTO job_switches (job_name, mode) VALUES ($1, 'bogus')", [name]));
-  await assert.rejects(pool.query("INSERT INTO job_switches (job_name, mode, max_cutoff_age_ms) VALUES ($1, 'live', 0)", [name]));
+  await assert.rejects(pool.query("INSERT INTO job_switches (job_name, mode, max_cutoff_age_ms, updated_by, note) VALUES ($1, 'live', 0, 'test', 'test fixture')", [name]));
   assert.equal(await readJobSwitch(name), null);
   await pool.query("INSERT INTO job_switches (job_name, mode, max_cutoff_age_ms) VALUES ($1, 'dry-run', 7200000)", [name]);
   assert.deepEqual(await readJobSwitch(name), { mode: "dry-run", maxCutoffAgeMs: 7_200_000 });
@@ -186,4 +187,132 @@ test("the table rejects a bad mode or a non-positive max cutoff age, and reads b
 
 test("the two job names are distinct", () => {
   assert.notEqual(REQUEST_EXPIRY_JOB, REQUEST_EXPIRY_ON_READ_JOB);
+});
+
+// ── A live row must say who set it and why ──────────────────────────────────────
+
+const LIVE_CONSTRAINT = "job_switches_live_needs_attribution";
+
+test("the database rejects a live row without updated_by or without a note, and a blank one", async () => {
+  await createTableIfMissing(scratchSql);
+  const insert = (name: string, mode: string, updatedBy: unknown, note: unknown) =>
+    pool.query(`INSERT INTO ${scratch} (job_name, mode, updated_by, note) VALUES ($1, $2, $3, $4)`, [name, mode, updatedBy, note]);
+  const rejected = async (label: string, updatedBy: unknown, note: unknown) => {
+    await assert.rejects(insert(`live-${label}`, "live", updatedBy, note), (error: { code?: string; constraint?: string }) => {
+      assert.equal(error.code, "23514", label);
+      assert.equal(error.constraint, LIVE_CONSTRAINT, label);
+      return true;
+    });
+  };
+  await rejected("no-updated-by", null, "turning it on after the incident");
+  await rejected("no-note", "ops@example.com", null);
+  await rejected("neither", null, null);
+  await rejected("empty-updated-by", "", "a note");
+  await rejected("empty-note", "ops@example.com", "");
+  await rejected("blank-updated-by", "  \t\n", "a note");
+  await rejected("blank-note", "ops@example.com", " \n ");
+  await assert.rejects(
+    pool.query(`INSERT INTO ${scratch} (job_name, mode) VALUES ('live-bare', 'live')`),
+    (error: { constraint?: string }) => error.constraint === LIVE_CONSTRAINT,
+  );
+  // An existing row cannot be switched live without them either.
+  await insert("was-off", "off", null, null);
+  await assert.rejects(
+    pool.query(`UPDATE ${scratch} SET mode = 'live' WHERE job_name = 'was-off'`),
+    (error: { constraint?: string }) => error.constraint === LIVE_CONSTRAINT,
+  );
+  await pool.query(`UPDATE ${scratch} SET mode = 'live', updated_by = 'ops@example.com', note = 'back on' WHERE job_name = 'was-off'`);
+
+  // With both fields it is accepted; off and dry-run never need them.
+  await insert("live-ok", "live", "ops@example.com", "turning it on after the incident");
+  await insert("dry-run-bare", "dry-run", null, null);
+  await insert("off-bare", "off", null, "");
+  const { rows } = await pool.query(`SELECT job_name FROM ${scratch} ORDER BY job_name`);
+  assert.deepEqual(rows.map((r) => r.job_name), ["dry-run-bare", "live-ok", "off-bare", "was-off"]);
+});
+
+test("the real table has the constraint, and readJobSwitch reads live, dry-run and off rows through it", async () => {
+  await ensureJobSwitchesTable();
+  const { rows } = await pool.query(
+    "SELECT conname FROM pg_constraint WHERE conrelid = 'job_switches'::regclass AND conname = $1",
+    [LIVE_CONSTRAINT],
+  );
+  assert.equal(rows.length, 1, "the table was created with the constraint");
+  const name = `test-switch-live-${process.pid}-${Date.now()}`;
+  jobNames.push(name);
+  await assert.rejects(pool.query("INSERT INTO job_switches (job_name, mode) VALUES ($1, 'live')", [name]));
+  await pool.query("INSERT INTO job_switches (job_name, mode, updated_by, note) VALUES ($1, 'live', 'ops', 'on')", [name]);
+  assert.deepEqual(await readJobSwitch(name), { mode: "live", maxCutoffAgeMs: null });
+});
+
+// A table created before the constraint existed. A temp table named job_switches shadows the real one for
+// one connection, so nothing shared is touched.
+const LEGACY_JOB_SWITCHES_SQL = `
+CREATE TEMP TABLE job_switches (
+  job_name          TEXT        PRIMARY KEY,
+  mode              TEXT        NOT NULL CHECK (mode IN ('live', 'dry-run', 'off')),
+  max_cutoff_age_ms BIGINT      CHECK (max_cutoff_age_ms IS NULL OR max_cutoff_age_ms > 0),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_by        TEXT,
+  note              TEXT
+)`;
+
+test("a live row without updated_by or a note, from before the constraint, is unreadable: the tick skips and nothing runs", async () => {
+  const client = await pool.connect();
+  try {
+    await client.query(LEGACY_JOB_SWITCHES_SQL);
+    const query: SwitchQuery = (text, params) => client.query(text, params);
+    const insert = (name: string, mode: string, updatedBy: string | null, note: string | null) =>
+      client.query("INSERT INTO job_switches (job_name, mode, updated_by, note) VALUES ($1, $2, $3, $4)", [name, mode, updatedBy, note]);
+    await insert("no-updated-by", "live", null, "a note");
+    await insert("no-note", "live", "ops", null);
+    await insert("blank-note", "live", "ops", "   ");
+    await insert("complete", "live", "ops", "on after the incident");
+    await insert("off-bare", "off", null, null);
+    await insert("dry-run-bare", "dry-run", null, null);
+
+    for (const name of ["no-updated-by", "no-note", "blank-note"]) {
+      await assert.rejects(readJobSwitch(name, query), /is live without updated_by and note/, name);
+      const decision = await resolveJobSwitch(name, "off", query);
+      assert.equal(decision.ok, false, `${name}: no decision, so the environment mode is not used either`);
+    }
+    assert.deepEqual(await readJobSwitch("complete", query), { mode: "live", maxCutoffAgeMs: null });
+    assert.deepEqual(await readJobSwitch("off-bare", query), { mode: "off", maxCutoffAgeMs: null });
+    assert.deepEqual(await readJobSwitch("dry-run-bare", query), { mode: "dry-run", maxCutoffAgeMs: null });
+
+    // The tick: a timer whose row is live without the fields runs nothing and records nothing, even when the environment says live.
+    const runs: string[] = [];
+    const records: string[] = [];
+    const errors: string[] = [];
+    const tickFor = (name: string) =>
+      guardedJob({
+        name,
+        envMode: "live",
+        supportsDryRun: true,
+        run: (mode) => void runs.push(`${name}:${mode}`),
+        resolveSwitch: (envMode) => resolveJobSwitch(name, envMode, query),
+        recordRun: async (job) => void records.push(job),
+        log: () => {},
+        logError: (line) => void errors.push(line),
+      });
+    for (const name of ["no-updated-by", "no-note", "blank-note"]) await tickFor(name)();
+    assert.deepEqual(runs, []);
+    assert.deepEqual(records, []);
+    assert.equal(errors.length, 3);
+    assert.ok(errors.every((line) => line.includes("could not read") && line.includes("live without updated_by and note")), errors.join("\n"));
+    // Complete live, and bare dry-run, run; bare off does not.
+    await tickFor("complete")();
+    await tickFor("dry-run-bare")();
+    await tickFor("off-bare")();
+    assert.deepEqual(runs, ["complete:live", "dry-run-bare:dry-run"]);
+
+    // The read path treats it as off.
+    const policy = await resolveReadExpiryPolicy({ REQUEST_EXPIRY_ON_READ_MODE: "live" }, async (text, params) => {
+      return query(text, ["no-note"].concat(params.slice(1) as string[]));
+    }, () => {});
+    assert.deepEqual(policy, READ_EXPIRY_OFF);
+  } finally {
+    await client.query("DROP TABLE IF EXISTS pg_temp.job_switches").catch(() => {});
+    client.release();
+  }
 });

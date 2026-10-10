@@ -32,13 +32,19 @@ export function parseSwitchMode(raw: unknown): JobMode | null {
   return raw === "live" || raw === "dry-run" || raw === "off" ? raw : null;
 }
 
+const isFilled = (value: unknown) => typeof value === "string" && value.trim() !== "";
+
 /** The row for `name`, or null when there is none. Throws when the table cannot be read or the row is invalid. */
 export async function readJobSwitch(name: string, query: SwitchQuery = poolQuery): Promise<JobSwitch | null> {
-  const { rows } = await query("SELECT mode, max_cutoff_age_ms FROM job_switches WHERE job_name = $1", [name]);
+  const { rows } = await query("SELECT mode, max_cutoff_age_ms, updated_by, note FROM job_switches WHERE job_name = $1", [name]);
   const row = rows[0];
   if (!row) return null;
   const mode = parseSwitchMode(row.mode);
   if (!mode) throw new Error(`job_switches row for ${name} has an invalid mode`);
+  // The table has the same CHECK; this covers a table created before it, or a constraint that was dropped.
+  if (mode === "live" && !(isFilled(row.updated_by) && isFilled(row.note))) {
+    throw new Error(`job_switches row for ${name} is live without updated_by and note`);
+  }
   const rawAge = row.max_cutoff_age_ms;
   const maxCutoffAgeMs = rawAge === null || rawAge === undefined ? null : Number(rawAge);
   if (maxCutoffAgeMs !== null && !(Number.isFinite(maxCutoffAgeMs) && maxCutoffAgeMs > 0)) {

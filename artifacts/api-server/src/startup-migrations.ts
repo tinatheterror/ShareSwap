@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS scheduled_job_runs (
 // environment default, so nothing is seeded. last-run bookkeeping stays in scheduled_job_runs.
 //   mode               'live' | 'dry-run' | 'off'
 //   max_cutoff_age_ms  optional; used by the request-expiry-on-read job only
+//   updated_by, note   required (non-blank) on a 'live' row, so a live switch always says who set it and why;
+//                      off and dry-run rows may leave them empty. job-switches.ts checks the same rule on read.
 export const JOB_SWITCHES_SQL = `
 CREATE TABLE IF NOT EXISTS job_switches (
   job_name          TEXT        PRIMARY KEY,
@@ -54,7 +56,10 @@ CREATE TABLE IF NOT EXISTS job_switches (
   max_cutoff_age_ms BIGINT      CHECK (max_cutoff_age_ms IS NULL OR max_cutoff_age_ms > 0),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_by        TEXT,
-  note              TEXT
+  note              TEXT,
+  CONSTRAINT job_switches_live_needs_attribution CHECK (
+    mode <> 'live' OR (coalesce(updated_by ~ '\\S', false) AND coalesce(note ~ '\\S', false))
+  )
 )`;
 
 /** Runs one idempotent CREATE TABLE IF NOT EXISTS, tolerating the race between two processes doing it at once. */

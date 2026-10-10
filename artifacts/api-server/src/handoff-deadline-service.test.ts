@@ -13,6 +13,7 @@ import {
 } from "@workspace/db";
 import {
   HANDOFF_SWEEP_MAX_DEADLINE_AGE_MS,
+  HANDOFF_SWEEP_REQUEST_TYPES,
   processHandoffDeadlines,
   resetHandoffSweepReportState,
   resolveHandoffSweepMode,
@@ -399,4 +400,81 @@ test("the live sweep applies the transition and logs a summary", async () => {
   assert.equal((await snapshot(id, itemId)).status, "IN_PROGRESS");
   assert.equal(lines.length, 1);
   assert.match(lines[0], /autoConfirmed=1/);
+});
+
+// ── requestTypes: the sweeps leave SWAP alone ─────────────────────────────────
+
+test("requestTypes BORROW/RENT: a SWAP is untouched by the live sweep, a BORROW beside it is not", async () => {
+  swapCalls.length = 0;
+  await setCoins(borrowerId, "50.00");
+  const swap = await newRequest({ requestType: "SWAP" });
+  const borrow = await newRequest();
+  // The coin balances are shared with the BORROW beside it, so compare only the SWAP's own state.
+  const own = async () => {
+    const { borrowerCoins: _b, ownerCoins: _o, ...rest } = await snapshot(swap.id, swap.itemId);
+    return rest;
+  };
+  const swapBefore = await own();
+
+  const result = await processHandoffDeadlines(deps, {
+    onlyRequestIds: [swap.id, borrow.id],
+    requestTypes: HANDOFF_SWEEP_REQUEST_TYPES,
+  });
+  assert.equal(result.autoAdvancedCount, 1, "only the BORROW advanced");
+  assert.deepEqual(await own(), swapBefore);
+  assert.equal((await own()).status, "AWAITING_HANDOFF_CONFIRM");
+  assert.equal(swapCalls.length, 0, "no swap rewards were handed out");
+  assert.equal((await snapshot(borrow.id, borrow.itemId)).status, "IN_PROGRESS");
+});
+
+test("requestTypes BORROW/RENT: a SWAP with one side denied is not flagged either", async () => {
+  const swap = await newRequest({ requestType: "SWAP", ownerConfirmedHandoff: false, borrowerConfirmedHandoff: false, borrowerDeniedHandoff: true });
+  const result = await processHandoffDeadlines(deps, { onlyRequestIds: [swap.id], requestTypes: HANDOFF_SWEEP_REQUEST_TYPES });
+  assert.equal(result.flaggedCount, 0);
+  assert.deepEqual(result.candidates, []);
+  assert.equal((await snapshot(swap.id, swap.itemId)).status, "AWAITING_HANDOFF_CONFIRM");
+});
+
+test("requestTypes BORROW/RENT: the dry-run sweep does not report a SWAP", async () => {
+  resetHandoffSweepReportState();
+  const swap = await newRequest({ requestType: "SWAP" });
+  const borrow = await newRequest();
+  const lines: string[] = [];
+  const result = await runHandoffDeadlineSweep(deps, "dry-run", (l) => lines.push(l), {
+    onlyRequestIds: [swap.id, borrow.id],
+    requestTypes: HANDOFF_SWEEP_REQUEST_TYPES,
+  });
+  assert.deepEqual(result.candidates.map((c) => c.requestId), [borrow.id]);
+  assert.ok(lines.some((l) => l.includes(`request ${borrow.id} `)));
+  assert.ok(!lines.some((l) => l.includes(`request ${swap.id} `)));
+});
+
+test("requestTypes defaults to every type: without it a SWAP is still auto-confirmed", async () => {
+  swapCalls.length = 0;
+  const swap = await newRequest({ requestType: "SWAP" });
+  const result = await processHandoffDeadlines(deps, { onlyRequestIds: [swap.id] });
+  assert.equal(result.autoAdvancedCount, 1);
+  assert.equal(swapCalls.length, 1);
+  assert.equal((await snapshot(swap.id, swap.itemId)).status, "COMPLETED");
+});
+
+test("requestTypes narrows the deposit timeout too: RENT only skips BORROW, SWAP alone skips it entirely", async () => {
+  const acceptedAt = new Date(Date.now() - 49 * HOUR);
+  const mk = (requestType: string) => newRequest({ requestType, status: "ACCEPTED", depositMethod: "in_app", acceptedAt, handoffConfirmDeadline: null, ownerConfirmedHandoff: false });
+  const borrow = await mk("BORROW");
+  const rent = await mk("RENT");
+  const ids = [borrow.id, rent.id];
+
+  const swapOnly = await processHandoffDeadlines(deps, { dryRun: true, onlyRequestIds: ids, requestTypes: ["SWAP"] });
+  assert.equal(swapOnly.depositExpiredCount, 0);
+  const rentOnly = await processHandoffDeadlines(deps, { dryRun: true, onlyRequestIds: ids, requestTypes: ["RENT"] });
+  assert.deepEqual(rentOnly.candidates.map((c) => c.requestId), [rent.id]);
+  const both = await processHandoffDeadlines(deps, { dryRun: true, onlyRequestIds: ids, requestTypes: HANDOFF_SWEEP_REQUEST_TYPES });
+  assert.deepEqual(both.candidates.map((c) => c.requestId).sort(), [...ids].sort());
+  const all = await processHandoffDeadlines(deps, { dryRun: true, onlyRequestIds: ids });
+  assert.deepEqual(all.candidates.map((c) => c.requestId).sort(), [...ids].sort());
+});
+
+test("the scheduled sweeps ask for BORROW and RENT only", () => {
+  assert.deepEqual([...HANDOFF_SWEEP_REQUEST_TYPES], ["BORROW", "RENT"]);
 });

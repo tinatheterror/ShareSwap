@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { after, before, mock, test } from "node:test";
+import { inArray } from "drizzle-orm";
 import express from "express";
-import { pool } from "@workspace/db";
+import { db, itemRequests, items, messages, notifications, pool, shareCoinsTransactions, users } from "@workspace/db";
 import { startRateLimitCleanup } from "./auth.js";
 import { backgroundJobs } from "./background-jobs-registry.js";
 import { timerRunName } from "./job-switches.js";
@@ -26,6 +27,15 @@ const ROWS: Array<[string, string]> = [
 ];
 const names = ROWS.map(([name]) => name);
 
+// A BORROW and a SWAP, both past their handoff-confirm deadline: the timer's handoff sweep (a dry run here)
+// must report the BORROW and never the SWAP.
+const FIXTURE = `timer-wiring-${Date.now()}`;
+const fixtureRequestIds: number[] = [];
+const fixtureItemIds: number[] = [];
+const fixtureUserIds: number[] = [];
+let swapRequestId = 0;
+let borrowRequestId = 0;
+
 let savedSwitches: Array<Record<string, unknown>> = [];
 let savedTimerRuns: Array<Record<string, unknown>> = [];
 
@@ -37,10 +47,51 @@ before(async () => {
   await pool.query("DELETE FROM job_switches WHERE job_name = ANY($1)", [names]);
   await pool.query("DELETE FROM scheduled_job_runs WHERE job_name = ANY($1)", [names.map(timerRunName)]);
   for (const [name, mode] of ROWS) await pool.query("INSERT INTO job_switches (job_name, mode) VALUES ($1, $2)", [name, mode]);
+
+  const [owner, borrower] = await db
+    .insert(users)
+    .values([
+      { username: `${FIXTURE}-owner`, password: "x", emailVerified: true, shareCoins: "0.00" },
+      { username: `${FIXTURE}-borrower`, password: "x", emailVerified: true, shareCoins: "50.00" },
+    ])
+    .returning({ id: users.id });
+  fixtureUserIds.push(owner.id, borrower.id);
+  const mk = async (requestType: string) => {
+    const [item] = await db
+      .insert(items)
+      .values({
+        ownerId: owner.id, name: `${FIXTURE}-${requestType}`, description: "x", conditionRating: 4, photos: [],
+        isLendable: true, isRentable: true, isSwappable: true, isGift: true, isAvailable: true,
+        replacementValue: 100, securityDeposit: "10.00", lendingDuration: 7, shareCoinsReward: "0", shareCoinPrice: "7.00",
+      })
+      .returning({ id: items.id });
+    fixtureItemIds.push(item.id);
+    const [request] = await db
+      .insert(itemRequests)
+      .values({
+        itemId: item.id, requesterId: borrower.id, requestType, status: "AWAITING_HANDOFF_CONFIRM",
+        startDate: new Date("2026-10-01T00:00:00.000Z"), endDate: new Date("2026-10-08T00:00:00.000Z"),
+        ownerConfirmedHandoff: true, borrowerConfirmedHandoff: false,
+        handoffConfirmDeadline: new Date(Date.now() - 3_600_000),
+      })
+      .returning({ id: itemRequests.id });
+    fixtureRequestIds.push(request.id);
+    return request.id;
+  };
+  swapRequestId = await mk("SWAP");
+  borrowRequestId = await mk("BORROW");
 });
 
 after(async () => {
   await backgroundJobs.stop({ timeoutMs: 5_000 });
+  if (fixtureRequestIds.length) {
+    await db.delete(messages).where(inArray(messages.requestId, fixtureRequestIds));
+    await db.delete(notifications).where(inArray(notifications.requestId, fixtureRequestIds));
+    await db.delete(itemRequests).where(inArray(itemRequests.id, fixtureRequestIds));
+  }
+  if (fixtureUserIds.length) await db.delete(shareCoinsTransactions).where(inArray(shareCoinsTransactions.userId, fixtureUserIds));
+  if (fixtureItemIds.length) await db.delete(items).where(inArray(items.id, fixtureItemIds));
+  if (fixtureUserIds.length) await db.delete(users).where(inArray(users.id, fixtureUserIds));
   await pool.query("DELETE FROM job_switches WHERE job_name = ANY($1)", [names]);
   await pool.query("DELETE FROM scheduled_job_runs WHERE job_name = ANY($1)", [names.map(timerRunName)]);
   for (const row of savedSwitches) {
@@ -98,12 +149,15 @@ test("the real timers read their switch rows: off and dry-run skip, dry-run and 
   assert.equal(handlers.get(ROUTES_TIMER_MS)?.length, 1);
   assert.equal(handlers.get(CLEANUP_TIMER_MS)?.length, 1);
 
+  const logged: string[] = [];
+  const logSpy = mock.method(console, "log", (...args: unknown[]) => void logged.push(args.join(" ")));
   const plainBefore = JSON.stringify((await pool.query("SELECT * FROM scheduled_job_runs WHERE job_name = ANY($1) ORDER BY job_name", [names])).rows);
   handlers.get(ROUTES_TIMER_MS)![0](); // starts overdue-reminders, return-recovery and handoff-deadlines
   handlers.get(CLEANUP_TIMER_MS)![0](); // starts rate-limit-cleanup
   await waitFor("handoff-deadlines");
   await waitFor("rate-limit-cleanup");
   await sleep(500); // time for a job that was wrongly let through to leave its record
+  logSpy.mock.restore();
 
   const rows = await timerRows();
   assert.equal(rows.get(timerRunName("handoff-deadlines"))?.last_status, "ok");
@@ -112,6 +166,9 @@ test("the real timers read their switch rows: off and dry-run skip, dry-run and 
   assert.equal(rows.get(timerRunName("rate-limit-cleanup"))?.state.mode, "live");
   assert.equal(rows.has(timerRunName("return-recovery")), false, "off: return recovery's work did not run");
   assert.equal(rows.has(timerRunName("overdue-reminders")), false, "dry-run: overdue reminders has no dry-run, so it was skipped");
+  // The timer's handoff sweep passes BORROW/RENT only: the BORROW is reported, the SWAP never is.
+  assert.ok(logged.some((l) => l.includes(`DRY-RUN would change request ${borrowRequestId} `)), "the BORROW past its deadline is reported");
+  assert.ok(!logged.some((l) => l.includes(`request ${swapRequestId} `)), "the SWAP past its deadline is not");
   // The script's own rows (plain names) are untouched by the timers.
   const plainAfter = JSON.stringify((await pool.query("SELECT * FROM scheduled_job_runs WHERE job_name = ANY($1) ORDER BY job_name", [names])).rows);
   assert.equal(plainAfter, plainBefore);

@@ -47,6 +47,9 @@ export interface HandoffDeadlineCandidate {
   detail: string;
 }
 
+/** What the scheduled sweeps act on: SWAP handoffs are left alone (see HandoffDeadlineOptions.requestTypes). */
+export const HANDOFF_SWEEP_REQUEST_TYPES = ["BORROW", "RENT"] as const;
+
 export interface HandoffDeadlineOptions {
   now?: Date;
   /** Select and report candidates only; change nothing. */
@@ -55,6 +58,12 @@ export interface HandoffDeadlineOptions {
   maxDeadlineAgeMs?: number;
   /** Restrict to these requests (tests, so they never touch unrelated rows). */
   onlyRequestIds?: number[];
+  /**
+   * Only act on requests of these types (auto-advance, flag-for-review and the deposit timeout alike).
+   * Unset = every type, as before. The deposit timeout only ever applies to RENT and BORROW, so asking
+   * for other types alone skips it.
+   */
+  requestTypes?: readonly string[];
 }
 
 export interface AutoConfirmedSwapContext {
@@ -112,6 +121,7 @@ export async function processHandoffDeadlines(
   const scope = options.onlyRequestIds
     ? [inArray(itemRequests.id, options.onlyRequestIds)]
     : [];
+  const typeScope = options.requestTypes ? [inArray(itemRequests.requestType, [...options.requestTypes])] : [];
 
   const result: HandoffDeadlineResult = {
     autoAdvancedCount: 0,
@@ -131,6 +141,7 @@ export async function processHandoffDeadlines(
         eq(itemRequests.status, "AWAITING_HANDOFF_CONFIRM"),
         lt(itemRequests.handoffConfirmDeadline, now),
         ...(earliestDeadline ? [gte(itemRequests.handoffConfirmDeadline, earliestDeadline)] : []),
+        ...typeScope,
         ...scope,
       ),
     );
@@ -295,7 +306,8 @@ export async function processHandoffDeadlines(
   const earliestAccepted = earliestDeadline
     ? new Date(earliestDeadline.getTime() - DEPOSIT_PAYMENT_TIMEOUT_MS)
     : null;
-  const depositExpired = await db
+  const depositTypes = (["RENT", "BORROW"] as const).filter((t) => !options.requestTypes || options.requestTypes.includes(t));
+  const depositExpired = depositTypes.length === 0 ? [] : await db
     .select()
     .from(itemRequests)
     .innerJoin(items, eq(items.id, itemRequests.itemId))
@@ -303,7 +315,7 @@ export async function processHandoffDeadlines(
       and(
         eq(itemRequests.status, "ACCEPTED"),
         eq(itemRequests.depositMethod, "in_app"),
-        inArray(itemRequests.requestType, ["RENT", "BORROW"]),
+        inArray(itemRequests.requestType, [...depositTypes]),
         lt(itemRequests.acceptedAt, depositDeadline),
         ...(earliestAccepted ? [gte(itemRequests.acceptedAt, earliestAccepted)] : []),
         ...scope,
@@ -380,7 +392,7 @@ export async function runHandoffDeadlineSweep(
   deps: HandoffDeadlineDeps,
   mode: Exclude<HandoffSweepMode, "off">,
   log: (line: string) => void = (line) => console.log(line),
-  options: Pick<HandoffDeadlineOptions, "now" | "onlyRequestIds"> = {},
+  options: Pick<HandoffDeadlineOptions, "now" | "onlyRequestIds" | "requestTypes"> = {},
 ): Promise<HandoffDeadlineResult> {
   const result = await processHandoffDeadlines(deps, {
     ...options,

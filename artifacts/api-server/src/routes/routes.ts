@@ -65,6 +65,7 @@ import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from 
 import { validateBorrowPeriod } from "../borrow-period";
 import {
   HANDOFF_SWEEP_INTERVAL_MS,
+  HANDOFF_SWEEP_REQUEST_TYPES,
   calcBorrowShareCoinCost,
   processHandoffDeadlines,
   resolveHandoffSweepMode,
@@ -12651,7 +12652,8 @@ Respond with ONLY the category name, nothing else.`
       return { checked, completed, pending };
     },
     runOverdueReminders: () => processReturnReminders(),
-    runHandoffSweep: (mode, log) => runHandoffDeadlineSweep(handoffDeadlineDeps, mode, log),
+    runHandoffSweep: (mode, log) =>
+      runHandoffDeadlineSweep(handoffDeadlineDeps, mode, log, { requestTypes: HANDOFF_SWEEP_REQUEST_TYPES }),
     runExpirySweep: (sweepOptions) => runRequestExpirySweep(requestExpiryDeps, sweepOptions),
   });
   if (
@@ -12686,7 +12688,9 @@ Respond with ONLY the category name, nothing else.`
         envMode: handoffSweepMode,
         supportsDryRun: true,
         run: async (mode) => {
-          const result = await runHandoffDeadlineSweep(handoffDeadlineDeps, mode);
+          const result = await runHandoffDeadlineSweep(handoffDeadlineDeps, mode, undefined, {
+            requestTypes: HANDOFF_SWEEP_REQUEST_TYPES,
+          });
           return `mode=${mode} candidates=${result.candidates.length} autoConfirmed=${result.autoAdvancedCount} flagged=${result.flaggedCount} depositCancelled=${result.depositExpiredCount}`;
         },
       });

@@ -173,3 +173,110 @@ test("the real timers read their switch rows: off and dry-run skip, dry-run and 
   const plainAfter = JSON.stringify((await pool.query("SELECT * FROM scheduled_job_runs WHERE job_name = ANY($1) ORDER BY job_name", [names])).rows);
   assert.equal(plainAfter, plainBefore);
 });
+
+// ── HANDOFF_DEADLINE_SWEEP_MODE=off with no switch row ──────────────────────────────────────────
+// The handoff timer is always scheduled (a row can turn it on), so "off" means every tick reads the switch,
+// finds no row, resolves off from the environment and returns. Nothing may run and nothing may be written.
+// A control with the environment at dry-run (same fixture, still no row) proves the observation can see work.
+
+/** Starts the real routes timers under `mode`, fires the 30s timer's handler by hand, and returns what it logged. */
+async function fireRoutesTimers(handoffMode: string, settle: (logged: string[]) => Promise<void>): Promise<string[]> {
+  const saved = {
+    BACKGROUND_JOBS: process.env.BACKGROUND_JOBS,
+    E2E_TEST_MODE: process.env.E2E_TEST_MODE,
+    EXPIRY_SWEEP_TIMER: process.env.EXPIRY_SWEEP_TIMER,
+    HANDOFF_DEADLINE_SWEEP_MODE: process.env.HANDOFF_DEADLINE_SWEEP_MODE,
+  };
+  process.env.BACKGROUND_JOBS = "on";
+  delete process.env.E2E_TEST_MODE;
+  delete process.env.EXPIRY_SWEEP_TIMER;
+  process.env.HANDOFF_DEADLINE_SWEEP_MODE = handoffMode; // read when the 30s handler runs, so it stays set until then
+  const original = globalThis.setTimeout;
+  const handlers: Array<() => void> = [];
+  const spy = mock.method(globalThis, "setTimeout", ((handler: any, ms?: number, ...rest: any[]) => {
+    if (ms === ROUTES_TIMER_MS) {
+      handlers.push(handler);
+      return fakeHandle();
+    }
+    return (original as any)(handler, ms, ...rest);
+  }) as any);
+  const logged: string[] = [];
+  const logSpy = mock.method(console, "log", (...args: unknown[]) => void logged.push(args.join(" ")));
+  try {
+    registerRoutes(express());
+    spy.mock.restore();
+    assert.equal(handlers.length, 1);
+    handlers[0](); // starts overdue-reminders and return-recovery (rows keep them from running) and handoff-deadlines
+    await settle(logged);
+  } finally {
+    logSpy.mock.restore();
+    spy.mock.restore();
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+  return logged;
+}
+
+/** A fresh BORROW past its handoff-confirm deadline. The sweep reports each candidate once per process, so each phase needs its own. */
+async function overdueBorrow(label: string): Promise<number> {
+  const [item] = await db
+    .insert(items)
+    .values({
+      ownerId: fixtureUserIds[0], name: `${FIXTURE}-${label}`, description: "x", conditionRating: 4, photos: [],
+      isLendable: true, isRentable: true, isSwappable: true, isGift: true, isAvailable: true,
+      replacementValue: 100, securityDeposit: "10.00", lendingDuration: 7, shareCoinsReward: "0", shareCoinPrice: "7.00",
+    })
+    .returning({ id: items.id });
+  fixtureItemIds.push(item.id);
+  const [request] = await db
+    .insert(itemRequests)
+    .values({
+      itemId: item.id, requesterId: fixtureUserIds[1], requestType: "BORROW", status: "AWAITING_HANDOFF_CONFIRM",
+      startDate: new Date("2026-10-01T00:00:00.000Z"), endDate: new Date("2026-10-08T00:00:00.000Z"),
+      ownerConfirmedHandoff: true, borrowerConfirmedHandoff: false,
+      handoffConfirmDeadline: new Date(Date.now() - 3_600_000),
+    })
+    .returning({ id: itemRequests.id });
+  fixtureRequestIds.push(request.id);
+  return request.id;
+}
+
+test("HANDOFF_DEADLINE_SWEEP_MODE=off with no job_switches row: a handoff tick runs no work and writes nothing", async () => {
+  await pool.query("DELETE FROM job_switches WHERE job_name = 'handoff-deadlines'");
+  await pool.query("DELETE FROM scheduled_job_runs WHERE job_name = $1", [timerRunName("handoff-deadlines")]);
+
+  // Control: environment dry-run, no row. An overdue BORROW is reported, so a tick that works is visible in the log.
+  const controlRequestId = await overdueBorrow("control");
+  const controlLog = await fireRoutesTimers("dry-run", async (logged) => {
+    const until = Date.now() + 8_000;
+    while (Date.now() < until && !logged.some((l) => l.includes(`DRY-RUN would change request ${controlRequestId} `))) await sleep(50);
+  });
+  assert.ok(
+    controlLog.some((l) => l.includes(`DRY-RUN would change request ${controlRequestId} `)),
+    "control: with the environment at dry-run the overdue BORROW is reported",
+  );
+  await pool.query("DELETE FROM scheduled_job_runs WHERE job_name = $1", [timerRunName("handoff-deadlines")]);
+
+  // A request no tick has seen yet: a tick wrongly let through in the off phase would report it (dry run) or change it (live).
+  const offRequestId = await overdueBorrow("off");
+
+  const snapshot = async () => ({
+    runs: (await pool.query("SELECT * FROM scheduled_job_runs WHERE job_name = ANY($1) ORDER BY job_name", [[...names, ...names.map(timerRunName)]])).rows,
+    switches: (await pool.query("SELECT * FROM job_switches ORDER BY job_name")).rows,
+    requests: (await pool.query("SELECT * FROM item_requests WHERE id = ANY($1) ORDER BY id", [fixtureRequestIds])).rows,
+    notifications: (await pool.query("SELECT count(*)::int AS n FROM notifications WHERE request_id = ANY($1)", [fixtureRequestIds])).rows,
+    messages: (await pool.query("SELECT count(*)::int AS n FROM messages WHERE request_id = ANY($1)", [fixtureRequestIds])).rows,
+    coins: (await pool.query("SELECT count(*)::int AS n FROM share_coins_transactions WHERE user_id = ANY($1)", [fixtureUserIds])).rows,
+  });
+  const before = await snapshot();
+  assert.equal(before.switches.some((r) => r.job_name === "handoff-deadlines"), false, "precondition: no handoff row");
+
+  const offLog = await fireRoutesTimers("off", async () => void (await sleep(1_000))); // time for a tick that was wrongly let through
+
+  assert.deepEqual(offLog.filter((l) => l.includes("[handoff-deadlines]")), [], "off: nothing is logged, not even the sweep mode");
+  assert.ok(!offLog.some((l) => l.includes(`request ${offRequestId} `)), "off: the fresh overdue BORROW is not reported");
+  assert.equal((await timerRows()).has(timerRunName("handoff-deadlines")), false, "off: no timer:handoff-deadlines record");
+  assert.deepEqual(await snapshot(), before, "off: scheduled_job_runs, job_switches, the requests and their side effects are unchanged");
+});

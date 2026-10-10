@@ -1,6 +1,7 @@
 import { backgroundJobs } from "./background-jobs-registry";
-import type { SwitchDecision } from "./job-switches";
-import { withOverlapGuard } from "./overlap-guard";
+import { guardedJob } from "./guarded-job";
+import type { SwitchDecision, TimerRunRecorder } from "./job-switches";
+import type { JobMode } from "./scheduled-job-options";
 import type { RequestExpirySweepOptions, RequestExpirySweepResult } from "./request-expiry-service";
 import { buildExpirySweepOptions, resolveRemindersEnabled } from "./scheduled-job-options";
 
@@ -20,7 +21,9 @@ export interface ExpirySweepTimerDeps {
    * "dry-run" or "live" (the timer never expires anything either way); "off", or a switch that cannot
    * be read, skips the tick entirely, reminders included. Absent: no switch.
    */
-  readSwitch?: () => Promise<SwitchDecision>;
+  readSwitch?: (envMode: JobMode) => Promise<SwitchDecision>;
+  /** Where the tick's last run is recorded (timer:request-expiry). Absent: not recorded. */
+  recordRun?: TimerRunRecorder;
   /** Defaults to the background-jobs registry's setInterval (cleared on shutdown). */
   schedule?: (run: () => void, everyMs: number) => unknown;
   log?: (line: string) => void;
@@ -42,17 +45,17 @@ export function startRequestExpirySweepTimer(deps: ExpirySweepTimerDeps): { tick
   log(`[request-expiry] in-process sweep ON: expiry dry-run, reminders ${reminders ? "on" : "off"}`);
 
   let reported = new Set<string>();
-  // A tick that is still running (a slow sweep) makes the next one skip rather than overlap it.
-  const tick = withOverlapGuard("request-expiry", async () => {
-    try {
-      if (deps.readSwitch) {
-        const decision = await deps.readSwitch();
-        if (!decision.ok) {
-          logError(`[request-expiry] sweep skipped: could not read the request-expiry switch: ${decision.error}`, undefined);
-          return;
-        }
-        if (decision.mode === "off") return;
-      }
+  // Through guardedJob: the "request-expiry" switch is read each tick (off, or unreadable, skips it), and an
+  // overlapping tick is skipped. A live switch still only dry-runs expiry here; the timer never expires.
+  const tick = guardedJob({
+    name: "request-expiry",
+    envMode: "dry-run",
+    supportsDryRun: true,
+    resolveSwitch: deps.readSwitch ?? (async (envMode) => ({ ok: true, mode: envMode, maxCutoffAgeMs: null, source: "env" })),
+    recordRun: deps.recordRun ?? (async () => {}),
+    log,
+    logError,
+    run: async () => {
       const result = await deps.sweep(buildExpirySweepOptions("dry-run", reminders, deps.now()));
       // Log each would-expire candidate once while it stays a candidate.
       const current = new Set<string>();
@@ -66,10 +69,9 @@ export function startRequestExpirySweepTimer(deps: ExpirySweepTimerDeps): { tick
       if (result.remindedCount > 0 || result.failedCount > 0) {
         log(`[request-expiry] sweep reminded=${result.remindedCount} failed=${result.failedCount}`);
       }
-    } catch (error) {
-      logError("[request-expiry] sweep failed:", error);
-    }
-  }, log);
+      return `wouldExpire=${current.size} reminded=${result.remindedCount} failed=${result.failedCount}`;
+    },
+  });
   void tick();
   schedule(() => void tick(), EXPIRY_SWEEP_TIMER_INTERVAL_MS);
   return { tick: async () => void (await tick()) };

@@ -154,3 +154,71 @@ export function createReadRunRecorder(options: {
     }
   };
 }
+
+// ── Last-run recording for the in-process timers ────────────────────────────────
+
+/**
+ * An in-process timer records itself as "timer:<job>", never as "<job>": the scheduled-jobs script gates
+ * its slow steps on the last_success_at of the plain name, so a timer's run must not make the script
+ * think the step just ran. The kill-switch row keeps the plain name, so one row controls both.
+ */
+export const TIMER_RUN_PREFIX = "timer:";
+export const timerRunName = (job: string) => `${TIMER_RUN_PREFIX}${job}`;
+
+export interface TimerRunRecord {
+  ok: boolean;
+  mode: JobMode;
+  summary?: string;
+  error?: string;
+}
+
+export type TimerRunRecorder = (job: string, record: TimerRunRecord) => Promise<void>;
+
+/**
+ * Writes a timer's last run to scheduled_job_runs under timer:<job>, at most once per `everyMs` per job
+ * (return-recovery ticks every minute): the runs in between are counted into run_count. A change between
+ * ok and failed is always written. Fire and forget: a failed write is ignored.
+ */
+export function createTimerRunRecorder(options: {
+  query?: SwitchQuery;
+  now?: () => Date;
+  everyMs?: number;
+} = {}): TimerRunRecorder {
+  const query = options.query ?? poolQuery;
+  const now = options.now ?? (() => new Date());
+  const everyMs = options.everyMs ?? 60_000;
+  const perJob = new Map<string, { lastWriteMs: number; lastOk: boolean | null; pendingRuns: number }>();
+  return async (job, record) => {
+    const entry = perJob.get(job) ?? { lastWriteMs: 0, lastOk: null, pendingRuns: 0 };
+    perJob.set(job, entry);
+    entry.pendingRuns += 1;
+    const at = now();
+    const changed = entry.lastOk !== null && entry.lastOk !== record.ok;
+    if (entry.lastOk !== null && !changed && at.getTime() - entry.lastWriteMs < everyMs) return;
+    const runs = entry.pendingRuns;
+    entry.pendingRuns = 0;
+    entry.lastWriteMs = at.getTime();
+    entry.lastOk = record.ok;
+    const state = { mode: record.mode, runsSinceLastWrite: runs, summary: record.summary ?? null };
+    try {
+      await query(
+        `INSERT INTO scheduled_job_runs (job_name, last_started_at, last_success_at, last_status, last_error, run_count, state)
+         VALUES ($1, $2::timestamptz, CASE WHEN $3::text = 'ok' THEN $2::timestamptz END, $3::text, $4::text, $5::bigint, $6::jsonb)
+         ON CONFLICT (job_name) DO UPDATE
+           SET last_started_at = $2::timestamptz,
+               last_success_at = CASE WHEN $3::text = 'ok' THEN $2::timestamptz ELSE scheduled_job_runs.last_success_at END,
+               last_status = $3::text, last_error = $4::text,
+               run_count = scheduled_job_runs.run_count + $5::bigint, state = $6::jsonb`,
+        [timerRunName(job), at, record.ok ? "ok" : "failed", record.error?.slice(0, 500) ?? null, runs, JSON.stringify(state)],
+      );
+    } catch {
+      // Bookkeeping only.
+    }
+  };
+}
+
+let defaultTimerRecorder: TimerRunRecorder | null = null;
+/** One process-wide recorder, so every timer shares its throttle state. */
+export function timerRunRecorder(): TimerRunRecorder {
+  return (defaultTimerRecorder ??= createTimerRunRecorder());
+}

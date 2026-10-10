@@ -38,10 +38,14 @@ export type { JobMode };
 //   SCHEDULED_JOBS_HANDOFF_MODE        off | dry-run (default) | live
 // Anything unrecognised is a dry run, never a live one.
 //
-// The request-expiry step also honours a kill switch in the database: a job_switches row named
-// "request-expiry" (mode live | dry-run | off) overrides SCHEDULED_JOBS_EXPIRY_MODE, in either
-// direction; no row means the environment decides; a table that cannot be read skips the step for
-// that run (nothing is run, nothing is enabled). Report-only runs (--dry-run) never read it.
+// Every step also honours a kill switch in the database: a job_switches row named after the step
+// (return-recovery, request-expiry, handoff-deadlines, overdue-reminders, rate-limit-cleanup; mode
+// live | dry-run | off) overrides the environment mode in either direction; no row means the
+// environment decides; a table that cannot be read skips the step for that run (nothing is run,
+// nothing is enabled). Steps with no dry-run (all but the two sweeps) skip on dry-run. A skipped step
+// leaves its last_success_at alone. The in-process timers share these rows but record themselves as
+// timer:<job>, so a timer's run never makes this script skip a step. Report-only runs (--dry-run)
+// never read the switches.
 
 export const LOCK_NAME = "shareswap:scheduled-jobs";
 /** A hung step would hold the lock and skip every later run, so the whole process gives up. */
@@ -164,6 +168,11 @@ export interface JobResult {
   summary: string;
   /** Replaces the stored state when given; omit to keep it. */
   state?: Record<string, unknown>;
+  /**
+   * The step did not run (its kill switch is off or could not be read). It is recorded as skipped and
+   * leaves last_success_at alone, so a slow step is not held back after the switch is turned on again.
+   */
+  skipped?: boolean;
 }
 
 export interface JobStep {
@@ -180,7 +189,7 @@ export interface JobStore {
   markStarted(name: string, now: Date): Promise<void>;
   markFinished(
     name: string,
-    outcome: { ok: boolean; error?: string; state?: Record<string, unknown>; now: Date },
+    outcome: { ok: boolean; skipped?: boolean; error?: string; state?: Record<string, unknown>; now: Date },
   ): Promise<void>;
   /** Returns the running total of skipped runs. */
   recordSkip(now: Date): Promise<number>;
@@ -188,7 +197,7 @@ export interface JobStore {
 
 export interface StepOutcome {
   name: string;
-  status: "ok" | "failed" | "not_due";
+  status: "ok" | "failed" | "not_due" | "skipped";
   summary?: string;
   error?: string;
 }
@@ -247,8 +256,8 @@ export async function runScheduledJobs({
           state: row?.state ?? {},
           log: (line) => log(line),
         });
-        await store.markFinished(step.name, { ok: true, state: result.state, now: now() });
-        outcomes.push({ name: step.name, status: "ok", summary: result.summary });
+        await store.markFinished(step.name, { ok: true, skipped: result.skipped, state: result.state, now: now() });
+        outcomes.push({ name: step.name, status: result.skipped ? "skipped" : "ok", summary: result.summary });
         log(`[scheduled-jobs] ${step.name}: ${result.summary}`);
       } catch (err) {
         const message = errorMessage(err);
@@ -284,15 +293,15 @@ export function buildSteps(
   deleteExpiredRateLimitRows: () => Promise<number>,
   {
     reportOnly = false,
-    resolveExpirySwitch,
+    resolveSwitch,
   }: {
     reportOnly?: boolean;
     /**
-     * Reads the "request-expiry" kill switch from job_switches, given the mode the environment asks for.
-     * A row wins over the environment; no row means the environment; an unreadable table skips the
+     * Reads a job's kill switch from job_switches (plain job name), given the mode the environment asks
+     * for. A row wins over the environment; no row means the environment; an unreadable table skips the
      * step (nothing runs, nothing is enabled). Without it the environment alone decides.
      */
-    resolveExpirySwitch?: (envMode: JobMode) => Promise<SwitchDecision>;
+    resolveSwitch?: (name: string, envMode: JobMode) => Promise<SwitchDecision>;
   } = {},
 ): JobStep[] {
   if (reportOnly) return buildReportOnlySteps(jobs);
@@ -301,31 +310,49 @@ export function buildSteps(
   const handoffMode = resolveJobMode(env.SCHEDULED_JOBS_HANDOFF_MODE);
   const steps: JobStep[] = [];
 
+  type Gate = { run: true; mode: Exclude<JobMode, "off"> } | { run: false; result: JobResult };
+  const skip = (summary: string): Gate => ({ run: false, result: { summary, skipped: true } });
+  /**
+   * The step's kill switch (job_switches, plain job name). A row wins over envMode, no row means envMode,
+   * and a switch that cannot be read skips the step. Off skips it; dry-run skips a job that has no dry-run.
+   * Without a resolver the environment alone decides.
+   */
+  async function gate(name: string, envMode: JobMode, supportsDryRun: boolean, log: (line: string) => void): Promise<Gate> {
+    if (!resolveSwitch) return envMode === "off" ? skip("mode=off skipped") : { run: true, mode: envMode };
+    const decision = await resolveSwitch(name, envMode);
+    if (!decision.ok) {
+      log(`[${name}] SKIPPED: could not read the job switch (${decision.error}); nothing was run`);
+      return skip("skipped: job switch unreadable");
+    }
+    if (decision.mode === "off") return skip("mode=off skipped");
+    if (decision.mode === "dry-run" && !supportsDryRun) {
+      log(`[${name}] SKIPPED: the switch is dry-run and this job has no dry-run`);
+      return skip("skipped: switch is dry-run, job has no dry-run");
+    }
+    return { run: true, mode: decision.mode };
+  }
+
   steps.push({
     name: "return-recovery",
     everyMs: 0,
-    async run() {
+    async run({ log }) {
+      const g = await gate("return-recovery", "live", false, log);
+      if (!g.run) return g.result;
       const r = await jobs.runReturnRecovery();
       return { summary: `checked=${r.checked} completed=${r.completed} pending=${r.pending}` };
     },
   });
 
-  // With a switch table the step is always listed: a row can turn it on even when the environment says off.
-  if (expiryMode !== "off" || resolveExpirySwitch) {
+  // With a switch resolver the expiry and handoff steps are always listed: a row can turn them on even
+  // when the environment says off.
+  if (expiryMode !== "off" || resolveSwitch) {
     steps.push({
       name: REQUEST_EXPIRY_JOB,
       everyMs: 0,
       async run({ now, state, log }) {
-        let mode: JobMode = expiryMode;
-        if (resolveExpirySwitch) {
-          const decision = await resolveExpirySwitch(expiryMode);
-          if (!decision.ok) {
-            log(`[request-expiry] SKIPPED: could not read the job switch (${decision.error}); nothing was run`);
-            return { summary: "skipped: job switch unreadable" };
-          }
-          mode = decision.mode;
-        }
-        if (mode === "off") return { summary: "mode=off skipped" };
+        const g = await gate(REQUEST_EXPIRY_JOB, expiryMode, true, log);
+        if (!g.run) return g.result;
+        const mode = g.mode;
         const result = await jobs.runExpirySweep(buildExpirySweepOptions(mode, reminders, now));
         let nextState: Record<string, unknown> | undefined;
         if (mode === "dry-run") {
@@ -350,15 +377,18 @@ export function buildSteps(
     });
   }
 
-  if (handoffMode !== "off") {
+  if (handoffMode !== "off" || resolveSwitch) {
     steps.push({
       name: "handoff-deadlines",
       everyMs: 0,
       async run({ state, log }) {
+        const g = await gate("handoff-deadlines", handoffMode, true, log);
+        if (!g.run) return g.result;
+        const mode = g.mode;
         const lines: string[] = [];
-        const result = await jobs.runHandoffSweep(handoffMode, (line) => lines.push(line));
+        const result = await jobs.runHandoffSweep(mode, (line) => lines.push(line));
         let nextState: Record<string, unknown> | undefined;
-        if (handoffMode === "dry-run") {
+        if (mode === "dry-run") {
           const { fresh, state: stored } = newDryRunLines(state, lines);
           fresh.forEach(log);
           nextState = stored;
@@ -367,7 +397,7 @@ export function buildSteps(
         }
         return {
           summary:
-            `mode=${handoffMode} candidates=${result.candidates.length} autoConfirmed=${result.autoAdvancedCount} ` +
+            `mode=${mode} candidates=${result.candidates.length} autoConfirmed=${result.autoAdvancedCount} ` +
             `flagged=${result.flaggedCount} depositCancelled=${result.depositExpiredCount}`,
           state: nextState,
         };
@@ -378,7 +408,9 @@ export function buildSteps(
   steps.push({
     name: "overdue-reminders",
     everyMs: OVERDUE_REMINDER_EVERY_MS,
-    async run() {
+    async run({ log }) {
+      const g = await gate("overdue-reminders", "live", false, log);
+      if (!g.run) return g.result;
       const r = await jobs.runOverdueReminders();
       return { summary: `remindersCreated=${r.remindersCreated}` };
     },
@@ -387,7 +419,9 @@ export function buildSteps(
   steps.push({
     name: "rate-limit-cleanup",
     everyMs: RATE_LIMIT_CLEANUP_EVERY_MS,
-    async run() {
+    async run({ log }) {
+      const g = await gate("rate-limit-cleanup", "live", false, log);
+      if (!g.run) return g.result;
       return { summary: `removed=${await deleteExpiredRateLimitRows()}` };
     },
   });
@@ -495,7 +529,7 @@ export function createPgJobStore(pool: PgPoolLike): JobStore {
         [name, now],
       );
     },
-    async markFinished(name, { ok, error, state, now }) {
+    async markFinished(name, { ok, skipped, error, state, now }) {
       await pool.query(
         `UPDATE scheduled_job_runs
             SET last_status = $2::text,
@@ -503,7 +537,7 @@ export function createPgJobStore(pool: PgPoolLike): JobStore {
                 last_success_at = CASE WHEN $2::text = 'ok' THEN $4::timestamptz ELSE last_success_at END,
                 state = COALESCE($5::jsonb, state)
           WHERE job_name = $1`,
-        [name, ok ? "ok" : "failed", error ?? null, now, state === undefined ? null : JSON.stringify(state)],
+        [name, skipped ? "skipped" : ok ? "ok" : "failed", error ?? null, now, state === undefined ? null : JSON.stringify(state)],
       );
     },
     async recordSkip(now) {
@@ -587,8 +621,8 @@ export async function main(
       },
       {
         reportOnly,
-        resolveExpirySwitch: (envMode) =>
-          resolveJobSwitch(REQUEST_EXPIRY_JOB, envMode, (text, params) => pool.query(text, params as unknown[])),
+        resolveSwitch: (name, envMode) =>
+          resolveJobSwitch(name, envMode, (text, params) => pool.query(text, params as unknown[])),
       },
     );
     const store = reportOnly ? createMemoryJobStore() : createPgJobStore(pool as unknown as PgPoolLike);

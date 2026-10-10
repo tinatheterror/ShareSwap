@@ -152,7 +152,7 @@ test("dry-run lines are reported once, then again only if they disappear and ret
 // ── Orchestration: lock, skips, failures ────────────────────────────────────────
 
 function fakeStore(options: { lockHeld?: boolean; lastSuccess?: Record<string, Date> } = {}) {
-  const calls = { acquired: 0, released: 0, skips: 0, started: [] as string[], finished: [] as Array<[string, boolean]> };
+  const calls = { acquired: 0, released: 0, skips: 0, started: [] as string[], finished: [] as Array<[string, boolean]>, skippedFinish: [] as string[] };
   const store: JobStore = {
     async acquireLock() {
       if (options.lockHeld) return null;
@@ -168,6 +168,7 @@ function fakeStore(options: { lockHeld?: boolean; lastSuccess?: Record<string, D
     },
     async markFinished(name, outcome) {
       calls.finished.push([name, outcome.ok]);
+      if (outcome.skipped) calls.skippedFinish.push(name);
     },
     async recordSkip() {
       return ++calls.skips;
@@ -368,7 +369,7 @@ const switchDecision = (mode: "live" | "dry-run" | "off"): SwitchDecision => ({ 
 async function runWithSwitch(env: Record<string, string>, resolve: (envMode: string) => Promise<SwitchDecision>) {
   const calls: { expiry?: any; handoffMode?: string } = {};
   const steps = buildSteps(fakeJobs(calls), env as NodeJS.ProcessEnv, async () => 0, {
-    resolveExpirySwitch: resolve as any,
+    resolveSwitch: (name, envMode) => (name === "request-expiry" ? (resolve as any)(envMode) : Promise.resolve({ ok: true, mode: envMode, maxCutoffAgeMs: null, source: "env" })),
   });
   const logs: string[] = [];
   const { store, calls: storeCalls } = fakeStore();
@@ -419,8 +420,90 @@ test("report-only runs never read the switch", async () => {
   let reads = 0;
   const steps = buildSteps(fakeJobs({}), {} as NodeJS.ProcessEnv, async () => 0, {
     reportOnly: true,
-    resolveExpirySwitch: async () => (reads++, switchDecision("live")),
+    resolveSwitch: async () => (reads++, switchDecision("live")),
   });
   await runScheduledJobs({ steps, store: createMemoryJobStore(), log: () => {} });
   assert.equal(reads, 0);
+});
+
+// ── Every step honours its own switch row, under the plain job name ─────────────
+
+const ALL_STEPS = ["return-recovery", "request-expiry", "handoff-deadlines", "overdue-reminders", "rate-limit-cleanup"];
+
+function countingJobs() {
+  const ran: string[] = [];
+  const jobs = fakeJobs({});
+  const wrapped: ScheduledJobRunners = {
+    runReturnRecovery: async () => (ran.push("return-recovery"), { checked: 0, completed: 0, pending: 0 }),
+    runOverdueReminders: async () => (ran.push("overdue-reminders"), { remindersCreated: 0 }),
+    runHandoffSweep: async (mode, log) => (ran.push(`handoff-deadlines:${mode}`), jobs.runHandoffSweep(mode, log)),
+    runExpirySweep: async (o) => (ran.push(`request-expiry:${o.expireDryRun ? "dry-run" : "live"}`), jobs.runExpirySweep(o)),
+  };
+  return { wrapped, ran };
+}
+
+async function runAll(resolve: (name: string, envMode: string) => Promise<SwitchDecision>) {
+  const { wrapped, ran } = countingJobs();
+  let cleanups = 0;
+  const steps = buildSteps(wrapped, {} as NodeJS.ProcessEnv, async () => (cleanups++, 0), { resolveSwitch: resolve as any });
+  assert.deepEqual(steps.map((s) => s.name), ALL_STEPS, "with a resolver every step is listed");
+  const logs: string[] = [];
+  const { store, calls } = fakeStore();
+  const report = await runScheduledJobs({ steps, store, log: (l) => logs.push(l), logError: (l) => logs.push(l) });
+  return { ran, cleanups, logs, calls, report };
+}
+
+test("a disabled job's work is not called, for each of the five steps", async () => {
+  for (const off of ALL_STEPS) {
+    const asked: string[] = [];
+    const result = await runAll(async (name, envMode) => {
+      asked.push(name);
+      return name === off ? switchDecision("off") : { ok: true, mode: envMode as any, maxCutoffAgeMs: null, source: "env" };
+    });
+    assert.deepEqual(asked.sort(), [...ALL_STEPS].sort(), "each step reads its own row, by plain name");
+    const stepRan = (n: string) => result.ran.some((r) => r.startsWith(n)) || (n === "rate-limit-cleanup" && result.cleanups > 0);
+    assert.equal(stepRan(off), false, `${off} is off: its work was not called`);
+    for (const other of ALL_STEPS.filter((n) => n !== off)) assert.equal(stepRan(other), true, `${other} still ran`);
+    assert.ok(result.calls.skippedFinish.includes(off));
+  }
+});
+
+test("a failed switch read skips every step and enables nothing", async () => {
+  const result = await runAll(async () => ({ ok: false, error: "connection refused" }));
+  assert.deepEqual(result.ran, []);
+  assert.equal(result.cleanups, 0);
+  assert.equal(result.report.exitCode, 0);
+  assert.equal(result.logs.filter((l) => /SKIPPED: could not read the job switch/.test(l)).length, 5);
+  assert.deepEqual(result.report.outcomes.map((o) => o.status), ["skipped", "skipped", "skipped", "skipped", "skipped"]);
+});
+
+test("a dry-run switch skips the jobs that have no dry-run, and dry-runs the two sweeps", async () => {
+  const result = await runAll(async () => switchDecision("dry-run"));
+  assert.deepEqual(result.ran.sort(), ["handoff-deadlines:dry-run", "request-expiry:dry-run"]);
+  assert.equal(result.cleanups, 0);
+  assert.deepEqual(
+    result.calls.skippedFinish.sort(),
+    ["overdue-reminders", "rate-limit-cleanup", "return-recovery"],
+  );
+});
+
+test("a row turns a step on that the environment turned off, and each row beats the environment both ways", async () => {
+  const { wrapped, ran } = countingJobs();
+  const env = { SCHEDULED_JOBS_HANDOFF_MODE: "off", SCHEDULED_JOBS_EXPIRY_MODE: "live" } as NodeJS.ProcessEnv;
+  const steps = buildSteps(wrapped, env, async () => 0, {
+    resolveSwitch: async (name, envMode) =>
+      name === "handoff-deadlines" ? switchDecision("live") : name === "request-expiry" ? switchDecision("off") : { ok: true, mode: envMode, maxCutoffAgeMs: null, source: "env" },
+  });
+  await runScheduledJobs({ steps, store: fakeStore().store, log: () => {} });
+  assert.ok(ran.includes("handoff-deadlines:live"), "row live beats env off");
+  assert.ok(!ran.some((r) => r.startsWith("request-expiry")), "row off beats env live");
+});
+
+test("a skipped step leaves last_success_at alone, so it is not held back after the switch comes on", async () => {
+  const steps = buildSteps(countingJobs().wrapped, {} as NodeJS.ProcessEnv, async () => 0, {
+    resolveSwitch: async (name, envMode) => (name === "overdue-reminders" ? switchDecision("off") : { ok: true, mode: envMode, maxCutoffAgeMs: null, source: "env" }),
+  });
+  const { store, calls } = fakeStore();
+  await runScheduledJobs({ steps, store, log: () => {} });
+  assert.deepEqual(calls.skippedFinish, ["overdue-reminders"]);
 });

@@ -22,8 +22,8 @@ import { sendVerificationEmail, sendPasswordResetEmail } from "./sendgrid";
 import { computeActiveStatus, computeResponseTime } from "./user-stats";
 import { resolveGoogleOAuthCallbackURL } from "./google-oauth-config";
 import { shouldRunBackgroundJobs } from "./background-jobs-gate";
+import { guardedJob } from "./guarded-job";
 import { backgroundJobs } from "./background-jobs-registry";
-import { withOverlapGuard } from "./overlap-guard";
 
 // ---------------------------------------------------------------------------
 // Postgres-backed rate-limit store
@@ -83,8 +83,13 @@ export function startRateLimitCleanup(env: NodeJS.ProcessEnv = process.env): boo
   if (!shouldRunBackgroundJobs(env)) return false;
   const INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
-  const runCleanup = withOverlapGuard("rate-limit-cleanup", async () => {
-    try {
+  // Through guardedJob: reads the "rate-limit-cleanup" kill switch on each tick (a dry-run switch skips
+  // it: deleting is all it does) and records itself as timer:rate-limit-cleanup.
+  const runCleanup = guardedJob({
+    name: "rate-limit-cleanup",
+    envMode: "live",
+    supportsDryRun: false,
+    run: async () => {
       const result = await pool.query<{ count: string }>(
         `DELETE FROM rate_limit_store
           WHERE reset_time < NOW()
@@ -94,9 +99,8 @@ export function startRateLimitCleanup(env: NodeJS.ProcessEnv = process.env): boo
       console.log(
         `[rate-limit-cleanup] Removed ${deleted} expired row(s) from rate_limit_store`,
       );
-    } catch (err) {
-      console.error("[rate-limit-cleanup] Cleanup failed:", err);
-    }
+      return `removed=${deleted}`;
+    },
   });
 
   // Run once shortly after startup, then on the regular cadence.

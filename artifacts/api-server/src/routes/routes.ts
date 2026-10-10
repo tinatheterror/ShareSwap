@@ -74,9 +74,9 @@ import {
 } from "../handoff-deadline-service";
 import { shouldRunBackgroundJobs } from "../background-jobs-gate";
 import { backgroundJobs } from "../background-jobs-registry";
-import { withOverlapGuard } from "../overlap-guard";
 import { startRequestExpirySweepTimer } from "../request-expiry-timer";
-import { REQUEST_EXPIRY_JOB, createReadRunRecorder, resolveJobSwitch, resolveReadExpiryPolicy } from "../job-switches";
+import { guardedJob } from "../guarded-job";
+import { REQUEST_EXPIRY_JOB, createReadRunRecorder, resolveJobSwitch, resolveReadExpiryPolicy, timerRunRecorder } from "../job-switches";
 import {
   REQUEST_DATES_PASSED_MESSAGE,
   isStartDatePassed,
@@ -12610,15 +12610,22 @@ Respond with ONLY the category name, nothing else.`
 
     // Native clients check on launch, resume, and while active. This sweep only
     // sends reminders; overdue status must never capture or renew a deposit.
-  const runOverdueReminderSweep = withOverlapGuard("overdue-reminders", async () => {
-    try {
+  // The in-process timers go through guardedJob (guarded-job.ts): each tick reads the job's kill switch
+  // (job_switches, plain job name), fails closed, and records itself as timer:<job>. Return recovery and
+  // overdue reminders have no dry-run, so a dry-run switch skips them.
+  const runOverdueReminderSweep = guardedJob({
+    name: "overdue-reminders",
+    envMode: "live",
+    supportsDryRun: false,
+    run: async () => {
       await processReturnReminders();
-    } catch (error) {
-      console.error("Error running overdue reminder sweep:", error);
-    }
+    },
   });
-  const runReturnRecoverySweep = withOverlapGuard("return-recovery", async () => {
-    try {
+  const runReturnRecoverySweep = guardedJob({
+    name: "return-recovery",
+    envMode: "live",
+    supportsDryRun: false,
+    run: async () => {
       const result = await recoverPendingApprovedReturns({
         stripeClient: stripe as any,
         onCompleted: runConfirmedReturnPostEffects,
@@ -12631,9 +12638,8 @@ Respond with ONLY the category name, nothing else.`
           pending: result.pending,
         });
       }
-    } catch (error) {
-      console.error("[return-recovery] sweep failed:", error);
-    }
+      return `checked=${result.checked} completed=${result.completed} pending=${result.pending}`;
+    },
   });
   options.onScheduledJobs?.({
     runReturnRecovery: async () => {
@@ -12666,24 +12672,26 @@ Respond with ONLY the category name, nothing else.`
         env: process.env,
         sweep: (options) => runRequestExpirySweep(requestExpiryDeps, options),
         now: currentTime,
-        readSwitch: () => resolveJobSwitch(REQUEST_EXPIRY_JOB, "dry-run"),
+        readSwitch: (envMode) => resolveJobSwitch(REQUEST_EXPIRY_JOB, envMode),
+        recordRun: timerRunRecorder(),
       });
 
-      // Handoff auto-confirm / flag / 48h deposit timeout. HANDOFF_DEADLINE_SWEEP_MODE:
-      // "dry-run" (default: logs what it would change), "live", or "off".
+      // Handoff auto-confirm / flag / 48h deposit timeout. HANDOFF_DEADLINE_SWEEP_MODE is the default
+      // when no job_switches row exists: "dry-run" (default: logs what it would change), "live", or "off".
+      // The timer is always scheduled so a row can turn it on; each tick reads the switch.
       const handoffSweepMode = resolveHandoffSweepMode(process.env.HANDOFF_DEADLINE_SWEEP_MODE);
-      if (handoffSweepMode !== "off") {
-        console.log(`[handoff-deadlines] server sweep mode: ${handoffSweepMode}`);
-        const runHandoffSweep = withOverlapGuard("handoff-deadlines", async () => {
-          try {
-            await runHandoffDeadlineSweep(handoffDeadlineDeps, handoffSweepMode);
-          } catch (error) {
-            console.error("[handoff-deadlines] sweep failed:", error);
-          }
-        });
-        void runHandoffSweep();
-        backgroundJobs.setInterval(() => void runHandoffSweep(), HANDOFF_SWEEP_INTERVAL_MS);
-      }
+      if (handoffSweepMode !== "off") console.log(`[handoff-deadlines] server sweep mode: ${handoffSweepMode}`);
+      const runHandoffSweep = guardedJob({
+        name: "handoff-deadlines",
+        envMode: handoffSweepMode,
+        supportsDryRun: true,
+        run: async (mode) => {
+          const result = await runHandoffDeadlineSweep(handoffDeadlineDeps, mode);
+          return `mode=${mode} candidates=${result.candidates.length} autoConfirmed=${result.autoAdvancedCount} flagged=${result.flaggedCount} depositCancelled=${result.depositExpiredCount}`;
+        },
+      });
+      void runHandoffSweep();
+      backgroundJobs.setInterval(() => void runHandoffSweep(), HANDOFF_SWEEP_INTERVAL_MS);
     }, 30 * 1000);
   }
 

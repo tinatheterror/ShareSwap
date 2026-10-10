@@ -84,19 +84,21 @@ test("a missing or off timer switch is not overridden by the scheduled-jobs swit
 test("switched on, it sweeps once right away and then every minute", async () => {
   const h = harness({ EXPIRY_SWEEP_TIMER: "on" });
   assert.ok(h.timer);
+  await settle(); // each tick reads its switch first, so the sweep starts a moment later
   assert.equal(h.sweepCalls.length, 1, "first sweep runs at startup");
-  await settle();
   assert.equal(h.scheduled.length, 1);
   assert.equal(h.scheduled[0].everyMs, EXPIRY_SWEEP_TIMER_INTERVAL_MS);
   assert.equal(EXPIRY_SWEEP_TIMER_INTERVAL_MS, 60_000);
 
   h.scheduled[0].run();
+  await settle();
   assert.equal(h.sweepCalls.length, 2, "each tick runs one more sweep");
   assert.deepEqual(h.logs, ["[request-expiry] in-process sweep ON: expiry dry-run, reminders on"]);
 });
 
-test("expiry is always a dry run and reminders are not, whatever the other switches say", () => {
+test("expiry is always a dry run and reminders are not, whatever the other switches say", async () => {
   const h = harness({ EXPIRY_SWEEP_TIMER: "on", SCHEDULED_JOBS_EXPIRY_MODE: "live" });
+  await settle();
   const options = h.sweepCalls[0];
   assert.equal(options.expireDryRun, true, "the timer never expires anything, even if the job is live");
   assert.notEqual(options.dryRun, true, "dryRun would suppress reminders too");
@@ -105,10 +107,12 @@ test("expiry is always a dry run and reminders are not, whatever the other switc
   assert.equal(options.maxCutoffAgeMs, EXPIRY_SWEEP_MAX_CUTOFF_AGE_MS);
 });
 
-test("reminders follow SCHEDULED_JOBS_EXPIRY_REMINDERS", () => {
+test("reminders follow SCHEDULED_JOBS_EXPIRY_REMINDERS", async () => {
   const on = harness({ EXPIRY_SWEEP_TIMER: "on", SCHEDULED_JOBS_EXPIRY_REMINDERS: "on" });
+  await settle();
   assert.equal(on.sweepCalls[0].reminders, true);
   const off = harness({ EXPIRY_SWEEP_TIMER: "on", SCHEDULED_JOBS_EXPIRY_REMINDERS: "off" });
+  await settle();
   assert.equal(off.sweepCalls[0].reminders, false);
   assert.equal(off.sweepCalls[0].expireDryRun, true);
   assert.deepEqual(off.logs, ["[request-expiry] in-process sweep ON: expiry dry-run, reminders off"]);
@@ -153,7 +157,7 @@ test("a failing sweep is logged and the next tick still runs", async () => {
   await h.timer!.tick();
   assert.equal(h.sweepCalls.length, 2);
   assert.equal(h.errors.length, 1);
-  assert.equal(h.errors[0], "[request-expiry] sweep failed:");
+  assert.equal(h.errors[0], "[request-expiry] run failed:");
 });
 
 // ── Overlap guard: a slow sweep makes the next tick skip instead of running beside it ──────────
@@ -182,6 +186,7 @@ function slowSweepHarness() {
 
 test("a tick that fires while the previous sweep is still running is skipped and logged", async () => {
   const h = slowSweepHarness();
+  await settle();
   assert.equal(h.calls(), 1, "the startup sweep is running");
 
   h.scheduled[0](); // interval tick 1
@@ -195,16 +200,19 @@ test("a tick that fires while the previous sweep is still running is skipped and
   h.releases[0](emptyResult());
   await new Promise((resolve) => setImmediate(resolve));
   h.scheduled[0]();
+  await settle();
   assert.equal(h.calls(), 2, "once the first sweep finished, the next tick runs");
   h.releases[1](emptyResult());
 });
 
 test("a sweep that fails frees the guard so the next tick runs", async () => {
   const h = slowSweepHarness();
+  await settle();
   h.releases[0](new Error("db down"));
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(h.errors.length, 1);
   h.scheduled[0]();
+  await settle();
   assert.equal(h.calls(), 2);
   h.releases[1](emptyResult());
 });
@@ -212,10 +220,12 @@ test("a sweep that fails frees the guard so the next tick runs", async () => {
 test("skipped ticks do not repeat would-expire logging or lose the already-reported set", async () => {
   const candidate = { requestId: 1, action: "expire" as const, itemName: "Tent", cutoff: CUTOFF };
   const h = slowSweepHarness();
+  await settle();
   h.scheduled[0](); // skipped
   h.releases[0](emptyResult({ candidates: [candidate] }));
   await new Promise((resolve) => setImmediate(resolve));
   h.scheduled[0](); // second real sweep, same candidate
+  await settle();
   h.releases[1](emptyResult({ candidates: [candidate] }));
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(h.logs.filter((l) => l.includes("would expire")).length, 1);

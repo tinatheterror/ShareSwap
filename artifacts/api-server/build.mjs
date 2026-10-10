@@ -27,7 +27,11 @@ function resolveBuildSha() {
 async function buildAll() {
   // Browser tests run beside the preview API. Never delete or overwrite the
   // preview/deployment bundle when preparing their separate server.
-  const distDir = path.resolve(artifactDir, process.argv.includes("--e2e") ? ".cache/e2e-dist" : "dist");
+  // --outdir=<dir> builds somewhere else entirely (the bundle test inspects the real server bundle there).
+  const outdirArg = process.argv.find((arg) => arg.startsWith("--outdir="));
+  const distDir = outdirArg
+    ? path.resolve(outdirArg.slice("--outdir=".length))
+    : path.resolve(artifactDir, process.argv.includes("--e2e") ? ".cache/e2e-dist" : "dist");
   await rm(distDir, { recursive: true, force: true });
 
   await esbuild({

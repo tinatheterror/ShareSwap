@@ -15,6 +15,7 @@ import {
 } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { registerRoutes } from "./routes/routes.js";
+import { ensureJobSwitchesTable, ensureScheduledJobRunsTable } from "./startup-migrations.js";
 
 // The platform zone is America/Vancouver (PDT, UTC-7 in October 2026). A BORROW
 // request for Oct 2–5 must be handed off by Oct 4 at 11:59 PM = 2026-10-05T06:59:59Z.
@@ -28,6 +29,11 @@ const PASSWORD = "RequestExpiryRoute!42";
 const requestIds: number[] = [];
 const itemIds: number[] = [];
 const userIds: number[] = [];
+
+// Expiry on read follows the request-expiry-on-read switch, which is off outside a deployment. These
+// tests are about what expiry does, so they run it live; the switch tests at the end change it.
+const previousReadMode = process.env.REQUEST_EXPIRY_ON_READ_MODE;
+process.env.REQUEST_EXPIRY_ON_READ_MODE = "live";
 
 let clock = OCT_4_EVENING_PDT;
 let baseUrl: string;
@@ -135,6 +141,9 @@ async function setCoins(userId: number, amount: string) {
 }
 
 before(async () => {
+  // The server creates these at startup; the switch tests below need them.
+  await ensureScheduledJobRunsTable();
+  await ensureJobSwitchesTable();
   const password = await hashPassword(PASSWORD);
   const created = await db
     .insert(users)
@@ -182,6 +191,8 @@ after(async () => {
     if (itemIds.length) await db.delete(items).where(inArray(items.id, itemIds));
     if (userIds.length) await db.delete(users).where(inArray(users.id, userIds));
   } finally {
+    if (previousReadMode === undefined) delete process.env.REQUEST_EXPIRY_ON_READ_MODE;
+    else process.env.REQUEST_EXPIRY_ON_READ_MODE = previousReadMode;
     if (closeServer) await closeServer();
     await pool.end();
   }
@@ -500,4 +511,86 @@ test("one stale request does not hide a live one on the same item", async () => 
   const detail = (await (await stranger.request(`/api/items/${stale.itemId}`)).json()) as any;
   assert.equal(detail.isCurrentlyOut, true);
   assert.equal(detail.activeRequestEndDate?.toString().slice(0, 10), "2026-10-25");
+});
+
+// ── The request-expiry-on-read switch, through the real routes ────────────────
+
+async function withReadMode<T>(mode: string, run: () => Promise<T>): Promise<T> {
+  const saved = process.env.REQUEST_EXPIRY_ON_READ_MODE;
+  process.env.REQUEST_EXPIRY_ON_READ_MODE = mode;
+  try {
+    return await run();
+  } finally {
+    process.env.REQUEST_EXPIRY_ON_READ_MODE = saved;
+  }
+}
+
+for (const mode of ["off", "dry-run"]) {
+  test(`read mode ${mode}: reading after the cutoff expires nothing, but a handoff is still refused`, async () => {
+    clock = OCT_5_FIRST_SECOND_PDT;
+    await setCoins(borrowerId, "50.00");
+    const { id } = await newRequest();
+    const logged: string[] = [];
+    const realLog = console.log;
+    console.log = (...args: unknown[]) => void logged.push(args.join(" "));
+    try {
+      await withReadMode(mode, async () => {
+        const view = ((await (await borrower.request("/api/requests")).json()) as any[]).find((r) => r.id === id);
+        assert.equal(view.status, "DEPOSIT_CONFIRMED", "the read left the request alone");
+        assert.equal((await load(id)).status, "DEPOSIT_CONFIRMED");
+
+        const response = await borrower.post(`/api/requests/${id}/verify-pin`, { pin: "4321" });
+        assert.equal(response.status, 410, "the handoff is refused after the cutoff in every mode");
+        const body = (await response.json()) as Record<string, unknown>;
+        assert.equal(body.code, "REQUEST_EXPIRED");
+        assert.equal((await load(id)).status, "DEPOSIT_CONFIRMED", "refusing did not expire it either");
+        assert.equal((await load(id)).handoffPin, "4321");
+        assert.equal(await coins(borrowerId), 50, "no ShareCoins moved");
+      });
+    } finally {
+      console.log = realLog;
+    }
+    const dryRunLines = logged.filter((l) => l.includes(`DRY-RUN (on read) would expire request ${id} `));
+    assert.equal(dryRunLines.length, mode === "dry-run" ? 1 : 0);
+  });
+}
+
+test("a job_switches row for request-expiry-on-read beats the environment", async () => {
+  clock = OCT_5_FIRST_SECOND_PDT;
+  const { id } = await newRequest();
+  await pool.query(
+    `INSERT INTO job_switches (job_name, mode) VALUES ('request-expiry-on-read', 'off')
+     ON CONFLICT (job_name) DO UPDATE SET mode = 'off'`,
+  );
+  try {
+    await withReadMode("live", async () => {
+      await borrower.request("/api/requests");
+      assert.equal((await load(id)).status, "DEPOSIT_CONFIRMED", "row off beats env live");
+    });
+    await pool.query("UPDATE job_switches SET mode = 'live', max_cutoff_age_ms = 1000 WHERE job_name = 'request-expiry-on-read'");
+    await withReadMode("off", async () => {
+      clock = new Date(OCT_5_FIRST_SECOND_PDT.getTime() + 60_000);
+      await borrower.request("/api/requests");
+      assert.equal((await load(id)).status, "DEPOSIT_CONFIRMED", "past the row's max cutoff age: left alone");
+      clock = OCT_5_FIRST_SECOND_PDT;
+      await borrower.request("/api/requests");
+      assert.equal((await load(id)).status, "EXPIRED", "row live beats env off, inside the max cutoff age");
+    });
+  } finally {
+    await pool.query("DELETE FROM job_switches WHERE job_name = 'request-expiry-on-read'");
+  }
+});
+
+test("a live read leaves a last-run record in scheduled_job_runs", async () => {
+  clock = OCT_5_FIRST_SECOND_PDT;
+  await newRequest();
+  await withReadMode("live", async () => {
+    await borrower.request("/api/requests");
+  });
+  const { rows } = await pool.query(
+    "SELECT last_status, last_success_at, state FROM scheduled_job_runs WHERE job_name = 'request-expiry-on-read'",
+  );
+  assert.equal(rows[0]?.last_status, "ok");
+  assert.ok(rows[0].last_success_at);
+  assert.equal(rows[0].state.mode, "live");
 });

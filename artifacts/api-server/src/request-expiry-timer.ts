@@ -1,4 +1,5 @@
 import { backgroundJobs } from "./background-jobs-registry";
+import type { SwitchDecision } from "./job-switches";
 import { withOverlapGuard } from "./overlap-guard";
 import type { RequestExpirySweepOptions, RequestExpirySweepResult } from "./request-expiry-service";
 import { buildExpirySweepOptions, resolveRemindersEnabled } from "./scheduled-job-options";
@@ -14,6 +15,12 @@ export interface ExpirySweepTimerDeps {
   env: NodeJS.ProcessEnv;
   sweep: (options: RequestExpirySweepOptions) => Promise<RequestExpirySweepResult>;
   now: () => Date;
+  /**
+   * The "request-expiry" kill switch, read at the start of every tick. A tick runs only when it says
+   * "dry-run" or "live" (the timer never expires anything either way); "off", or a switch that cannot
+   * be read, skips the tick entirely, reminders included. Absent: no switch.
+   */
+  readSwitch?: () => Promise<SwitchDecision>;
   /** Defaults to the background-jobs registry's setInterval (cleared on shutdown). */
   schedule?: (run: () => void, everyMs: number) => unknown;
   log?: (line: string) => void;
@@ -23,7 +30,8 @@ export interface ExpirySweepTimerDeps {
 /**
  * Optional in-process request-expiry sweep. Expiry is ALWAYS a dry run here (nothing expires); the
  * 4h "hand off soon" reminder follows SCHEDULED_JOBS_EXPIRY_REMINDERS (on by default), like the
- * scheduled-jobs script. Returns null (and schedules nothing) unless EXPIRY_SWEEP_TIMER=on.
+ * scheduled-jobs script, and a "request-expiry" switch set to off (or unreadable) skips the tick.
+ * Returns null (and schedules nothing) unless EXPIRY_SWEEP_TIMER=on.
  */
 export function startRequestExpirySweepTimer(deps: ExpirySweepTimerDeps): { tick: () => Promise<void> } | null {
   if (!isExpirySweepTimerEnabled(deps.env.EXPIRY_SWEEP_TIMER)) return null;
@@ -37,6 +45,14 @@ export function startRequestExpirySweepTimer(deps: ExpirySweepTimerDeps): { tick
   // A tick that is still running (a slow sweep) makes the next one skip rather than overlap it.
   const tick = withOverlapGuard("request-expiry", async () => {
     try {
+      if (deps.readSwitch) {
+        const decision = await deps.readSwitch();
+        if (!decision.ok) {
+          logError(`[request-expiry] sweep skipped: could not read the request-expiry switch: ${decision.error}`, undefined);
+          return;
+        }
+        if (decision.mode === "off") return;
+      }
       const result = await deps.sweep(buildExpirySweepOptions("dry-run", reminders, deps.now()));
       // Log each would-expire candidate once while it stays a candidate.
       const current = new Set<string>();

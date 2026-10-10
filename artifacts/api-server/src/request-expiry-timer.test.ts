@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { SwitchDecision } from "./job-switches";
 import type { RequestExpirySweepOptions, RequestExpirySweepResult } from "./request-expiry-service";
 import {
   EXPIRY_SWEEP_TIMER_INTERVAL_MS,
@@ -27,7 +28,11 @@ const emptyResult = (overrides: Partial<RequestExpirySweepResult> = {}): Request
 /** Lets the unawaited startup sweep finish; a tick fired while it runs is skipped by the overlap guard. */
 const settle = () => new Promise<void>((resolve) => setImmediate(resolve));
 
-function harness(env: NodeJS.ProcessEnv, results: Array<RequestExpirySweepResult | Error> = []) {
+function harness(
+  env: NodeJS.ProcessEnv,
+  results: Array<RequestExpirySweepResult | Error> = [],
+  readSwitch?: () => Promise<SwitchDecision>,
+) {
   const sweepCalls: RequestExpirySweepOptions[] = [];
   const scheduled: Array<{ run: () => void; everyMs: number }> = [];
   const logs: string[] = [];
@@ -36,6 +41,7 @@ function harness(env: NodeJS.ProcessEnv, results: Array<RequestExpirySweepResult
   const timer = startRequestExpirySweepTimer({
     env,
     now: () => NOW,
+    readSwitch,
     sweep: async (options) => {
       sweepCalls.push(options);
       const next = queue.shift() ?? emptyResult();
@@ -213,4 +219,54 @@ test("skipped ticks do not repeat would-expire logging or lose the already-repor
   h.releases[1](emptyResult({ candidates: [candidate] }));
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(h.logs.filter((l) => l.includes("would expire")).length, 1);
+});
+
+// ── The "request-expiry" kill switch ────────────────────────────────────────────
+
+const decide = (mode: "live" | "dry-run" | "off"): SwitchDecision => ({ ok: true, mode, maxCutoffAgeMs: null, source: "table" });
+
+test("switch off: the tick is skipped entirely, reminders included", async () => {
+  const h = harness({ EXPIRY_SWEEP_TIMER: "on" }, [], async () => decide("off"));
+  await settle();
+  assert.equal(h.sweepCalls.length, 0);
+  assert.deepEqual(h.errors, []);
+  h.scheduled[0].run();
+  await settle();
+  assert.equal(h.sweepCalls.length, 0);
+});
+
+test("switch dry-run or live: the timer still only ever dry-runs expiry", async () => {
+  for (const mode of ["dry-run", "live"] as const) {
+    const h = harness({ EXPIRY_SWEEP_TIMER: "on" }, [], async () => decide(mode));
+    await settle();
+    assert.equal(h.sweepCalls.length, 1);
+    assert.equal(h.sweepCalls[0].expireDryRun, true, `${mode}: the timer never expires anything`);
+  }
+});
+
+test("a failed read of job_switches skips the tick and never enables anything", async () => {
+  let reads = 0;
+  const h = harness({ EXPIRY_SWEEP_TIMER: "on", SCHEDULED_JOBS_EXPIRY_MODE: "live" }, [], async () => {
+    reads++;
+    return { ok: false, error: 'relation "job_switches" does not exist' };
+  });
+  await settle();
+  assert.equal(reads, 1);
+  assert.equal(h.sweepCalls.length, 0, "no sweep, so no reminder and no expiry");
+  assert.equal(h.errors.length, 1);
+  assert.match(h.errors[0], /skipped: could not read the request-expiry switch/);
+  // The next tick reads again; once the table is readable the timer works.
+  h.scheduled[0].run();
+  await settle();
+  assert.equal(reads, 2);
+  assert.equal(h.sweepCalls.length, 0);
+});
+
+test("a switch reader that throws skips the tick too", async () => {
+  const h = harness({ EXPIRY_SWEEP_TIMER: "on" }, [], async () => {
+    throw new Error("connection reset");
+  });
+  await settle();
+  assert.equal(h.sweepCalls.length, 0);
+  assert.equal(h.errors.length, 1);
 });

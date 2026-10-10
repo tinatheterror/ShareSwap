@@ -43,15 +43,39 @@ CREATE TABLE IF NOT EXISTS scheduled_job_runs (
   state            JSONB       NOT NULL DEFAULT '{}'::jsonb
 )`;
 
-/** Idempotent; also called by the job script so it never depends on the API having restarted. */
-export async function ensureScheduledJobRunsTable() {
+// Kill switches (see job-switches.ts): config only. A job with no row has no switch and uses its
+// environment default, so nothing is seeded. last-run bookkeeping stays in scheduled_job_runs.
+//   mode               'live' | 'dry-run' | 'off'
+//   max_cutoff_age_ms  optional; used by the request-expiry-on-read job only
+export const JOB_SWITCHES_SQL = `
+CREATE TABLE IF NOT EXISTS job_switches (
+  job_name          TEXT        PRIMARY KEY,
+  mode              TEXT        NOT NULL CHECK (mode IN ('live', 'dry-run', 'off')),
+  max_cutoff_age_ms BIGINT      CHECK (max_cutoff_age_ms IS NULL OR max_cutoff_age_ms > 0),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_by        TEXT,
+  note              TEXT
+)`;
+
+/** Runs one idempotent CREATE TABLE IF NOT EXISTS, tolerating the race between two processes doing it at once. */
+export async function createTableIfMissing(sql: string) {
   try {
-    await pool.query(SCHEDULED_JOB_RUNS_SQL);
+    await pool.query(sql);
   } catch (err) {
     // Two processes creating it at once: 42P07 duplicate_table, or 23505 on pg_type's unique index.
     const code = (err as { code?: string }).code;
     if (code !== "42P07" && code !== "23505") throw err;
   }
+}
+
+/** Idempotent; also called by the job script so it never depends on the API having restarted. */
+export async function ensureScheduledJobRunsTable() {
+  await createTableIfMissing(SCHEDULED_JOB_RUNS_SQL);
+}
+
+/** Idempotent and safe to run from several processes at once, like ensureScheduledJobRunsTable. */
+export async function ensureJobSwitchesTable() {
+  await createTableIfMissing(JOB_SWITCHES_SQL);
 }
 
 export async function applyStartupMigrations() {
@@ -61,4 +85,5 @@ export async function applyStartupMigrations() {
     await pool.query(migrationSql);
   }
   await ensureScheduledJobRunsTable();
+  await ensureJobSwitchesTable();
 }

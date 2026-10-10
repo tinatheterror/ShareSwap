@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 import type { ScheduledJobRunners } from "../routes/routes";
+import { REQUEST_EXPIRY_JOB, resolveJobSwitch, type SwitchDecision } from "../job-switches";
 import {
   EXPIRY_SWEEP_MAX_CUTOFF_AGE_MS,
   buildExpirySweepOptions,
@@ -36,6 +37,11 @@ export type { JobMode };
 //   SCHEDULED_JOBS_EXPIRY_REMINDERS    on (default) | off      the 4h "hand off soon" reminder
 //   SCHEDULED_JOBS_HANDOFF_MODE        off | dry-run (default) | live
 // Anything unrecognised is a dry run, never a live one.
+//
+// The request-expiry step also honours a kill switch in the database: a job_switches row named
+// "request-expiry" (mode live | dry-run | off) overrides SCHEDULED_JOBS_EXPIRY_MODE, in either
+// direction; no row means the environment decides; a table that cannot be read skips the step for
+// that run (nothing is run, nothing is enabled). Report-only runs (--dry-run) never read it.
 
 export const LOCK_NAME = "shareswap:scheduled-jobs";
 /** A hung step would hold the lock and skip every later run, so the whole process gives up. */
@@ -276,7 +282,18 @@ export function buildSteps(
   jobs: ScheduledJobRunners,
   env: NodeJS.ProcessEnv,
   deleteExpiredRateLimitRows: () => Promise<number>,
-  { reportOnly = false }: { reportOnly?: boolean } = {},
+  {
+    reportOnly = false,
+    resolveExpirySwitch,
+  }: {
+    reportOnly?: boolean;
+    /**
+     * Reads the "request-expiry" kill switch from job_switches, given the mode the environment asks for.
+     * A row wins over the environment; no row means the environment; an unreadable table skips the
+     * step (nothing runs, nothing is enabled). Without it the environment alone decides.
+     */
+    resolveExpirySwitch?: (envMode: JobMode) => Promise<SwitchDecision>;
+  } = {},
 ): JobStep[] {
   if (reportOnly) return buildReportOnlySteps(jobs);
   const expiryMode = resolveJobMode(env.SCHEDULED_JOBS_EXPIRY_MODE);
@@ -293,14 +310,25 @@ export function buildSteps(
     },
   });
 
-  if (expiryMode !== "off") {
+  // With a switch table the step is always listed: a row can turn it on even when the environment says off.
+  if (expiryMode !== "off" || resolveExpirySwitch) {
     steps.push({
-      name: "request-expiry",
+      name: REQUEST_EXPIRY_JOB,
       everyMs: 0,
       async run({ now, state, log }) {
-        const result = await jobs.runExpirySweep(buildExpirySweepOptions(expiryMode, reminders, now));
+        let mode: JobMode = expiryMode;
+        if (resolveExpirySwitch) {
+          const decision = await resolveExpirySwitch(expiryMode);
+          if (!decision.ok) {
+            log(`[request-expiry] SKIPPED: could not read the job switch (${decision.error}); nothing was run`);
+            return { summary: "skipped: job switch unreadable" };
+          }
+          mode = decision.mode;
+        }
+        if (mode === "off") return { summary: "mode=off skipped" };
+        const result = await jobs.runExpirySweep(buildExpirySweepOptions(mode, reminders, now));
         let nextState: Record<string, unknown> | undefined;
-        if (expiryMode === "dry-run") {
+        if (mode === "dry-run") {
           const lines = result.candidates
             .filter((c) => c.action === "expire")
             .map(
@@ -313,9 +341,9 @@ export function buildSteps(
         }
         return {
           summary:
-            `mode=${expiryMode} reminders=${reminders ? "on" : "off"} expired=${result.expiredCount} ` +
+            `mode=${mode} reminders=${reminders ? "on" : "off"} expired=${result.expiredCount} ` +
             `reminded=${result.remindedCount} failed=${result.failedCount} ` +
-            `wouldExpire=${expiryMode === "dry-run" ? result.candidates.filter((c) => c.action === "expire").length : 0}`,
+            `wouldExpire=${mode === "dry-run" ? result.candidates.filter((c) => c.action === "expire").length : 0}`,
           state: nextState,
         };
       },
@@ -534,14 +562,17 @@ export async function main(
   }, RUN_TIMEOUT_MS);
 
   try {
-    const [{ pool }, { ensureScheduledJobRunsTable }, { registerRoutes }, { default: express }] = await Promise.all([
+    const [{ pool }, { ensureScheduledJobRunsTable, ensureJobSwitchesTable }, { registerRoutes }, { default: express }] = await Promise.all([
       import("@workspace/db"),
       import("../startup-migrations"),
       import("../routes/routes"),
       import("express"),
     ]);
 
-    if (!reportOnly) await ensureScheduledJobRunsTable();
+    if (!reportOnly) {
+      await ensureScheduledJobRunsTable();
+      await ensureJobSwitchesTable();
+    }
 
     let jobs: ScheduledJobRunners | undefined;
     registerRoutes(express(), { startBackgroundJobs: false, onScheduledJobs: (j) => (jobs = j) });
@@ -554,7 +585,11 @@ export async function main(
         const result = await pool.query("DELETE FROM rate_limit_store WHERE reset_time < NOW()");
         return result.rowCount ?? 0;
       },
-      { reportOnly },
+      {
+        reportOnly,
+        resolveExpirySwitch: (envMode) =>
+          resolveJobSwitch(REQUEST_EXPIRY_JOB, envMode, (text, params) => pool.query(text, params as unknown[])),
+      },
     );
     const store = reportOnly ? createMemoryJobStore() : createPgJobStore(pool as unknown as PgPoolLike);
     const report = await runScheduledJobs({ steps, store });

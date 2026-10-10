@@ -76,6 +76,7 @@ import { shouldRunBackgroundJobs } from "../background-jobs-gate";
 import { backgroundJobs } from "../background-jobs-registry";
 import { withOverlapGuard } from "../overlap-guard";
 import { startRequestExpirySweepTimer } from "../request-expiry-timer";
+import { REQUEST_EXPIRY_JOB, createReadRunRecorder, resolveJobSwitch, resolveReadExpiryPolicy } from "../job-switches";
 import {
   REQUEST_DATES_PASSED_MESSAGE,
   isStartDatePassed,
@@ -1892,9 +1893,13 @@ export function registerRoutes(
   const currentTime = () => (options.now ? options.now() : new Date());
 
   // Request expiry (see request-expiry-service.ts). Used by read/redeem-time checks;
-  // no scheduled expiry sweep is started from here.
+  // no scheduled expiry sweep is started from here. Whether a read expires anything is the
+  // "request-expiry-on-read" switch (job-switches.ts): off outside a deployment unless set.
+  const recordReadRun = createReadRunRecorder({ now: currentTime });
   const requestExpiryDeps: RequestExpiryDeps = {
     stripe: stripe as any,
+    readPolicy: () => resolveReadExpiryPolicy(process.env),
+    onReadCheck: (summary) => recordReadRun(summary),
     onItemFreed: (itemId, itemName) => notifyAvailabilitySubscribers(itemId, itemName),
     push: (userId, payload) => sendPushToUser(userId, payload, "requests"),
   };
@@ -12661,6 +12666,7 @@ Respond with ONLY the category name, nothing else.`
         env: process.env,
         sweep: (options) => runRequestExpirySweep(requestExpiryDeps, options),
         now: currentTime,
+        readSwitch: () => resolveJobSwitch(REQUEST_EXPIRY_JOB, "dry-run"),
       });
 
       // Handoff auto-confirm / flag / 48h deposit timeout. HANDOFF_DEADLINE_SWEEP_MODE:

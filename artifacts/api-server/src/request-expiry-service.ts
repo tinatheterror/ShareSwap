@@ -15,6 +15,7 @@ import {
   type DepositRenewalStripeClient,
 } from "./deposit-renewal-service";
 import * as depositCopy from "./deposit-copy";
+import { READ_EXPIRY_OFF, type ExpiryReadPolicy, type ReadCheckSummary } from "./job-switches";
 import { computeHandoffCutoff } from "./request-dates";
 import * as copy from "./request-expiry-copy";
 
@@ -30,7 +31,10 @@ import * as copy from "./request-expiry-copy";
 //
 // Expiry is checked wherever a request is read or redeemed (expireRequestIfDue,
 // guardHandoffWindow, expireDueRequestsForUser) and, separately, by
-// runRequestExpirySweep. Nothing in this module schedules itself: the sweep only
+// runRequestExpirySweep. The read-path check follows the "request-expiry-on-read" switch
+// (deps.readPolicy): live expires, dry-run only logs, off does nothing, and a switch that
+// cannot be read counts as off. guardHandoffWindow refuses handoffs after the cutoff in every
+// mode: the switch only decides whether the request is also moved to EXPIRED. Nothing in this module schedules itself: the sweep only
 // runs if something calls it (scripts/run-scheduled-jobs.ts, from a Scheduled Deployment).
 //
 // Races are settled by the same fence the cancel flow uses. The expiry claims the
@@ -57,6 +61,52 @@ export interface RequestExpiryDeps {
     userId: number,
     payload: { title: string; body: string; data?: Record<string, unknown> },
   ) => void | Promise<void>;
+  /**
+   * What the read-path check may do right now (live / dry-run / off, and an optional max cutoff age).
+   * Absent means off: a caller that does not say never expires anything on read.
+   */
+  readPolicy?: () => Promise<ExpiryReadPolicy>;
+  /** Told what each read-path check did (not called when it is off); failures are ignored. */
+  onReadCheck?: (summary: ReadCheckSummary) => void | Promise<void>;
+  /** Dry-run lines; defaults to console.log. */
+  log?: (line: string) => void;
+}
+
+/** Fail closed: a missing or throwing policy is off. */
+async function currentReadPolicy(deps: RequestExpiryDeps): Promise<ExpiryReadPolicy> {
+  if (!deps.readPolicy) return READ_EXPIRY_OFF;
+  try {
+    return await deps.readPolicy();
+  } catch {
+    return READ_EXPIRY_OFF;
+  }
+}
+
+/** With a max cutoff age, requests whose cutoff passed longer ago are left to the silent cleanup. */
+function withinReadMaxAge(cutoff: Date, now: Date, policy: ExpiryReadPolicy): boolean {
+  return policy.maxCutoffAgeMs === null || cutoff.getTime() >= now.getTime() - policy.maxCutoffAgeMs;
+}
+
+const MAX_REPORTED_DRY_RUN_REQUESTS = 2000;
+const reportedDryRun = new Set<number>();
+
+/** Read-path dry-run: logs only, once per request per process (an inbox is read over and over). */
+function logReadDryRun(deps: RequestExpiryDeps, requestId: number, cutoff: Date) {
+  if (reportedDryRun.has(requestId)) return;
+  if (reportedDryRun.size >= MAX_REPORTED_DRY_RUN_REQUESTS) reportedDryRun.clear();
+  reportedDryRun.add(requestId);
+  (deps.log ?? console.log)(
+    `[request-expiry] DRY-RUN (on read) would expire request ${requestId} — cutoff ${cutoff.toISOString()}`,
+  );
+}
+
+async function reportReadCheck(deps: RequestExpiryDeps, summary: ReadCheckSummary) {
+  if (!deps.onReadCheck || summary.mode === "off") return;
+  try {
+    await deps.onReadCheck(summary);
+  } catch {
+    // Bookkeeping only.
+  }
 }
 
 const isExpirableStatus = (status: string | null | undefined) =>
@@ -337,8 +387,10 @@ export type HandoffWindowGuard =
 
 /**
  * Call before accepting any handoff, payment or code redemption on a request.
- * Expires the request if it is due, and blocks the action whenever the window
- * is closed, even if the expiry itself could not complete yet (Stripe down).
+ * Blocks the action whenever the window is closed, in every read-path mode, even if the
+ * expiry itself could not (or may not) complete: dry-run and off never change the request,
+ * and a Stripe outage cannot reopen the window. Whether the request is also expired
+ * follows the read policy: live expires it, dry-run only logs, off does nothing.
  */
 export async function guardHandoffWindow(
   requestId: number,
@@ -353,23 +405,40 @@ export async function guardHandoffWindow(
   }
   if (!isDueForExpiry(request, now)) return { blocked: false };
 
-  const outcome = await expireRequestIfDue(requestId, deps, now);
   const cutoff = requestHandoffCutoff(request);
+  const policy = await currentReadPolicy(deps);
+  let expired = false;
+  let wouldExpire = 0;
+  if (cutoff && policy.mode !== "off" && withinReadMaxAge(cutoff, now, policy)) {
+    if (policy.mode === "live") {
+      const outcome = await expireRequestIfDue(requestId, deps, now);
+      expired = outcome.status === "expired";
+    } else {
+      logReadDryRun(deps, requestId, cutoff);
+      wouldExpire = 1;
+    }
+  }
+  await reportReadCheck(deps, { mode: policy.mode, expired: expired ? 1 : 0, wouldExpire });
   return {
     blocked: true,
     code: copy.REQUEST_EXPIRED_CODE,
     error: copy.requestExpiredError(cutoff),
     cutoff,
-    expired: outcome.status === "expired",
+    expired,
   };
 }
 
-/** Read-time check for a user's own requests (as borrower or owner). */
+/**
+ * Read-time check for a user's own requests (as borrower or owner). Follows the read policy:
+ * off returns 0 without touching the database, dry-run only logs what would expire.
+ */
 export async function expireDueRequestsForUser(
   userId: number,
   deps: RequestExpiryDeps,
   now: Date = new Date(),
 ): Promise<number> {
+  const policy = await currentReadPolicy(deps);
+  if (policy.mode === "off") return 0;
   const rows = await db
     .select({
       id: itemRequests.id,
@@ -390,15 +459,30 @@ export async function expireDueRequestsForUser(
       ),
     );
 
+  const due = rows
+    .filter((r) => isDueForExpiry(r, now))
+    .filter((r) => {
+      const cutoff = requestHandoffCutoff(r);
+      return cutoff !== null && withinReadMaxAge(cutoff, now, policy);
+    });
   let expired = 0;
-  for (const row of rows.filter((r) => isDueForExpiry(r, now)).slice(0, MAX_LAZY_EXPIRIES_PER_CALL)) {
-    try {
-      const outcome = await expireRequestIfDue(row.id, deps, now);
-      if (outcome.status === "expired") expired++;
-    } catch (error) {
-      console.error(`[request-expiry] error expiring request ${row.id}:`, error);
+  let wouldExpire = 0;
+  if (policy.mode === "dry-run") {
+    for (const row of due.slice(0, MAX_LAZY_EXPIRIES_PER_CALL)) {
+      logReadDryRun(deps, row.id, requestHandoffCutoff(row)!);
+      wouldExpire++;
+    }
+  } else {
+    for (const row of due.slice(0, MAX_LAZY_EXPIRIES_PER_CALL)) {
+      try {
+        const outcome = await expireRequestIfDue(row.id, deps, now);
+        if (outcome.status === "expired") expired++;
+      } catch (error) {
+        console.error(`[request-expiry] error expiring request ${row.id}:`, error);
+      }
     }
   }
+  await reportReadCheck(deps, { mode: policy.mode, expired, wouldExpire });
   return expired;
 }
 

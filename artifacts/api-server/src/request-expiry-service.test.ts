@@ -48,6 +48,8 @@ function fakeStripe(options: { failCancel?: () => boolean } = {}) {
   };
   const intentStatus = new Map<string, string>();
   const deps: RequestExpiryDeps = {
+    // The read path is live here; the read-policy tests below override it.
+    readPolicy: async () => ({ mode: "live", maxCutoffAgeMs: null }),
     stripe: {
       paymentIntents: {
         retrieve: async (id: string) => ({ id, status: intentStatus.get(id) ?? "requires_capture" }),
@@ -753,6 +755,138 @@ test("reading a user's requests expires only the due ones that involve them", as
   assert.equal((await load(mine.id)).status, "EXPIRED");
   assert.equal((await load(notDue.id)).status, "ACCEPTED");
   assert.equal((await load(strangers.id)).status, "ACCEPTED", "another borrower's request is not touched by this read");
+});
+
+// ── Read-path switch (request-expiry-on-read): live / dry-run / off ───────────
+
+const DAY_MS = 86_400_000;
+
+/** Earlier tests leave due requests behind; a read expires at most 10 per call, so park them first. */
+async function parkOtherRequests(keep: number[]) {
+  const others = requestIds.filter((id) => !keep.includes(id));
+  if (others.length) {
+    await db
+      .update(itemRequests)
+      .set({ status: "CANCELLED" })
+      .where(and(inArray(itemRequests.id, others), inArray(itemRequests.status, ["ACCEPTED", "DEPOSIT_CONFIRMED"])));
+  }
+}
+const policy = (mode: "live" | "dry-run" | "off", maxCutoffAgeMs: number | null = null) => async () => ({ mode, maxCutoffAgeMs });
+
+for (const mode of ["live", "dry-run", "off"] as const) {
+  test(`guard (${mode}): still refuses a handoff after the cutoff`, async () => {
+    const { id } = await newRequest();
+    const stripe = noStripe();
+    const guard = await guardHandoffWindow(id, { ...stripe.deps, readPolicy: policy(mode), log: () => {} }, ONE_SECOND_AFTER);
+    assert.equal(guard.blocked, true);
+    if (guard.blocked) {
+      assert.equal(guard.code, "REQUEST_EXPIRED");
+      assert.equal(guard.expired, mode === "live");
+    }
+    assert.equal((await load(id)).status, mode === "live" ? "EXPIRED" : "ACCEPTED");
+  });
+}
+
+test("guard: a missing, throwing or failing policy is off: blocked, nothing expired", async () => {
+  const stripe = noStripe();
+  const none = await newRequest();
+  const noPolicy = { ...stripe.deps, readPolicy: undefined };
+  const g1 = await guardHandoffWindow(none.id, noPolicy, ONE_SECOND_AFTER);
+  assert.equal(g1.blocked, true);
+
+  const throwing = await newRequest();
+  const g2 = await guardHandoffWindow(throwing.id, { ...stripe.deps, readPolicy: async () => { throw new Error("job_switches unreadable"); } }, ONE_SECOND_AFTER);
+  assert.equal(g2.blocked, true);
+  if (g1.blocked && g2.blocked) assert.deepEqual([g1.expired, g2.expired], [false, false]);
+  assert.equal((await load(none.id)).status, "ACCEPTED");
+  assert.equal((await load(throwing.id)).status, "ACCEPTED");
+  assert.equal(stripe.calls.cancel.length, 0);
+});
+
+test("guard (dry-run): only logs, once per request, and touches nothing", async () => {
+  const { id } = await newRequest({ status: "DEPOSIT_CONFIRMED", depositPaymentIntentId: "pi_dry", depositStatus: "authorized", depositMode: "authorization" });
+  const stripe = noStripe();
+  const lines: string[] = [];
+  const deps = { ...stripe.deps, readPolicy: policy("dry-run"), log: (l: string) => void lines.push(l) };
+  await guardHandoffWindow(id, deps, ONE_SECOND_AFTER);
+  await guardHandoffWindow(id, deps, ONE_SECOND_AFTER);
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], new RegExp(`DRY-RUN \\(on read\\) would expire request ${id} `));
+  const row = await load(id);
+  assert.equal(row.status, "DEPOSIT_CONFIRMED");
+  assert.equal(row.expiredAt, null);
+  assert.deepEqual(stripe.calls.cancel, []);
+  assert.deepEqual(stripe.calls.refunds, []);
+});
+
+test("guard (live) with a max cutoff age: older requests are still blocked but left for the silent cleanup", async () => {
+  const old = await newRequest();
+  const recent = await newRequest();
+  const stripe = noStripe();
+  const deps = { ...stripe.deps, readPolicy: policy("live", 3 * DAY_MS) };
+
+  const tooOld = await guardHandoffWindow(old.id, deps, new Date(CUTOFF.getTime() + 4 * DAY_MS));
+  assert.equal(tooOld.blocked, true);
+  if (tooOld.blocked) assert.equal(tooOld.expired, false);
+  assert.equal((await load(old.id)).status, "ACCEPTED");
+
+  const inside = await guardHandoffWindow(recent.id, deps, new Date(CUTOFF.getTime() + 2 * DAY_MS));
+  assert.equal(inside.blocked, true);
+  assert.equal((await load(recent.id)).status, "EXPIRED");
+});
+
+test("guard: reports each read-path check, except when off", async () => {
+  const seen: unknown[] = [];
+  const stripe = noStripe();
+  const a = await newRequest();
+  const b = await newRequest();
+  const c = await newRequest();
+  const base = { ...stripe.deps, log: () => {}, onReadCheck: (s: unknown) => void seen.push(s) };
+  await guardHandoffWindow(a.id, { ...base, readPolicy: policy("live") }, ONE_SECOND_AFTER);
+  await guardHandoffWindow(b.id, { ...base, readPolicy: policy("dry-run") }, ONE_SECOND_AFTER);
+  await guardHandoffWindow(c.id, { ...base, readPolicy: policy("off") }, ONE_SECOND_AFTER);
+  assert.deepEqual(seen, [
+    { mode: "live", expired: 1, wouldExpire: 0 },
+    { mode: "dry-run", expired: 0, wouldExpire: 1 },
+  ]);
+});
+
+test("reading a user's requests: off does nothing, even with no policy at all", async () => {
+  const mine = await newRequest();
+  const stripe = noStripe();
+  assert.equal(await expireDueRequestsForUser(borrowerId, { ...stripe.deps, readPolicy: policy("off") }, ONE_SECOND_AFTER), 0);
+  assert.equal(await expireDueRequestsForUser(borrowerId, { ...stripe.deps, readPolicy: undefined }, ONE_SECOND_AFTER), 0);
+  assert.equal(await expireDueRequestsForUser(borrowerId, { ...stripe.deps, readPolicy: async () => { throw new Error("down"); } }, ONE_SECOND_AFTER), 0);
+  assert.equal((await load(mine.id)).status, "ACCEPTED");
+});
+
+test("reading a user's requests: dry-run only logs the due ones", async () => {
+  const mine = await newRequest();
+  const notDue = await newRequest({ endDate: new Date("2026-10-20T00:00:00.000Z") });
+  await parkOtherRequests([mine.id, notDue.id]);
+  const stripe = noStripe();
+  const lines: string[] = [];
+  const count = await expireDueRequestsForUser(
+    borrowerId,
+    { ...stripe.deps, readPolicy: policy("dry-run"), log: (l) => void lines.push(l) },
+    ONE_SECOND_AFTER,
+  );
+  assert.equal(count, 0);
+  assert.ok(lines.some((l) => l.includes(`request ${mine.id} `)));
+  assert.ok(!lines.some((l) => l.includes(`request ${notDue.id} `)));
+  assert.equal((await load(mine.id)).status, "ACCEPTED");
+  assert.equal(stripe.calls.cancel.length + stripe.calls.refunds.length, 0);
+});
+
+test("reading a user's requests (live) honours the max cutoff age", async () => {
+  const old = await newRequest();
+  await parkOtherRequests([old.id]);
+  const stripe = noStripe();
+  const later = new Date(CUTOFF.getTime() + 10 * DAY_MS);
+  await expireDueRequestsForUser(borrowerId, { ...stripe.deps, readPolicy: policy("live", 3 * DAY_MS) }, later);
+  assert.equal((await load(old.id)).status, "ACCEPTED", "past the max age: left for the silent cleanup");
+  await expireDueRequestsForUser(borrowerId, { ...stripe.deps, readPolicy: policy("live", 30 * DAY_MS) }, later);
+  assert.equal((await load(old.id)).status, "EXPIRED");
 });
 
 // ── Sweep: expiry, reminder, dry run (nothing here schedules itself) ──────────

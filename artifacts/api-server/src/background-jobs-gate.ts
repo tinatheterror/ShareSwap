@@ -9,6 +9,11 @@ const isSet = (raw: string | undefined) => {
   return Boolean(value) && value !== "0" && value !== "false";
 };
 
+/** True in a Replit deployment (REPLIT_DEPLOYMENT set), regardless of BACKGROUND_JOBS. */
+export function isDeployment(env: NodeJS.ProcessEnv = process.env): boolean {
+  return isSet(env.REPLIT_DEPLOYMENT);
+}
+
 /**
  * The in-process timers (return recovery, overdue reminders, handoff sweep, request-expiry timer,
  * rate-limit cleanup) act on whatever database DATABASE_URL names, so they run only in a deployment
@@ -19,7 +24,7 @@ export function backgroundJobsDecision(env: NodeJS.ProcessEnv = process.env): Ba
   const explicit = env.BACKGROUND_JOBS?.trim().toLowerCase();
   if (explicit === "off") return { enabled: false, reason: "BACKGROUND_JOBS=off" };
   if (explicit === "on") return { enabled: true, reason: "BACKGROUND_JOBS=on" };
-  if (isSet(env.REPLIT_DEPLOYMENT)) return { enabled: true, reason: "REPLIT_DEPLOYMENT is set" };
+  if (isDeployment(env)) return { enabled: true, reason: "REPLIT_DEPLOYMENT is set" };
   const ignored = explicit ? ` (ignoring unrecognized BACKGROUND_JOBS=${JSON.stringify(explicit)})` : "";
   return { enabled: false, reason: `not a deployment and BACKGROUND_JOBS is not on${ignored}` };
 }

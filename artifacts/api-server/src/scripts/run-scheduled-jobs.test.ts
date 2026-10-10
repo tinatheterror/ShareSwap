@@ -1,3 +1,4 @@
+import type { SwitchDecision } from "../job-switches";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { compactNotificationCopy, notificationCopyLimits } from "../notification-copy";
@@ -358,4 +359,68 @@ test("a dry run needs only the database and cannot reach any live runner", async
   assert.equal(report.exitCode, 0);
   assert.deepEqual(touched, ['expiry:{"dryRun":true}', "handoff:dry-run"]);
   assert.equal(cleanups, 0);
+});
+
+// ── The "request-expiry" kill switch (job_switches) ─────────────────────────────
+
+const switchDecision = (mode: "live" | "dry-run" | "off"): SwitchDecision => ({ ok: true, mode, maxCutoffAgeMs: null, source: "table" });
+
+async function runWithSwitch(env: Record<string, string>, resolve: (envMode: string) => Promise<SwitchDecision>) {
+  const calls: { expiry?: any; handoffMode?: string } = {};
+  const steps = buildSteps(fakeJobs(calls), env as NodeJS.ProcessEnv, async () => 0, {
+    resolveExpirySwitch: resolve as any,
+  });
+  const logs: string[] = [];
+  const { store, calls: storeCalls } = fakeStore();
+  await runScheduledJobs({ steps, store, log: (l) => logs.push(l) });
+  return { calls, logs, storeCalls };
+}
+
+test("a switch row overrides the environment, both ways", async () => {
+  const off = await runWithSwitch({ SCHEDULED_JOBS_EXPIRY_MODE: "live" }, async () => switchDecision("off"));
+  assert.equal(off.calls.expiry, undefined, "row off beats env live: the sweep never ran");
+
+  const live = await runWithSwitch({ SCHEDULED_JOBS_EXPIRY_MODE: "off" }, async () => switchDecision("live"));
+  assert.equal(live.calls.expiry.expireDryRun, false);
+
+  const dry = await runWithSwitch({ SCHEDULED_JOBS_EXPIRY_MODE: "live" }, async () => switchDecision("dry-run"));
+  assert.equal(dry.calls.expiry.expireDryRun, true);
+});
+
+test("the switch resolver is handed the environment mode, so no row falls back to it", async () => {
+  const seen: string[] = [];
+  await runWithSwitch({ SCHEDULED_JOBS_EXPIRY_MODE: "live" }, async (envMode) => {
+    seen.push(envMode);
+    return { ok: true, mode: envMode as any, maxCutoffAgeMs: null, source: "env" };
+  });
+  assert.deepEqual(seen, ["live"]);
+});
+
+test("a failed read of job_switches skips the expiry step and never enables anything", async () => {
+  for (const mode of ["live", "dry-run", "off"]) {
+    const result = await runWithSwitch({ SCHEDULED_JOBS_EXPIRY_MODE: mode }, async () => ({
+      ok: false,
+      error: 'relation "job_switches" does not exist',
+    }));
+    assert.equal(result.calls.expiry, undefined, `env ${mode}: no expiry sweep, so no expiry and no reminder`);
+    assert.ok(result.logs.some((l) => /SKIPPED: could not read the job switch/.test(l)));
+    // The other steps are not held up by it.
+    assert.ok(result.storeCalls.started.includes("overdue-reminders"));
+    assert.equal(result.calls.handoffMode, "dry-run");
+  }
+});
+
+test("without a switch resolver the environment alone decides, as before", async () => {
+  const steps = buildSteps(fakeJobs({}), { SCHEDULED_JOBS_EXPIRY_MODE: "off" } as NodeJS.ProcessEnv, async () => 0);
+  assert.ok(!steps.some((s) => s.name === "request-expiry"));
+});
+
+test("report-only runs never read the switch", async () => {
+  let reads = 0;
+  const steps = buildSteps(fakeJobs({}), {} as NodeJS.ProcessEnv, async () => 0, {
+    reportOnly: true,
+    resolveExpirySwitch: async () => (reads++, switchDecision("live")),
+  });
+  await runScheduledJobs({ steps, store: createMemoryJobStore(), log: () => {} });
+  assert.equal(reads, 0);
 });

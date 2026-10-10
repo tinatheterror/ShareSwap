@@ -29,12 +29,12 @@ test("a switch mode is exactly live, dry-run or off; nothing else is accepted", 
   for (const bad of ["LIVE", " live", "on", "dryrun", "", null, undefined, 1]) assert.equal(parseSwitchMode(bad), null);
 });
 
-test("on read, the environment default is off outside a deployment and live inside one", () => {
+test("on read, the environment default is off outside a deployment and dry-run inside one", () => {
   assert.equal(resolveOnReadEnvMode({}), "off");
   assert.equal(resolveOnReadEnvMode({ BACKGROUND_JOBS: "on" }), "off", "BACKGROUND_JOBS=on is not a deployment");
   assert.equal(resolveOnReadEnvMode({ REPLIT_DEPLOYMENT: "" }), "off");
   assert.equal(resolveOnReadEnvMode({ REPLIT_DEPLOYMENT: "0" }), "off");
-  assert.equal(resolveOnReadEnvMode({ REPLIT_DEPLOYMENT: "1" }), "live");
+  assert.equal(resolveOnReadEnvMode({ REPLIT_DEPLOYMENT: "1" }), "dry-run");
 });
 
 test("on read, REQUEST_EXPIRY_ON_READ_MODE overrides the default; anything unrecognised is off", () => {
@@ -92,7 +92,14 @@ test("the read policy follows the row for request-expiry-on-read, with its max c
   assert.deepEqual(asked, [[REQUEST_EXPIRY_ON_READ_JOB]]);
   // No row: the environment default (off here: not a deployment).
   assert.deepEqual(await resolveReadExpiryPolicy({}, rowQuery(null)), { mode: "off", maxCutoffAgeMs: null });
-  assert.deepEqual(await resolveReadExpiryPolicy({ REPLIT_DEPLOYMENT: "1" }, rowQuery(null)), { mode: "live", maxCutoffAgeMs: null });
+  assert.deepEqual(await resolveReadExpiryPolicy({ REPLIT_DEPLOYMENT: "1" }, rowQuery(null)), { mode: "dry-run", maxCutoffAgeMs: null });
+});
+
+test("a row can loosen the environment as well as tighten it", async () => {
+  const deployment = { REPLIT_DEPLOYMENT: "1" }; // environment default: dry-run
+  assert.equal((await resolveReadExpiryPolicy(deployment, rowQuery({ mode: "live", max_cutoff_age_ms: null }))).mode, "live");
+  assert.equal((await resolveReadExpiryPolicy(deployment, rowQuery({ mode: "off", max_cutoff_age_ms: null }))).mode, "off");
+  assert.equal((await resolveReadExpiryPolicy({}, rowQuery({ mode: "live", max_cutoff_age_ms: null }))).mode, "live", "even outside a deployment");
 });
 
 // ── Last-run recording ──────────────────────────────────────────────────────────

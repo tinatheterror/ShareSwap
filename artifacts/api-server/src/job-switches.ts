@@ -76,13 +76,13 @@ export interface ExpiryReadPolicy {
 export const READ_EXPIRY_OFF: ExpiryReadPolicy = { mode: "off", maxCutoffAgeMs: null };
 
 /**
- * REQUEST_EXPIRY_ON_READ_MODE=live|dry-run|off. Unset: live in a deployment (what the read path always
- * did), off everywhere else, so a workspace pointed at real data never expires anything on read.
- * Anything unrecognised is off.
+ * REQUEST_EXPIRY_ON_READ_MODE=live|dry-run|off. Unset: dry-run in a deployment (it logs what it would
+ * expire; going live is a deliberate switch), off everywhere else, so a workspace pointed at real data
+ * never acts on read. Anything unrecognised is off.
  */
 export function resolveOnReadEnvMode(env: NodeJS.ProcessEnv): JobMode {
   const raw = env.REQUEST_EXPIRY_ON_READ_MODE?.trim().toLowerCase();
-  if (raw === undefined || raw === "") return isDeployment(env) ? "live" : "off";
+  if (raw === undefined || raw === "") return isDeployment(env) ? "dry-run" : "off";
   return parseSwitchMode(raw) ?? "off";
 }
 

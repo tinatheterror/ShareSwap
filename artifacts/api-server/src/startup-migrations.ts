@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS scheduled_job_runs (
 //   max_cutoff_age_ms  optional; used by the request-expiry-on-read job only
 //   updated_by, note   required (non-blank) on a 'live' row, so a live switch always says who set it and why;
 //                      off and dry-run rows may leave them empty. job-switches.ts checks the same rule on read.
+export const JOB_SWITCHES_ATTRIBUTION_CONSTRAINT = "job_switches_live_needs_attribution";
+export const JOB_SWITCHES_ATTRIBUTION_CHECK = `mode <> 'live' OR (coalesce(updated_by ~ '\\S', false) AND coalesce(note ~ '\\S', false))`;
+
 export const JOB_SWITCHES_SQL = `
 CREATE TABLE IF NOT EXISTS job_switches (
   job_name          TEXT        PRIMARY KEY,
@@ -57,9 +60,7 @@ CREATE TABLE IF NOT EXISTS job_switches (
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_by        TEXT,
   note              TEXT,
-  CONSTRAINT job_switches_live_needs_attribution CHECK (
-    mode <> 'live' OR (coalesce(updated_by ~ '\\S', false) AND coalesce(note ~ '\\S', false))
-  )
+  CONSTRAINT ${JOB_SWITCHES_ATTRIBUTION_CONSTRAINT} CHECK (${JOB_SWITCHES_ATTRIBUTION_CHECK})
 )`;
 
 /** Runs one idempotent CREATE TABLE IF NOT EXISTS, tolerating the race between two processes doing it at once. */
@@ -83,6 +84,35 @@ export async function ensureJobSwitchesTable() {
   await createTableIfMissing(JOB_SWITCHES_SQL);
 }
 
+export type AttributionConstraintResult = "present" | "added" | "added-not-valid";
+
+/**
+ * Adds the live-needs-attribution CHECK to a job_switches table created before it had one. Does nothing when
+ * the constraint exists. If the table already has rows it is added NOT VALID: new and updated rows are checked,
+ * existing ones are not scanned or rejected (readJobSwitch still refuses a live row without attribution).
+ * `table` is a plain lower-case identifier; it is a parameter only so a test can use a scratch table.
+ */
+export async function ensureJobSwitchesAttributionConstraint(table = "job_switches"): Promise<AttributionConstraintResult> {
+  if (!/^[a-z_][a-z0-9_]*$/.test(table)) throw new Error(`Invalid table name: ${table}`);
+  const existing = await pool.query(
+    "SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass($1) AND conname = $2",
+    [table, JOB_SWITCHES_ATTRIBUTION_CONSTRAINT],
+  );
+  if ((existing.rowCount ?? 0) > 0) return "present";
+  const { rows } = await pool.query(`SELECT EXISTS (SELECT 1 FROM ${table}) AS has_rows`);
+  const notValid = rows[0]?.has_rows === true;
+  try {
+    await pool.query(
+      `ALTER TABLE ${table} ADD CONSTRAINT ${JOB_SWITCHES_ATTRIBUTION_CONSTRAINT} CHECK (${JOB_SWITCHES_ATTRIBUTION_CHECK})${notValid ? " NOT VALID" : ""}`,
+    );
+  } catch (err) {
+    // Another process added it between the check and the ALTER: 42710 duplicate_object.
+    if ((err as { code?: string }).code === "42710") return "present";
+    throw err;
+  }
+  return notValid ? "added-not-valid" : "added";
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     const migrationPath = await findMigrationPath(relativePath);
@@ -91,4 +121,5 @@ export async function applyStartupMigrations() {
   }
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
+  await ensureJobSwitchesAttributionConstraint();
 }

@@ -14,7 +14,13 @@ import {
   type SwitchQuery,
 } from "./job-switches";
 import { guardedJob } from "./guarded-job";
-import { JOB_SWITCHES_SQL, createTableIfMissing, ensureJobSwitchesTable } from "./startup-migrations";
+import {
+  JOB_SWITCHES_ATTRIBUTION_CONSTRAINT,
+  JOB_SWITCHES_SQL,
+  createTableIfMissing,
+  ensureJobSwitchesAttributionConstraint,
+  ensureJobSwitchesTable,
+} from "./startup-migrations";
 
 const rowQuery = (row: Record<string, unknown> | null): SwitchQuery => async () => ({ rows: row ? [row] : [] });
 const failingQuery = (message = 'relation "job_switches" does not exist'): SwitchQuery => async () => {
@@ -314,5 +320,56 @@ test("a live row without updated_by or a note, from before the constraint, is un
   } finally {
     await client.query("DROP TABLE IF EXISTS pg_temp.job_switches").catch(() => {});
     client.release();
+  }
+});
+
+// ── Adding the attribution CHECK to a table that predates it ────────────────────
+
+test("the attribution CHECK is added once to a table created without it; a second run changes nothing", async () => {
+  const table = `job_switches_old_${process.pid}`;
+  const constraintRows = async () =>
+    (await pool.query(
+      "SELECT oid, convalidated, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = to_regclass($1) AND conname = $2",
+      [table, JOB_SWITCHES_ATTRIBUTION_CONSTRAINT],
+    )).rows;
+  const create = async () => {
+    await pool.query(`DROP TABLE IF EXISTS ${table}`);
+    // The shape before the attribution CHECK existed.
+    await pool.query(`CREATE TABLE ${table} (
+      job_name TEXT PRIMARY KEY,
+      mode TEXT NOT NULL CHECK (mode IN ('live', 'dry-run', 'off')),
+      max_cutoff_age_ms BIGINT CHECK (max_cutoff_age_ms IS NULL OR max_cutoff_age_ms > 0),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_by TEXT,
+      note TEXT
+    )`);
+  };
+  try {
+    // Empty table: added, and validated.
+    await create();
+    assert.deepEqual(await constraintRows(), [], "the scratch table starts without the constraint");
+    assert.equal(await ensureJobSwitchesAttributionConstraint(table), "added");
+    const [first, ...extra] = await constraintRows();
+    assert.equal(extra.length, 0);
+    assert.equal(first.convalidated, true);
+    assert.match(first.def, /mode <> 'live'::text/);
+    assert.equal(await ensureJobSwitchesAttributionConstraint(table), "present");
+    const [second, ...extra2] = await constraintRows();
+    assert.equal(extra2.length, 0);
+    assert.deepEqual(second, first, "the second run left the constraint untouched");
+    await assert.rejects(pool.query(`INSERT INTO ${table} (job_name, mode) VALUES ('x', 'live')`), /job_switches_live_needs_attribution/);
+
+    // Table with an existing (non-compliant) row: added NOT VALID, old row kept, new writes checked.
+    await create();
+    await pool.query(`INSERT INTO ${table} (job_name, mode) VALUES ('legacy', 'live')`);
+    assert.equal(await ensureJobSwitchesAttributionConstraint(table), "added-not-valid");
+    const [pending] = await constraintRows();
+    assert.equal(pending.convalidated, false);
+    assert.equal(await ensureJobSwitchesAttributionConstraint(table), "present");
+    assert.deepEqual(await constraintRows(), [pending]);
+    assert.equal((await pool.query(`SELECT count(*)::int AS n FROM ${table}`)).rows[0].n, 1);
+    await assert.rejects(pool.query(`INSERT INTO ${table} (job_name, mode) VALUES ('new', 'live')`), /job_switches_live_needs_attribution/);
+  } finally {
+    await pool.query(`DROP TABLE IF EXISTS ${table}`).catch(() => {});
   }
 });

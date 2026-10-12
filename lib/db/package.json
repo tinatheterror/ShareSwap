@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
+    "./managed-tables": "./src/managed-tables.ts",
     "./test-database-guard": "./src/test-database-guard.ts"
   },
   "scripts": {

@@ -26,7 +26,7 @@ export type DepositRenewalStripeClient = {
     cancel: Stripe["paymentIntents"]["cancel"];
     capture?: Stripe["paymentIntents"]["capture"];
   };
-  refunds?: { create: Stripe["refunds"]["create"] };
+  refunds?: { create: Stripe["refunds"]["create"]; retrieve?: Stripe["refunds"]["retrieve"] };
 };
 
 export type DepositTerminalClaim =
@@ -83,6 +83,16 @@ export async function claimDepositTerminalAction(
   });
 }
 
+/** What releasing one deposit intent did, for callers that keep a record (the refund ledger). */
+export interface DepositRelease {
+  paymentIntentId: string;
+  /** cancelled: an uncaptured hold was released. refunded: a captured refundable charge was refunded. */
+  action: "cancelled" | "refunded" | "already_released" | "simulated";
+  refundId?: string | null;
+  /** What Stripe reported, in cents, when it said. */
+  amountCents?: number | null;
+}
+
 export async function resolveClaimedDepositIntents(
   claim: Extract<DepositTerminalClaim, { status: "claimed" }>,
   stripeClient: DepositRenewalStripeClient,
@@ -91,7 +101,8 @@ export async function resolveClaimedDepositIntents(
     /** Deterministic Stripe idempotency key for each cancel, so retries replay instead of racing. */
     cancelIdempotencyKey?: (paymentIntentId: string) => string;
   } = {},
-) {
+): Promise<DepositRelease[]> {
+  const releases: DepositRelease[] = [];
   const { request } = claim;
   const assertClaimOwnership = async () => {
     const [owned] = await db.select({ id: itemRequests.id }).from(itemRequests).where(and(
@@ -102,58 +113,65 @@ export async function resolveClaimedDepositIntents(
     )).limit(1);
     if (!owned) throw new Error("Deposit operation claim was superseded");
   };
-  const cancelIfActive = async (paymentIntentId: string) => {
+  const cancelIfActive = async (paymentIntentId: string): Promise<DepositRelease> => {
     await assertClaimOwnership();
     // Seeded/demo requests use a non-Stripe identifier. There is no external
     // authorization to cancel, but the normal settlement workflow must still
     // be allowed to complete and record the release.
-    if (paymentIntentId.startsWith("simulated-")) return;
+    if (paymentIntentId.startsWith("simulated-")) return { paymentIntentId, action: "simulated" };
     const intent = await stripeClient.paymentIntents.retrieve(paymentIntentId);
     if (intent.status === "succeeded") {
       // A refundable deposit is intentionally an already-captured charge. Its
       // release is a Stripe refund, never a second implicit money movement.
       if (request.depositMode === "refundable_charge") {
         if (!stripeClient.refunds) throw new Error("Stripe refunds are unavailable");
-        await stripeClient.refunds.create({ payment_intent: paymentIntentId }, {
+        const refund = await stripeClient.refunds.create({ payment_intent: paymentIntentId }, {
           idempotencyKey: `refundable-deposit-release-${request.id}-${paymentIntentId}`,
         });
-        return;
+        const refundedAmount = (refund as { amount?: unknown } | null)?.amount;
+        return {
+          paymentIntentId,
+          action: "refunded",
+          refundId: refund?.id ?? null,
+          amountCents: typeof refundedAmount === "number" ? refundedAmount : null,
+        };
       }
       throw new Error("The deposit was already charged and cannot be released as a hold; it must be refunded");
     }
-    if (intent.status === "canceled") return;
+    if (intent.status === "canceled") return { paymentIntentId, action: "already_released" };
     await assertClaimOwnership();
-    if (options.cancelIdempotencyKey) {
-      await stripeClient.paymentIntents.cancel(paymentIntentId, undefined, {
-        idempotencyKey: options.cancelIdempotencyKey(paymentIntentId),
-      });
-    } else {
-      await stripeClient.paymentIntents.cancel(paymentIntentId);
-    }
+    const cancelled = options.cancelIdempotencyKey
+      ? await stripeClient.paymentIntents.cancel(paymentIntentId, undefined, {
+          idempotencyKey: options.cancelIdempotencyKey(paymentIntentId),
+        })
+      : await stripeClient.paymentIntents.cancel(paymentIntentId);
+    const heldAmount = (cancelled as { amount?: unknown } | null)?.amount;
+    return { paymentIntentId, action: "cancelled", amountCents: typeof heldAmount === "number" ? heldAmount : null };
   };
 
   if (request.depositPreviousPaymentIntentId) {
-    await cancelIfActive(request.depositPreviousPaymentIntentId);
+    releases.push(await cancelIfActive(request.depositPreviousPaymentIntentId));
   }
-  if (!request.depositPaymentIntentId) return;
+  if (!request.depositPaymentIntentId) return releases;
   if (action === "capture") {
     // The refundable charge was collected only after explicit consent. A
     // terminal claim approval retains it; there is no PI capture to perform.
-    if (request.depositMode === "refundable_charge") return;
+    if (request.depositMode === "refundable_charge") return releases;
     if (!stripeClient.paymentIntents.capture) {
       throw new Error("Stripe capture is unavailable");
     }
     await assertClaimOwnership();
     const current = await stripeClient.paymentIntents.retrieve(request.depositPaymentIntentId);
-    if (current.status === "succeeded") return;
+    if (current.status === "succeeded") return releases;
     if (current.status === "canceled") {
       throw new Error("The temporary hold was already released and cannot be charged");
     }
     await assertClaimOwnership();
     await stripeClient.paymentIntents.capture(request.depositPaymentIntentId);
   } else {
-    await cancelIfActive(request.depositPaymentIntentId);
+    releases.push(await cancelIfActive(request.depositPaymentIntentId));
   }
+  return releases;
 }
 
 export async function releaseDepositTerminalClaim(

@@ -13,6 +13,14 @@ export interface FakeStripeOptions {
   failRefund?: () => boolean;
   /** Cents Stripe reports per refunded id (payment_intent or charge). */
   refundAmounts?: Record<string, number>;
+  /** The charge behind a PaymentIntent, with the processing fee on its balance transaction (cents). */
+  charges?: Record<string, { amount: number; fee: number }>;
+  /** Fee (cents) Stripe hands back on a refund, keyed by refund id (re_1, re_2, ...). */
+  returnedFees?: Record<string, number>;
+  /** Make reading the balance transaction fail. */
+  failFeeRead?: () => boolean;
+  /** Refund ids are `${refundIdPrefix}${n}`. Give each test its own: the ledger keeps refund ids unique. */
+  refundIdPrefix?: string;
 }
 
 export function fakeStripe(options: FakeStripeOptions = {}) {
@@ -27,9 +35,15 @@ export function fakeStripe(options: FakeStripeOptions = {}) {
   const intentStatus = new Map<string, string>();
   const client = {
     paymentIntents: {
-      retrieve: async (id: string) => {
+      retrieve: async (id: string, params?: { expand?: string[] }) => {
         calls.retrieve.push(id);
-        return { id, status: intentStatus.get(id) ?? "requires_capture" };
+        const base: Record<string, unknown> = { id, status: intentStatus.get(id) ?? "requires_capture" };
+        const charge = options.charges?.[id];
+        if (charge && params?.expand?.includes("latest_charge.balance_transaction")) {
+          if (options.failFeeRead?.()) throw new Error("balance transaction unavailable");
+          base.latest_charge = { id: `ch_for_${id}`, amount: charge.amount, balance_transaction: { fee: charge.fee } };
+        }
+        return base;
       },
       create: async (...args: unknown[]) => {
         calls.create.push(args);
@@ -51,8 +65,12 @@ export function fakeStripe(options: FakeStripeOptions = {}) {
         if (options.failRefund?.()) throw new Error("stripe unavailable");
         calls.refunds.push({ params, options: opts });
         const target = String(params.payment_intent ?? params.charge);
-        return { id: `re_${calls.refunds.length}`, amount: options.refundAmounts?.[target] };
+        return { id: `${options.refundIdPrefix ?? "re_"}${calls.refunds.length}`, amount: options.refundAmounts?.[target] };
       },
+      retrieve: async (id: string) => ({
+        id,
+        balance_transaction: { fee: -(options.returnedFees?.[id] ?? 0) },
+      }),
     },
   };
   return { calls, intentStatus, client };

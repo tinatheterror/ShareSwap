@@ -15,7 +15,7 @@ import {
 } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { registerRoutes } from "./routes/routes.js";
-import { ensureJobSwitchesTable, ensureScheduledJobRunsTable } from "./startup-migrations.js";
+import { ensureCancellationRecord, ensureJobSwitchesTable, ensureScheduledJobRunsTable } from "./startup-migrations.js";
 import { fakeStripe, noStripeCalls } from "./test-fixtures/fake-stripe.js";
 
 const CLOCK = new Date("2026-10-03T19:00:00.000Z"); // Oct 3, noon in Vancouver
@@ -125,6 +125,7 @@ const acts = (userId: number, requestId?: number) =>
 before(async () => {
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
+  await ensureCancellationRecord();
   const password = await hashPassword(PASSWORD);
   const created = await db
     .insert(users)
@@ -233,9 +234,32 @@ test("an owner can cancel a BORROW after acceptance through the API, with the sa
   assert.equal((await acts(ownerId, id))[0].activityType, "cancel_after_deposit");
 });
 
+test("withdrawing a PENDING request records itself too: free, no deposit, reason 'withdrawn'", async () => {
+  const { id } = await newRequest();
+  const response = await borrower.post(`/api/requests/${id}/withdraw`, {});
+  assert.equal(response.status, 200);
+  const row = await load(id);
+  assert.equal(row.status, "CANCELLED");
+  assert.deepEqual(
+    [row.cancelledBy, row.cancelledFromStatus, row.cancelReason, row.cancelledWithPenalty, row.cancelDepositState, row.cancelledAt instanceof Date],
+    [borrowerId, "PENDING", "withdrawn", false, "none", true],
+  );
+  assert.deepEqual(await acts(borrowerId, id), [], "withdrawing has no penalty");
+});
+
+test("the cancel route writes the record over HTTP too", async () => {
+  const { id } = await newRequest(hold());
+  await owner.post(`/api/requests/${id}/cancel`, { acknowledgePenalty: 5, reason: "item_unavailable" });
+  const row = await load(id);
+  assert.deepEqual(
+    [row.cancelledBy, row.cancelledFromStatus, row.cancelReason, row.cancelledWithPenalty, row.cancelDepositState],
+    [ownerId, "DEPOSIT_CONFIRMED", "item_unavailable", true, "authorized"],
+  );
+});
+
 // ── SWAP and GIFT keep the original handler ───────────────────────────────────
 
-test("SWAP keeps the original rule: grace pass first, then -20 cancel_after_acceptance, original response shape", async () => {
+test("SWAP keeps the original rule: grace pass first, then -20 cancel_after_acceptance, original response shape; the new record stays empty", async () => {
   const user = await db.insert(users).values({ username: `${UNIQUE}-swapper`, password: await hashPassword(PASSWORD), emailVerified: true, reputationScore: 80 }).returning({ id: users.id, username: users.username });
   userIds.push(user[0].id);
   const swapper = new TestClient();
@@ -257,6 +281,7 @@ test("SWAP keeps the original rule: grace pass first, then -20 cancel_after_acce
   assert.equal(await score(user[0].id), 60);
   assert.equal((await acts(user[0].id, second.id))[0].activityType, "cancel_after_acceptance");
   assert.equal((await acts(user[0].id, second.id))[0].points, -20);
+  assert.equal((await load(second.id)).cancelledAt, null, "SWAP/GIFT cancels do not write the BORROW/RENT record");
 });
 
 test("GIFT: the giver cancelling their own accepted gift is still penalty-free with the original message", async () => {

@@ -17,6 +17,7 @@ import {
   stripeRefundTarget,
   upfrontRefundTargets,
 } from "./request-refunds.js";
+import { ensureCancellationRecord } from "./startup-migrations.js";
 
 // Oct 2–5 → cutoff Oct 4 23:59:59 Vancouver = 2026-10-05T06:59:59Z.
 const ONE_SECOND_AFTER = new Date("2026-10-05T07:00:00.000Z");
@@ -124,6 +125,7 @@ async function load(requestId: number) {
 }
 
 before(async () => {
+  await ensureCancellationRecord();
   const [owner, borrower] = await db
     .insert(users)
     .values([

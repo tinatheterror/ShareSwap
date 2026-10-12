@@ -17,7 +17,8 @@ import {
 import * as depositCopy from "./deposit-copy";
 import { READ_EXPIRY_OFF, type ExpiryReadPolicy, type ReadCheckSummary } from "./job-switches";
 import { computeHandoffCutoff } from "./request-dates";
-import { refundUpfrontCharges } from "./request-refunds";
+import { buildRefundLedgerRows, insertRefundLedger, refundUpfrontCharges, type LedgerRow } from "./request-refunds";
+import { classifyDepositState, expiredReasonFor } from "./deposit-state";
 import * as copy from "./request-expiry-copy";
 
 // A BORROW/RENT request that nobody handed off before its late-handoff cutoff
@@ -196,13 +197,16 @@ export async function expireRequestIfDue(
   }
 
   let feeRefunded = false;
+  let ledger: LedgerRow[] = [];
   try {
     // Fees first, the deposit last: if the last step fails, the request still has its deposit
     // protection and a retry finishes the job (every call is keyed, "already done" is success).
-    feeRefunded = (await refundUpfrontCharges(request, deps.stripe, { keyPrefix: "expire" })).length > 0;
-    await resolveClaimedDepositIntents(claim, deps.stripe, "cancel", {
+    const upfront = await refundUpfrontCharges(request, deps.stripe, { keyPrefix: "expire" });
+    feeRefunded = upfront.length > 0;
+    const releases = await resolveClaimedDepositIntents(claim, deps.stripe, "cancel", {
       cancelIdempotencyKey: (paymentIntentId) => `expire-${requestId}-${paymentIntentId}`,
     });
+    ledger = await buildRefundLedgerRows(deps.stripe, request, upfront, releases);
   } catch (error) {
     // Drop the claim so the next read or sweep retries; every Stripe call above
     // uses a deterministic idempotency key, so the retry cannot double-act.
@@ -226,6 +230,8 @@ export async function expireRequestIfDue(
       .set({
         status: copy.REQUEST_EXPIRED_STATUS,
         expiredAt: silent ? cutoff : now,
+        // Whether a deposit was already paid, for a future no-show report.
+        expiredReason: expiredReasonFor(classifyDepositState(request)),
         // The handoff code dies with the request.
         handoffPin: null,
         depositStatus: hadDeposit ? "released" : null,
@@ -248,6 +254,8 @@ export async function expireRequestIfDue(
       )
       .returning({ id: itemRequests.id });
     if (!claimed) return false;
+
+    await insertRefundLedger(tx, requestId, "expiry", ledger);
 
     // The item frees up for other neighbours.
     await tx.update(items).set({ isAvailable: true, updatedAt: now }).where(eq(items.id, row.items.id));

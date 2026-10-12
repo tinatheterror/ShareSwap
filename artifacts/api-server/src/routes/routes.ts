@@ -829,6 +829,10 @@ const stripe = {
       const s = await getStripe();
       return s.refunds.list(...args);
     },
+    retrieve: async (...args: Parameters<Stripe["refunds"]["retrieve"]>) => {
+      const s = await getStripe();
+      return s.refunds.retrieve(...args);
+    },
   },
   checkout: {
     sessions: {
@@ -9316,7 +9320,16 @@ Respond with ONLY the category name, nothing else.`
 
       const [updated] = await db
         .update(itemRequests)
-        .set({ status: "CANCELLED" })
+        .set({
+          status: "CANCELLED",
+          // The cancellation record: a withdrawn PENDING request is free and has no deposit.
+          cancelledAt: new Date(),
+          cancelledBy: req.user.id,
+          cancelledFromStatus: "PENDING",
+          cancelReason: "withdrawn",
+          cancelledWithPenalty: false,
+          cancelDepositState: "none",
+        })
         .where(eq(itemRequests.id, requestId))
         .returning();
 

@@ -4,6 +4,7 @@ import {
   claimDepositTerminalAction,
   releaseDepositTerminalClaim,
   resolveClaimedDepositIntents,
+  type DepositRelease,
   type DepositRenewalStripeClient,
 } from "./deposit-renewal-service";
 import * as depositCopy from "./deposit-copy";
@@ -13,7 +14,8 @@ import {
   REQUEST_ALREADY_CANCELLED_MESSAGE,
   type CancelDepositState,
 } from "./cancel-copy";
-import { refundUpfrontCharges, type UpfrontRefund } from "./request-refunds";
+import { classifyDepositState, cancelPenaltyApplies } from "./deposit-state";
+import { buildRefundLedgerRows, insertRefundLedger, refundUpfrontCharges, type UpfrontRefund } from "./request-refunds";
 import { applyCancellationAfterDepositPenalty, trustLevelForScore } from "./trust-score-service";
 
 // Cancelling a BORROW or RENT request (POST /api/requests/:id/cancel).
@@ -67,28 +69,9 @@ export interface CancelResult {
   body: Record<string, unknown>;
 }
 
-// ── Deposit state and the penalty rule ───────────────────────────────────────
+// ── Deposit state and the penalty rule (deposit-state.ts) ─────────────────────
 
-const LIVE_DEPOSIT_STATUSES = ["authorized", "held"];
-
-/** Where the deposit stands, read from the request's own deposit fields (never from its status). */
-export function classifyDepositState(
-  request: Pick<
-    RequestRow,
-    "status" | "depositMethod" | "depositPaymentIntentId" | "depositStatus" | "depositMode"
-  >,
-): CancelDepositState {
-  if (request.depositMethod === "in_person") return "in_person";
-  if (request.depositPaymentIntentId && LIVE_DEPOSIT_STATUSES.includes(request.depositStatus ?? "")) {
-    return request.depositMode === "refundable_charge" ? "charged" : "authorized";
-  }
-  return request.status === "PENDING" ? "none" : "unpaid";
-}
-
-/** The -5 applies only once an in-app deposit is authorized or a refundable charge was paid. */
-export function cancelPenaltyApplies(depositState: CancelDepositState): boolean {
-  return depositState === "authorized" || depositState === "charged";
-}
+export { classifyDepositState, cancelPenaltyApplies } from "./deposit-state";
 
 function parseReason(raw: unknown): CancelReason | null {
   if (raw === undefined || raw === null || raw === "") return DEFAULT_CANCEL_REASON;
@@ -125,9 +108,10 @@ const alreadyCancelled = (request: RequestRow): CancelResult => ({
     request: {
       id: request.id,
       status: "CANCELLED",
-      cancelledAt: null,
-      cancelledBy: null,
-      cancelledFromStatus: null,
+      // As recorded by the first cancel (null for requests cancelled before the record existed).
+      cancelledAt: request.cancelledAt?.toISOString() ?? null,
+      cancelledBy: request.cancelledBy ?? null,
+      cancelledFromStatus: request.cancelledFromStatus ?? null,
     },
     outcome: null,
     message: REQUEST_ALREADY_CANCELLED_MESSAGE,
@@ -204,9 +188,10 @@ export async function cancelBorrowRentRequest(
 
   // ── Stripe first. Fees, then the deposit: if the last step fails the deposit is still in place. ──
   let upfront: UpfrontRefund[];
+  let releases: DepositRelease[];
   try {
     upfront = await refundUpfrontCharges(request, deps.stripe, { keyPrefix: "cancel" });
-    await resolveClaimedDepositIntents(claim, deps.stripe, "cancel", {
+    releases = await resolveClaimedDepositIntents(claim, deps.stripe, "cancel", {
       cancelIdempotencyKey: (paymentIntentId) => `cancel-${requestId}-${paymentIntentId}`,
     });
   } catch (error) {
@@ -224,6 +209,9 @@ export async function cancelBorrowRentRequest(
       },
     };
   }
+
+  // What Stripe did, for the refund ledger (including the processing fee it kept). Never blocks the cancel.
+  const ledger = await buildRefundLedgerRows(deps.stripe, request, upfront, releases);
 
   const otherPartyId = isOwner ? request.requesterId! : item.ownerId!;
   const hadDeposit = Boolean(request.depositPaymentIntentId);
@@ -248,6 +236,13 @@ export async function cancelBorrowRentRequest(
           depositOperationType: null,
           // Keep the cancelled thread in the active inbox until the other party reads the event.
           unarchivedAt: now,
+          // The cancellation record.
+          cancelledAt: now,
+          cancelledBy: actorId,
+          cancelledFromStatus: request.status,
+          cancelReason: reason,
+          cancelledWithPenalty: penalty,
+          cancelDepositState: depositState,
         })
         .where(
           and(
@@ -262,6 +257,7 @@ export async function cancelBorrowRentRequest(
         .returning({ id: itemRequests.id });
       if (!updated) return null;
 
+      await insertRefundLedger(tx, requestId, "cancel", ledger);
       await tx.update(items).set({ isAvailable: true, updatedAt: now }).where(eq(items.id, item.id));
 
       // Void any held rental payout and reverse the owner's pending balance.

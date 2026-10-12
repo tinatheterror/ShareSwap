@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, timestamp, integer, decimal, numeric, varchar, index, uniqueIndex, date, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, integer, bigint, decimal, numeric, varchar, index, uniqueIndex, date, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations, sql } from "drizzle-orm";
 
@@ -503,6 +503,17 @@ export const itemRequests = pgTable("item_requests", {
   // "hand off soon" notification at-most-once. See request-expiry-service.ts.
   expiredAt: timestamp("expired_at"),
   expiryReminderSentAt: timestamp("expiry_reminder_sent_at"),
+  // Why an EXPIRED request expired: "no_handoff_no_deposit" | "no_handoff_deposit_paid".
+  expiredReason: text("expired_reason"),
+
+  // Cancellation record, written by the BORROW/RENT cancel route (see cancel-service.ts) and the
+  // requester's withdraw. SWAP/GIFT cancels leave these null. SQL: lib/db/scripts/0009_cancellation_record.sql.
+  cancelledAt: timestamp("cancelled_at"),
+  cancelledBy: integer("cancelled_by"),
+  cancelledFromStatus: text("cancelled_from_status"),
+  cancelReason: text("cancel_reason"),
+  cancelledWithPenalty: boolean("cancelled_with_penalty"),
+  cancelDepositState: text("cancel_deposit_state"),
 
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
@@ -1076,3 +1087,28 @@ export const userNotificationPrefs = pgTable("user_notification_prefs", {
 export type InsertUserNotificationPrefs = typeof userNotificationPrefs.$inferInsert;
 export type SelectUserNotificationPrefs = typeof userNotificationPrefs.$inferSelect;
 
+
+// What a BORROW/RENT cancel or expiry released or refunded, one row per Stripe object, with the
+// Stripe processing fee the platform absorbed (read from Stripe's balance transaction, never assumed).
+// Written in the same transaction that cancels or expires the request. See request-refunds.ts and
+// lib/db/scripts/0009_cancellation_record.sql.
+export const requestRefunds = pgTable("request_refunds", {
+  id: serial("id").primaryKey(),
+  requestId: integer("request_id").notNull(),
+  trigger: text("trigger").notNull(), // 'cancel' | 'expiry'
+  kind: text("kind").notNull(), // 'deposit_hold_release' | 'deposit_refund' | 'platform_fee_refund' | 'rental_refund'
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeRefundId: text("stripe_refund_id"),
+  amountCents: bigint("amount_cents", { mode: "number" }),
+  currency: text("currency").default("usd").notNull(),
+  chargeFeeCents: bigint("charge_fee_cents", { mode: "number" }),
+  feeReturnedCents: bigint("fee_returned_cents", { mode: "number" }),
+  absorbedFeeCents: bigint("absorbed_fee_cents", { mode: "number" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  refundIdUniq: uniqueIndex("request_refunds_refund_id_uidx").on(table.stripeRefundId).where(sql`${table.stripeRefundId} IS NOT NULL`),
+  requestIdx: index("request_refunds_request_idx").on(table.requestId),
+  createdIdx: index("request_refunds_created_idx").on(table.createdAt),
+}));
+
+export type SelectRequestRefund = typeof requestRefunds.$inferSelect;

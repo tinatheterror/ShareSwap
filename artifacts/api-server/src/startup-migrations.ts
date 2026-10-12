@@ -113,12 +113,51 @@ export async function ensureJobSwitchesAttributionConstraint(table = "job_switch
   return notValid ? "added-not-valid" : "added";
 }
 
+async function runMigrationFile(relativePath: string) {
+  const migrationPath = await findMigrationPath(relativePath);
+  const migrationSql = await readFile(migrationPath, "utf8");
+  await pool.query(migrationSql);
+}
+
+const CANCELLATION_RECORD_FILE = "lib/db/scripts/0009_cancellation_record.sql";
+const CANCELLATION_RECORD_COLUMNS = [
+  "cancelled_at",
+  "cancelled_by",
+  "cancelled_from_status",
+  "cancel_reason",
+  "cancelled_with_penalty",
+  "cancel_deposit_state",
+  "expired_reason",
+];
+
+/**
+ * The cancellation record columns on item_requests and the request_refunds ledger (0009). Idempotent
+ * (IF NOT EXISTS throughout) and cheap when there is nothing to do: ADD COLUMN IF NOT EXISTS still takes
+ * a table lock, so the file only runs when a column or the ledger is actually missing. Also called by the
+ * job script so expiring a request never depends on the API having restarted first.
+ */
+export async function ensureCancellationRecord() {
+  const { rows } = await pool.query(
+    `SELECT (SELECT count(*)::int FROM information_schema.columns
+              WHERE table_schema = current_schema() AND table_name = 'item_requests' AND column_name = ANY($1)) AS columns,
+            to_regclass('request_refunds') IS NOT NULL AS ledger`,
+    [CANCELLATION_RECORD_COLUMNS],
+  );
+  if (rows[0]?.columns === CANCELLATION_RECORD_COLUMNS.length && rows[0]?.ledger === true) return;
+  try {
+    await runMigrationFile(CANCELLATION_RECORD_FILE);
+  } catch (err) {
+    // Two processes creating it at once: 42P07 duplicate_table, 42701 duplicate_column, 23505 on pg_type's unique index.
+    const code = (err as { code?: string }).code;
+    if (code !== "42P07" && code !== "42701" && code !== "23505") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
-    const migrationPath = await findMigrationPath(relativePath);
-    const migrationSql = await readFile(migrationPath, "utf8");
-    await pool.query(migrationSql);
+    await runMigrationFile(relativePath);
   }
+  await ensureCancellationRecord();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
   await ensureJobSwitchesAttributionConstraint();

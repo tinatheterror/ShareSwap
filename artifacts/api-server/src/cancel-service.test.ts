@@ -18,6 +18,7 @@ import {
   classifyDepositState,
   type CancelDeps,
 } from "./cancel-service.js";
+import { ensureCancellationRecord } from "./startup-migrations.js";
 import { fakeStripe, noStripeCalls } from "./test-fixtures/fake-stripe.js";
 
 const NOW = new Date("2026-10-03T19:00:00.000Z");
@@ -114,6 +115,7 @@ const itemFree = async (itemId: number) => (await db.select({ a: items.isAvailab
 
 before(async () => {
   // users are created per test so scores never leak between them
+  await ensureCancellationRecord();
 });
 
 after(async () => {

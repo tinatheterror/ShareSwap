@@ -24,6 +24,8 @@ export interface UpfrontRefund {
   stripeId: string;
   /** Null when Stripe said the charge was already refunded. */
   refundId: string | null;
+  /** What Stripe reports it refunded, in cents; null when it did not say or was already refunded. */
+  amountCents: number | null;
 }
 
 export type RefundableRequest = Pick<
@@ -97,10 +99,11 @@ export async function refundUpfrontCharges(
       const refund = await stripe.refunds.create(stripeRefundTarget(target.stripeId), {
         idempotencyKey: `${options.keyPrefix}-refund-${request.id}-${target.stripeId}`,
       });
-      refunds.push({ ...target, refundId: refund?.id ?? null });
+      const amount = (refund as { amount?: unknown } | null)?.amount;
+      refunds.push({ ...target, refundId: refund?.id ?? null, amountCents: typeof amount === "number" ? amount : null });
     } catch (error) {
       if (!isAlreadyRefunded(error)) throw error;
-      refunds.push({ ...target, refundId: null });
+      refunds.push({ ...target, refundId: null, amountCents: null });
     }
   }
   return refunds;

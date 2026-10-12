@@ -34,6 +34,8 @@ export const TRUST_POINTS = {
     SERIOUS_OVERDUE: -60,         // 15+ days overdue while still active
     // Other medium penalties
     CANCEL_AFTER_ACCEPTANCE: -20,
+    // BORROW/RENT cancelled after a deposit was authorized or paid. Flat, no grace pass.
+    CANCEL_AFTER_DEPOSIT: -5,
     IGNORING_MESSAGES: -18,
     // Low-review penalties (only when negative tags are also selected)
     LOW_REVIEW_ONE_STAR: -10,
@@ -97,6 +99,7 @@ export type TrustActivityType =
   | "repeated_no_shows"
   // Medium penalty activities
   | "cancel_after_acceptance"
+  | "cancel_after_deposit"
   | "ignoring_messages"
   // Low-review penalties
   | "low_review_one_star"
@@ -111,6 +114,7 @@ export type PenaltyType =
   | "fraud_abuse"
   | "repeated_no_shows"
   | "cancel_after_acceptance"
+  | "cancel_after_deposit"
   | "ignoring_messages"
   | "low_review_one_star"
   | "low_review_two_star";
@@ -154,9 +158,17 @@ export async function awardTrustPoints(
   points: number,
   metadata: TrustActivityMetadata = {},
   executor: any = db,
-): Promise<{ newScore: number; pointsAwarded: number }> {
+  options: {
+    /**
+     * Record the change that actually happened when the score floor clamps it (a -5 at score 3 is a
+     * -3 row), and write nothing at all when the score cannot move. Off by default: older penalty
+     * types keep recording their nominal points.
+     */
+    recordActualDelta?: boolean;
+  } = {},
+): Promise<{ newScore: number; pointsAwarded: number; previousScore: number }> {
   const description = buildActivityDescription(activityType, metadata);
-  const persistAward = async (tx: any): Promise<{ newScore: number; pointsAwarded: number }> => {
+  const persistAward = async (tx: any): Promise<{ newScore: number; pointsAwarded: number; previousScore: number }> => {
     // Lock before reading: scaling, the score floor and the saved level must all
     // use the latest committed score, including when the caller supplies a tx.
     const [user] = await tx
@@ -169,6 +181,10 @@ export async function awardTrustPoints(
     const currentScore = user.reputationScore || 0;
     const scaledPoints = scaleTrustPoints(currentScore, points);
     const newScore = Math.max(TRUST_SCORE_FLOOR, currentScore + scaledPoints);
+    const recordedPoints = options.recordActualDelta ? newScore - currentScore : scaledPoints;
+    if (options.recordActualDelta && recordedPoints === 0) {
+      return { newScore: currentScore, pointsAwarded: 0, previousScore: currentScore };
+    }
 
     // The unique request/activity index makes retries no-ops. Insert first so
     // even inside a caller-owned transaction a conflict cannot change the score
@@ -176,7 +192,7 @@ export async function awardTrustPoints(
     const inserted = await tx.insert(reputationActivities).values({
         userId,
         activityType,
-        points: scaledPoints,
+        points: recordedPoints,
         description,
         itemId: metadata.itemId,
         requestId: metadata.requestId ?? null,
@@ -186,14 +202,14 @@ export async function awardTrustPoints(
       .onConflictDoNothing()
       .returning({ id: reputationActivities.id });
     if (inserted.length === 0) {
-      return { newScore: currentScore, pointsAwarded: 0 };
+      return { newScore: currentScore, pointsAwarded: 0, previousScore: currentScore };
     }
 
     await tx
       .update(users)
       .set({ reputationScore: newScore, reputationLevel: trustLevelForScore(newScore) })
       .where(eq(users.id, userId));
-    return { newScore, pointsAwarded: scaledPoints };
+    return { newScore, pointsAwarded: recordedPoints, previousScore: currentScore };
   };
   return executor === db ? db.transaction(persistAward) : persistAward(executor);
 }
@@ -261,6 +277,8 @@ export function formatReputationActivityDescription(
       return "Repeated missed handoffs were recorded.";
     case "cancel_after_acceptance":
       return `An accepted request was cancelled${onItem}`;
+    case "cancel_after_deposit":
+      return `Cancelled after a deposit was placed${onItem}`;
     case "ignoring_messages":
       return "Repeated messages from a neighbour went unanswered.";
     case "low_review_one_star":
@@ -833,6 +851,7 @@ const PENALTY_POINTS: Record<PenaltyType, number> = {
   fraud_abuse: TRUST_POINTS.PENALTIES.FRAUD_ABUSE,
   repeated_no_shows: TRUST_POINTS.PENALTIES.REPEATED_NO_SHOWS,
   cancel_after_acceptance: TRUST_POINTS.PENALTIES.CANCEL_AFTER_ACCEPTANCE,
+  cancel_after_deposit: TRUST_POINTS.PENALTIES.CANCEL_AFTER_DEPOSIT,
   ignoring_messages: TRUST_POINTS.PENALTIES.IGNORING_MESSAGES,
   low_review_one_star: TRUST_POINTS.PENALTIES.LOW_REVIEW_ONE_STAR,
   low_review_two_star: TRUST_POINTS.PENALTIES.LOW_REVIEW_TWO_STAR,
@@ -956,6 +975,38 @@ export async function applyCancellationPenalty(
   });
 
   return { applied: result.applied, wasGracePass: result.wasGracePass };
+}
+
+/**
+ * The flat -5 for cancelling a BORROW/RENT after a deposit was authorized or paid. Never a grace
+ * pass (cancel_after_deposit is not in GRACE_PASS_CONFIG). Pass the cancel's transaction so the
+ * penalty commits or rolls back with the cancellation.
+ */
+export async function applyCancellationAfterDepositPenalty(
+  userId: number,
+  requestId: number,
+  itemId: number,
+  executor: any = db,
+): Promise<{ pointsDeducted: number; previousScore: number; newScore: number }> {
+  const run = async (tx: any) => {
+    // Straight to the award: there is no eligibility check because there is no grace pass. The score
+    // row is locked inside awardTrustPoints, and the floor clamps what is recorded.
+    const result = await awardTrustPoints(
+      userId,
+      "cancel_after_deposit",
+      PENALTY_POINTS.cancel_after_deposit,
+      { requestId, itemId },
+      tx,
+      { recordActualDelta: true },
+    );
+    console.log(`🚨 Trust penalty applied to user ${userId}: cancel_after_deposit (${result.pointsAwarded} points)`);
+    return {
+      pointsDeducted: Math.abs(result.pointsAwarded),
+      previousScore: result.previousScore,
+      newScore: result.newScore,
+    };
+  };
+  return executor === db ? db.transaction(run) : run(executor);
 }
 
 // Note: No-show/missed pickup is no longer penalized - removed minor penalties

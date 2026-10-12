@@ -284,7 +284,7 @@ test("a counter that omits dates cannot carry a stale start forward", async () =
   const staleId = await createPendingRequest("RENT", "2026-10-02");
   const stale = await owner.request(`/api/requests/${staleId}/counter-proposal`, {
     method: "POST",
-    body: JSON.stringify({ depositMethod: "in_person" }),
+    body: JSON.stringify({ deliveryMethod: "in_person" }),
   });
   assert.equal(stale.status, 400);
   assert.equal(((await stale.json()) as { code: string }).code, "START_DATE_IN_PAST");
@@ -292,7 +292,7 @@ test("a counter that omits dates cannot carry a stale start forward", async () =
   const currentId = await createPendingRequest("RENT", "2026-10-04");
   const current = await owner.request(`/api/requests/${currentId}/counter-proposal`, {
     method: "POST",
-    body: JSON.stringify({ depositMethod: "in_person" }),
+    body: JSON.stringify({ deliveryMethod: "in_person" }),
   });
   assert.equal(current.status, 200);
 });

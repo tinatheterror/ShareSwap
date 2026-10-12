@@ -1,6 +1,12 @@
 import { apiGet, apiPost, onSessionExpired, setApiSession } from "../api";
 import { resumeDestination } from "../sessionNavigation";
 
+// expo-constants is untranspiled ESM in node_modules, so the node-environment unit project cannot load it.
+jest.mock("expo-constants", () => ({
+  __esModule: true,
+  default: { expoConfig: { version: "9.9.9" }, nativeBuildVersion: "42" },
+}));
+
 function response(status: number, body: unknown = {}): Response {
   return {
     status, ok: status >= 200 && status < 300, statusText: "",
@@ -117,4 +123,11 @@ test("only the same user can resume a safe local screen; actions are not replaye
   for (const url of ["https://example.com", "//example.com", "/login", "/chat/2?confirmReturn=1", "/api/requests/42/return"]) {
     expect(resumeDestination(url, "1", 1)).toBe("/(tabs)");
   }
+});
+test("every request carries the app version and build, so the server can tell legacy clients apart", async () => {
+  mockFetch.mockResolvedValue(response(200));
+  await apiGet("/api/user");
+  const headers = mockFetch.mock.calls[0][1].headers;
+  expect(headers["x-app-version"]).toBe("9.9.9");
+  expect(headers["x-app-build"]).toBe("42");
 });

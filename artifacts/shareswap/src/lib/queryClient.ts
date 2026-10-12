@@ -77,9 +77,9 @@ async function doFetch(
   const isMutating = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
   const isFormData = data instanceof FormData;
 
-  const headers: HeadersInit = data && !isFormData
-    ? { "Content-Type": "application/json" }
-    : {};
+  // The web app ships with the server and shows the penalty modal, so it is never a legacy client.
+  const headers: Record<string, string> = { "x-app-version": "web" };
+  if (data && !isFormData) headers["Content-Type"] = "application/json";
 
   if (isMutating) {
     const token = csrfTokenManager.getToken();

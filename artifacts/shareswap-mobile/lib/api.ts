@@ -1,4 +1,15 @@
+import Constants from "expo-constants";
+
 const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+
+function clientVersionHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const version = Constants.expoConfig?.version;
+  const build = Constants.nativeBuildVersion;
+  if (version) headers["x-app-version"] = version;
+  if (build) headers["x-app-build"] = build;
+  return headers;
+}
 
 // An epoch prevents requests started under an old cookie from affecting a new
 // login, or repopulating private caches after they have been cleared.
@@ -139,7 +150,8 @@ export async function apiRequest(
     method !== "GET" && method !== "HEAD" && method !== "OPTIONS";
   const isFormData = data instanceof FormData;
 
-  const headers: Record<string, string> = {};
+  // Lets the server tell builds apart. A request without x-app-version is treated as a legacy client.
+  const headers: Record<string, string> = clientVersionHeaders();
 
   if (data && !isFormData) {
     headers["Content-Type"] = "application/json";

@@ -4,6 +4,12 @@ import { createServer, type Server } from "http";
 import * as uberDirect from "../uber-direct";
 import { randomBytes } from "crypto";
 import { setupAuth, hashPassword, comparePasswords } from "../auth";
+import {
+  clientVersionOf,
+  isLegacyClient,
+  legacyCancelPenaltyExempt,
+  LEGACY_CANCEL_ACK_UNTIL_ENV,
+} from "../legacy-cancel-exemption";
 import { db, pool } from "@workspace/db";
 import { awardAchievementOnce } from "../achievement-awards";
 import {
@@ -9421,6 +9427,12 @@ Respond with ONLY the category name, nothing else.`
         return res.status(403).json({ error: "Unauthorized" });
       }
 
+      const clientVersion = clientVersionOf(req.headers);
+      const legacyClient = isLegacyClient(req.headers);
+      console.log(
+        `[cancel] request ${requestId}: client version=${clientVersion.version ?? "none"} build=${clientVersion.build ?? "none"}${legacyClient ? " (legacy: no x-app-version)" : ""}`,
+      );
+
       // Can only cancel if pre-handoff
       const cancelableStatuses = ["PENDING", "ACCEPTED", "DEPOSIT_CONFIRMED", "HANDOFF_CONFIRMED"];
       if (!cancelableStatuses.includes(request.item_requests.status)) {
@@ -9548,7 +9560,15 @@ Respond with ONLY the category name, nothing else.`
       // Exception: giver cancelling their own gift is not penalised (they're doing a favour)
       const isGiftGiverCancelling = request.item_requests.requestType === "GIFT" && isOwner;
       let penaltyResult = { applied: false, wasGracePass: false };
-      if (!isGiftGiverCancelling) {
+      // Legacy clients (no x-app-version) cannot show the penalty acknowledgment; while
+      // LEGACY_CANCEL_ACK_UNTIL is in the future their cancel goes through without the penalty.
+      const legacyPenaltyExempt = !isGiftGiverCancelling && legacyCancelPenaltyExempt(req.headers);
+      if (legacyClient) {
+        console.log(
+          `[cancel] legacy cancel of request ${requestId} by user ${req.user.id}: ${legacyPenaltyExempt ? `penalty skipped (${LEGACY_CANCEL_ACK_UNTIL_ENV} is in the future)` : "no exemption, penalty rules apply"}`,
+        );
+      }
+      if (!isGiftGiverCancelling && !legacyPenaltyExempt) {
         try {
           penaltyResult = await applyCancellationPenalty(
             req.user.id,

@@ -187,6 +187,23 @@ describe("native score history navigation", () => {
     expect(text).not.toContain("Updated your profile");
   });
 
+  it("renders the old -20 cancellation row and the new -5 cancel-after-deposit row side by side", () => {
+    mockReputationData = {
+      ...mockReputationData,
+      recentActivities: [
+        { activityType: "cancel_after_deposit", points: -5, description: 'Cancelled after a deposit was placed on "Camping stove"', createdAt: "2026-10-03T12:00:00.000Z" },
+        { activityType: "cancel_after_acceptance", points: -20, description: 'An accepted request was cancelled on "Tent"', createdAt: "2026-09-01T12:00:00.000Z" },
+      ],
+    };
+
+    const text = renderedText(renderScreen(<ScoreHistoryScreen />));
+
+    expect(text).toContain('Cancelled after a deposit was placed on "Camping stove"');
+    expect(text).toContain("−5");
+    expect(text).toContain('An accepted request was cancelled on "Tent"');
+    expect(text).toContain("−20");
+  });
+
   it.each([
     ["America/Los_Angeles", "2025-06-15T00:30:00.000Z", "Jun 15, 2025"],
     ["Pacific/Auckland", "2025-06-14T23:30:00.000Z", "Jun 14, 2025"],

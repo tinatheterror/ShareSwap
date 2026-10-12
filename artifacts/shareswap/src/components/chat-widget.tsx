@@ -4,6 +4,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { queryClient } from "@/lib/queryClient";
+import { cancelAction, cancelToast, legacyCancelDialog, type CancelRole } from "@workspace/api-client-react/cancel-flow";
+import { useCancelRequest } from "@/hooks/use-cancel-request";
+import { CancelDialog } from "@/components/cancel-dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDisplayName } from "@/lib/utils";
 import { REQUEST_DATES_PASSED_MESSAGE, acceptBlockedByDates } from "@/lib/request-dates";
@@ -419,8 +422,9 @@ export function ChatWidget() {
     null,
   );
 
-  // Cancel request state
-  const [cancelConfirmRequest, setCancelConfirmRequest] = useState<ItemRequest | null>(null);
+  // Cancel request state: the old SWAP/GIFT confirmation. BORROW/RENT cancel without asking first;
+  // a penalty to acknowledge opens the cancelFlow prompt instead.
+  const [cancelConfirmRequest, setCancelConfirmRequest] = useState<{ request: ItemRequest; role: CancelRole } | null>(null);
 
   // Counter-proposal state (for inline chat actions)
   const [showChatCounterModal, setShowChatCounterModal] = useState(false);
@@ -772,22 +776,38 @@ export function ChatWidget() {
     },
   });
 
-  const cancelMutation = useMutation({
-    mutationFn: async (requestId: number) => {
-      const res = await apiRequest("POST", `/api/requests/${requestId}/cancel`, {});
+  const cancelFlow = useCancelRequest({
+    send: async (requestId, body) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/cancel`, body);
       return res.json();
     },
-    onSuccess: () => {
+    onDone: (done) => {
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
       qc.invalidateQueries({ queryKey: ["/api/inbox"] });
       qc.invalidateQueries({ queryKey: ["/api/items"] });
       setCancelConfirmRequest(null);
-      toast({ title: "Request cancelled", description: "The booking has been cancelled." });
+      const { title, description } = cancelToast(done);
+      toast({ title, description });
     },
-    onError: (err: any) => {
-      toast({ title: "Error", description: err.message || "Could not cancel request", variant: "destructive" });
+    onError: (message) => {
+      setCancelConfirmRequest(null);
+      toast({ title: "Error", description: message, variant: "destructive" });
     },
   });
+
+  /** Cancel tapped: SWAP/GIFT ask first, BORROW/RENT send it and let the server say if there is a penalty. */
+  const startCancel = (request: ItemRequest, role: CancelRole) => {
+    if (cancelAction({ requestType: request.requestType, status: request.status, role }) === "confirm") {
+      setCancelConfirmRequest({ request, role });
+      return;
+    }
+    const other = role === "owner" ? request.requester : request.owner;
+    void cancelFlow.cancel({
+      requestId: request.id,
+      role,
+      otherPartyName: formatDisplayName(other?.displayName || other?.username),
+    });
+  };
 
   const reportAutoHandoffMutation = useMutation({
     mutationFn: async ({ requestId, description }: { requestId: number; description: string }) => {
@@ -1542,8 +1562,21 @@ export function ChatWidget() {
               {isOwner && request.requestType === "GIFT" && request.status === "ACCEPTED" && (
                 <button
                   className="w-full text-center text-xs text-muted-foreground hover:text-red-500 transition-colors"
-                  onClick={(e) => { e.stopPropagation(); setCancelConfirmRequest(request); }}
-                  disabled={cancelMutation.isPending}
+                  onClick={(e) => { e.stopPropagation(); startCancel(request, "owner"); }}
+                  disabled={cancelFlow.pending}
+                >
+                  Cancel
+                </button>
+              )}
+
+              {/* Owner: cancel an accepted BORROW/RENT. Free unless the borrower's deposit is in place;
+                  then the server asks for the -5 to be acknowledged. */}
+              {isOwner && request.requestType !== "GIFT" && cancelAction({ requestType: request.requestType, status: request.status, role: "owner" }) === "direct" && (
+                <button
+                  className="w-full text-center text-xs text-muted-foreground hover:text-red-500 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); startCancel(request, "owner"); }}
+                  disabled={cancelFlow.pending}
+                  data-testid="owner-cancel-request"
                 >
                   Cancel
                 </button>
@@ -1558,8 +1591,8 @@ export function ChatWidget() {
               {isBorrower && request.status === "PENDING" && !iCounterPending && !iTermsAccepted && (
                 <button
                   className="w-full text-center text-xs text-muted-foreground hover:text-red-500 transition-colors"
-                  onClick={(e) => { e.stopPropagation(); cancelMutation.mutate(request.id); }}
-                  disabled={cancelMutation.isPending}
+                  onClick={(e) => { e.stopPropagation(); startCancel(request, "requester"); }}
+                  disabled={cancelFlow.pending}
                 >
                   Cancel
                 </button>
@@ -1597,7 +1630,8 @@ export function ChatWidget() {
               {isBorrower && ["ACCEPTED", "DEPOSIT_CONFIRMED"].includes(request.status) && (
                 <button
                   className="w-full text-center text-xs text-muted-foreground hover:text-red-500 transition-colors"
-                  onClick={(e) => { e.stopPropagation(); setCancelConfirmRequest(request); }}
+                  onClick={(e) => { e.stopPropagation(); startCancel(request, "requester"); }}
+                  disabled={cancelFlow.pending}
                 >
                   Cancel
                 </button>
@@ -3081,30 +3115,23 @@ export function ChatWidget() {
         </DialogContent>
       </Dialog>
 
-      {/* Cancel booking confirmation dialog */}
-      <Dialog open={!!cancelConfirmRequest} onOpenChange={(open) => { if (!open) setCancelConfirmRequest(null); }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Cancel this booking?</DialogTitle>
-            <DialogDescription>
-              {cancelConfirmRequest?.status === "ACCEPTED" && "The owner has already accepted your request."}
-              {cancelConfirmRequest?.status === "DEPOSIT_CONFIRMED" && "Your deposit hold will be released automatically — you will not be charged."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col gap-2 sm:flex-col sm:items-stretch">
-            <Button variant="outline" onClick={() => setCancelConfirmRequest(null)}>
-              Keep booking
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={cancelMutation.isPending}
-              onClick={() => cancelConfirmRequest && cancelMutation.mutate(cancelConfirmRequest.id)}
-            >
-              {cancelMutation.isPending ? "Cancelling…" : "Cancel"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* SWAP / GIFT: the old confirmation, drawn with the shared cancel dialog */}
+      <CancelDialog
+        spec={cancelConfirmRequest ? legacyCancelDialog({ requestType: cancelConfirmRequest.request.requestType, status: cancelConfirmRequest.request.status, role: cancelConfirmRequest.role }, "web") : null}
+        pending={cancelFlow.pending}
+        onConfirm={() => {
+          if (!cancelConfirmRequest) return;
+          void cancelFlow.cancel({ requestId: cancelConfirmRequest.request.id, role: cancelConfirmRequest.role });
+        }}
+        onKeep={() => setCancelConfirmRequest(null)}
+      />
+      {/* BORROW / RENT: the server said a deposit is in place, so cancelling costs trust points */}
+      <CancelDialog
+        spec={cancelFlow.prompt?.spec ?? null}
+        pending={cancelFlow.pending}
+        onConfirm={() => void cancelFlow.proceed()}
+        onKeep={cancelFlow.dismiss}
+      />
     </div>
   );
 }

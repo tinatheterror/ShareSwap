@@ -102,7 +102,7 @@ const LEVEL_EMOJIS: Record<string, string> = {
 
 // ── Badge factory (mirrors web badges array) ──────────────────────────────────
 
-function buildBadges(stats: UserStats | undefined, reputationScore: number, isVerified: boolean): BadgeItem[] {
+function buildBadges(stats: UserStats | undefined, trustScore: number, isVerified: boolean): BadgeItem[] {
   const s = stats;
   return [
     // Verification & identity
@@ -145,9 +145,9 @@ function buildBadges(stats: UserStats | undefined, reputationScore: number, isVe
     // Performance & prestige
     { id: "fast-responder",     name: "Fast Responder",        icon: "⏱️", earned: s?.fastResponder || false,                   earnedBg: "#ecfccb", earnedFg: "#3f6212", description: "Neighbours know they can count on you to move quickly.",                                                requirement: "Complete 5 exchanges as a lender within 48 hours of the request." },
     { id: "five-star-neighbour",name: "Five-Star Neighbour",   icon: "⭐", earned: s?.fiveStarNeighbour || false,               earnedBg: "#fef9c3", earnedFg: "#713f12", description: "Your neighbours consistently rate their experience with you at the highest level.",                     requirement: "Receive 5+ reviews with an average rating of 4.8 stars or above." },
-    { id: "neighbourhood-hero", name: "Neighbourhood Hero",    icon: "🥇", earned: reputationScore >= 300,                      earnedBg: "#fef3c7", earnedFg: "#92400e", description: "Your reputation speaks for itself — a pillar of the local sharing community.",                          requirement: "Reach a trust score of 300 or above." },
+    { id: "neighbourhood-hero", name: "Neighbourhood Hero",    icon: "🥇", earned: trustScore >= 300,                      earnedBg: "#fef3c7", earnedFg: "#92400e", description: "Your reputation speaks for itself — a pillar of the local sharing community.",                          requirement: "Reach a trust score of 300 or above." },
     { id: "coin-collector",     name: "Coin Collector",        icon: "🪙", earned: (s?.totalShareCoinsEarned || 0) >= 50,       earnedBg: "#fef3c7", earnedFg: "#b45309", description: "You've earned 50 ShareCoins through sharing.",                                                           requirement: "Earn 50 or more ShareCoins in total." },
-    { id: "shareswap-legend",   name: "ShareSwap Legend",      icon: "💎", earned: reputationScore >= 500 && (s?.totalLent || 0) >= 20, earnedBg: "#fef3c7", earnedFg: "#92400e", description: "The rarest badge on the platform. You've built something extraordinary.",             requirement: "Reach a trust score of 500 and lend out 20+ items." },
+    { id: "shareswap-legend",   name: "ShareSwap Legend",      icon: "💎", earned: trustScore >= 500 && (s?.totalLent || 0) >= 20, earnedBg: "#fef3c7", earnedFg: "#92400e", description: "The rarest badge on the platform. You've built something extraordinary.",             requirement: "Reach a trust score of 500 and lend out 20+ items." },
     { id: "shareswap-ambassador",name: "ShareSwap Ambassador", icon: "🌐", earned: (s?.referrals || 0) >= 20,                  earnedBg: "#e0e7ff", earnedFg: "#4338ca", description: "You've brought 20 neighbours into the ShareSwap community — a true ambassador.",                       requirement: "Refer 20 friends who each complete their first transaction." },
   ];
 }
@@ -232,18 +232,18 @@ export default function AchievementsScreen() {
   });
 
   // ── Score animation (same ease-out cubic as web) ──────────────────────────
-  const reputationScore = data?.score ?? 0;
+  const trustScore = data?.score ?? 0;
   const fromScore = from ? parseInt(from, 10) : null;
-  const [displayScore, setDisplayScore] = useState(fromScore ?? reputationScore);
+  const [displayScore, setDisplayScore] = useState(fromScore ?? trustScore);
   const animFrameRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (fromScore === null || isNaN(fromScore) || data === undefined) {
-      setDisplayScore(reputationScore);
+      setDisplayScore(trustScore);
       return;
     }
     const start = fromScore;
-    const end = reputationScore;
+    const end = trustScore;
     const duration = 1400;
     const stepMs = 16;
     const steps = Math.ceil(duration / stepMs);
@@ -265,18 +265,18 @@ export default function AchievementsScreen() {
   // ── Level computation (matches web LEVELS array exactly) ─────────────────
   const currentLevelIndex = LEVELS.findIndex((level, index) => {
     const next = LEVELS[index + 1];
-    return !next || reputationScore < next.minScore;
+    return !next || trustScore < next.minScore;
   });
   const currentLevel = LEVELS[Math.max(0, currentLevelIndex)];
   const nextLevel = LEVELS[currentLevelIndex + 1];
   const progressToNext = nextLevel
-    ? Math.min(((reputationScore - currentLevel.minScore) / (nextLevel.minScore - currentLevel.minScore)) * 100, 100)
+    ? Math.min(((trustScore - currentLevel.minScore) / (nextLevel.minScore - currentLevel.minScore)) * 100, 100)
     : 100;
 
   const levelColor = LEVEL_COLORS[currentLevel.name] ?? colors.primary;
 
   // ── Trust score contextual message (mirrors web) ──────────────────────────
-  const trustPct = Math.min(100, Math.round((reputationScore / 500) * 100));
+  const trustPct = Math.min(100, Math.round((trustScore / 500) * 100));
   const trustMsg = trustPct >= 80 ? "You're a trusted neighbour!"
     : trustPct >= 50 ? "You're doing great!"
     : trustPct >= 25 ? "You're on your way!"
@@ -287,7 +287,7 @@ export default function AchievementsScreen() {
     : "Start sharing to build your trust score.";
 
   // ── Badges — computed client-side from stats (matches web exactly) ────────
-  const badges = buildBadges(stats, reputationScore, user?.isVerified ?? false);
+  const badges = buildBadges(stats, trustScore, user?.isVerified ?? false);
   const earnedBadges = badges.filter((b) => b.earned);
   const unearnedBadges = badges.filter((b) => !b.earned);
 
@@ -377,7 +377,7 @@ export default function AchievementsScreen() {
                 <View style={[styles.progressFill, { backgroundColor: levelColor, width: `${progressToNext}%` as any }]} />
               </View>
               <Text style={[styles.progressText, { color: colors.mutedForeground }]}>
-                {reputationScore}/{nextLevel.minScore} — Next: {nextLevel.name}
+                {trustScore}/{nextLevel.minScore} — Next: {nextLevel.name}
               </Text>
             </View>
           )}

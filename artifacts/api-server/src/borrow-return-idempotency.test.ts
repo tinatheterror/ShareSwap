@@ -51,7 +51,7 @@ before(async () => {
     .insert(users)
     .values({
       username: `${UNIQUE}-borrower`,
-      reputationScore: 100,
+      trustScore: 100,
     })
     .returning({ id: users.id });
 
@@ -59,7 +59,7 @@ before(async () => {
     .insert(users)
     .values({
       username: `${UNIQUE}-lender`,
-      reputationScore: 100,
+      trustScore: 100,
     })
     .returning({ id: users.id });
 
@@ -189,13 +189,13 @@ test("second call to awardBorrowReturnPoints (retry) does NOT add another activi
 
 test("trust score after duplicate call equals score after exactly one call", async () => {
   const [user] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, borrowerId));
 
   // Started at 100; borrow_return_perfect awards +40 (no scaling at score 100 < 300).
   assert.equal(
-    user.reputationScore,
+    user.trustScore,
     140,
     "reputation score should reflect exactly one +40 award, not two",
   );
@@ -209,11 +209,11 @@ test("trust score after duplicate call equals score after exactly one call", asy
 
 test("two simultaneous calls for the same request apply a late-return penalty exactly once", async () => {
   const [snap] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, borrowerId));
 
-  const scoreBefore = snap.reputationScore ?? 0;
+  const scoreBefore = snap.trustScore ?? 0;
 
   // Fire two concurrent calls — both will pass the application-level SELECT
   // guard if they interleave before either commits; the DB unique index is the
@@ -264,11 +264,11 @@ test("two simultaneous calls for the same request apply a late-return penalty ex
 
   // ── Penalty applied exactly once ───────────────────────────────────────────
   const [after] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, borrowerId));
 
-  const delta = (after.reputationScore ?? 0) - scoreBefore;
+  const delta = (after.trustScore ?? 0) - scoreBefore;
 
   // borrow_return_late_severe = −40; penalties are never scaled.
   assert.equal(
@@ -292,11 +292,11 @@ test("two simultaneous calls for the same request apply a late-return penalty ex
 
 test("DB unique constraint prevents double-insert when both concurrent calls bypass the SELECT guard", async () => {
   const [snap] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, borrowerId));
 
-  const scoreBefore = snap.reputationScore ?? 0;
+  const scoreBefore = snap.trustScore ?? 0;
 
   const penaltyPoints = TRUST_POINTS.PENALTIES.LATE_RETURN_SEVERE; // −40
   const activityType = "borrow_return_late_severe" as const;
@@ -329,11 +329,11 @@ test("DB unique constraint prevents double-insert when both concurrent calls byp
 
   // ── Penalty applied exactly once ───────────────────────────────────────────
   const [after] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, borrowerId));
 
-  const delta = (after.reputationScore ?? 0) - scoreBefore;
+  const delta = (after.trustScore ?? 0) - scoreBefore;
 
   assert.equal(
     delta,
@@ -344,10 +344,10 @@ test("DB unique constraint prevents double-insert when both concurrent calls byp
 
 test("a serious-overdue penalty is applied once and is not charged again at final return", async () => {
   const [before] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, borrowerId));
-  const scoreBefore = before.reputationScore ?? 0;
+  const scoreBefore = before.trustScore ?? 0;
 
   const firstPenalty = await applySeriousOverduePenalty(
     borrowerId,
@@ -379,11 +379,11 @@ test("a serious-overdue penalty is applied once and is not charged again at fina
   assert.equal(returnAward.borrowerPoints, 0, "return scoring must not add a second critical penalty");
 
   const [after] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, borrowerId));
   assert.equal(
-    (after.reputationScore ?? 0) - scoreBefore,
+    (after.trustScore ?? 0) - scoreBefore,
     TRUST_POINTS.PENALTIES.SERIOUS_OVERDUE,
     "the borrower should receive only the active serious-overdue penalty",
   );

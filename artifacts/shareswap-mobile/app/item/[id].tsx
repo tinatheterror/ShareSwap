@@ -349,7 +349,7 @@ export default function ItemDetailScreen() {
   const deposit = Number(item.securityDeposit || 0).toFixed(0);
   // Borrowers pay a Trust Deposit, discounted by the viewer's trust score; rentals show the item's Security Deposit.
   // The owner and a signed-out visitor are not borrowing it, so they see the amount before any discount.
-  const trustQuote = borrowTrustDepositQuote(item as any, (user as any)?.reputationScore);
+  const trustQuote = borrowTrustDepositQuote(item as any, (user as any)?.trustScore);
   const trustDeposit = user && !isOwner ? trustQuote : { ...trustQuote, amount: trustQuote.base, discountPercentage: 0 };
   const TIER_LABELS: Record<number, string> = { 1: "Budget Friendly Item", 2: "Everyday Household Item", 3: "Premium Item", 4: "High Value Item" };
   const TIER_COINS: Record<number, number> = { 1: 5, 2: 10, 3: 20, 4: 40 };

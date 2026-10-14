@@ -172,13 +172,13 @@ export async function awardTrustPoints(
     // Lock before reading: scaling, the score floor and the saved level must all
     // use the latest committed score, including when the caller supplies a tx.
     const [user] = await tx
-      .select({ reputationScore: users.reputationScore })
+      .select({ trustScore: users.trustScore })
       .from(users)
       .where(eq(users.id, userId))
       .for("update");
     if (!user) throw new Error(`User ${userId} not found`);
 
-    const currentScore = user.reputationScore || 0;
+    const currentScore = user.trustScore || 0;
     const scaledPoints = scaleTrustPoints(currentScore, points);
     const newScore = Math.max(TRUST_SCORE_FLOOR, currentScore + scaledPoints);
     const recordedPoints = options.recordActualDelta ? newScore - currentScore : scaledPoints;
@@ -207,7 +207,7 @@ export async function awardTrustPoints(
 
     await tx
       .update(users)
-      .set({ reputationScore: newScore, reputationLevel: trustLevelForScore(newScore) })
+      .set({ trustScore: newScore, reputationLevel: trustLevelForScore(newScore) })
       .where(eq(users.id, userId));
     return { newScore, pointsAwarded: recordedPoints, previousScore: currentScore };
   };
@@ -505,7 +505,7 @@ export async function applySeriousOverduePenalty(
     if (!activeBorrow) return { pointsAwarded: 0 };
 
     const [borrower] = await tx
-      .select({ reputationScore: users.reputationScore })
+      .select({ trustScore: users.trustScore })
       .from(users)
       .where(eq(users.id, borrowerId))
       .for("update")
@@ -513,7 +513,7 @@ export async function applySeriousOverduePenalty(
     if (!borrower) throw new Error(`User ${borrowerId} not found`);
 
     const pointsAwarded = scaleTrustPoints(
-      borrower.reputationScore || 0,
+      borrower.trustScore || 0,
       TRUST_POINTS.PENALTIES.SERIOUS_OVERDUE,
     );
 
@@ -540,12 +540,12 @@ export async function applySeriousOverduePenalty(
 
     const newScore = Math.max(
       TRUST_SCORE_FLOOR,
-      (borrower.reputationScore || 0) + pointsAwarded,
+      (borrower.trustScore || 0) + pointsAwarded,
     );
     await tx
       .update(users)
       .set({
-        reputationScore: newScore,
+        trustScore: newScore,
         reputationLevel: trustLevelForScore(newScore),
       })
       .where(eq(users.id, borrowerId));

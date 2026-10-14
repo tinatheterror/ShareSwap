@@ -14,7 +14,7 @@ interface ReputationActivity {
 }
 
 interface ReputationData {
-  reputationScore: number;
+  trustScore: number;
   reputationLevel: string;
   recentActivities: ReputationActivity[];
 }
@@ -55,7 +55,7 @@ export default function ScoreHistoryPage() {
           <div className="text-right shrink-0">
             <p className="text-xs uppercase tracking-wide text-slate-400">Current score</p>
             <p className="text-3xl font-bold text-teal-600 tabular-nums">
-              {reputation?.reputationScore ?? user?.reputationScore ?? 0}
+              {reputation?.trustScore ?? user?.trustScore ?? 0}
             </p>
           </div>
         </div>

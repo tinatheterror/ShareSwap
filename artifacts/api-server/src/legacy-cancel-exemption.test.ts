@@ -86,7 +86,7 @@ async function scenario(headers: Record<string, string>, kind: "BORROW_WITH_HOLD
   const password = await hashPassword(PASSWORD);
   const [user] = await db
     .insert(users)
-    .values({ username: `${UNIQUE}-r${userIds.length}`, password, emailVerified: true, shareCoins: "50.00", reputationScore: START_SCORE, reputationLevel: "Neighbour" })
+    .values({ username: `${UNIQUE}-r${userIds.length}`, password, emailVerified: true, shareCoins: "50.00", trustScore: START_SCORE, reputationLevel: "Neighbour" })
     .returning({ id: users.id, username: users.username });
   userIds.push(user.id);
   const [item] = await db
@@ -116,7 +116,7 @@ async function scenario(headers: Record<string, string>, kind: "BORROW_WITH_HOLD
   return { userId: user.id, requestId: request.id, client };
 }
 
-const score = async (userId: number) => (await db.select({ s: users.reputationScore }).from(users).where(eq(users.id, userId)))[0].s;
+const score = async (userId: number) => (await db.select({ s: users.trustScore }).from(users).where(eq(users.id, userId)))[0].s;
 const load = async (requestId: number) => (await db.select().from(itemRequests).where(eq(itemRequests.id, requestId)))[0];
 const penaltyActivities = async (userId: number) =>
   (await db.select({ type: reputationActivities.activityType }).from(reputationActivities).where(eq(reputationActivities.userId, userId)))

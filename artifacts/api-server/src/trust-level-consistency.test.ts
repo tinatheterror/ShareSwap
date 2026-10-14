@@ -32,13 +32,13 @@ test("trust levels follow their score thresholds", () => {
 test("penalties and awards update the stored level with the score", async () => {
   const [user] = await db.insert(users).values({
     username: `trust-level-test-${Date.now()}`,
-    reputationScore: 302,
+    trustScore: 302,
     reputationLevel: "Community Pillar",
   }).returning({ id: users.id });
 
   const readTrust = async () => {
     const [row] = await db.select({
-      score: users.reputationScore,
+      score: users.trustScore,
       level: users.reputationLevel,
     }).from(users).where(eq(users.id, user.id));
     return row;
@@ -56,7 +56,7 @@ test("penalties and awards update the stored level with the score", async () => 
 
     const raisedScore = sql<number>`LEAST(500, reputation_score + 500)`;
     await db.update(users).set({
-      reputationScore: raisedScore,
+      trustScore: raisedScore,
       reputationLevel: trustLevelForSqlScore(raisedScore),
     }).where(eq(users.id, user.id));
     assert.deepEqual(await readTrust(), { score: 500, level: "ShareSwap Champion" });

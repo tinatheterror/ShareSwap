@@ -150,7 +150,7 @@ async function buildDuplicateReviewReportWithClient(client: Queryable) {
         ORDER BY created_at, id
       `, windowArgs),
       query(`
-        SELECT DISTINCT u.id, u.reputation_score AS "reputationScore",
+        SELECT DISTINCT u.id, u.reputation_score AS "trustScore",
                u.reputation_level AS "reputationLevel", u.share_coins AS "shareCoins"
         FROM users u
         JOIN user_reviews ur ON ur.reviewed_user_id = u.id
@@ -608,11 +608,11 @@ export async function applyDuplicateReviewRepair(
       userAdjustments.push({
         userId: reconciliation.userId,
         before: {
-          reputationScore: Number(before.reputation_score),
+          trustScore: Number(before.reputation_score),
           shareCoins: String(before.share_coins),
         },
         after: {
-          reputationScore: Number(rows[0].reputation_score),
+          trustScore: Number(rows[0].reputation_score),
           reputationLevel: rows[0].reputation_level,
           shareCoins: String(rows[0].share_coins),
         },

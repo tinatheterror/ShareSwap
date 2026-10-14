@@ -118,7 +118,7 @@ const hold = (overrides: Partial<typeof itemRequests.$inferInsert> = {}): Partia
 });
 
 const load = async (id: number) => (await db.select().from(itemRequests).where(eq(itemRequests.id, id)))[0];
-const score = async (id: number) => (await db.select({ s: users.reputationScore }).from(users).where(eq(users.id, id)))[0].s;
+const score = async (id: number) => (await db.select({ s: users.trustScore }).from(users).where(eq(users.id, id)))[0].s;
 const acts = (userId: number, requestId?: number) =>
   db.select().from(reputationActivities).where(requestId ? and(eq(reputationActivities.userId, userId), eq(reputationActivities.requestId, requestId)) : eq(reputationActivities.userId, userId));
 
@@ -134,7 +134,7 @@ before(async () => {
         username: `${UNIQUE}-${role}`,
         password,
         emailVerified: true,
-        reputationScore: 80,
+        trustScore: 80,
         reputationLevel: "Neighbour",
         shareCoins: "50.00",
       })),
@@ -260,7 +260,7 @@ test("the cancel route writes the record over HTTP too", async () => {
 // ── SWAP and GIFT keep the original handler ───────────────────────────────────
 
 test("SWAP keeps the original rule: grace pass first, then -20 cancel_after_acceptance, original response shape; the new record stays empty", async () => {
-  const user = await db.insert(users).values({ username: `${UNIQUE}-swapper`, password: await hashPassword(PASSWORD), emailVerified: true, reputationScore: 80 }).returning({ id: users.id, username: users.username });
+  const user = await db.insert(users).values({ username: `${UNIQUE}-swapper`, password: await hashPassword(PASSWORD), emailVerified: true, trustScore: 80 }).returning({ id: users.id, username: users.username });
   userIds.push(user[0].id);
   const swapper = new TestClient();
   await swapper.login(user[0].username);
@@ -355,7 +355,7 @@ test("RENT cannot be countered to an in-person deposit, by either side", async (
 // ── Score history shows the old and the new rows, and its limit is what it says ─
 
 test("score history renders old -20 and new -5 rows by type, with the item name", async () => {
-  const history = await db.insert(users).values({ username: `${UNIQUE}-history`, password: "x", emailVerified: true, reputationScore: 200 }).returning({ id: users.id });
+  const history = await db.insert(users).values({ username: `${UNIQUE}-history`, password: "x", emailVerified: true, trustScore: 200 }).returning({ id: users.id });
   userIds.push(history[0].id);
   const oldReq = await newRequest({ status: "CANCELLED" });
   const newReq = await newRequest({ status: "CANCELLED" });
@@ -374,7 +374,7 @@ test("score history renders old -20 and new -5 rows by type, with the item name"
 });
 
 test("score history limit (documented): only the 10 newest non-zero changes come back, zero-point rows are left out", async () => {
-  const history = await db.insert(users).values({ username: `${UNIQUE}-limit`, password: "x", emailVerified: true, reputationScore: 200 }).returning({ id: users.id });
+  const history = await db.insert(users).values({ username: `${UNIQUE}-limit`, password: "x", emailVerified: true, trustScore: 200 }).returning({ id: users.id });
   userIds.push(history[0].id);
   const rows = Array.from({ length: 12 }, (_, i) => ({
     userId: history[0].id,

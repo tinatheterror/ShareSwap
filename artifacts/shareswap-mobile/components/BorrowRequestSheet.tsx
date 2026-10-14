@@ -258,7 +258,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
     ? Math.max(1, Math.ceil((weeklyPrice / 7) * borrowDays))
     : weeklyPrice;
 
-  const trustScore = (user as any)?.reputationScore ?? 0;
+  const trustScore = (user as any)?.trustScore ?? 0;
   const depositCalc = calcDeposit(
     targetItem.tier ?? 2,
     targetItem.originalValue ?? "$50–$199",

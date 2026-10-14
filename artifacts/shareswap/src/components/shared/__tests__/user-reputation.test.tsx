@@ -42,7 +42,7 @@ vi.mock("@/components/ui/badge", () => ({
 import { UserReputation } from "../user-reputation";
 
 const baseReputation = {
-  reputationScore: 142,
+  trustScore: 142,
   reputationLevel: "Regular",
   recentActivities: [
     {

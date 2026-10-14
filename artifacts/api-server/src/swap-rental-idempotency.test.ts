@@ -74,19 +74,19 @@ before(async () => {
   // Insert minimal test users
   const [u1] = await db
     .insert(users)
-    .values({ username: `${UNIQUE}-user1`, reputationScore: 100 })
+    .values({ username: `${UNIQUE}-user1`, trustScore: 100 })
     .returning({ id: users.id });
 
   const [u2] = await db
     .insert(users)
-    .values({ username: `${UNIQUE}-user2`, reputationScore: 100 })
+    .values({ username: `${UNIQUE}-user2`, trustScore: 100 })
     .returning({ id: users.id });
 
   user1Id = u1.id;
   user2Id = u2.id;
   const [scoreUser] = await db
     .insert(users)
-    .values({ username: `${UNIQUE}-score-user`, reputationScore: 290 })
+    .values({ username: `${UNIQUE}-score-user`, trustScore: 290 })
     .returning({ id: users.id });
   concurrentScoreUserId = scoreUser.id;
 
@@ -214,7 +214,7 @@ test("simultaneous independent awards scale from the latest score and persist th
   );
 
   const [saved] = await db.select({
-    score: users.reputationScore,
+    score: users.trustScore,
     level: users.reputationLevel,
   }).from(users).where(eq(users.id, concurrentScoreUserId));
   assert.equal(saved.score, 350);
@@ -230,7 +230,7 @@ test("simultaneous independent awards scale from the latest score and persist th
 
 test("simultaneous award and penalty retain both changes and lower the saved level", async () => {
   await db.update(users).set({
-    reputationScore: 155,
+    trustScore: 155,
     reputationLevel: trustLevelForScore(155),
   }).where(eq(users.id, concurrentScoreUserId));
 
@@ -243,7 +243,7 @@ test("simultaneous award and penalty retain both changes and lower the saved lev
     }),
   ]);
   const [saved] = await db.select({
-    score: users.reputationScore,
+    score: users.trustScore,
     level: users.reputationLevel,
   }).from(users).where(eq(users.id, concurrentScoreUserId));
   assert.equal(saved.score, 135);
@@ -266,7 +266,7 @@ for (const { initialScore, expectedAwards } of [
   test(`serious-overdue penalty racing an independent award retains both changes from score ${initialScore}`, async () => {
     const [borrower] = await db.insert(users).values({
       username: `${UNIQUE}-overdue-${initialScore}`,
-      reputationScore: initialScore,
+      trustScore: initialScore,
       reputationLevel: trustLevelForScore(initialScore),
     }).returning({ id: users.id });
     const requestIds: number[] = [];
@@ -339,7 +339,7 @@ for (const { initialScore, expectedAwards } of [
       const expectedScore = initialScore - 60 + award.pointsAwarded;
 
       const [saved] = await db.select({
-        score: users.reputationScore,
+        score: users.trustScore,
         level: users.reputationLevel,
       }).from(users).where(eq(users.id, borrower.id));
       assert.equal(saved.score, expectedScore, "neither score change may be overwritten");
@@ -380,10 +380,10 @@ test("first call to awardSwapCompletionPoints records exactly one swap_completed
   // Capture scores before any swap award so later tests can assert the delta.
   for (const userId of [user1Id, user2Id]) {
     const [snap] = await db
-      .select({ reputationScore: users.reputationScore })
+      .select({ trustScore: users.trustScore })
       .from(users)
       .where(eq(users.id, userId));
-    swapScoreBefore[userId] = snap.reputationScore ?? 0;
+    swapScoreBefore[userId] = snap.trustScore ?? 0;
   }
 
   await awardSwapCompletionPoints(user1Id, user2Id, swapRequestId, item1Id, item2Id);
@@ -434,11 +434,11 @@ test("second call to awardSwapCompletionPoints (retry) does NOT add another acti
 test("trust score after duplicate swap call equals score after exactly one call", async () => {
   for (const userId of [user1Id, user2Id]) {
     const [user] = await db
-      .select({ reputationScore: users.reputationScore })
+      .select({ trustScore: users.trustScore })
       .from(users)
       .where(eq(users.id, userId));
 
-    const delta = (user.reputationScore ?? 0) - swapScoreBefore[userId];
+    const delta = (user.trustScore ?? 0) - swapScoreBefore[userId];
     // swap_completed awards +20 (no scaling below score 300).
     assert.equal(
       delta,
@@ -454,10 +454,10 @@ test("two simultaneous calls to awardSwapCompletionPoints apply points exactly o
   const snapshots: Record<number, number> = {};
   for (const userId of [user1Id, user2Id]) {
     const [snap] = await db
-      .select({ reputationScore: users.reputationScore })
+      .select({ trustScore: users.trustScore })
       .from(users)
       .where(eq(users.id, userId));
-    snapshots[userId] = snap.reputationScore ?? 0;
+    snapshots[userId] = snap.trustScore ?? 0;
   }
 
   await Promise.all([
@@ -484,11 +484,11 @@ test("two simultaneous calls to awardSwapCompletionPoints apply points exactly o
     );
 
     const [after] = await db
-      .select({ reputationScore: users.reputationScore })
+      .select({ trustScore: users.trustScore })
       .from(users)
       .where(eq(users.id, userId));
 
-    const delta = (after.reputationScore ?? 0) - snapshots[userId];
+    const delta = (after.trustScore ?? 0) - snapshots[userId];
     assert.equal(
       delta,
       TRUST_POINTS.MAJOR.SWAP_COMPLETED, // +20
@@ -506,10 +506,10 @@ test("DB unique constraint prevents double swap_completed insert when both concu
   const snapshots: Record<number, number> = {};
   for (const userId of [user1Id, user2Id]) {
     const [snap] = await db
-      .select({ reputationScore: users.reputationScore })
+      .select({ trustScore: users.trustScore })
       .from(users)
       .where(eq(users.id, userId));
-    snapshots[userId] = snap.reputationScore ?? 0;
+    snapshots[userId] = snap.trustScore ?? 0;
   }
 
   const points = TRUST_POINTS.MAJOR.SWAP_COMPLETED;
@@ -539,11 +539,11 @@ test("DB unique constraint prevents double swap_completed insert when both concu
   );
 
   const [after] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, user1Id));
 
-  const delta = (after.reputationScore ?? 0) - snapshots[user1Id];
+  const delta = (after.trustScore ?? 0) - snapshots[user1Id];
   assert.equal(
     delta,
     points, // +20
@@ -557,10 +557,10 @@ test("first call to awardRentalCompletionPoints records exactly one rental_dispu
   // Capture scores before any rental award so later tests can assert the delta.
   for (const userId of [user1Id, user2Id]) {
     const [snap] = await db
-      .select({ reputationScore: users.reputationScore })
+      .select({ trustScore: users.trustScore })
       .from(users)
       .where(eq(users.id, userId));
-    rentalScoreBefore[userId] = snap.reputationScore ?? 0;
+    rentalScoreBefore[userId] = snap.trustScore ?? 0;
   }
 
   await awardRentalCompletionPoints(user1Id, user2Id, rentalRequestId, item1Id, false);
@@ -611,11 +611,11 @@ test("second call to awardRentalCompletionPoints (retry) does NOT add another ac
 test("trust score after duplicate rental call equals score after exactly one call", async () => {
   for (const userId of [user1Id, user2Id]) {
     const [user] = await db
-      .select({ reputationScore: users.reputationScore })
+      .select({ trustScore: users.trustScore })
       .from(users)
       .where(eq(users.id, userId));
 
-    const delta = (user.reputationScore ?? 0) - rentalScoreBefore[userId];
+    const delta = (user.trustScore ?? 0) - rentalScoreBefore[userId];
     // rental_dispute_free awards +20 (no scaling below score 300).
     assert.equal(
       delta,
@@ -631,10 +631,10 @@ test("two simultaneous calls to awardRentalCompletionPoints apply points exactly
   const snapshots: Record<number, number> = {};
   for (const userId of [user1Id, user2Id]) {
     const [snap] = await db
-      .select({ reputationScore: users.reputationScore })
+      .select({ trustScore: users.trustScore })
       .from(users)
       .where(eq(users.id, userId));
-    snapshots[userId] = snap.reputationScore ?? 0;
+    snapshots[userId] = snap.trustScore ?? 0;
   }
 
   await Promise.all([
@@ -661,11 +661,11 @@ test("two simultaneous calls to awardRentalCompletionPoints apply points exactly
     );
 
     const [after] = await db
-      .select({ reputationScore: users.reputationScore })
+      .select({ trustScore: users.trustScore })
       .from(users)
       .where(eq(users.id, userId));
 
-    const delta = (after.reputationScore ?? 0) - snapshots[userId];
+    const delta = (after.trustScore ?? 0) - snapshots[userId];
     assert.equal(
       delta,
       TRUST_POINTS.MICRO.RENTAL_DISPUTE_FREE, // +20
@@ -681,11 +681,11 @@ test("two simultaneous calls to awardRentalCompletionPoints apply points exactly
 
 test("DB unique constraint prevents double rental_dispute_free insert when both concurrent calls bypass the SELECT guard", async () => {
   const [snap] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, user1Id));
 
-  const scoreBefore = snap.reputationScore ?? 0;
+  const scoreBefore = snap.trustScore ?? 0;
 
   const points = TRUST_POINTS.MICRO.RENTAL_DISPUTE_FREE; // +20
   const activityType = "rental_dispute_free" as const;
@@ -714,11 +714,11 @@ test("DB unique constraint prevents double rental_dispute_free insert when both 
   );
 
   const [after] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, user1Id));
 
-  const delta = (after.reputationScore ?? 0) - scoreBefore;
+  const delta = (after.trustScore ?? 0) - scoreBefore;
   assert.equal(
     delta,
     points, // +20
@@ -742,16 +742,16 @@ test("swap retry after partial failure: only the missing participant gets awarde
   });
 
   const [snap1Before] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, user1Id));
   const [snap2Before] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, user2Id));
 
-  const score1Before = snap1Before.reputationScore ?? 0;
-  const score2Before = snap2Before.reputationScore ?? 0;
+  const score1Before = snap1Before.trustScore ?? 0;
+  const score2Before = snap2Before.trustScore ?? 0;
 
   // Retry the full completion — should award user2 but skip user1.
   await awardSwapCompletionPoints(user1Id, user2Id, swapPartialRequestId, item1Id, item2Id);
@@ -784,21 +784,21 @@ test("swap retry after partial failure: only the missing participant gets awarde
 
   // user1's score must not have changed (already awarded).
   const [snap1After] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, user1Id));
   assert.equal(
-    snap1After.reputationScore,
+    snap1After.trustScore,
     score1Before,
-    `user1 score must be unchanged on retry (no double-award), but changed by ${(snap1After.reputationScore ?? 0) - score1Before}`,
+    `user1 score must be unchanged on retry (no double-award), but changed by ${(snap1After.trustScore ?? 0) - score1Before}`,
   );
 
   // user2's score must have increased by exactly +20.
   const [snap2After] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, user2Id));
-  const delta2 = (snap2After.reputationScore ?? 0) - score2Before;
+  const delta2 = (snap2After.trustScore ?? 0) - score2Before;
   assert.equal(
     delta2,
     TRUST_POINTS.MAJOR.SWAP_COMPLETED, // +20
@@ -815,16 +815,16 @@ test("rental retry after partial failure: only the missing participant gets awar
   });
 
   const [snapRenterBefore] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, user1Id));
   const [snapOwnerBefore] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, user2Id));
 
-  const scoreRenterBefore = snapRenterBefore.reputationScore ?? 0;
-  const scoreOwnerBefore = snapOwnerBefore.reputationScore ?? 0;
+  const scoreRenterBefore = snapRenterBefore.trustScore ?? 0;
+  const scoreOwnerBefore = snapOwnerBefore.trustScore ?? 0;
 
   // Retry the full completion — should award owner but skip renter.
   await awardRentalCompletionPoints(user1Id, user2Id, rentalPartialRequestId, item1Id, false);
@@ -857,21 +857,21 @@ test("rental retry after partial failure: only the missing participant gets awar
 
   // Renter's score must not have changed (already awarded).
   const [snapRenterAfter] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, user1Id));
   assert.equal(
-    snapRenterAfter.reputationScore,
+    snapRenterAfter.trustScore,
     scoreRenterBefore,
-    `renter score must be unchanged on retry (no double-award), but changed by ${(snapRenterAfter.reputationScore ?? 0) - scoreRenterBefore}`,
+    `renter score must be unchanged on retry (no double-award), but changed by ${(snapRenterAfter.trustScore ?? 0) - scoreRenterBefore}`,
   );
 
   // Owner's score must have increased by exactly +20.
   const [snapOwnerAfter] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, user2Id));
-  const deltaOwner = (snapOwnerAfter.reputationScore ?? 0) - scoreOwnerBefore;
+  const deltaOwner = (snapOwnerAfter.trustScore ?? 0) - scoreOwnerBefore;
   assert.equal(
     deltaOwner,
     TRUST_POINTS.MICRO.RENTAL_DISPUTE_FREE, // +20

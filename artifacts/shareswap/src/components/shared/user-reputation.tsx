@@ -52,7 +52,7 @@ export function UserReputation({ userId }: Props) {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-2xl font-semibold">
-                {reputation.reputationScore} points
+                {reputation.trustScore} points
               </p>
               <Badge
                 className={`${

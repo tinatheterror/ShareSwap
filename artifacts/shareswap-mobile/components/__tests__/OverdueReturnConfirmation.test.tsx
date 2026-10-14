@@ -70,7 +70,7 @@ jest.mock("@tanstack/react-query", () => ({
     }, isLoading: false, error: null };
     if (key === "/api/users/2/public-profile") return { data: {
       id: 2, username: "borrower", displayName: "Borrower", profilePhoto: null,
-      isVerified: true, reputationScore: 5, lastActiveAt: null, reviewCount: 0,
+      isVerified: true, trustScore: 5, lastActiveAt: null, reviewCount: 0,
       averageRating: null, responseTime: null,
     } };
     if (key === "/api/messages/2") return { data: [], isLoading: false };

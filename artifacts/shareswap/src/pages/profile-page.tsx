@@ -542,10 +542,10 @@ export default function ProfilePage() {
   };
 
   // Calculate current level based on reputation score
-  const reputationScore = user?.reputationScore || 0;
+  const trustScore = user?.trustScore || 0;
   const currentLevelIndex = LEVELS.findIndex((level, index) => {
     const nextLevel = LEVELS[index + 1];
-    return !nextLevel || reputationScore < nextLevel.minScore;
+    return !nextLevel || trustScore < nextLevel.minScore;
   });
   const currentLevel = LEVELS[Math.max(0, currentLevelIndex)];
 

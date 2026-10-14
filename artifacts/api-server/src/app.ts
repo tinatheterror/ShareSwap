@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
 import healthRouter from "./routes/health";
+import { legacyReputationScoreAlias } from "./legacy-reputation-alias";
 
 const app: Express = express();
 
@@ -47,6 +48,8 @@ app.use(
     allowedHeaders: ["Content-Type", "x-csrf-token", "Authorization", "x-app-version", "x-app-build"],
   }),
 );
+
+app.use("/api", legacyReputationScoreAlias);
 
 app.use(
   helmet({

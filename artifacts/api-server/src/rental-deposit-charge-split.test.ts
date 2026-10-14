@@ -188,7 +188,7 @@ async function makeAcceptedRequest() {
     .insert(users)
     .values({
       username: `${UNIQUE}-renter-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      reputationScore: 100,
+      trustScore: 100,
       stripeCustomerId: "cus_test_existing",
       stripePaymentMethodId: "pm_test_saved_card",
     })
@@ -219,7 +219,7 @@ async function cleanupRequest(requestId: number, renterId: number) {
 before(async () => {
   const [owner] = await db
     .insert(users)
-    .values({ username: `${UNIQUE}-owner`, reputationScore: 100 })
+    .values({ username: `${UNIQUE}-owner`, trustScore: 100 })
     .returning({ id: users.id });
   ownerId = owner.id;
 

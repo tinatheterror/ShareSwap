@@ -31,10 +31,10 @@ const requestIds: number[] = [];
 const itemIds: number[] = [];
 const userIds: number[] = [];
 
-async function newUser(label: string, reputationScore = 80) {
+async function newUser(label: string, trustScore = 80) {
   const [user] = await db
     .insert(users)
-    .values({ username: `${UNIQUE}-${label}-${userIds.length}`, password: "x", emailVerified: true, reputationScore, pendingRentalBalance: "0.00" })
+    .values({ username: `${UNIQUE}-${label}-${userIds.length}`, password: "x", emailVerified: true, trustScore, pendingRentalBalance: "0.00" })
     .returning({ id: users.id });
   userIds.push(user.id);
   return user.id;

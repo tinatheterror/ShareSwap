@@ -27,14 +27,14 @@ const requestIds: number[] = [];
 const itemIds: number[] = [];
 const userIds: number[] = [];
 
-async function newUser(label: string, reputationScore = 80) {
+async function newUser(label: string, trustScore = 80) {
   const [user] = await db
     .insert(users)
     .values({
       username: `${UNIQUE}-${label}-${userIds.length}`,
       password: "x",
       emailVerified: true,
-      reputationScore,
+      trustScore,
       reputationLevel: "Neighbour",
       pendingRentalBalance: "0.00",
     })
@@ -104,7 +104,7 @@ async function load(id: number) {
   return row;
 }
 const score = async (userId: number) => {
-  const [row] = await db.select({ s: users.reputationScore, l: users.reputationLevel }).from(users).where(eq(users.id, userId));
+  const [row] = await db.select({ s: users.trustScore, l: users.reputationLevel }).from(users).where(eq(users.id, userId));
   return row;
 };
 const activities = (userId: number, requestId: number) =>

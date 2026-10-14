@@ -61,12 +61,12 @@ export function addSimplifiedRoutes(app: Express) {
       const userId = (req.user as any).id;
 
       const [userRow] = await db
-        .select({ reputationScore: users.reputationScore, reputationLevel: users.reputationLevel })
+        .select({ trustScore: users.trustScore, reputationLevel: users.reputationLevel })
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
 
-      const score = userRow?.reputationScore ?? 0;
+      const score = userRow?.trustScore ?? 0;
       const level = trustLevelForScore(score);
 
       const LEVEL_THRESHOLDS = [

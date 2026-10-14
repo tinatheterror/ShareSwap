@@ -118,7 +118,7 @@ test("concurrent submissions save one review and one reputation change", async (
         description: "Concurrent review reputation award",
       });
       await tx.update(users)
-        .set({ reputationScore: 5 })
+        .set({ trustScore: 5 })
         .where(eq(users.id, reviewed.id));
     });
 
@@ -133,13 +133,13 @@ test("concurrent submissions save one review and one reputation change", async (
   const [reviews, activities, [reviewedAfter]] = await Promise.all([
     db.select().from(userReviews).where(eq(userReviews.transactionId, request.id)),
     db.select().from(reputationActivities).where(eq(reputationActivities.requestId, request.id)),
-    db.select({ reputationScore: users.reputationScore })
+    db.select({ trustScore: users.trustScore })
       .from(users)
       .where(eq(users.id, reviewed.id)),
   ]);
   assert.equal(reviews.length, 1);
   assert.equal(activities.length, 1);
-  assert.equal(reviewedAfter.reputationScore, 5);
+  assert.equal(reviewedAfter.trustScore, 5);
 });
 
 test("concurrent authenticated review requests return success and already-reviewed", async (t) => {
@@ -147,7 +147,7 @@ test("concurrent authenticated review requests return success and already-review
   const password = "ReviewRouteConcurrency!42";
   const [reviewer, reviewed] = await db.insert(users).values([
     { username: `${unique}-reviewer`, password: await hashPassword(password), emailVerified: true },
-    { username: `${unique}-reviewed`, emailVerified: true, reputationScore: 49 },
+    { username: `${unique}-reviewed`, emailVerified: true, trustScore: 49 },
   ]).returning();
   assert.notEqual(reviewer.id, reviewed.id);
   const [item] = await db.insert(items).values({
@@ -257,7 +257,7 @@ test("concurrent authenticated review requests return success and already-review
   const [reviews, activities, [reviewedAfter], coins, achievementRows, notificationRows] = await Promise.all([
     db.select().from(userReviews).where(eq(userReviews.transactionId, request.id)),
     db.select().from(reputationActivities).where(eq(reputationActivities.requestId, request.id)),
-    db.select({ reputationScore: users.reputationScore })
+    db.select({ trustScore: users.trustScore })
       .from(users).where(eq(users.id, reviewed.id)),
     db.select().from(shareCoinsTransactions).where(eq(shareCoinsTransactions.reviewId, savedReview.id)),
     db.select().from(userAchievements).where(eq(userAchievements.reviewId, savedReview.id)),
@@ -269,7 +269,7 @@ test("concurrent authenticated review requests return success and already-review
   assert.equal(activities[0].activityType, "RECEIVE_REVIEW");
   assert.equal(activities[0].points, 5);
   assert.equal(activities[0].reviewId, savedReview.id);
-  assert.equal(reviewedAfter.reputationScore, 54);
+  assert.equal(reviewedAfter.trustScore, 54);
   assert.ok(coins.some(row => row.userId === reviewed.id && row.amount === "5"), "level reward must be attributed");
   assert.ok(coins.some(row => row.userId === reviewer.id && row.amount === "1"), "review milestone reward must be attributed");
   assert.ok(achievementRows.some(row => row.userId === reviewer.id), "review milestone must be attributed");

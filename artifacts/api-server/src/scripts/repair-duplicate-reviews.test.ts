@@ -127,7 +127,7 @@ test("reviewed duplicate repair is complete, audited, and safe to rerun", async 
   assert.equal(report.duplicates[0].relatedEffects.shareCoinTransactions.length, 2);
   assert.equal(report.duplicates[0].relatedEffects.notifications.length, 2);
   assert.equal(report.duplicates[0].relatedEffects.userAchievements.length, 2);
-  assert.equal(report.duplicates[0].affectedUsers[0].reputationScore, 500);
+  assert.equal(report.duplicates[0].affectedUsers[0].trustScore, 500);
   assert.equal(report.duplicates[0].attributedEffects.reputationActivities.length, 0);
   assert.equal(report.duplicates[0].legacyCandidates.reputationActivities.length, 2);
 

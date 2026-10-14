@@ -134,18 +134,18 @@ export default function AchievementsPage() {
     enabled: !!user?.username,
   });
 
-  const reputationScore = user?.reputationScore || 0;
+  const trustScore = user?.trustScore || 0;
 
-  const [displayScore, setDisplayScore] = useState(fromScore !== null ? fromScore : reputationScore);
+  const [displayScore, setDisplayScore] = useState(fromScore !== null ? fromScore : trustScore);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (fromScore === null || fromScore === reputationScore) {
-      setDisplayScore(reputationScore);
+    if (fromScore === null || fromScore === trustScore) {
+      setDisplayScore(trustScore);
       return;
     }
     const start = fromScore;
-    const end = reputationScore;
+    const end = trustScore;
     const duration = 1400;
     let startTime: number | null = null;
     const tick = (now: number) => {
@@ -158,19 +158,19 @@ export default function AchievementsPage() {
     };
     const delay = setTimeout(() => { rafRef.current = requestAnimationFrame(tick); }, 300);
     return () => { clearTimeout(delay); if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [fromScore, reputationScore]);
+  }, [fromScore, trustScore]);
 
   const displayTrustPercentage = Math.min(100, Math.round((displayScore / 500) * 100));
-  const trustPercentage = Math.min(100, Math.round((reputationScore / 500) * 100));
+  const trustPercentage = Math.min(100, Math.round((trustScore / 500) * 100));
 
   const currentLevelIndex = LEVELS.findIndex((level, index) => {
     const nextLevel = LEVELS[index + 1];
-    return !nextLevel || reputationScore < nextLevel.minScore;
+    return !nextLevel || trustScore < nextLevel.minScore;
   });
   const currentLevel = LEVELS[Math.max(0, currentLevelIndex)];
   const nextLevel = LEVELS[currentLevelIndex + 1];
   const progressToNext = nextLevel
-    ? ((reputationScore - currentLevel.minScore) / (nextLevel.minScore - currentLevel.minScore)) * 100
+    ? ((trustScore - currentLevel.minScore) / (nextLevel.minScore - currentLevel.minScore)) * 100
     : 100;
 
   const badges: BadgeItem[] = [
@@ -214,9 +214,9 @@ export default function AchievementsPage() {
     // Performance & prestige
     { id: "fast-responder", name: "Fast Responder", icon: <Timer className="h-5 w-5" />, earned: stats?.fastResponder || false, color: "bg-lime-100 text-lime-700 border-lime-200", description: "Neighbours know they can count on you to move quickly.", requirement: "Complete 5 exchanges as a lender within 48 hours of the request." },
     { id: "five-star-neighbour", name: "Five-Star Neighbour", icon: <Star className="h-5 w-5" />, earned: stats?.fiveStarNeighbour || false, color: "bg-yellow-100 text-yellow-800 border-yellow-300", description: "Your neighbours consistently rate their experience with you at the highest level.", requirement: "Receive 5+ reviews with an average rating of 4.8 stars or above." },
-    { id: "neighbourhood-hero", name: "Neighbourhood Hero", icon: <Medal className="h-5 w-5" />, earned: reputationScore >= 300, color: "bg-yellow-100 text-yellow-700 border-yellow-200", description: "Your reputation speaks for itself — a pillar of the local sharing community.", requirement: "Reach a trust score of 300 or above." },
+    { id: "neighbourhood-hero", name: "Neighbourhood Hero", icon: <Medal className="h-5 w-5" />, earned: trustScore >= 300, color: "bg-yellow-100 text-yellow-700 border-yellow-200", description: "Your reputation speaks for itself — a pillar of the local sharing community.", requirement: "Reach a trust score of 300 or above." },
     { id: "coin-collector", name: "Coin Collector", icon: <span className="flex items-center justify-center rounded-full border-2 border-current h-6 w-6 shrink-0"><Coins className="h-3.5 w-3.5 shrink-0" /></span>, earned: (stats?.totalShareCoinsEarned || 0) >= 50, color: "bg-amber-100 text-amber-700 border-amber-200", description: "You've earned 50 ShareCoins through sharing.", requirement: "Earn 50 or more ShareCoins in total (spending doesn't count against you)." },
-    { id: "shareswap-legend", name: "ShareSwap Legend", icon: <Gem className="h-5 w-5" />, earned: reputationScore >= 500 && (stats?.totalLent || 0) >= 20, color: "bg-gradient-to-br from-amber-100 to-yellow-100 text-amber-700 border-amber-300", description: "The rarest badge on the platform. You've built something extraordinary.", requirement: "Reach a trust score of 500 and lend out 20+ items." },
+    { id: "shareswap-legend", name: "ShareSwap Legend", icon: <Gem className="h-5 w-5" />, earned: trustScore >= 500 && (stats?.totalLent || 0) >= 20, color: "bg-gradient-to-br from-amber-100 to-yellow-100 text-amber-700 border-amber-300", description: "The rarest badge on the platform. You've built something extraordinary.", requirement: "Reach a trust score of 500 and lend out 20+ items." },
     { id: "shareswap-ambassador", name: "ShareSwap Ambassador", icon: <span className="relative inline-flex"><Star className="h-2.5 w-2.5 absolute top-1 -left-2 fill-current" /><Users className="h-5 w-5" /><Star className="h-2.5 w-2.5 absolute top-1 -right-1 fill-current" /></span>, earned: (stats?.referrals || 0) >= 20, color: "bg-indigo-100 text-indigo-700 border-indigo-200", description: "You've brought 20 neighbours into the ShareSwap community — a true ambassador.", requirement: "Refer 20 friends who each complete their first transaction." },
   ];
 

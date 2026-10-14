@@ -27,7 +27,7 @@ export const users = pgTable("users", {
   profilePhotoValidationStatus: text("profile_photo_validation_status"), // 'approved', 'rejected', 'pending'
   profilePhotoValidationReason: text("profile_photo_validation_reason"), // Reason for rejection or notes
   shareCoins: decimal("share_coins", { precision: 10, scale: 2 }).default("0.00"),
-  reputationScore: integer("reputation_score").default(0),
+  trustScore: integer("reputation_score").default(0),
   reputationLevel: text("reputation_level").default("Newcomer"),
   isPremium: boolean("is_premium").default(false),
   premiumExpiresAt: timestamp("premium_expires_at"),

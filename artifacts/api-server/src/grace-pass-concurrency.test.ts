@@ -18,7 +18,7 @@ after(async () => {
 async function createUser(t: TestContext) {
   const [user] = await db.insert(users).values({
     username: `grace-concurrency-${randomUUID()}`,
-    reputationScore: 155,
+    trustScore: 155,
     reputationLevel: "Trusted Member",
   }).returning();
   t.after(async () => {
@@ -116,7 +116,7 @@ for (const penaltyType of GRACE_PASS_CONFIG.ENABLED_PENALTY_TYPES) {
       assert.equal(penalties.length, 1);
       assert.equal(penalties[0].points, -deductions[penaltyType]);
       const [user] = await db.select().from(users).where(eq(users.id, userId));
-      assert.equal(user.reputationScore, expectedScore);
+      assert.equal(user.trustScore, expectedScore);
       assert.equal(user.reputationLevel, trustLevelForScore(expectedScore));
     });
   }
@@ -134,7 +134,7 @@ test("a caller rollback does not consume the grace pass or keep a penalty", asyn
       .where(eq(reputationActivities.userId, userId));
     assert.equal(activities.length, expectedGracePass ? 0 : 1);
     const [user] = await db.select().from(users).where(eq(users.id, userId));
-    assert.equal(user.reputationScore, 155);
+    assert.equal(user.trustScore, 155);
     assert.equal(user.reputationLevel, "Trusted Member");
     if (expectedGracePass) {
       const retry = await applyTrustPenalty(userId, "cancel_after_acceptance");

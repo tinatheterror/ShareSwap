@@ -724,7 +724,7 @@ export function ItemRequestForm({
                   const itemTier = (item as any).tier || 2;
                   const itemOriginalValue =
                     (item as any).originalValue || "$50–$150";
-                  const viewerTrustScore = (user as any)?.reputationScore || 0;
+                  const viewerTrustScore = (user as any)?.trustScore || 0;
                   const depositCalc = calculateSecurityDeposit(
                     itemTier,
                     itemOriginalValue,
@@ -819,7 +819,7 @@ export function ItemRequestForm({
                     const itemOriginalValueForDeposit =
                       (item as any).originalValue || "$50–$150";
                     const viewerTrustScoreForDeposit =
-                      (user as any)?.reputationScore || 0;
+                      (user as any)?.trustScore || 0;
                     const depositCalcForFee = calculateSecurityDeposit(
                       itemTierForDeposit,
                       itemOriginalValueForDeposit,

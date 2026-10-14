@@ -29,11 +29,11 @@ const UNIQUE = `test-gifting-communication-feedback-idempotency-${Date.now()}`;
 
 async function scoreFor(userId: number): Promise<number> {
   const [user] = await db
-    .select({ reputationScore: users.reputationScore })
+    .select({ trustScore: users.trustScore })
     .from(users)
     .where(eq(users.id, userId));
 
-  return user.reputationScore ?? 0;
+  return user.trustScore ?? 0;
 }
 
 async function activitiesFor(requestId: number, activityType: string) {
@@ -52,11 +52,11 @@ async function activitiesFor(requestId: number, activityType: string) {
 before(async () => {
   const [awardingUser] = await db
     .insert(users)
-    .values({ username: `${UNIQUE}-awarding-user`, reputationScore: 100 })
+    .values({ username: `${UNIQUE}-awarding-user`, trustScore: 100 })
     .returning({ id: users.id });
   const [receiver] = await db
     .insert(users)
-    .values({ username: `${UNIQUE}-receiver`, reputationScore: 100 })
+    .values({ username: `${UNIQUE}-receiver`, trustScore: 100 })
     .returning({ id: users.id });
 
   awardingUserId = awardingUser.id;

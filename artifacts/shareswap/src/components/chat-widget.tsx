@@ -117,7 +117,7 @@ type PublicProfile = {
   displayName: string | null;
   profilePhoto: string | null;
   isVerified: boolean;
-  reputationScore: number;
+  trustScore: number;
   lastActiveAt: string | null;
   bio: string | null;
   location: string | null;
@@ -2312,7 +2312,7 @@ export function ChatWidget() {
 
                 // --- BORROWER CTAs ---
                 if (isBorrower) {
-                  const bt = (user as any)?.reputationScore || 0;
+                  const bt = (user as any)?.trustScore || 0;
 
                   if (pr.status === "ACCEPTED" && pr.requestType === "GIFT") {
                     return (
@@ -2782,7 +2782,7 @@ export function ChatWidget() {
             photos: selectedRequest.item.photos,
           }}
           ownerId={selectedRequest.item.ownerId}
-          trustScore={(user as any)?.reputationScore || 0}
+          trustScore={(user as any)?.trustScore || 0}
           onSuccess={() => {
             setShowTrustDepositModal(false);
             setSelectedRequest(null);

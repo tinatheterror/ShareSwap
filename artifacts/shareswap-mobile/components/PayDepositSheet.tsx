@@ -77,7 +77,7 @@ export interface PayDepositSheetProps {
   startDate: string | null;
   endDate: string | null;
   /** User's reputation score — used to compute the trust discount. */
-  reputationScore: number;
+  trustScore: number;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ export function PayDepositSheet({
   item,
   startDate,
   endDate,
-  reputationScore,
+  trustScore,
 }: PayDepositSheetProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -109,7 +109,6 @@ export function PayDepositSheet({
 
   // ── Calculations ─────────────────────────────────────────────────────────────
 
-  const trustScore = reputationScore;
   const depositCalc = calculateSecurityDeposit(
     item.tier ?? 2,
     item.originalValue ?? "$50–$150",

@@ -209,7 +209,7 @@ export default function ItemDetailsPage() {
     const itemReplacementValue = (item as any).replacementValue;
     const itemTier = (item as any).tier || 2;
     const itemOriginalValue = (item as any).originalValue || "$50–$150";
-    const viewerTrustScore = user?.reputationScore || 0;
+    const viewerTrustScore = user?.trustScore || 0;
     const depositCalc = ownerView
       ? calculateSecurityDeposit(itemTier, itemOriginalValue, 0)
       : calculateSecurityDeposit(itemTier, itemOriginalValue, viewerTrustScore);

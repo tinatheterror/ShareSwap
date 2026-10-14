@@ -60,7 +60,7 @@ interface PublicProfile {
   displayName: string | null;
   profilePhoto: string | null;
   isVerified: boolean;
-  reputationScore: number;
+  trustScore: number;
   lastActiveAt: string | null;
   reviewCount: number;
   averageRating: number | null;
@@ -1970,7 +1970,7 @@ export default function ChatScreen() {
           }}
           startDate={request.startDate}
           endDate={request.endDate}
-          reputationScore={Number((user as any)?.reputationScore ?? 0)}
+          trustScore={Number((user as any)?.trustScore ?? 0)}
         />
       )}
 

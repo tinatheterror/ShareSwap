@@ -25,7 +25,7 @@ interface ReputationActivity {
 }
 
 interface ReputationData {
-  reputationScore: number;
+  trustScore: number;
   reputationLevel: string;
   recentActivities: ReputationActivity[];
 }
@@ -43,7 +43,7 @@ export default function ScoreHistoryScreen() {
   });
 
   const activities = (reputation?.recentActivities ?? []).filter((activity) => activity.points !== 0);
-  const currentScore = reputation?.reputationScore ?? user?.trustScore ?? 0;
+  const currentScore = reputation?.trustScore ?? user?.trustScore ?? 0;
   const currentLevel = currentScore >= 500 ? "ShareSwap Champion"
     : currentScore >= 300 ? "Community Pillar"
     : currentScore >= 150 ? "Trusted Member"

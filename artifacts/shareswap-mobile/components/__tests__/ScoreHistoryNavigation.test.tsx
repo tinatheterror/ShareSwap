@@ -11,7 +11,7 @@ const mockRouter = {
 };
 
 let mockReputationData: {
-  reputationScore: number;
+  trustScore: number;
   reputationLevel: string;
   recentActivities: Array<{
     activityType: string;
@@ -20,7 +20,7 @@ let mockReputationData: {
       createdAt?: string | null;
   }>;
 } = {
-  reputationScore: 142,
+  trustScore: 142,
   reputationLevel: "Neighbour",
   recentActivities: [
     {
@@ -124,7 +124,7 @@ function renderedText(instance: renderer.ReactTestRenderer): string {
 
 beforeEach(() => {
   mockReputationData = {
-    reputationScore: 142,
+    trustScore: 142,
     reputationLevel: "Neighbour",
     recentActivities: [
       {

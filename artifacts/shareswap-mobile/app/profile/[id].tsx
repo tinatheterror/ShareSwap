@@ -34,7 +34,6 @@ interface PublicProfile {
   bio?: string;
   profilePhoto?: string;
   isVerified?: boolean;
-  reputationScore?: number;
   trustScore?: number;
   location?: string;
   neighbourhood?: string;
@@ -647,7 +646,7 @@ export default function PublicProfileScreen() {
               <Text
                 style={[styles.infoText, { color: colors.mutedForeground }]}
               >
-                Trust Score: {profile.trustScore ?? profile.reputationScore ?? 0}
+                Trust Score: {profile.trustScore ?? 0}
               </Text>
             </View>
             {memberSinceStr ? (

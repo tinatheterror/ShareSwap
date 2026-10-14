@@ -17,7 +17,7 @@ vi.mock("@/hooks/use-auth", () => ({
     user: {
       id: 7,
       username: "sam",
-      reputationScore: 142,
+      trustScore: 142,
       isVerified: true,
     },
   }),
@@ -104,7 +104,7 @@ import AchievementsPage from "../achievements-page";
 import ScoreHistoryPage from "../score-history-page";
 
 const populatedReputation = {
-  reputationScore: 142,
+  trustScore: 142,
   reputationLevel: "Neighbour",
   recentActivities: [
     {

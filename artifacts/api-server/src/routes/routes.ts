@@ -594,9 +594,9 @@ async function checkReviewAchievements(
     if (receivedCount >= 10) metKeys.push("well_loved");
     if (receivedCount >= 5 && Number(received?.avg ?? 0) >= 4.8) metKeys.push("five_star_neighbour");
 
-    const [user] = await tx.select({ reputationScore: users.reputationScore })
+    const [user] = await tx.select({ trustScore: users.trustScore })
       .from(users).where(eq(users.id, userId)).limit(1);
-    const score = Number(user?.reputationScore ?? 0);
+    const score = Number(user?.trustScore ?? 0);
     if (score >= 300) metKeys.push("neighbourhood_hero");
     if (score >= 500) {
       const [lent] = await tx.select({ cnt: sql<number>`count(*)` })
@@ -630,7 +630,7 @@ export async function checkAndAwardAchievements(userId: number) {
       [borrowRow], [itemsRow], [reviewsLeftRow], [referralRow], [weeklyRow], [reviewsReceivedRow],
       [urgentRow], [courierRow],
     ] = await Promise.all([
-      executor.select({ isVerified: users.isVerified, reputationScore: users.reputationScore, shareCoins: users.shareCoins }).from(users).where(eq(users.id, userId)).limit(1),
+      executor.select({ isVerified: users.isVerified, trustScore: users.trustScore, shareCoins: users.shareCoins }).from(users).where(eq(users.id, userId)).limit(1),
       // Total completed transactions (any side)
       executor.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere)),
       // Items lent (as owner)
@@ -676,7 +676,7 @@ export async function checkAndAwardAchievements(userId: number) {
     const reviewsRx      = Number(reviewsReceivedRow?.cnt ?? 0);
     const urgent         = Number(urgentRow?.cnt ?? 0);
     const courier        = Number(courierRow?.cnt ?? 0);
-    const repScore       = Number(user?.reputationScore ?? 0);
+    const repScore       = Number(user?.trustScore ?? 0);
 
     const metKeys: string[] = [];
     if (total >= 1)       metKeys.push('first_transaction');
@@ -1395,14 +1395,14 @@ export async function confirmRefundableDeposit({
 }: { requestId: number; userId: number; stripeClient?: any }): Promise<{ status: number; body: any }> {
   const outcome = await db.transaction(async (tx) => {
     await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);
-    const [row] = await tx.select({ item_requests: itemRequests, items, reputationScore: users.reputationScore }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).innerJoin(users, eq(users.id, itemRequests.requesterId))
+    const [row] = await tx.select({ item_requests: itemRequests, items, trustScore: users.trustScore }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).innerJoin(users, eq(users.id, itemRequests.requesterId))
       .where(eq(itemRequests.id, requestId)).limit(1);
     if (!row) return { status: 404, body: { error: "Request not found" } };
     const request = row.item_requests;
     if (request.requesterId !== userId) return { status: 403, body: { error: "Unauthorized" } };
     if (request.status !== "ACCEPTED") return { status: 400, body: { error: "Request is not in accepted state" } };
     const pricing = request.requestType === "BORROW"
-      ? (() => { const borrow = computeAuthoritativeBorrowDeposit(row.items, row.reputationScore); return { depositAmount: borrow.amount, borrow }; })()
+      ? (() => { const borrow = computeAuthoritativeBorrowDeposit(row.items, row.trustScore); return { depositAmount: borrow.amount, borrow }; })()
       : computeAuthoritativeRentalPricing(row.items, request.startDate, request.endDate);
     if (!pricing) return { status: 400, body: { error: "Could not determine deposit for this request" } };
     const requiredProtectionEnd = requiredDepositProtectionEnd(request.endDate);
@@ -2754,7 +2754,7 @@ export function registerRoutes(
         .set({
           isVerified: hasPaymentMethod, // Only verified if both ID and payment method exist
           verifiedAt: hasPaymentMethod ? new Date() : null,
-          reputationScore: verifiedScore,
+          trustScore: verifiedScore,
           reputationLevel: trustLevelForSqlScore(verifiedScore),
         })
         .where(eq(users.id, userId));
@@ -3009,7 +3009,7 @@ export function registerRoutes(
             isVerified: hasPaymentMethod,
             verifiedAt: hasPaymentMethod ? new Date() : null,
             fullName: fullName || undefined,
-            reputationScore: verifiedScore,
+            trustScore: verifiedScore,
             reputationLevel: trustLevelForSqlScore(verifiedScore),
           })
           .where(eq(users.id, userId));
@@ -5807,7 +5807,7 @@ Respond with ONLY the category name, nothing else.`
         displayName: users.displayName,
         profilePhoto: users.profilePhoto,
         isVerified: users.isVerified,
-        reputationScore: users.reputationScore,
+        trustScore: users.trustScore,
         lastActiveAt: users.lastActiveAt,
         bio: users.bio,
         location: users.location,
@@ -5906,7 +5906,6 @@ Respond with ONLY the category name, nothing else.`
     const replyRate = senderSet.size > 0 ? Math.round((repliedCount / senderSet.size) * 100) : null;
 
     const issuesCount = Number(issuesResult[0]?.count ?? 0);
-    const trustScore = Math.min(100, user.reputationScore ?? 0);
 
     res.json({
       ...user,
@@ -5918,7 +5917,6 @@ Respond with ONLY the category name, nothing else.`
       frequentlyLate,
       replyRate,
       issuesCount,
-      trustScore,
       activeStatus,
       responseTime,
     });
@@ -8340,7 +8338,7 @@ Respond with ONLY the category name, nothing else.`
       if (!Number.isInteger(requestId)) return res.status(400).json({ error: "Invalid request ID" });
       const result = await db.transaction(async (tx) => {
         await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);
-        const [row] = await tx.select({ request: itemRequests, item: items, reputation: users.reputationScore })
+        const [row] = await tx.select({ request: itemRequests, item: items, reputation: users.trustScore })
           .from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).innerJoin(users, eq(users.id, itemRequests.requesterId))
           .where(eq(itemRequests.id, requestId)).limit(1);
         if (!row) return { status: 404, body: { error: "Request not found" } };
@@ -9131,7 +9129,7 @@ Respond with ONLY the category name, nothing else.`
           requester: {
             id: users.id,
             username: users.username,
-            reputationScore: users.reputationScore,
+            trustScore: users.trustScore,
           },
         })
         .from(itemRequests)
@@ -9150,7 +9148,7 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // The requester's trust score; the client works out the deposit discount from its level.
-      const trustScore = request.requester.reputationScore || 0;
+      const trustScore = request.requester.trustScore || 0;
       
       res.json({
         request: request.request,
@@ -9206,7 +9204,7 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Request must be accepted before paying deposit" });
       }
       const borrowCalculation = request.item_requests.requestType === "BORROW"
-        ? computeAuthoritativeBorrowDeposit(request.items, request.users?.reputationScore ?? null)
+        ? computeAuthoritativeBorrowDeposit(request.items, request.users?.trustScore ?? null)
         : null;
       if (borrowCalculation && Number(depositAmount) !== borrowCalculation.amount) {
         return res.status(400).json({ error: "Deposit amount does not match the server-calculated amount" });
@@ -13243,7 +13241,7 @@ Respond with ONLY the category name, nothing else.`
           profilePhoto: users.profilePhoto,
           isVerified: users.isVerified,
           shareCoins: users.shareCoins,
-          reputationScore: users.reputationScore,
+          trustScore: users.trustScore,
           reputationLevel: users.reputationLevel,
           isPremium: users.isPremium,
           createdAt: users.createdAt,
@@ -13329,7 +13327,6 @@ Respond with ONLY the category name, nothing else.`
       const repliedCount = [...senderSet].filter(id => recipientSet.has(id)).length;
       const replyRate = senderSet.size > 0 ? Math.round((repliedCount / senderSet.size) * 100) : null;
       const issuesCount = Number(issuesResult[0]?.count ?? 0);
-      const trustScore = Math.min(100, user.reputationScore ?? 0);
 
       const reviewCount = Number(reviewStats[0]?.cnt ?? 0);
       const averageRating = reviewCount > 0 && reviewStats[0]?.avg != null
@@ -13346,7 +13343,6 @@ Respond with ONLY the category name, nothing else.`
         onTimeReturnRate,
         replyRate,
         issuesCount,
-        trustScore,
         activeStatus,
         responseTime,
         averageRating,
@@ -13413,7 +13409,7 @@ Respond with ONLY the category name, nothing else.`
           profilePhoto: users.profilePhoto,
           isVerified: users.isVerified,
           shareCoins: users.shareCoins,
-          reputationScore: users.reputationScore,
+          trustScore: users.trustScore,
           reputationLevel: users.reputationLevel,
           isPremium: users.isPremium,
           defaultPostalCode: users.defaultPostalCode,
@@ -13443,7 +13439,7 @@ Respond with ONLY the category name, nothing else.`
           profilePhoto: users.profilePhoto,
           isVerified: users.isVerified,
           shareCoins: users.shareCoins,
-          reputationScore: users.reputationScore,
+          trustScore: users.trustScore,
           reputationLevel: users.reputationLevel,
           isPremium: users.isPremium,
           defaultPostalCode: users.defaultPostalCode,
@@ -14406,7 +14402,7 @@ Respond with ONLY the category name, nothing else.`
           isVerified: users.isVerified,
           isPremium: users.isPremium,
           shareCoins: users.shareCoins,
-          reputationScore: users.reputationScore,
+          trustScore: users.trustScore,
           bannedAt: users.bannedAt,
           banReason: users.banReason,
           createdAt: users.createdAt,
@@ -14986,7 +14982,7 @@ Respond with ONLY the category name, nothing else.`
     const userId = parseInt(req.params.userId);
     const [user] = await db
       .select({
-        reputationScore: users.reputationScore,
+        trustScore: users.trustScore,
         reputationLevel: users.reputationLevel,
       })
       .from(users)
@@ -15071,7 +15067,7 @@ Respond with ONLY the category name, nothing else.`
 
     res.json({
       ...user,
-      reputationLevel: trustLevelForScore(user.reputationScore ?? 0),
+      reputationLevel: trustLevelForScore(user.trustScore ?? 0),
       recentActivities: formattedActivities,
       reviews,
     });
@@ -15159,11 +15155,11 @@ Respond with ONLY the category name, nothing else.`
         const totalPoints = reviewPoints + feedbackTagPoints + negativeTagDeduction;
 
         const [reviewedUserBefore] = await tx
-          .select({ reputationScore: users.reputationScore, reputationLevel: users.reputationLevel })
+          .select({ trustScore: users.trustScore, reputationLevel: users.reputationLevel })
           .from(users)
           .where(eq(users.id, reviewedUserId))
           .limit(1);
-        const oldScore = reviewedUserBefore?.reputationScore ?? 0;
+        const oldScore = reviewedUserBefore?.trustScore ?? 0;
 
         let pairCapHit = false;
         if (reviewPoints + feedbackTagPoints > 0) {
@@ -15209,7 +15205,7 @@ Respond with ONLY the category name, nothing else.`
           }
           const updatedScore = sql<number>`LEAST(500, GREATEST(0, reputation_score + ${totalPoints}))`;
           await tx.update(users).set({
-            reputationScore: updatedScore,
+            trustScore: updatedScore,
             reputationLevel: trustLevelForSqlScore(updatedScore),
           }).where(eq(users.id, reviewedUserId));
 
@@ -15348,7 +15344,7 @@ Respond with ONLY the category name, nothing else.`
         handle: users.handle,
         displayName: users.displayName,
         isVerified: users.isVerified,
-        reputationScore: users.reputationScore,
+        trustScore: users.trustScore,
         reputationLevel: users.reputationLevel,
         isPremium: users.isPremium,
         profilePhoto: users.profilePhoto,
@@ -15367,7 +15363,7 @@ Respond with ONLY the category name, nothing else.`
           handle: users.handle,
           displayName: users.displayName,
           isVerified: users.isVerified,
-          reputationScore: users.reputationScore,
+          trustScore: users.trustScore,
           reputationLevel: users.reputationLevel,
           isPremium: users.isPremium,
           profilePhoto: users.profilePhoto,
@@ -15426,7 +15422,7 @@ Respond with ONLY the category name, nothing else.`
       completedShares,
       activeStatus,
       responseTime,
-      trustScore: userWithActive.reputationScore ?? 0,
+      trustScore: userWithActive.trustScore ?? 0,
     });
   });
 

@@ -260,12 +260,15 @@ export const EVENT_ICONS = {
 } as const;
 
 /**
- * The chat stamp for a released deposit hold. A refundable charge that was refunded keeps the server's own
- * sentence (money did move); a temporary hold gets the short line, with no amount.
+ * The chat stamp for a released deposit: a temporary hold, or a refundable charge that was released. The amount
+ * is shown when the event carries one.
  */
-export function depositReleasedStampLabel(opts: { depositMode?: string | null; content: string }): string {
-  if (isRefundableChargeMode(opts.depositMode)) return `✅ ${opts.content}`;
-  return `${EVENT_ICONS.deposit_released} Deposit hold released, no charge was made.`;
+export function depositReleasedStampLabel(opts: { depositMode?: string | null; amount?: number | string | null }): string {
+  const value = toAmount(opts.amount);
+  // Whole dollars read as "$42", like the server's and the mobile app's copy; cents only when there are some.
+  const amount = value == null ? "" : `${Number.isInteger(value) ? `$${value}` : formatMoney(value)} `;
+  const what = isRefundableChargeMode(opts.depositMode) ? "Refundable Deposit released" : "Deposit hold released";
+  return `${EVENT_ICONS.deposit_released} ${amount}${what}, no charge was made.`;
 }
 
 export function depositConfirmedStampLabel(opts?: { mode?: string | null; refundable?: boolean }): string {

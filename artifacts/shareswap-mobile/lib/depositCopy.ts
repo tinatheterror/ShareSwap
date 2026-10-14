@@ -218,11 +218,13 @@ export function claimResolvedOwnerLine(refunded: number | string | null | undefi
 
 // ── Chat event stamps ───────────────────────────────────────────────────────
 /**
- * The chat stamp for a released deposit hold. A refundable charge that was refunded keeps the server's own
- * sentence (money did move); a temporary hold gets the short line, with no amount.
+ * The chat stamp for a released deposit: a temporary hold, or a refundable charge that was released. The amount
+ * is shown when the event carries one.
  */
-export function depositReleasedStamp(meta: { depositMode?: string | null } | null | undefined, content: string): string {
-  return meta?.depositMode === "refundable_charge" ? `✅ ${content}` : "🔓 Deposit hold released, no charge was made.";
+export function depositReleasedStamp(meta: { depositMode?: string | null; amount?: number | string | null } | null | undefined): string {
+  const amount = meta?.amount == null || meta.amount === "" ? "" : `${formatMoney(meta.amount)} `;
+  const what = meta?.depositMode === "refundable_charge" ? "Refundable Deposit released" : "Deposit hold released";
+  return `🔓 ${amount}${what}, no charge was made.`;
 }
 
 export function depositConfirmedStamp(meta?: { mode?: string | null; depositMode?: string | null } | null): string {

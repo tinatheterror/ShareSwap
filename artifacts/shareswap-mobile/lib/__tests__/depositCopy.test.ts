@@ -41,11 +41,12 @@ describe("depositCopy", () => {
     expect(holdReleasedMessage(105)).toBe("$105 temporary hold released. You were not charged.");
   });
 
-  it("a released hold is a one-line chat stamp with no amount; a refunded charge keeps the server's sentence", () => {
-    expect(depositReleasedStamp({ depositMode: "authorization" }, "ignored")).toBe("🔓 Deposit hold released, no charge was made.");
-    expect(depositReleasedStamp(undefined, "ignored")).toBe("🔓 Deposit hold released, no charge was made.");
-    expect(depositReleasedStamp({ depositMode: "refundable_charge" }, "Refundable deposit refunded — $42 was refunded to your card."))
-      .toBe("✅ Refundable deposit refunded — $42 was refunded to your card.");
+  it("a released deposit is a one-line chat stamp that names the amount", () => {
+    expect(depositReleasedStamp({ depositMode: "authorization", amount: 42 })).toBe("🔓 $42 Deposit hold released, no charge was made.");
+    expect(depositReleasedStamp({ amount: "42.00" })).toBe("🔓 $42 Deposit hold released, no charge was made.");
+    expect(depositReleasedStamp({ depositMode: "refundable_charge", amount: 42 })).toBe("🔓 $42 Refundable Deposit released, no charge was made.");
+    expect(depositReleasedStamp(undefined)).toBe("🔓 Deposit hold released, no charge was made.");
+    expect(depositReleasedStamp({ depositMode: "refundable_charge" })).toBe("🔓 Refundable Deposit released, no charge was made.");
   });
 
   it("claim opened copy is explicit", () => {

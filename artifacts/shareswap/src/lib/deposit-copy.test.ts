@@ -87,13 +87,17 @@ describe("deposit-copy", () => {
 });
 
 describe("depositReleasedStampLabel", () => {
-  it("a released hold is a one-line chat stamp with no amount", () => {
-    expect(depositReleasedStampLabel({ depositMode: "authorization", content: "ignored" })).toBe("🔓 Deposit hold released, no charge was made.");
-    expect(depositReleasedStampLabel({ content: "ignored" })).toBe("🔓 Deposit hold released, no charge was made.");
+  it("a released temporary hold names the amount", () => {
+    expect(depositReleasedStampLabel({ depositMode: "authorization", amount: 42 })).toBe("🔓 $42 Deposit hold released, no charge was made.");
+    expect(depositReleasedStampLabel({ amount: "42.00" })).toBe("🔓 $42 Deposit hold released, no charge was made.");
   });
 
-  it("a refunded charge keeps the server's sentence, because money did move", () => {
-    expect(depositReleasedStampLabel({ depositMode: "refundable_charge", content: "Refundable deposit refunded — $42 was refunded to your card." }))
-      .toBe("✅ Refundable deposit refunded — $42 was refunded to your card.");
+  it("a released refundable deposit says so", () => {
+    expect(depositReleasedStampLabel({ depositMode: "refundable_charge", amount: 42 })).toBe("🔓 $42 Refundable Deposit released, no charge was made.");
+  });
+
+  it("without an amount the line still reads naturally", () => {
+    expect(depositReleasedStampLabel({ depositMode: "authorization" })).toBe("🔓 Deposit hold released, no charge was made.");
+    expect(depositReleasedStampLabel({ depositMode: "refundable_charge", amount: null })).toBe("🔓 Refundable Deposit released, no charge was made.");
   });
 });

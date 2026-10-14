@@ -2056,7 +2056,7 @@ export function ChatWidget() {
                         et === "terms_declined" ? `❌ ${actor} declined the new terms` :
                         et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
                         et === "deposit_confirmed" ? depositConfirmedStampLabel({ mode: msg.metadata?.mode, refundable: (msg.metadata as any)?.refundable === true }) :
-                        et === "deposit_released" ? depositReleasedStampLabel({ depositMode: (msg.metadata as any)?.depositMode, content: msg.content }) :
+                        et === "deposit_released" ? depositReleasedStampLabel({ depositMode: (msg.metadata as any)?.depositMode, amount: (msg.metadata as any)?.amount }) :
                         et === "extension_accepted" ? `✅ Extension accepted${extDateFmt ? ` — new return date: ${extDateFmt}` : ""}` :
                         et === "extension_declined" ? `❌ Extension declined` :
                         et === "extension_requested" ? null :

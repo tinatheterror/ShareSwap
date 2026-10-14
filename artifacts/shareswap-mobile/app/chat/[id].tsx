@@ -1565,7 +1565,7 @@ export default function ChatScreen() {
                 et === "terms_declined" ? `❌ ${actor} declined the new terms` :
                 et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
                 et === "deposit_confirmed" ? depositConfirmedStamp(msg.metadata as { mode?: string | null }) :
-                et === "deposit_released" ? depositReleasedStamp(msg.metadata as { depositMode?: string | null } | undefined, msg.content) :
+                et === "deposit_released" ? depositReleasedStamp(msg.metadata as { depositMode?: string | null; amount?: number | string | null } | undefined) :
                 et === "extension_accepted" ? `✅ Extension accepted${extDate ? ` — new return date: ${fmtCalendarDate(extDate)}` : ""}` :
                 et === "extension_declined" ? `❌ Extension declined` :
                 et === "extension_requested" ? null :

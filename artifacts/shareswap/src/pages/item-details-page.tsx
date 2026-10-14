@@ -228,7 +228,7 @@ export default function ItemDetailsPage() {
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Trust-Deposit:{" "}
+            Trust Deposit:{" "}
             {depositCalc.discountPercentage > 0 ? (
               <TooltipProvider delayDuration={0}>
                 <Tooltip>

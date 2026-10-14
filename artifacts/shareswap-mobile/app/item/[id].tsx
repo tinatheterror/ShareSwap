@@ -27,6 +27,7 @@ import { apiGet, apiPost, apiDelete } from "@/lib/api";
 import { fmtDate } from "@/lib/dateUtils";
 import { useAuth } from "@/context/AuthContext";
 import { borrowTrustDepositQuote } from "@/lib/deposit-calculator";
+import { TrustDepositLine } from "@/components/TrustDepositLine";
 import { Item } from "@/components/ItemCard";
 import { VerificationGateModal } from "@/components/VerificationGateModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -621,18 +622,7 @@ export default function ItemDetailScreen() {
               {shareCoinCost} ShareCoins
             </Text>
           </View>
-          <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]} testID="trust-deposit-line">
-            Trust Deposit:{" "}
-            {trustDeposit.discountPercentage > 0 ? (
-              <>
-                <Text style={{ color: colors.primary, textDecorationLine: "line-through" }} testID="trust-deposit-struck">${trustDeposit.base}</Text>
-                {" "}
-                <Text style={{ fontFamily: "Inter_600SemiBold" }} testID="trust-deposit-amount">${trustDeposit.amount}</Text>
-              </>
-            ) : (
-              <Text testID="trust-deposit-amount">${trustDeposit.base}</Text>
-            )}
-          </Text>
+          <TrustDepositLine base={trustDeposit.base} amount={trustDeposit.amount} discountPercentage={trustDeposit.discountPercentage} />
           {item.replacementValue ? (
             <Text style={[styles.typeRowMicro, { color: colors.mutedForeground }]}>
               Max charge if not returned: ${item.replacementValue}

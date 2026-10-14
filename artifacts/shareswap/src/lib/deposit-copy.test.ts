@@ -7,6 +7,7 @@ import {
   claimResolvedOwnerLine,
   claimResolvedSummary,
   depositConfirmedStampLabel,
+  depositReleasedStampLabel,
   depositNotificationKind,
   depositPhaseCopy,
   formatMoney,
@@ -82,5 +83,17 @@ describe("deposit-copy", () => {
     expect(depositNotificationKind("security_deposit_retained")).toBe("retained");
     expect(depositNotificationKind("deposit_hold_released")).toBe("released");
     expect(depositNotificationKind("other")).toBeNull();
+  });
+});
+
+describe("depositReleasedStampLabel", () => {
+  it("a released hold is a one-line chat stamp with no amount", () => {
+    expect(depositReleasedStampLabel({ depositMode: "authorization", content: "ignored" })).toBe("🔓 Deposit hold released, no charge was made.");
+    expect(depositReleasedStampLabel({ content: "ignored" })).toBe("🔓 Deposit hold released, no charge was made.");
+  });
+
+  it("a refunded charge keeps the server's sentence, because money did move", () => {
+    expect(depositReleasedStampLabel({ depositMode: "refundable_charge", content: "Refundable deposit refunded — $42 was refunded to your card." }))
+      .toBe("✅ Refundable deposit refunded — $42 was refunded to your card.");
   });
 });

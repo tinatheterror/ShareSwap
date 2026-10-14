@@ -70,7 +70,7 @@ import { RequestLifecyclePanel } from "@/components/request-lifecycle-panel";
 import {
   CLAIM_CHARGED_HEADLINE, CLAIM_OPENED_CONVERSION, CLAIM_OPENED_REFUND_NOTE, CLAIM_OPENED_TITLE, CLAIM_RESOLVED_PREVIOUSLY_CHARGED,
   EVENT_ICONS, cardSuffix, claimOpenedChargedLine, claimOpenedOwnerLine, claimOutcome, claimRefundedLine, claimResolvedOwnerLine,
-  claimResolvedTitle, claimRetainedLine, depositConfirmedStampLabel, formatMoney, toAmount,
+  claimResolvedTitle, claimRetainedLine, depositConfirmedStampLabel, depositReleasedStampLabel, formatMoney, toAmount,
 } from "@/lib/deposit-copy";
 
 const stripePromise = getStripePromise();
@@ -2056,7 +2056,7 @@ export function ChatWidget() {
                         et === "terms_declined" ? `❌ ${actor} declined the new terms` :
                         et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
                         et === "deposit_confirmed" ? depositConfirmedStampLabel({ mode: msg.metadata?.mode, refundable: (msg.metadata as any)?.refundable === true }) :
-                        et === "deposit_released" ? `${EVENT_ICONS.deposit_released} ${msg.content}` :
+                        et === "deposit_released" ? depositReleasedStampLabel({ depositMode: (msg.metadata as any)?.depositMode, content: msg.content }) :
                         et === "extension_accepted" ? `✅ Extension accepted${extDateFmt ? ` — new return date: ${extDateFmt}` : ""}` :
                         et === "extension_declined" ? `❌ Extension declined` :
                         et === "extension_requested" ? null :

@@ -39,7 +39,7 @@ import { useCancelRequest } from "@/hooks/useCancelRequest";
 import { cancelAction, cancelToast, legacyCancelDialog, type CancelRole } from "@workspace/api-client-react/cancel-flow";
 import {
   resolveDepositPhase, depositSummaryLine, depositConfirmedStamp, claimOpenedBorrowerCopy, claimResolvedBorrowerCopy,
-  claimOpenedOwnerLine, claimResolvedOwnerLine, depositReleasedCopy, CLAIM_REVIEW_TOP, claimReviewChargedLabel,
+  claimOpenedOwnerLine, claimResolvedOwnerLine, depositReleasedStamp, CLAIM_REVIEW_TOP, claimReviewChargedLabel,
   formatMoney, depositPhaseDescription,
 } from "@/lib/depositCopy";
 
@@ -1565,6 +1565,7 @@ export default function ChatScreen() {
                 et === "terms_declined" ? `❌ ${actor} declined the new terms` :
                 et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
                 et === "deposit_confirmed" ? depositConfirmedStamp(msg.metadata as { mode?: string | null }) :
+                et === "deposit_released" ? depositReleasedStamp(msg.metadata as { depositMode?: string | null } | undefined, msg.content) :
                 et === "extension_accepted" ? `✅ Extension accepted${extDate ? ` — new return date: ${fmtCalendarDate(extDate)}` : ""}` :
                 et === "extension_declined" ? `❌ Extension declined` :
                 et === "extension_requested" ? null :
@@ -1665,7 +1666,7 @@ export default function ChatScreen() {
                   })()
                 : null;
 
-              if (et === "claim_opened" || et === "claim_resolved" || et === "deposit_released") {
+              if (et === "claim_opened" || et === "claim_resolved") {
                 return (
                   <DepositEventCard
                     eventType={et}
@@ -2002,7 +2003,7 @@ export default function ChatScreen() {
 
 // ── Card styles ───────────────────────────────────────────────────────────────
 function DepositEventCard({ eventType, metadata, content, isOwnerView, colors }: {
-  eventType: "claim_opened" | "claim_resolved" | "deposit_released";
+  eventType: "claim_opened" | "claim_resolved";
   metadata: Record<string, unknown>;
   content: string;
   isOwnerView: boolean;
@@ -2041,12 +2042,6 @@ function DepositEventCard({ eventType, metadata, content, isOwnerView, colors }:
       if ((retained ?? 0) > 0 && (refunded ?? 0) <= 0) { accent = "#b45309"; bg = "#fffbeb"; }
       else accent = "#15803d", bg = "#f0fdf4";
     }
-  } else {
-    emoji = "✅"; accent = "#15803d"; bg = "#f0fdf4";
-    const amount = n("amount");
-    const c = depositReleasedCopy(amount);
-    title = c.title;
-    body = amount != null ? c.body : content;
   }
   return (
     <View testID={`deposit-event-${eventType}`} style={{ alignSelf: "center", maxWidth: "92%", marginVertical: 6, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: accent + "66", backgroundColor: bg, gap: 4 }}>

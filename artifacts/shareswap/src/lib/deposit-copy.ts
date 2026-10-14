@@ -255,9 +255,18 @@ export function claimResolvedOwnerLine(a: ClaimAmounts): string {
 export const EVENT_ICONS = {
   claim_opened: "🚩",
   claim_resolved: "⚖️",
-  deposit_released: "✅",
+  deposit_released: "🔓",
   deposit_confirmed: "🔒",
 } as const;
+
+/**
+ * The chat stamp for a released deposit hold. A refundable charge that was refunded keeps the server's own
+ * sentence (money did move); a temporary hold gets the short line, with no amount.
+ */
+export function depositReleasedStampLabel(opts: { depositMode?: string | null; content: string }): string {
+  if (isRefundableChargeMode(opts.depositMode)) return `✅ ${opts.content}`;
+  return `${EVENT_ICONS.deposit_released} Deposit hold released, no charge was made.`;
+}
 
 export function depositConfirmedStampLabel(opts?: { mode?: string | null; refundable?: boolean }): string {
   return opts?.refundable || isRefundableChargeMode(opts?.mode)

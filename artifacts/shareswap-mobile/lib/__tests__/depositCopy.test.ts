@@ -1,7 +1,7 @@
 import {
-  formatMoney, resolveDepositPhase, depositSummaryLine, holdTitle, holdPendingNote, holdReleaseExplainer,
+  formatMoney, holdReleasedMessage, resolveDepositPhase, depositSummaryLine, holdTitle, holdPendingNote, holdReleaseExplainer,
   claimOpenedBorrowerCopy, claimOpenedOwnerLine, claimResolvedBorrowerCopy, claimResolvedOwnerLine,
-  depositConfirmedStamp, depositNotificationKind, depositReleasedCopy, CANCEL_BOOKING_MESSAGE, CLAIM_REVIEW_TOP,
+  depositConfirmedStamp, depositNotificationKind, depositReleasedStamp, CANCEL_BOOKING_MESSAGE, CLAIM_REVIEW_TOP,
 } from "../depositCopy";
 
 const BANNED = /deposit secured|funds secured|payment completed|deposit processed|authorization expires/i;
@@ -38,7 +38,14 @@ describe("depositCopy", () => {
     expect(holdPendingNote(105)).toContain("This is a temporary hold, not a charge. Your card may show $105 as pending or temporarily unavailable.");
     expect(holdReleaseExplainer(105)).toBe("After the item is returned normally, the $105 hold is released. If a claim is opened, the deposit may be charged while the claim is reviewed.");
     expect(CANCEL_BOOKING_MESSAGE).toBe("Your temporary hold will be released. You will not be charged.");
-    expect(depositReleasedCopy(105).body).toBe("$105 temporary hold released. You were not charged.");
+    expect(holdReleasedMessage(105)).toBe("$105 temporary hold released. You were not charged.");
+  });
+
+  it("a released hold is a one-line chat stamp with no amount; a refunded charge keeps the server's sentence", () => {
+    expect(depositReleasedStamp({ depositMode: "authorization" }, "ignored")).toBe("🔓 Deposit hold released, no charge was made.");
+    expect(depositReleasedStamp(undefined, "ignored")).toBe("🔓 Deposit hold released, no charge was made.");
+    expect(depositReleasedStamp({ depositMode: "refundable_charge" }, "Refundable deposit refunded — $42 was refunded to your card."))
+      .toBe("✅ Refundable deposit refunded — $42 was refunded to your card.");
   });
 
   it("claim opened copy is explicit", () => {

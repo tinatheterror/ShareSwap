@@ -7,11 +7,15 @@ const TIER_DEPOSIT_PERCENTAGES: Record<number, number> = {
   4: 0.40,
 };
 
-const TRUST_SCORE_DISCOUNTS: { minScore: number; maxScore: number; discount: number }[] = [
-  { minScore: 90, maxScore: 100, discount: 0.60 },
-  { minScore: 70, maxScore: 89, discount: 0.40 },
-  { minScore: 50, maxScore: 69, discount: 0.20 },
-  { minScore: 0, maxScore: 49, discount: 0 },
+// Trust Deposit discount by trust level. The level comes straight from the trust score (the same thresholds as
+// the levels on the achievements screen and in the API's trust-score-service.ts). The API applies the same table
+// (api-server trust-deposit-discount.ts) and decides the amount actually held, so keep the two in step.
+const TRUST_LEVEL_DISCOUNTS: { name: string; minScore: number; discount: number }[] = [
+  { name: "ShareSwap Champion", minScore: 500, discount: 0.60 },
+  { name: "Community Pillar", minScore: 300, discount: 0.40 },
+  { name: "Trusted Member", minScore: 150, discount: 0.20 },
+  { name: "Neighbour", minScore: 50, discount: 0.10 },
+  { name: "Newcomer", minScore: 0, discount: 0 },
 ];
 
 const VALUE_RANGE_MIDPOINTS: Record<string, number> = {
@@ -33,19 +37,17 @@ export interface DepositCalculation {
   trustScore: number;
 }
 
+/** The discount for a trust score (points, not a percentage): its level's discount. */
 export function getTrustScoreDiscount(trustScore: number): { discount: number; percentage: number } {
-  for (const tier of TRUST_SCORE_DISCOUNTS) {
-    if (trustScore >= tier.minScore && trustScore <= tier.maxScore) {
-      return { discount: tier.discount, percentage: tier.discount * 100 };
-    }
-  }
-  return { discount: 0, percentage: 0 };
+  const level = TRUST_LEVEL_DISCOUNTS.find((l) => (trustScore || 0) >= l.minScore);
+  const discount = level?.discount ?? 0;
+  return { discount, percentage: Math.round(discount * 100) };
 }
 
 export function calculateSecurityDeposit(
   tier: number,
   originalValue: string,
-  trustScore = 0,
+  trustScore = 0, // the borrower's trust score in points; its level sets the discount
   customItemValue?: number,
 ): DepositCalculation {
   const itemValue = customItemValue || VALUE_RANGE_MIDPOINTS[originalValue] || 100;
@@ -83,18 +85,16 @@ export interface TrustDepositQuote {
 
 /**
  * The Trust Deposit a borrower pays for an item, as the item card shows it. This mirrors the server's
- * computeAuthoritativeBorrowDeposit (api-server routes.ts), which decides the amount actually held or charged,
- * so the card and the checkout agree: the trust score is the reputation score on a 0-100 scale plus 50,
- * capped at 100. Keep the two in step.
+ * computeAuthoritativeBorrowDeposit (api-server routes.ts), which decides the amount actually held or charged, so the
+ * card and the checkout agree: the discount is the one for the borrower's trust level.
  */
 export function borrowTrustDepositQuote(
   item: { tier?: number | null; originalValue?: string | null; replacementValue?: number | string | null },
-  reputationScore: number | null | undefined,
+  trustScore: number | null | undefined,
 ): TrustDepositQuote {
   const value = VALUE_RANGE_MIDPOINTS[item.originalValue ?? ""] ?? (Number(item.replacementValue) || 100);
   const base = Math.max(5, Math.round(value * (TIER_DEPOSIT_PERCENTAGES[item.tier ?? 2] ?? 0.2)));
-  const trust = Math.min(100, Math.round(((reputationScore || 0) / 500) * 100) + 50);
-  const discount = trust >= 90 ? 60 : trust >= 70 ? 40 : trust >= 50 ? 20 : 0;
+  const discount = getTrustScoreDiscount(trustScore ?? 0).percentage;
   const amount = base <= 5 ? 5 : Math.max(5, Math.round(base * (1 - discount / 100)));
   return { base, amount, discountPercentage: amount < base ? discount : 0 };
 }

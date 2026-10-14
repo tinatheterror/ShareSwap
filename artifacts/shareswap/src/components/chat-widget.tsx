@@ -2014,7 +2014,6 @@ export function ChatWidget() {
                       }
                     }
                     return messages.map((msg) => {
-                    const borrowerTrust = Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100));
 
                     // System event messages — subtle centered text, no colored boxes
                     if (msg.messageType === "event") {
@@ -2313,7 +2312,7 @@ export function ChatWidget() {
 
                 // --- BORROWER CTAs ---
                 if (isBorrower) {
-                  const bt = Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100));
+                  const bt = (user as any)?.reputationScore || 0;
 
                   if (pr.status === "ACCEPTED" && pr.requestType === "GIFT") {
                     return (
@@ -2783,7 +2782,7 @@ export function ChatWidget() {
             photos: selectedRequest.item.photos,
           }}
           ownerId={selectedRequest.item.ownerId}
-          trustScore={Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100))}
+          trustScore={(user as any)?.reputationScore || 0}
           onSuccess={() => {
             setShowTrustDepositModal(false);
             setSelectedRequest(null);

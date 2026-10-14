@@ -1391,7 +1391,7 @@ export default function RequestsPage() {
             photos: selectedRequest.item.photos,
           }}
           ownerId={selectedRequest.item.ownerId}
-          trustScore={Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100))}
+          trustScore={(user as any)?.reputationScore || 0}
           onSuccess={() => {
             setShowTrustDepositModal(false);
             setSelectedRequest(null);

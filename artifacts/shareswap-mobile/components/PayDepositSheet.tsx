@@ -109,7 +109,7 @@ export function PayDepositSheet({
 
   // ── Calculations ─────────────────────────────────────────────────────────────
 
-  const trustScore = Math.min(100, Math.round((reputationScore / 500) * 100) + 50);
+  const trustScore = reputationScore;
   const depositCalc = calculateSecurityDeposit(
     item.tier ?? 2,
     item.originalValue ?? "$50–$150",

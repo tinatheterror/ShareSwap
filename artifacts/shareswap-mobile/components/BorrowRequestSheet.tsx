@@ -17,24 +17,11 @@ import { Calendar, Coins, Shield, MapPin } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 import { holdTitle, holdPendingNote, holdReleaseExplainer, NOT_CHARGED_UNLESS_CLAIM } from "@/lib/depositCopy";
 
 
-// ── Deposit calculator (mirrors web lib) ─────────────────────────────────────
-const TIER_DEPOSIT_PCT: Record<number, number> = {
-  1: 0.10, 2: 0.20, 3: 0.30, 4: 0.40,
-};
-const TRUST_DISCOUNTS = [
-  { min: 90, discount: 0.60 },
-  { min: 70, discount: 0.40 },
-  { min: 50, discount: 0.20 },
-  { min: 0,  discount: 0 },
-];
-const VALUE_MIDPOINTS: Record<string, number> = {
-  "Under $50": 25, "$50–$199": 125, "$200–$499": 350, "$500–$2,000": 1250,
-  "$50–$150": 100, "$150–$300": 225, "$300–$1,000": 650, "$300+": 500,
-};
-
+// ── Deposit calculator: the shared one in lib/deposit-calculator.ts ──────────
 interface DepositCalc {
   baseDeposit: number;
   discountPercentage: number;
@@ -42,22 +29,8 @@ interface DepositCalc {
 }
 
 function calcDeposit(tier: number, originalValue: string, trustScore: number): DepositCalc {
-  const itemValue = VALUE_MIDPOINTS[originalValue] ?? 100;
-  const pct = TIER_DEPOSIT_PCT[tier] ?? 0.20;
-  const base = itemValue * pct;
-  if (Math.round(base) <= 5) return { baseDeposit: 5, discountPercentage: 0, finalDeposit: 5 };
-  let discount = 0;
-  for (const t of TRUST_DISCOUNTS) {
-    if (trustScore >= t.min) { discount = t.discount; break; }
-  }
-  const discPct = Math.round(discount * 100);
-  const discounted = Math.round(base * (1 - discount));
-  const final = Math.max(5, discounted);
-  return {
-    baseDeposit: Math.round(base),
-    discountPercentage: final === 5 && discounted < 5 ? 0 : discPct,
-    finalDeposit: final,
-  };
+  const { baseDeposit, discountPercentage, finalDeposit } = calculateSecurityDeposit(tier, originalValue, trustScore);
+  return { baseDeposit, discountPercentage, finalDeposit };
 }
 
 function hasValidReplacementValue(val: any): boolean {
@@ -285,8 +258,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
     ? Math.max(1, Math.ceil((weeklyPrice / 7) * borrowDays))
     : weeklyPrice;
 
-  const reputationScore = (user as any)?.reputationScore ?? 0;
-  const trustScore = Math.min(100, Math.round((reputationScore / 500) * 100));
+  const trustScore = (user as any)?.reputationScore ?? 0;
   const depositCalc = calcDeposit(
     targetItem.tier ?? 2,
     targetItem.originalValue ?? "$50–$199",

@@ -4,6 +4,7 @@ import { createServer, type Server } from "http";
 import * as uberDirect from "../uber-direct";
 import { randomBytes } from "crypto";
 import { setupAuth, hashPassword, comparePasswords } from "../auth";
+import { trustDepositDiscountPercent } from "../trust-deposit-discount";
 import {
   clientVersionOf,
   isLegacyClient,
@@ -1127,13 +1128,14 @@ function refundableConsentBody(requestId: number, depositAmount: number, require
   };
 }
 
-function computeAuthoritativeBorrowDeposit(item: any, reputationScore: number | null) {
+export function computeAuthoritativeBorrowDeposit(item: any, trustScore: number | null) {
   const valueMap: Record<string, number> = { "Under $50": 25, "$50–$199": 125, "$200–$499": 350, "$500–$2,000": 1250, "$50–$150": 100, "$150–$300": 225, "$300–$1,000": 650, "$300+": 500 };
   const pct: Record<number, number> = { 1: .10, 2: .20, 3: .30, 4: .40 };
   const value = valueMap[item.originalValue || ""] ?? (Number(item.replacementValue) || 100);
   const base = Math.max(5, Math.round(value * (pct[item.tier || 2] ?? .20)));
-  const trust = Math.min(100, Math.round(((reputationScore || 0) / 500) * 100) + 50);
-  const discount = trust >= 90 ? 60 : trust >= 70 ? 40 : trust >= 50 ? 20 : 0;
+  // The discount follows the borrower's trust level (Newcomer 0% ... ShareSwap Champion 60%).
+  const trust = trustScore || 0;
+  const discount = trustDepositDiscountPercent(trust);
   const amount = base <= 5 ? 5 : Math.max(5, Math.round(base * (1 - discount / 100)));
   return { amount, base, discount: amount === 5 && base * (1 - discount / 100) < 5 ? 0 : discount, trust };
 }
@@ -9147,9 +9149,8 @@ Respond with ONLY the category name, nothing else.`
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      // Calculate trust score based on reputation
-      const reputationScore = request.requester.reputationScore || 0;
-      const trustScore = Math.min(100, Math.round((reputationScore / 500) * 100) + 50);
+      // The requester's trust score; the client works out the deposit discount from its level.
+      const trustScore = request.requester.reputationScore || 0;
       
       res.json({
         request: request.request,

@@ -80,8 +80,8 @@ const LEVELS = [
   { name: "Newcomer",           minScore: 0,   perks: ["Access to community ShareChest", "Browse and request items"] },
   { name: "Neighbour",          minScore: 50,  perks: ["10% off trust deposits", "Priority in item requests"] },
   { name: "Trusted Member",     minScore: 150, perks: ["20% off trust deposits", "Access to premium items"] },
-  { name: "Community Pillar",   minScore: 300, perks: ["30% off trust deposits"] },
-  { name: "ShareSwap Champion", minScore: 500, perks: ["No deposits required", "Verified badge", "Community ambassador status"] },
+  { name: "Community Pillar",   minScore: 300, perks: ["40% off trust deposits"] },
+  { name: "ShareSwap Champion", minScore: 500, perks: ["60% off trust deposits", "Verified badge", "Community ambassador status"] },
 ];
 
 const LEVEL_COLORS: Record<string, string> = {

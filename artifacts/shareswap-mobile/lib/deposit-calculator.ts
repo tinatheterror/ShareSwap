@@ -71,3 +71,30 @@ export function calculateSecurityDeposit(
     trustScore,
   };
 }
+
+export interface TrustDepositQuote {
+  /** Before the trust score discount. */
+  base: number;
+  /** What the borrower pays. */
+  amount: number;
+  /** 0 when there is no discount. */
+  discountPercentage: number;
+}
+
+/**
+ * The Trust Deposit a borrower pays for an item, as the item card shows it. This mirrors the server's
+ * computeAuthoritativeBorrowDeposit (api-server routes.ts), which decides the amount actually held or charged,
+ * so the card and the checkout agree: the trust score is the reputation score on a 0-100 scale plus 50,
+ * capped at 100. Keep the two in step.
+ */
+export function borrowTrustDepositQuote(
+  item: { tier?: number | null; originalValue?: string | null; replacementValue?: number | string | null },
+  reputationScore: number | null | undefined,
+): TrustDepositQuote {
+  const value = VALUE_RANGE_MIDPOINTS[item.originalValue ?? ""] ?? (Number(item.replacementValue) || 100);
+  const base = Math.max(5, Math.round(value * (TIER_DEPOSIT_PERCENTAGES[item.tier ?? 2] ?? 0.2)));
+  const trust = Math.min(100, Math.round(((reputationScore || 0) / 500) * 100) + 50);
+  const discount = trust >= 90 ? 60 : trust >= 70 ? 40 : trust >= 50 ? 20 : 0;
+  const amount = base <= 5 ? 5 : Math.max(5, Math.round(base * (1 - discount / 100)));
+  return { base, amount, discountPercentage: amount < base ? discount : 0 };
+}

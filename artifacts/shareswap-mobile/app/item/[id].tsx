@@ -26,6 +26,7 @@ import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
 import { fmtDate } from "@/lib/dateUtils";
 import { useAuth } from "@/context/AuthContext";
+import { borrowTrustDepositQuote } from "@/lib/deposit-calculator";
 import { Item } from "@/components/ItemCard";
 import { VerificationGateModal } from "@/components/VerificationGateModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -346,6 +347,10 @@ export default function ItemDetailScreen() {
   const shareCoinCost = Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5));
   const rentPerWeek = Number(item.dollarsPrice || 0).toFixed(0);
   const deposit = Number(item.securityDeposit || 0).toFixed(0);
+  // Borrowers pay a Trust Deposit, discounted by the viewer's trust score; rentals show the item's Security Deposit.
+  // The owner and a signed-out visitor are not borrowing it, so they see the amount before any discount.
+  const trustQuote = borrowTrustDepositQuote(item as any, (user as any)?.reputationScore);
+  const trustDeposit = user && !isOwner ? trustQuote : { ...trustQuote, amount: trustQuote.base, discountPercentage: 0 };
   const TIER_LABELS: Record<number, string> = { 1: "Budget Friendly Item", 2: "Everyday Household Item", 3: "Premium Item", 4: "High Value Item" };
   const TIER_COINS: Record<number, number> = { 1: 5, 2: 10, 3: 20, 4: 40 };
   const tierLabel = item.tier ? (TIER_LABELS[item.tier] ?? `Tier ${item.tier}`) : null;
@@ -616,8 +621,17 @@ export default function ItemDetailScreen() {
               {shareCoinCost} ShareCoins
             </Text>
           </View>
-          <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
-            Deposit: ${deposit} temporary hold (not charged unless a claim is opened)
+          <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]} testID="trust-deposit-line">
+            Trust Deposit:{" "}
+            {trustDeposit.discountPercentage > 0 ? (
+              <>
+                <Text style={{ color: colors.primary, textDecorationLine: "line-through" }} testID="trust-deposit-struck">${trustDeposit.base}</Text>
+                {" "}
+                <Text style={{ fontFamily: "Inter_600SemiBold" }} testID="trust-deposit-amount">${trustDeposit.amount}</Text>
+              </>
+            ) : (
+              <Text testID="trust-deposit-amount">${trustDeposit.base}</Text>
+            )}
           </Text>
           {item.replacementValue ? (
             <Text style={[styles.typeRowMicro, { color: colors.mutedForeground }]}>
@@ -656,7 +670,7 @@ export default function ItemDetailScreen() {
             ${rentPerWeek}/week
           </Text>
           <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
-            Deposit: ${deposit} temporary hold (not charged unless a claim is opened)
+            Security Deposit: ${deposit}
           </Text>
           {!ownerView && (
             hasPendingRent

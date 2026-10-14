@@ -7927,32 +7927,39 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
-      // When the OWNER accepts a counter, fully accept the request (they have final approval authority).
-      // When the REQUESTER accepts, the owner still needs to formally approve.
-      const ownerIsAccepting = isOwner;
+      // The request is fully accepted when the OWNER accepts a counter (they have final approval authority), and
+      // also when the REQUESTER accepts a counter the OWNER proposed: sending it already meant the owner agrees to
+      // those terms, so there is nothing left for them to approve. (BORROW and RENT; a SWAP counter still needs the
+      // owner's own acceptance.) A requester's counter accepted by the owner takes the first path.
+      const ownerProposedThisCounter = request.item_requests.counterProposedBy === request.items.ownerId;
+      const ownerApprovedInAdvance =
+        !isOwner &&
+        ownerProposedThisCounter &&
+        (request.item_requests.requestType === "BORROW" || request.item_requests.requestType === "RENT");
+      const requestAccepted = isOwner || ownerApprovedInAdvance;
 
       const [updated] = await db
         .update(itemRequests)
         .set({
           negotiationStatus: "terms_accepted",
-          status: ownerIsAccepting ? "ACCEPTED" : request.item_requests.status,
+          status: requestAccepted ? "ACCEPTED" : request.item_requests.status,
           deliveryMethod: finalDeliveryMethod,
           depositMethod: finalDepositMethod,
           startDate: finalStartDate,
           endDate: finalEndDate,
           termsAcceptedAt: new Date(),
-          ...(ownerIsAccepting ? { acceptedAt: new Date() } : {}),
+          ...(requestAccepted ? { acceptedAt: new Date() } : {}),
         })
         .where(eq(itemRequests.id, requestId))
         .returning();
 
       // Generate handoff PIN when owner formally accepts
-      if (ownerIsAccepting) {
+      if (requestAccepted) {
         try { await issueHandoffPin(requestId); } catch (_) {}
       }
 
       // If owner accepted, create delivery arrangement so requester can proceed to deposit
-      if (ownerIsAccepting && finalDeliveryMethod && finalDepositMethod) {
+      if (requestAccepted && finalDeliveryMethod && finalDepositMethod) {
         try {
           await db.insert(deliveryArrangements).values({
             requestId,
@@ -7967,45 +7974,57 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
-      await logRequestEvent(req.user.id, otherUserId, requestId,
-        ownerIsAccepting ? "request_accepted" : "terms_accepted",
-        {
-          deliveryMethod: updated.deliveryMethod,
-          depositMethod: updated.depositMethod,
-          startDate: updated.startDate,
-          endDate: updated.endDate,
-          acceptedByRole: isOwner ? "owner" : "requester",
-        }
-      );
+      const acceptedTerms = {
+        deliveryMethod: updated.deliveryMethod,
+        depositMethod: updated.depositMethod,
+        startDate: updated.startDate,
+        endDate: updated.endDate,
+      };
+      if (ownerApprovedInAdvance) {
+        // "You accepted the new terms", then "<owner> accepted the request" (the owner's agreement came with the counter).
+        const ownerId = request.items.ownerId!;
+        await logRequestEvent(req.user.id, ownerId, requestId, "terms_accepted", { ...acceptedTerms, acceptedByRole: "requester" });
+        await logRequestEvent(ownerId, req.user.id, requestId, "request_accepted", { ...acceptedTerms, acceptedByRole: "owner" });
+      } else {
+        await logRequestEvent(req.user.id, otherUserId, requestId,
+          requestAccepted ? "request_accepted" : "terms_accepted",
+          { ...acceptedTerms, acceptedByRole: isOwner ? "owner" : "requester" }
+        );
+      }
 
       // The lifecycle event above is the canonical chat message. Do not add a
       // second system stamp for the same acceptance/terms action.
 
       // Notification message: for in-person BORROW deposit, skip deposit step messaging
       const inPersonBorrowDeposit =
-        ownerIsAccepting &&
+        requestAccepted &&
         request.item_requests.requestType === "BORROW" &&
         finalDepositMethod === "in_person";
 
+      const requesterAcceptedOwnersTerms = ownerApprovedInAdvance
+        ? inPersonBorrowDeposit
+          ? `"${request.items.name}" — your new terms were accepted. Meet up and exchange the deposit in person.`
+          : `"${request.items.name}" — your new terms were accepted. The borrower will pay the deposit next.`
+        : null;
       await db.insert(notifications).values({
         userId: otherUserId,
-        type: ownerIsAccepting ? "request_accepted" : "terms_accepted",
-        title: ownerIsAccepting ? "Request Accepted" : "Terms Accepted",
-        message: ownerIsAccepting
+        type: requestAccepted && !ownerApprovedInAdvance ? "request_accepted" : "terms_accepted",
+        title: requestAccepted && !ownerApprovedInAdvance ? "Request Accepted" : "Terms Accepted",
+        message: requesterAcceptedOwnersTerms ?? (requestAccepted
           ? inPersonBorrowDeposit
             ? `"${request.items.name}" — meet up and exchange the deposit in person.`
             : `"${request.items.name}" — pay your deposit to confirm.`
-          : "Your terms were accepted. Accept or decline to proceed.",
+          : "Your terms were accepted. Accept or decline to proceed."),
         itemId: request.items.id,
         requestId,
       });
       // Native push for terms negotiation updates
-      const termsTitle = ownerIsAccepting ? "Request Accepted" : "Terms Accepted";
-      const termsBody = ownerIsAccepting
+      const termsTitle = requestAccepted && !ownerApprovedInAdvance ? "Request Accepted" : "Terms Accepted";
+      const termsBody = requesterAcceptedOwnersTerms ?? (requestAccepted
         ? inPersonBorrowDeposit
           ? `"${request.items.name}" — meet up and exchange the deposit in person.`
           : `"${request.items.name}" — pay your deposit to confirm.`
-        : "Your terms were accepted. Accept or decline to proceed.";
+        : "Your terms were accepted. Accept or decline to proceed.");
       sendPushToUser(otherUserId, {
         title: termsTitle,
         body: termsBody,
@@ -8026,12 +8045,17 @@ Respond with ONLY the category name, nothing else.`
       return res.json({
         success: true,
         request: finalRequest,
-        ownerAccepted: ownerIsAccepting,
-        message: ownerIsAccepting
+        ownerAccepted: isOwner,
+        requestAccepted,
+        message: ownerApprovedInAdvance
           ? inPersonBorrowDeposit
-            ? "Request accepted! Meet up and exchange the deposit in person."
-            : "Request accepted! The requester can now pay their deposit."
-          : "You've accepted the new terms. Waiting for owner to accept.",
+            ? "Terms accepted! Meet up and exchange the deposit in person."
+            : "Terms accepted! Pay your deposit to confirm."
+          : requestAccepted
+            ? inPersonBorrowDeposit
+              ? "Request accepted! Meet up and exchange the deposit in person."
+              : "Request accepted! The requester can now pay their deposit."
+            : "You've accepted the new terms. Waiting for owner to accept.",
       });
     } else {
       const [updated] = await db

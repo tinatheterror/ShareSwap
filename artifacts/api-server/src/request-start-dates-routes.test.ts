@@ -5,6 +5,7 @@ import express from "express";
 import { eq, inArray } from "drizzle-orm";
 import {
   db,
+  deliveryArrangements,
   itemRequests,
   items,
   messages,
@@ -190,7 +191,9 @@ before(async () => {
 });
 
 after(async () => {
+  try {
   if (requestIds.length) {
+    await db.delete(deliveryArrangements).where(inArray(deliveryArrangements.requestId, requestIds));
     await db.delete(messages).where(inArray(messages.requestId, requestIds));
     await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
     await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
@@ -200,8 +203,10 @@ after(async () => {
     await db.delete(verifications).where(inArray(verifications.userId, userIds));
     await db.delete(users).where(inArray(users.id, userIds));
   }
-  if (closeServer) await closeServer();
-  await pool.end();
+  } finally {
+    if (closeServer) await closeServer();
+    await pool.end();
+  }
 });
 
 async function createViaApi(requestType: string, startDate: string) {
@@ -435,6 +440,103 @@ test("accepting a counter whose countered start has passed returns 409 for eithe
   assert.equal(byOwner.status, 409);
   assert.equal(((await byOwner.json()) as { code: string }).code, "REQUEST_DATES_PASSED");
   assert.deepEqual(await counterState(counteredByRequester), { status: "PENDING", negotiationStatus: "counter_proposed" });
+});
+
+// ── an owner's counter is already approved by the owner ────────────────────────
+
+async function eventsFor(requestId: number) {
+  const rows = await db.select().from(messages).where(eq(messages.requestId, requestId));
+  return rows
+    .filter((m) => m.messageType === "event")
+    .map((m) => ({ type: (m.metadata as { eventType?: string } | null)?.eventType, senderId: m.senderId, receiverId: m.receiverId }));
+}
+
+async function notificationsFor(requestId: number) {
+  return db.select().from(notifications).where(eq(notifications.requestId, requestId));
+}
+
+async function acceptCounterAs(client: TestClient, requestId: number) {
+  const response = await client.request(`/api/requests/${requestId}/respond-to-counter`, {
+    method: "POST",
+    body: JSON.stringify({ accept: true }),
+  });
+  return { response, body: (await response.json()) as Record<string, any> };
+}
+
+const ownersCounter = { negotiationStatus: "counter_proposed", counterRound: 1, counterStartDate: "2026-10-08" };
+
+test("the requester accepting the owner's counter accepts the request: no second approval from the owner", async () => {
+  clock = OCT_4_EVENING_PDT;
+  await db.update(users).set({ shareCoins: "100.00" }).where(eq(users.id, userIds[1]));
+  for (const requestType of ["BORROW", "RENT"]) {
+    const requestId = await createPendingRequest(requestType, "2026-10-10", { ...ownersCounter, counterProposedBy: userIds[0] });
+    const { response, body } = await acceptCounterAs(requester, requestId);
+    assert.equal(response.status, 200, requestType);
+    assert.equal(body.requestAccepted, true);
+    assert.equal(body.ownerAccepted, false, "the owner did not click anything");
+    assert.equal(body.message, "Terms accepted! Pay your deposit to confirm.");
+
+    const [row] = await db.select().from(itemRequests).where(eq(itemRequests.id, requestId));
+    assert.equal(row.status, "ACCEPTED", requestType);
+    assert.equal(row.negotiationStatus, "terms_accepted");
+    assert.ok(row.acceptedAt, "accepted_at is set");
+    assert.equal(row.startDate?.toISOString().slice(0, 10), "2026-10-08", "the countered dates are what was agreed");
+
+    // Chat: the requester's acceptance of the terms, then the owner's (implied) acceptance of the request.
+    assert.deepEqual(
+      (await eventsFor(requestId)).map((e) => [e.type, e.senderId]),
+      [["terms_accepted", userIds[1]], ["request_accepted", userIds[0]]],
+    );
+
+    // The owner is told; the requester, who just acted, is not.
+    const notes = await notificationsFor(requestId);
+    assert.deepEqual(notes.map((n) => n.userId), [userIds[0]]);
+    assert.equal(notes[0].type, "terms_accepted");
+    assert.match(notes[0].message ?? "", /your new terms were accepted\. The borrower will pay the deposit next\.$/);
+  }
+});
+
+test("an owner's counter for an in-person deposit goes straight to the in-person step when the requester accepts", async () => {
+  clock = OCT_4_EVENING_PDT;
+  const requestId = await createPendingRequest("BORROW", "2026-10-10", { ...ownersCounter, counterProposedBy: userIds[0] });
+  await db.update(itemRequests).set({ depositMethod: "in_person", counterDepositMethod: "in_person" }).where(eq(itemRequests.id, requestId));
+  const { response, body } = await acceptCounterAs(requester, requestId);
+  assert.equal(response.status, 200);
+  assert.equal(body.message, "Terms accepted! Meet up and exchange the deposit in person.");
+  assert.equal(await requestStatus(requestId), "DEPOSIT_CONFIRMED");
+});
+
+test("the owner accepting a requester's counter still accepts the request", async () => {
+  clock = OCT_4_EVENING_PDT;
+  const requestId = await createPendingRequest("BORROW", "2026-10-10", { ...ownersCounter, counterProposedBy: userIds[1] });
+  const { response, body } = await acceptCounterAs(owner, requestId);
+  assert.equal(response.status, 200);
+  assert.equal(body.ownerAccepted, true);
+  assert.equal(await requestStatus(requestId), "ACCEPTED");
+  assert.deepEqual((await eventsFor(requestId)).map((e) => [e.type, e.senderId]), [["request_accepted", userIds[0]]]);
+});
+
+test("a SWAP counter from the owner is unchanged: the requester's acceptance still waits for the owner", async () => {
+  clock = OCT_4_EVENING_PDT;
+  const requestId = await createPendingRequest("SWAP", "2026-10-10", { ...ownersCounter, counterProposedBy: userIds[0] });
+  const { response, body } = await acceptCounterAs(requester, requestId);
+  assert.equal(response.status, 200);
+  assert.equal(body.requestAccepted, false);
+  assert.deepEqual(await counterState(requestId), { status: "PENDING", negotiationStatus: "terms_accepted" });
+});
+
+test("a borrower who cannot afford the countered dates cannot accept, and nothing changes", async () => {
+  clock = OCT_4_EVENING_PDT;
+  await db.update(users).set({ shareCoins: "0.00" }).where(eq(users.id, userIds[1]));
+  try {
+    const requestId = await createPendingRequest("BORROW", "2026-10-10", { ...ownersCounter, counterProposedBy: userIds[0] });
+    const { response, body } = await acceptCounterAs(requester, requestId);
+    assert.equal(response.status, 400);
+    assert.equal(body.code, "INSUFFICIENT_SHARECOINS");
+    assert.deepEqual(await counterState(requestId), { status: "PENDING", negotiationStatus: "counter_proposed" });
+  } finally {
+    await db.update(users).set({ shareCoins: "100.00" }).where(eq(users.id, userIds[1]));
+  }
 });
 
 test("a counter on its own start day is acceptable until local midnight, then not", async () => {

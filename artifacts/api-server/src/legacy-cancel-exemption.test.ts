@@ -6,6 +6,8 @@ import { eq, inArray } from "drizzle-orm";
 import { db, itemRequests, items, messages, notifications, pool, reputationActivities, users } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { registerRoutes } from "./routes/routes.js";
+import { ensureCancellationRecord, ensureJobSwitchesTable, ensureScheduledJobRunsTable } from "./startup-migrations.js";
+import { fakeStripe } from "./test-fixtures/fake-stripe.js";
 import { legacyCancelPenaltyExempt } from "./legacy-cancel-exemption.js";
 
 const NOW = new Date("2026-10-12T12:00:00Z");
@@ -41,6 +43,7 @@ const userIds: number[] = [];
 const itemIds: number[] = [];
 const requestIds: number[] = [];
 const previousFlag = process.env.LEGACY_CANCEL_ACK_UNTIL;
+const stripe = fakeStripe({ refundIdPrefix: "re_legacy_" });
 let baseUrl: string;
 let closeServer: () => Promise<void>;
 let ownerId: number;
@@ -75,29 +78,36 @@ class TestClient {
   }
 }
 
-// A requester with a fresh history (so main's first-offence grace pass is the same for everyone) and an
-// accepted in-person BORROW to cancel.
-async function scenario(headers: Record<string, string>) {
+const START_SCORE = 80;
+
+// A requester with a fresh history and an accepted request to cancel. BORROW has an authorized in-app
+// deposit (so the -5 penalty and its acknowledgment apply); SWAP goes through the original handler.
+async function scenario(headers: Record<string, string>, kind: "BORROW_WITH_HOLD" | "SWAP" = "BORROW_WITH_HOLD") {
   const password = await hashPassword(PASSWORD);
   const [user] = await db
     .insert(users)
-    .values({ username: `${UNIQUE}-r${userIds.length}`, password, emailVerified: true, shareCoins: "50.00" })
+    .values({ username: `${UNIQUE}-r${userIds.length}`, password, emailVerified: true, shareCoins: "50.00", reputationScore: START_SCORE, reputationLevel: "Neighbour" })
     .returning({ id: users.id, username: users.username });
   userIds.push(user.id);
   const [item] = await db
     .insert(items)
     .values({
       ownerId, name: `${UNIQUE}-item-${itemIds.length}`, description: "legacy cancel test", conditionRating: 4, photos: [],
-      isLendable: true, isRentable: false, isSwappable: false, isGift: false, isAvailable: false,
+      isLendable: true, isRentable: false, isSwappable: true, isGift: false, isAvailable: false,
       replacementValue: 100, securityDeposit: "10.00", lendingDuration: 7, shareCoinsReward: "0", shareCoinPrice: "7.00",
     })
     .returning({ id: items.id });
   itemIds.push(item.id);
+  const hold =
+    kind === "BORROW_WITH_HOLD"
+      ? { status: "DEPOSIT_CONFIRMED", depositMethod: "in_app", depositPaymentIntentId: `pi_legacy_${requestIds.length}`, depositStatus: "authorized", depositMode: "authorization", trustDepositAmount: "10.00" }
+      : { status: "ACCEPTED", depositMethod: "in_person" };
   const [request] = await db
     .insert(itemRequests)
     .values({
-      itemId: item.id, requesterId: user.id, requestType: "BORROW", status: "ACCEPTED", depositMethod: "in_person",
+      itemId: item.id, requesterId: user.id, requestType: kind === "SWAP" ? "SWAP" : "BORROW",
       startDate: new Date("2026-11-02T00:00:00Z"), endDate: new Date("2026-11-05T00:00:00Z"),
+      ...hold,
     })
     .returning({ id: itemRequests.id });
   requestIds.push(request.id);
@@ -106,17 +116,16 @@ async function scenario(headers: Record<string, string>) {
   return { userId: user.id, requestId: request.id, client };
 }
 
-async function penaltyRows(userId: number) {
-  const rows = await db.select({ type: reputationActivities.activityType }).from(reputationActivities).where(eq(reputationActivities.userId, userId));
-  return rows.filter((r) => r.type === "cancel_after_acceptance" || r.type === "grace_pass_warning").length;
-}
-
-async function status(requestId: number) {
-  const [row] = await db.select({ status: itemRequests.status }).from(itemRequests).where(eq(itemRequests.id, requestId));
-  return row.status;
-}
+const score = async (userId: number) => (await db.select({ s: users.reputationScore }).from(users).where(eq(users.id, userId)))[0].s;
+const load = async (requestId: number) => (await db.select().from(itemRequests).where(eq(itemRequests.id, requestId)))[0];
+const penaltyActivities = async (userId: number) =>
+  (await db.select({ type: reputationActivities.activityType }).from(reputationActivities).where(eq(reputationActivities.userId, userId)))
+    .filter((r) => r.type === "cancel_after_deposit" || r.type === "cancel_after_acceptance" || r.type === "grace_pass_warning").length;
 
 before(async () => {
+  await ensureScheduledJobRunsTable();
+  await ensureJobSwitchesTable();
+  await ensureCancellationRecord();
   const password = await hashPassword(PASSWORD);
   const [owner] = await db
     .insert(users)
@@ -127,7 +136,7 @@ before(async () => {
   const app = express();
   app.use(cookieParser());
   app.use(express.json());
-  const server = registerRoutes(app, { startBackgroundJobs: false });
+  const server = registerRoutes(app, { startBackgroundJobs: false, stripe: stripe.client });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
   assert(address && typeof address !== "string");
@@ -163,35 +172,89 @@ function setFlag(value: string | undefined) {
 
 const FAR_FUTURE = "2099-01-01T00:00:00Z";
 
-test("legacy request, flag in the future: the cancel goes through and no penalty is recorded", async () => {
+// ── BORROW/RENT (cancel-service.ts) ───────────────────────────────────────────
+
+test("BORROW with a hold, legacy request, flag off: 409 PENALTY_ACK_REQUIRED and nothing changes", async () => {
+  for (const value of [undefined, "", "soon", PAST]) {
+    setFlag(value);
+    const { userId, requestId, client } = await scenario({});
+    const response = await client.post(`/api/requests/${requestId}/cancel`, {});
+    assert.equal(response.status, 409, `flag ${JSON.stringify(value)}`);
+    assert.equal(((await response.json()) as { code: string }).code, "PENALTY_ACK_REQUIRED");
+    assert.equal((await load(requestId)).status, "DEPOSIT_CONFIRMED");
+    assert.equal(await score(userId), START_SCORE);
+  }
+});
+
+test("BORROW with a hold, legacy request, flag on: cancels with no points deducted and the record says no penalty", async () => {
   setFlag(FAR_FUTURE);
   const { userId, requestId, client } = await scenario({});
   const response = await client.post(`/api/requests/${requestId}/cancel`, {});
   assert.equal(response.status, 200);
-  assert.equal(await status(requestId), "CANCELLED");
-  assert.equal(await penaltyRows(userId), 0);
+  const body: any = await response.json();
+  assert.equal(body.outcome.penaltyApplied, false);
+  assert.equal(body.outcome.penaltyPoints, 0);
+  const row = await load(requestId);
+  assert.equal(row.status, "CANCELLED");
+  assert.equal(row.cancelledWithPenalty, false);
+  assert.equal(row.cancelDepositState, "authorized", "the deposit state is still recorded as it was");
+  assert.equal(await score(userId), START_SCORE);
+  assert.equal(await penaltyActivities(userId), 0);
 });
 
-test("legacy request, flag expired: the penalty rules apply as before", async () => {
-  setFlag(PAST);
-  const { userId, requestId, client } = await scenario({});
-  assert.equal((await client.post(`/api/requests/${requestId}/cancel`, {})).status, 200);
-  assert.equal(await status(requestId), "CANCELLED");
-  assert.equal(await penaltyRows(userId), 1, "main's first-offence grace warning is recorded");
-});
-
-test("legacy request, flag unset: the penalty rules apply as before", async () => {
-  setFlag(undefined);
-  const { userId, requestId, client } = await scenario({});
-  assert.equal((await client.post(`/api/requests/${requestId}/cancel`, {})).status, 200);
-  assert.equal(await penaltyRows(userId), 1);
-});
-
-test("a request with x-app-version never gets the exemption, even with the flag in the future", async () => {
+test("BORROW with a hold: a request with x-app-version never gets the exemption, even with the flag on", async () => {
   setFlag(FAR_FUTURE);
   for (const version of ["1.0.0", "web"]) {
     const { userId, requestId, client } = await scenario({ "x-app-version": version, "x-app-build": "12" });
-    assert.equal((await client.post(`/api/requests/${requestId}/cancel`, {})).status, 200);
-    assert.equal(await penaltyRows(userId), 1, `version ${version}`);
+    const challenged = await client.post(`/api/requests/${requestId}/cancel`, {});
+    assert.equal(challenged.status, 409, `version ${version}`);
+    assert.equal((await load(requestId)).status, "DEPOSIT_CONFIRMED");
+    const done = await client.post(`/api/requests/${requestId}/cancel`, { acknowledgePenalty: 5 });
+    assert.equal(done.status, 200);
+    assert.equal((await load(requestId)).cancelledWithPenalty, true);
+    assert.equal(await score(userId), START_SCORE - 5, `version ${version}`);
   }
+});
+
+test("BORROW with a hold: flag unset means off, even for a legacy request that acknowledges", async () => {
+  setFlag(undefined);
+  const { userId, requestId, client } = await scenario({});
+  assert.equal((await client.post(`/api/requests/${requestId}/cancel`, {})).status, 409);
+  assert.equal((await client.post(`/api/requests/${requestId}/cancel`, { acknowledgePenalty: 5 })).status, 200);
+  assert.equal(await score(userId), START_SCORE - 5);
+});
+
+test("BORROW with no deposit stays free for everyone: the flag changes nothing", async () => {
+  setFlag(FAR_FUTURE);
+  const { userId, requestId, client } = await scenario({});
+  await db.update(itemRequests).set({ status: "PENDING", depositPaymentIntentId: null, depositStatus: null, depositMode: null }).where(eq(itemRequests.id, requestId));
+  assert.equal((await client.post(`/api/requests/${requestId}/cancel`, {})).status, 200);
+  assert.equal((await load(requestId)).cancelledWithPenalty, false);
+  assert.equal(await score(userId), START_SCORE);
+});
+
+// ── SWAP and GIFT keep the original handler (and its exemption) ───────────────
+
+test("SWAP, legacy request, flag in the future: cancels with no penalty and no grace-pass warning", async () => {
+  setFlag(FAR_FUTURE);
+  const { userId, requestId, client } = await scenario({}, "SWAP");
+  assert.equal((await client.post(`/api/requests/${requestId}/cancel`, {})).status, 200);
+  assert.equal((await load(requestId)).status, "CANCELLED");
+  assert.equal(await penaltyActivities(userId), 0);
+});
+
+test("SWAP, legacy request, flag off: the original penalty rules apply (first-offence grace warning)", async () => {
+  for (const value of [undefined, PAST]) {
+    setFlag(value);
+    const { userId, requestId, client } = await scenario({}, "SWAP");
+    assert.equal((await client.post(`/api/requests/${requestId}/cancel`, {})).status, 200);
+    assert.equal(await penaltyActivities(userId), 1, `flag ${JSON.stringify(value)}`);
+  }
+});
+
+test("SWAP: a request with x-app-version never gets the exemption", async () => {
+  setFlag(FAR_FUTURE);
+  const { userId, requestId, client } = await scenario({ "x-app-version": "1.0.0" }, "SWAP");
+  assert.equal((await client.post(`/api/requests/${requestId}/cancel`, {})).status, 200);
+  assert.equal(await penaltyActivities(userId), 1);
 });

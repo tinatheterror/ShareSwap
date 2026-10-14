@@ -9381,6 +9381,12 @@ Respond with ONLY the category name, nothing else.`
       const requestId = parseInt(req.params.requestId);
       const { reason } = req.body;
 
+      const clientVersion = clientVersionOf(req.headers);
+      const legacyClient = isLegacyClient(req.headers);
+      console.log(
+        `[cancel] request ${requestId}: client version=${clientVersion.version ?? "none"} build=${clientVersion.build ?? "none"}${legacyClient ? " (legacy: no x-app-version)" : ""}`,
+      );
+
       // BORROW and RENT have their own rules (penalty only after a deposit, full refunds, penalty
       // acknowledgment): see cancel-service.ts. SWAP and GIFT keep the handler below unchanged.
       if (Number.isInteger(requestId)) {
@@ -9396,6 +9402,7 @@ Respond with ONLY the category name, nothing else.`
               actorId: req.user.id,
               reason: req.body?.reason,
               acknowledgePenalty: req.body?.acknowledgePenalty,
+              headers: req.headers,
             },
             {
               stripe: requestExpiryDeps.stripe,
@@ -9426,12 +9433,6 @@ Respond with ONLY the category name, nothing else.`
       if (!isOwner && !isRequester) {
         return res.status(403).json({ error: "Unauthorized" });
       }
-
-      const clientVersion = clientVersionOf(req.headers);
-      const legacyClient = isLegacyClient(req.headers);
-      console.log(
-        `[cancel] request ${requestId}: client version=${clientVersion.version ?? "none"} build=${clientVersion.build ?? "none"}${legacyClient ? " (legacy: no x-app-version)" : ""}`,
-      );
 
       // Can only cancel if pre-handoff
       const cancelableStatuses = ["PENDING", "ACCEPTED", "DEPOSIT_CONFIRMED", "HANDOFF_CONFIRMED"];

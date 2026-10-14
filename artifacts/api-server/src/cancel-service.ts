@@ -1,3 +1,4 @@
+import type { IncomingHttpHeaders } from "node:http";
 import { db, itemRequests, items, messages, notifications, rentalPayouts, users } from "@workspace/db";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import {
@@ -15,6 +16,7 @@ import {
   type CancelDepositState,
 } from "./cancel-copy";
 import { classifyDepositState, cancelPenaltyApplies } from "./deposit-state";
+import { legacyCancelPenaltyExempt, LEGACY_CANCEL_ACK_UNTIL_ENV } from "./legacy-cancel-exemption";
 import { buildRefundLedgerRows, insertRefundLedger, refundUpfrontCharges, type UpfrontRefund } from "./request-refunds";
 import { applyCancellationAfterDepositPenalty, trustLevelForScore } from "./trust-score-service";
 
@@ -62,6 +64,9 @@ export interface CancelInput {
   reason?: unknown;
   /** From the request body; must equal the penalty the server announced. */
   acknowledgePenalty?: unknown;
+  /** The request headers. A request with no x-app-version, while LEGACY_CANCEL_ACK_UNTIL is in the future,
+   *  cancels without the 409 and without the penalty (legacy-cancel-exemption.ts). Absent means no exemption. */
+  headers?: IncomingHttpHeaders;
 }
 
 export interface CancelResult {
@@ -172,7 +177,15 @@ export async function cancelBorrowRentRequest(
 
   const depositState = classifyDepositState(request);
   const penalty = cancelPenaltyApplies(depositState);
-  if (penalty && !isAcknowledged(input.acknowledgePenalty)) {
+  // Old builds cannot show the penalty modal: for a limited period they cancel without the penalty
+  // instead of getting a 409 they cannot answer.
+  const legacyExempt = penalty && legacyCancelPenaltyExempt(input.headers ?? {});
+  if (legacyExempt) {
+    console.log(
+      `[cancel] legacy cancel of request ${requestId} by user ${actorId}: penalty skipped (${LEGACY_CANCEL_ACK_UNTIL_ENV} is in the future)`,
+    );
+  }
+  if (penalty && !legacyExempt && !isAcknowledged(input.acknowledgePenalty)) {
     await releaseDepositTerminalClaim(claim);
     return {
       status: 409,
@@ -241,7 +254,7 @@ export async function cancelBorrowRentRequest(
           cancelledBy: actorId,
           cancelledFromStatus: request.status,
           cancelReason: reason,
-          cancelledWithPenalty: penalty,
+          cancelledWithPenalty: penalty && !legacyExempt,
           cancelDepositState: depositState,
         })
         .where(
@@ -311,7 +324,7 @@ export async function cancelBorrowRentRequest(
 
       let penaltyPoints = 0;
       let newScore: number | null = null;
-      if (penalty) {
+      if (penalty && !legacyExempt) {
         const result = await applyCancellationAfterDepositPenalty(actorId, requestId, item.id, tx);
         penaltyPoints = result.pointsDeducted;
         newScore = result.newScore;

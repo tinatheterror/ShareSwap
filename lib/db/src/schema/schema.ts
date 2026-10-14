@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, timestamp, integer, decimal, numeric, varchar, index, uniqueIndex, date, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, bigserial, boolean, timestamp, integer, decimal, numeric, varchar, index, uniqueIndex, date, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations, sql } from "drizzle-orm";
 
@@ -126,7 +126,7 @@ export const userReviews = pgTable(
 export const duplicateReviewRepairAudits = pgTable(
   "duplicate_review_repair_audits",
   {
-    id: serial("id").primaryKey(),
+    id: bigserial("id", { mode: "number" }).primaryKey(),
     reviewerId: integer("reviewer_id").notNull(),
     transactionId: integer("transaction_id").notNull(),
     canonicalReviewId: integer("canonical_review_id").notNull(),
@@ -151,7 +151,7 @@ export const duplicateReviewRepairAudits = pgTable(
 
 export const verifications = pgTable("verifications", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: serial("user_id").notNull().references(() => users.id),
   fullName: text("full_name"),
   idNumber: text("id_number"),
   personaInquiryId: text("persona_inquiry_id"),
@@ -1006,6 +1006,9 @@ export const securityClaims = pgTable("security_claims", {
 }, (table) => ({
   requestIdx: index("security_claims_request_idx").on(table.requestId),
   statusIdx: index("security_claims_status_idx").on(table.status),
+  // At most one unresolved claim per request. Declared to match the index already in the database.
+  oneActivePerRequest: uniqueIndex("security_claims_one_active_per_request").on(table.requestId)
+    .where(sql`status = ANY (ARRAY['OPEN'::text, 'CUSTOMER_RESPONSE_PENDING'::text, 'UNDER_REVIEW'::text, 'APPROVED'::text, 'PROCESSING'::text])`),
 }));
 
 export const depositSettlementOperations = pgTable("deposit_settlement_operations", {

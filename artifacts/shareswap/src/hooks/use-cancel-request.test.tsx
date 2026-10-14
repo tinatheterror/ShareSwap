@@ -47,7 +47,7 @@ describe("useCancelRequest on web", () => {
       title: "Cancel this booking?",
       message: "Cancelling will result in a −5 Trust Score penalty.",
       hint: "If you still want to proceed, you can cancel below.",
-      keepLabel: "Continue with transaction",
+      keepLabel: "Keep booking",
       confirmLabel: "Proceed to cancel",
       primary: "keep",
     });
@@ -62,7 +62,7 @@ describe("useCancelRequest on web", () => {
     expect(onDone.mock.calls[0][0].message).toMatch(/A trust score penalty of -5 was applied\.$/);
   });
 
-  it("Continue with transaction closes the modal and cancels nothing", async () => {
+  it("Keep booking closes the modal and cancels nothing", async () => {
     const send = vi.fn().mockRejectedValue(penaltyError());
     const { result, onDone, onError } = setup(send);
     await act(async () => { await result.current.cancel(context); });

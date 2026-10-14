@@ -2,8 +2,8 @@
 //
 //   - BORROW and RENT: the app just sends the cancel. No confirmation first. The server knows whether a
 //     deposit was placed; if it was, it answers 409 PENALTY_ACK_REQUIRED and the app shows the penalty
-//     modal. "Proceed to cancel" sends the cancel again with the acknowledgment; "Continue with
-//     transaction" (the default action) closes the modal and nothing happens.
+//     modal. "Proceed to cancel" sends the cancel again with the acknowledgment; "Keep booking"
+//     (the default action) closes the modal and nothing happens.
 //   - SWAP and GIFT keep their old confirmation dialogs (and their old server rule), now drawn with the
 //     same modal instead of window.confirm / Alert.alert, which cannot label buttons (and do nothing at
 //     all for multi-button alerts on react-native-web).
@@ -13,7 +13,7 @@ export const CANCEL_PENALTY_POINTS = 5;
 export const PENALTY_MODAL_TEXT = `Cancelling will result in a −${CANCEL_PENALTY_POINTS} Trust Score penalty.`;
 export const PENALTY_MODAL_HINT = "If you still want to proceed, you can cancel below.";
 export const PROCEED_TO_CANCEL = "Proceed to cancel";
-export const CONTINUE_WITH_TRANSACTION = "Continue with transaction";
+export const KEEP_BOOKING = "Keep booking";
 
 export type CancelRole = "requester" | "owner";
 export type CancelPlatform = "web" | "mobile";
@@ -72,7 +72,7 @@ export function penaltyDialog(options: { role: CancelRole; otherPartyName?: stri
     message: options.serverError?.trim() || PENALTY_MODAL_TEXT,
     hint: PENALTY_MODAL_HINT,
     confirmLabel: PROCEED_TO_CANCEL,
-    keepLabel: CONTINUE_WITH_TRANSACTION,
+    keepLabel: KEEP_BOOKING,
     primary: "keep",
   };
 }
@@ -211,7 +211,7 @@ export interface CancelRequestApi {
   cancel: (context: CancelContext) => Promise<void>;
   /** "Proceed to cancel": send it again with the acknowledgment. */
   proceed: () => Promise<void>;
-  /** "Continue with transaction": close the modal; nothing was cancelled. */
+  /** "Keep booking": close the modal; nothing was cancelled. */
   dismiss: () => void;
   prompt: CancelPrompt | null;
   pending: boolean;

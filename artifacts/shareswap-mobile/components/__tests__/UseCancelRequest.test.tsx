@@ -54,7 +54,7 @@ describe("useCancelRequest on mobile", () => {
     expect(api().prompt?.spec).toMatchObject({
       title: "Cancel this booking?",
       message: "Cancelling will result in a −5 Trust Score penalty.",
-      keepLabel: "Continue with transaction",
+      keepLabel: "Keep booking",
       confirmLabel: "Proceed to cancel",
       primary: "keep",
     });
@@ -69,7 +69,7 @@ describe("useCancelRequest on mobile", () => {
     unmount();
   });
 
-  it("Continue with transaction closes the modal and cancels nothing", async () => {
+  it("Keep booking closes the modal and cancels nothing", async () => {
     const send = jest.fn().mockRejectedValue(penaltyError());
     const { api, onDone, onError, unmount } = mount(send);
     await act(async () => { await api().cancel(context); });

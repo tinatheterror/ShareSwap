@@ -5,7 +5,7 @@ import { useColors } from "@/hooks/useColors";
 
 /**
  * The one cancel dialog on mobile (and mobile web). It draws whatever CancelDialogSpec it is given:
- * the BORROW/RENT penalty modal ("Proceed to cancel" / "Continue with transaction", the second being
+ * the BORROW/RENT penalty modal ("Proceed to cancel" / "Keep booking", the second being
  * the default action) and the old confirmations SWAP and GIFT still use.
  *
  * It is a real Modal with its own buttons: Alert.alert with buttons does nothing on react-native-web,

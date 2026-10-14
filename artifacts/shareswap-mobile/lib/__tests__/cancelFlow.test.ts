@@ -1,6 +1,6 @@
 import {
   CANCEL_PENALTY_POINTS,
-  CONTINUE_WITH_TRANSACTION,
+  KEEP_BOOKING,
   PENALTY_MODAL_TEXT,
   PROCEED_TO_CANCEL,
   cancelAction,
@@ -101,9 +101,9 @@ describe("cancel flow: dialogs", () => {
     expect(spec.title).toBe("Cancel this booking?");
     expect(spec.message).toBe("Cancelling will result in a −5 Trust Score penalty.");
     expect(spec.hint).toBe("If you still want to proceed, you can cancel below.");
-    expect(spec.keepLabel).toBe(CONTINUE_WITH_TRANSACTION);
+    expect(spec.keepLabel).toBe(KEEP_BOOKING);
     expect(spec.confirmLabel).toBe(PROCEED_TO_CANCEL);
-    expect([spec.keepLabel, spec.confirmLabel]).toEqual(["Continue with transaction", "Proceed to cancel"]);
+    expect([spec.keepLabel, spec.confirmLabel]).toEqual(["Keep booking", "Proceed to cancel"]);
     expect(spec.primary).toBe("keep");
   });
 

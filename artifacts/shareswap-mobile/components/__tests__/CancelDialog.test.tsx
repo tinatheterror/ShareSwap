@@ -31,13 +31,13 @@ describe("mobile CancelDialog", () => {
       "Cancel this booking?",
       "Cancelling will result in a −5 Trust Score penalty.",
       "If you still want to proceed, you can cancel below.",
-      "Continue with transaction",
+      "Keep booking",
       "Proceed to cancel",
     ]);
 
     const keep = byTestId(tree, "cancel-dialog-keep");
     const confirm = byTestId(tree, "cancel-dialog-confirm");
-    // Continue with transaction is the filled button; Proceed to cancel is outlined, with no fill.
+    // Keep booking is the filled button; Proceed to cancel is outlined, with no fill.
     const background = (node: renderer.ReactTestInstance) => [node.props.style].flat(3).find((style) => style && typeof style === "object" && "backgroundColor" in style)?.backgroundColor;
     expect(background(keep)).toBe("#0DCEA1");
     expect(background(confirm)).toBe("transparent");

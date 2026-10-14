@@ -16,7 +16,7 @@ describe("web CancelDialog", () => {
     expect(screen.getByTestId("cancel-dialog-hint")).toHaveTextContent("you can cancel below");
 
     const buttons = screen.getAllByRole("button").filter((b) => b.getAttribute("data-testid")?.startsWith("cancel-dialog-"));
-    expect(buttons.map((b) => b.textContent)).toEqual(["Continue with transaction", "Proceed to cancel"]);
+    expect(buttons.map((b) => b.textContent)).toEqual(["Keep booking", "Proceed to cancel"]);
     const keep = screen.getByTestId("cancel-dialog-keep");
     const confirm = screen.getByTestId("cancel-dialog-confirm");
     expect(keep.className).toContain("bg-primary");

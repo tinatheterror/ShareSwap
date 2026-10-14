@@ -85,7 +85,7 @@ function requirePositiveInteger(value: unknown, label: string): number {
 async function ensureAuditTable(client: Queryable = pool) {
   await client.query(`
     CREATE TABLE IF NOT EXISTS duplicate_review_repair_audits (
-      id serial PRIMARY KEY,
+      id bigserial PRIMARY KEY,
       reviewer_id integer NOT NULL,
       transaction_id integer NOT NULL,
       canonical_review_id integer NOT NULL,

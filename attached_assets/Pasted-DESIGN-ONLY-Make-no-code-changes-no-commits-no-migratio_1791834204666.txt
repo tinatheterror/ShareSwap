@@ -1,0 +1,53 @@
+DESIGN ONLY. Make no code changes, no commits, no migrations, no deploys. Show me the design and wait for my approval before building anything.
+
+Goal: a new cancellation and expiry system for BORROW and RENT requests, with the rules below. For SWAP and GIFT, report what the cancel route does today and propose whether they stay on the old rule until the swap work. Don't change them.
+
+RULES
+
+1. Penalty
+- A flat -5 trust score penalty applies only when someone cancels after a deposit was paid or authorized: an in-app deposit that is authorized or held, or a refundable charge that was paid.
+- Applies to borrowers and owners (an owner cancelling after the borrower's hold is authorized harms the borrower the same way).
+- Define "after a deposit" by deposit state, not request status.
+- No penalty for: PENDING, ACCEPTED with no deposit, an unpaid deposit, in-person deposits, no deposit, the requester withdrawing a PENDING request, or expiry.
+- No grace pass and no pattern or "cancels often" rule. Keep the grace-pass code dormant, and leave old -20 cancel_after_acceptance rows untouched.
+- The score floors at 0. Tell me whether a -5 can change reputation_level or the deposit discount (levels at 50, 150, 300 and 500) and what happens when a cancel crosses a threshold.
+
+2. API contract and dialogs
+- No confirmation dialog when cancelling is free (PENDING, ACCEPTED with no deposit, in-person, no deposit). The app sends the cancel directly, and shows an outcome toast on success describing what was released or refunded.
+- When the -5 applies, the server returns 409 PENALTY_ACK_REQUIRED with the amount unless the request carries an acknowledgment. The app then shows a modal with the text "A trust score penalty of -5 will be applied for this cancellation" and two buttons, "Proceed to cancel" and "Continue with transaction". Proceed re-sends the cancel with the acknowledgment. Continue closes the modal.
+- The server decides, so a deposit authorized between the tap and the request still triggers the 409.
+- A second cancel on an already-cancelled request does nothing: no extra penalty, refund or notification.
+- Replace the confirmCancellation helper with one shared modal for web and mobile (window.confirm can't label buttons). Owner-side cancel: confirm which request types and statuses show an owner a Cancel button today on web and mobile, and what the button and dialog say for each type (the "Cancel this gift?" text should only ever appear for an accepted GIFT, never for BORROW or RENT). For BORROW and RENT, tell me whether the API lets an owner cancel after acceptance and what it does. Propose both options: (a) owners can cancel a BORROW or RENT after acceptance, with "Cancel this request?" wording, the same -5 penalty rule and modal, and full refunds; (b) owners cannot cancel after acceptance, and the server rejects it. Recommend one. GIFT and SWAP stay unchanged.
+- Give me the exact request and response shapes, and the dialog and toast wording for every status.
+
+3. Refunds
+- On BORROW and RENT cancel and expiry before the handoff, refund every charge that actually exists: release the deposit hold or refund the deposit charge, refund the platform fee charge (platformFeeChargeId), and refund the rental payment for RENT. Derive this from the charges that exist, not from the request type, so a waived platform fee (first 3 transactions) doesn't cause a refund attempt.
+- In-person deposits (borrow only) have no platform fee and no Stripe charge. A cancel or expiry makes no Stripe calls and applies no penalty.
+- Rentals are always in-app. Confirm the server rejects depositMethod in_person on RENT at creation, and add a test.
+- Never capture on cancel or expiry. Absorb Stripe's processing fee on refunds.
+- Reuse the expiry refund function instead of copying it, with deterministic idempotency keys. Do the Stripe calls first. If any call fails, nothing changes: the request is not cancelled, no penalty applies and no notification is sent. The status change, penalty row and notifications land in one transaction.
+- Tell me: what HANDOFF_CONFIRMED means (has the item changed hands, and should a cancel from there be a refund at all); how the first-3-transactions fee waiver is counted and whether a cancelled or expired request uses one up; and what the owner-cancel and owner-decline paths refund.
+
+4. Score history and notifications
+- A new activity type such as cancel_after_deposit with a clear description and the request id, shown on the score history page on web and mobile.
+- A trust score update notification to the person penalized, reusing the existing trust-score notification type.
+- Check that history renders the old -20 rows and the new -5 rows.
+
+5. Record keeping
+- Additive migration (IF NOT EXISTS, nullable): cancelled_at, cancelled_by, cancelled_from_status and cancel_reason on item_requests. Show me the exact SQL. Say what in the cancel route sets each one.
+
+6. Facts from the earlier audit, for your reference
+- The penalty is -20 cancel_after_acceptance with a first-cancel grace pass, applied regardless of status and to owners too. The requester's withdraw route has none.
+- The apps ignore the API's penalty message, and web shows only a generic "Request cancelled" toast.
+- The expiry flow already refunds both fees. The cancel route refunds neither.
+
+7. Incentives and tracking
+- Ghosting vs cancelling: the "Continue with transaction" button in the -5 modal is the default or visually primary action, and the modal text points to messaging the other person to agree a change. Add no penalty for expiry. On expiry, record in expired_reason whether a deposit was already paid, so a future report-no-show feature has data.
+- Stripe processing fees: record the processing fee absorbed on each refund (read it from Stripe's balance transaction, never hard-code it) in a column or a log row, and give me a query that totals it by month. Propose a threshold for when I should revisit absorbing it.
+- Cancel record: in the cancel transaction, set cancelled_at, cancelled_by, cancelled_from_status and cancel_reason, plus cancelled_with_penalty (boolean) and cancel_deposit_state (text), all additive nullable columns in the same migration. Show me the final SQL for all of them, and the tests that each is set correctly for a free cancel, a penalized cancel and an expiry.
+
+TESTS
+
+List the tests you'd write, including at least: a cancel never captures; a failed Stripe call leaves everything unchanged; a double cancel does nothing; the 409 for a deposit authorized mid-tap; in-person borrow cancel makes no Stripe calls and no penalty; a waived-fee borrow cancel refunds only the deposit; RENT cancel refunds the deposit, platform fee and rental payment; a RENT with an in-person deposit is rejected; a -5 across a level threshold; owner cancel after the borrower's hold; the history and notification rows; the dialog logic on web and mobile.
+
+Plan to run everything on the local Postgres with TEST_DATABASE_URL and DATABASE_URL pointing at localhost, in a new branch from main, once I approve the design.

@@ -912,16 +912,6 @@ export default function ChatScreen() {
               <>
                 <View style={[card.counterBanner, { backgroundColor: "#fffbeb", borderColor: "#fcd34d" }]}>
                   <Text style={[card.counterBannerTitle, { color: "#92400e" }]}>Counter-proposal received</Text>
-                  {request.counterStartDate && (
-                    <Text style={[card.counterBannerText, { color: "#78350f" }]}>
-                      📅 {fmtCalendarDate(request.counterStartDate)} – {fmtCalendarDate(request.counterEndDate)}
-                    </Text>
-                  )}
-                  {request.counterDepositMethod && (
-                    <Text style={[card.counterBannerText, { color: "#78350f" }]}>
-                      🛡 Deposit: {request.counterDepositMethod === "in_app" ? "In-app" : "In-person"}
-                    </Text>
-                  )}
                 </View>
                 <View style={card.btnRow}>
                   <Pressable
@@ -960,16 +950,6 @@ export default function ChatScreen() {
                 <Text style={[card.counterBannerTitle, { color: "#92400e" }]}>
                   ⏳ Waiting for the other party to respond to your proposed terms
                 </Text>
-                {request.counterStartDate && (
-                  <Text style={[card.counterBannerText, { color: "#78350f" }]}>
-                    📅 {fmtCalendarDate(request.counterStartDate)} – {fmtCalendarDate(request.counterEndDate)}
-                  </Text>
-                )}
-                {request.counterDepositMethod && (
-                  <Text style={[card.counterBannerText, { color: "#78350f" }]}>
-                    🛡 Deposit: {request.counterDepositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
-                  </Text>
-                )}
               </View>
             )}
 

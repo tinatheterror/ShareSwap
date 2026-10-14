@@ -516,13 +516,30 @@ test("the owner accepting a requester's counter still accepts the request", asyn
   assert.deepEqual((await eventsFor(requestId)).map((e) => [e.type, e.senderId]), [["request_accepted", userIds[0]]]);
 });
 
-test("a SWAP counter from the owner is unchanged: the requester's acceptance still waits for the owner", async () => {
+test("a SWAP counter from the owner follows the same rule: accepting it accepts the request", async () => {
   clock = OCT_4_EVENING_PDT;
   const requestId = await createPendingRequest("SWAP", "2026-10-10", { ...ownersCounter, counterProposedBy: userIds[0] });
   const { response, body } = await acceptCounterAs(requester, requestId);
   assert.equal(response.status, 200);
-  assert.equal(body.requestAccepted, false);
-  assert.deepEqual(await counterState(requestId), { status: "PENDING", negotiationStatus: "terms_accepted" });
+  assert.equal(body.requestAccepted, true);
+  assert.equal(body.ownerAccepted, false);
+  assert.deepEqual(await counterState(requestId), { status: "ACCEPTED", negotiationStatus: "terms_accepted" });
+  assert.deepEqual(
+    (await eventsFor(requestId)).map((e) => [e.type, e.senderId]),
+    [["terms_accepted", userIds[1]], ["request_accepted", userIds[0]]],
+  );
+  const notes = await notificationsFor(requestId);
+  assert.deepEqual(notes.map((n) => n.userId), [userIds[0]]);
+  assert.match(notes[0].message ?? "", /your new terms were accepted\.$/, "no deposit sentence for a swap");
+});
+
+test("a SWAP counter from the requester accepted by the owner still accepts the request", async () => {
+  clock = OCT_4_EVENING_PDT;
+  const requestId = await createPendingRequest("SWAP", "2026-10-10", { ...ownersCounter, counterProposedBy: userIds[1] });
+  const { response, body } = await acceptCounterAs(owner, requestId);
+  assert.equal(response.status, 200);
+  assert.equal(body.ownerAccepted, true);
+  assert.equal(await requestStatus(requestId), "ACCEPTED");
 });
 
 test("a borrower who cannot afford the countered dates cannot accept, and nothing changes", async () => {

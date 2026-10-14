@@ -7929,13 +7929,10 @@ Respond with ONLY the category name, nothing else.`
 
       // The request is fully accepted when the OWNER accepts a counter (they have final approval authority), and
       // also when the REQUESTER accepts a counter the OWNER proposed: sending it already meant the owner agrees to
-      // those terms, so there is nothing left for them to approve. (BORROW and RENT; a SWAP counter still needs the
-      // owner's own acceptance.) A requester's counter accepted by the owner takes the first path.
+      // those terms, so there is nothing left for them to approve. This holds for every request type that can be
+      // countered (BORROW, RENT, SWAP). A requester's counter accepted by the owner takes the first path.
       const ownerProposedThisCounter = request.item_requests.counterProposedBy === request.items.ownerId;
-      const ownerApprovedInAdvance =
-        !isOwner &&
-        ownerProposedThisCounter &&
-        (request.item_requests.requestType === "BORROW" || request.item_requests.requestType === "RENT");
+      const ownerApprovedInAdvance = !isOwner && ownerProposedThisCounter;
       const requestAccepted = isOwner || ownerApprovedInAdvance;
 
       const [updated] = await db
@@ -8004,7 +8001,9 @@ Respond with ONLY the category name, nothing else.`
       const requesterAcceptedOwnersTerms = ownerApprovedInAdvance
         ? inPersonBorrowDeposit
           ? `"${request.items.name}" — your new terms were accepted. Meet up and exchange the deposit in person.`
-          : `"${request.items.name}" — your new terms were accepted. The borrower will pay the deposit next.`
+          : isSwap
+            ? `"${request.items.name}" — your new terms were accepted.`
+            : `"${request.items.name}" — your new terms were accepted. The borrower will pay the deposit next.`
         : null;
       await db.insert(notifications).values({
         userId: otherUserId,

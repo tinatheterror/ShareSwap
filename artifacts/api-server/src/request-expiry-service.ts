@@ -17,6 +17,8 @@ import {
 import * as depositCopy from "./deposit-copy";
 import { READ_EXPIRY_OFF, type ExpiryReadPolicy, type ReadCheckSummary } from "./job-switches";
 import { computeHandoffCutoff } from "./request-dates";
+import { buildRefundLedgerRows, insertRefundLedger, refundUpfrontCharges, type LedgerRow } from "./request-refunds";
+import { classifyDepositState, expiredReasonFor } from "./deposit-state";
 import * as copy from "./request-expiry-copy";
 
 // A BORROW/RENT request that nobody handed off before its late-handoff cutoff
@@ -143,62 +145,6 @@ export type ExpireOutcome =
   | { status: "busy"; requestId: number; reason: string }
   | { status: "failed"; requestId: number; error: string };
 
-/** Stripe reports an already-refunded charge as an error; for us that is the goal state. */
-function isAlreadyRefunded(error: unknown): boolean {
-  const code = (error as { code?: string } | null)?.code;
-  return code === "charge_already_refunded";
-}
-
-async function refundUpfrontFees(
-  request: ExpiryRequest,
-  stripe: DepositRenewalStripeClient,
-): Promise<boolean> {
-  if (!stripe.refunds) return false;
-  let refunded = false;
-
-  // Rental fee (+ processing fee) is its own PaymentIntent, recorded on the held payout.
-  const payouts = await db
-    .select({ id: rentalPayouts.id, paymentIntentId: rentalPayouts.stripePaymentIntentId })
-    .from(rentalPayouts)
-    .where(and(eq(rentalPayouts.requestId, request.id), eq(rentalPayouts.status, "held")));
-  const feeIntents = new Set<string>();
-  for (const payout of payouts) {
-    const intentId = payout.paymentIntentId;
-    // A payout that points at the deposit intent is the legacy single-charge shape;
-    // releasing the deposit (cancel, or refund of a refundable charge) already covered it.
-    if (!intentId || intentId === request.depositPaymentIntentId) continue;
-    if (intentId.startsWith("simulated-")) continue;
-    feeIntents.add(intentId);
-  }
-  for (const intentId of feeIntents) {
-    try {
-      await stripe.refunds.create(
-        { payment_intent: intentId },
-        { idempotencyKey: `expire-refund-${request.id}-${intentId}` },
-      );
-      refunded = true;
-    } catch (error) {
-      if (!isAlreadyRefunded(error)) throw error;
-      refunded = true;
-    }
-  }
-
-  // A platform fee captured up front is a charge, not an intent.
-  if (request.platformFeeChargeId && !request.platformFeeChargeId.startsWith("simulated-")) {
-    try {
-      await stripe.refunds.create(
-        { charge: request.platformFeeChargeId },
-        { idempotencyKey: `expire-refund-${request.id}-${request.platformFeeChargeId}` },
-      );
-      refunded = true;
-    } catch (error) {
-      if (!isAlreadyRefunded(error)) throw error;
-      refunded = true;
-    }
-  }
-  return refunded;
-}
-
 export interface ExpireOptions {
   /**
    * Historical cleanup: money is still released and the item still frees up, but nobody is
@@ -251,11 +197,16 @@ export async function expireRequestIfDue(
   }
 
   let feeRefunded = false;
+  let ledger: LedgerRow[] = [];
   try {
-    await resolveClaimedDepositIntents(claim, deps.stripe, "cancel", {
+    // Fees first, the deposit last: if the last step fails, the request still has its deposit
+    // protection and a retry finishes the job (every call is keyed, "already done" is success).
+    const upfront = await refundUpfrontCharges(request, deps.stripe, { keyPrefix: "expire" });
+    feeRefunded = upfront.length > 0;
+    const releases = await resolveClaimedDepositIntents(claim, deps.stripe, "cancel", {
       cancelIdempotencyKey: (paymentIntentId) => `expire-${requestId}-${paymentIntentId}`,
     });
-    feeRefunded = await refundUpfrontFees(request, deps.stripe);
+    ledger = await buildRefundLedgerRows(deps.stripe, request, upfront, releases);
   } catch (error) {
     // Drop the claim so the next read or sweep retries; every Stripe call above
     // uses a deterministic idempotency key, so the retry cannot double-act.
@@ -279,6 +230,8 @@ export async function expireRequestIfDue(
       .set({
         status: copy.REQUEST_EXPIRED_STATUS,
         expiredAt: silent ? cutoff : now,
+        // Whether a deposit was already paid, for a future no-show report.
+        expiredReason: expiredReasonFor(classifyDepositState(request)),
         // The handoff code dies with the request.
         handoffPin: null,
         depositStatus: hadDeposit ? "released" : null,
@@ -301,6 +254,8 @@ export async function expireRequestIfDue(
       )
       .returning({ id: itemRequests.id });
     if (!claimed) return false;
+
+    await insertRefundLedger(tx, requestId, "expiry", ledger);
 
     // The item frees up for other neighbours.
     await tx.update(items).set({ isAvailable: true, updatedAt: now }).where(eq(items.id, row.items.id));

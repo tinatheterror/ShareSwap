@@ -33,10 +33,14 @@ import { PostReturnReviewSheet } from "@/components/PostReturnReviewSheet";
 import CounterProposalSheet, { type CounterPayload } from "@/components/CounterProposalSheet";
 import ExtensionSheet from "@/components/ExtensionSheet";
 import { ClaimSheet } from "@/components/ClaimSheet";
+import { CancelDialog } from "@/components/CancelDialog";
+import { CancelOutcomeBanner } from "@/components/CancelOutcomeBanner";
+import { useCancelRequest } from "@/hooks/useCancelRequest";
+import { cancelAction, cancelToast, legacyCancelDialog, type CancelRole } from "@workspace/api-client-react/cancel-flow";
 import {
   resolveDepositPhase, depositSummaryLine, depositConfirmedStamp, claimOpenedBorrowerCopy, claimResolvedBorrowerCopy,
   claimOpenedOwnerLine, claimResolvedOwnerLine, depositReleasedCopy, CLAIM_REVIEW_TOP, claimReviewChargedLabel,
-  CANCEL_BOOKING_MESSAGE, formatMoney, depositPhaseDescription,
+  formatMoney, depositPhaseDescription,
 } from "@/lib/depositCopy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -446,34 +450,37 @@ export default function ChatScreen() {
     onError: (e: Error) => Alert.alert("Error", e.message),
   });
 
-  const cancelMutation = useMutation({
-    mutationFn: () => {
-      const cancelRequestId = request?.id ?? reqId;
-      if (!cancelRequestId) {
-        throw new Error("Unable to identify this request. Please reopen the chat and try again.");
-      }
-      return apiPost(`/api/requests/${cancelRequestId}/cancel`, {});
-    },
-    onSuccess: () => {
+  // Cancelling. BORROW/RENT send the cancel straight away; if a deposit is in place the server answers
+  // 409 and the penalty dialog opens. SWAP/GIFT keep their confirmation, drawn with the same dialog.
+  const [legacyCancelRole, setLegacyCancelRole] = useState<CancelRole | null>(null);
+  const [cancelNotice, setCancelNotice] = useState<{ title: string; message?: string; tone: "success" | "error" } | null>(null);
+  const cancelFlow = useCancelRequest({
+    send: (cancelRequestId, body) => apiPost(`/api/requests/${cancelRequestId}/cancel`, body),
+    onDone: (done) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       invalidateAll();
       qc.invalidateQueries({ queryKey: ["/api/items"] });
+      setLegacyCancelRole(null);
+      const { title, description } = cancelToast(done);
+      setCancelNotice({ title, message: description, tone: "success" });
     },
-    onError: (e: Error) => Alert.alert("Error", e.message),
+    onError: (message) => {
+      setLegacyCancelRole(null);
+      setCancelNotice({ title: "Could not cancel", message, tone: "error" });
+    },
   });
 
-  function confirmAcceptedRequestCancellation() {
-    const message = "The owner has already accepted your request.";
-    if (isWeb && typeof window !== "undefined") {
-      if (window.confirm(`Cancel request?\n\n${message}`)) {
-        cancelMutation.mutate();
-      }
+  function startCancel(role: CancelRole) {
+    const cancelRequestId = request?.id ?? reqId;
+    if (!cancelRequestId) {
+      setCancelNotice({ title: "Could not cancel", message: "Unable to identify this request. Please reopen the chat and try again.", tone: "error" });
       return;
     }
-    Alert.alert("Cancel request?", message, [
-      { text: "Keep booking", style: "cancel" },
-      { text: "Cancel", style: "destructive", onPress: () => cancelMutation.mutate() },
-    ]);
+    if (request && cancelAction({ requestType: request.requestType ?? "", status: request.status, role }) === "confirm") {
+      setLegacyCancelRole(role);
+      return;
+    }
+    void cancelFlow.cancel({ requestId: cancelRequestId, role, otherPartyName: partner ? partner.displayName || partner.username : null });
   }
 
   const acceptCounterMutation = useMutation({
@@ -696,7 +703,7 @@ export default function ChatScreen() {
 
     const anyMutating =
       acceptMutation.isPending || declineMutation.isPending ||
-      cancelMutation.isPending || acceptCounterMutation.isPending ||
+      cancelFlow.pending || acceptCounterMutation.isPending ||
       declineCounterMutation.isPending;
 
     return (
@@ -1024,11 +1031,11 @@ export default function ChatScreen() {
                   !iSentCounter &&
                   request.negotiationStatus !== "terms_accepted" && (
                   <Pressable
-                    onPress={() => cancelMutation.mutate()}
+                    onPress={() => startCancel("requester")}
                     disabled={anyMutating}
                     style={{ paddingVertical: 4 }}
                   >
-                    {cancelMutation.isPending
+                    {cancelFlow.pending
                       ? <ActivityIndicator size="small" color={colors.mutedForeground} />
                       : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
                     }
@@ -1071,19 +1078,15 @@ export default function ChatScreen() {
               </Pressable>
             )}
 
-            {/* DEPOSIT_CONFIRMED: borrower can still cancel (temporary hold is released) */}
+            {/* DEPOSIT_CONFIRMED: borrower can still cancel. BORROW/RENT go straight to the server, which
+                asks for the -5 to be acknowledged when the deposit is in place; SWAP/GIFT confirm first. */}
             {status === "DEPOSIT_CONFIRMED" && isBorrower && (
               <Pressable
                 style={{ alignItems: "center", paddingVertical: 6 }}
-                onPress={() =>
-                  Alert.alert("Cancel this booking?", depositIsRefundable ? "Your refundable deposit charge will be refunded automatically." : CANCEL_BOOKING_MESSAGE, [
-                    { text: "Keep booking", style: "cancel" },
-                    { text: "Cancel", style: "destructive", onPress: () => cancelMutation.mutate() },
-                  ])
-                }
+                onPress={() => startCancel("requester")}
                 disabled={anyMutating}
               >
-                {cancelMutation.isPending
+                {cancelFlow.pending
                   ? <ActivityIndicator size="small" color={colors.mutedForeground} />
                   : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
                 }
@@ -1094,15 +1097,27 @@ export default function ChatScreen() {
             {isOwner && request.requestType === "GIFT" && status === "ACCEPTED" && (
               <Pressable
                 style={{ alignItems: "center", paddingVertical: 6 }}
-                onPress={() =>
-                  Alert.alert("Cancel this gift?", "The requester will be notified.", [
-                    { text: "Keep it", style: "cancel" },
-                    { text: "Cancel", style: "destructive", onPress: () => cancelMutation.mutate() },
-                  ])
-                }
+                onPress={() => startCancel("owner")}
                 disabled={anyMutating}
               >
-                {cancelMutation.isPending
+                {cancelFlow.pending
+                  ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
+                }
+              </Pressable>
+            )}
+
+            {/* Owner: cancel an accepted BORROW/RENT. Free unless the borrower's deposit is in place;
+                then the server asks for the -5 to be acknowledged. */}
+            {isOwner && request.requestType !== "GIFT" &&
+              cancelAction({ requestType: request.requestType ?? "", status, role: "owner" }) === "direct" && (
+              <Pressable
+                style={{ alignItems: "center", paddingVertical: 6 }}
+                onPress={() => startCancel("owner")}
+                disabled={anyMutating}
+                testID="owner-cancel-request"
+              >
+                {cancelFlow.pending
                   ? <ActivityIndicator size="small" color={colors.mutedForeground} />
                   : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
                 }
@@ -1127,10 +1142,10 @@ export default function ChatScreen() {
             {status === "ACCEPTED" && isBorrower && (
               <Pressable
                 style={{ alignItems: "center", paddingVertical: 6 }}
-                onPress={confirmAcceptedRequestCancellation}
+                onPress={() => startCancel("requester")}
                 disabled={anyMutating}
               >
-                {cancelMutation.isPending
+                {cancelFlow.pending
                   ? <ActivityIndicator size="small" color={colors.foreground} />
                   : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
                 }
@@ -1833,6 +1848,41 @@ export default function ChatScreen() {
         currentBalance={Number((user as any)?.shareCoins ?? 0)}
         required={earnRequired}
         context={earnContext}
+      />
+
+      {/* What the last cancel did (or why it failed) */}
+      {cancelNotice && (
+        <View style={{ position: "absolute", top: topPad + 56, left: 0, right: 0 }} pointerEvents="none">
+          <CancelOutcomeBanner
+            title={cancelNotice.title}
+            message={cancelNotice.message}
+            tone={cancelNotice.tone}
+            onHide={() => setCancelNotice(null)}
+          />
+        </View>
+      )}
+
+      {/* SWAP / GIFT: the old confirmation, drawn with the shared cancel dialog */}
+      <CancelDialog
+        spec={
+          request && legacyCancelRole
+            ? legacyCancelDialog({ requestType: request.requestType ?? "", status: request.status, role: legacyCancelRole }, "mobile")
+            : null
+        }
+        pending={cancelFlow.pending}
+        onConfirm={() => {
+          const cancelRequestId = request?.id ?? reqId;
+          if (!cancelRequestId || !legacyCancelRole) return;
+          void cancelFlow.cancel({ requestId: cancelRequestId, role: legacyCancelRole });
+        }}
+        onKeep={() => setLegacyCancelRole(null)}
+      />
+      {/* BORROW / RENT: the server said a deposit is in place, so cancelling costs trust points */}
+      <CancelDialog
+        spec={cancelFlow.prompt?.spec ?? null}
+        pending={cancelFlow.pending}
+        onConfirm={() => void cancelFlow.proceed()}
+        onKeep={cancelFlow.dismiss}
       />
 
       {/* Return sheet — borrower initiates return */}

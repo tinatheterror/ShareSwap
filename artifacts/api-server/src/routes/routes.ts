@@ -78,6 +78,8 @@ import { backgroundJobs } from "../background-jobs-registry";
 import { startRequestExpirySweepTimer } from "../request-expiry-timer";
 import { guardedJob } from "../guarded-job";
 import { REQUEST_EXPIRY_JOB, createReadRunRecorder, resolveJobSwitch, resolveReadExpiryPolicy, timerRunRecorder } from "../job-switches";
+import { CANCELLABLE_REQUEST_TYPES, cancelBorrowRentRequest } from "../cancel-service";
+import { depositMethodRejection } from "../deposit-method-rules";
 import {
   REQUEST_DATES_PASSED_MESSAGE,
   isStartDatePassed,
@@ -826,6 +828,10 @@ const stripe = {
     list: async (...args: Parameters<Stripe["refunds"]["list"]>) => {
       const s = await getStripe();
       return s.refunds.list(...args);
+    },
+    retrieve: async (...args: Parameters<Stripe["refunds"]["retrieve"]>) => {
+      const s = await getStripe();
+      return s.refunds.retrieve(...args);
     },
   },
   checkout: {
@@ -1889,6 +1895,8 @@ export function registerRoutes(
     now?: () => Date;
     /** Receives the background-pass runners once they are defined (see ScheduledJobRunners). */
     onScheduledJobs?: (jobs: ScheduledJobRunners) => void;
+    /** Stripe client for request expiry and cancellation; tests inject a fake. Defaults to the real one. */
+    stripe?: unknown;
   } = {},
 ): Server {
   const currentTime = () => (options.now ? options.now() : new Date());
@@ -1898,7 +1906,7 @@ export function registerRoutes(
   // "request-expiry-on-read" switch (job-switches.ts): off outside a deployment unless set.
   const recordReadRun = createReadRunRecorder({ now: currentTime });
   const requestExpiryDeps: RequestExpiryDeps = {
-    stripe: stripe as any,
+    stripe: (options.stripe ?? stripe) as any,
     readPolicy: () => resolveReadExpiryPolicy(process.env),
     onReadCheck: (summary) => recordReadRun(summary),
     onItemFreed: (itemId, itemName) => notifyAvailabilitySubscribers(itemId, itemName),
@@ -6642,6 +6650,12 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
+    // A rental is paid in the app, so it cannot ask for an in-person deposit.
+    {
+      const rejection = depositMethodRejection(requestType, depositMethod);
+      if (rejection) return res.status(400).json(rejection);
+    }
+
     // BORROW and RENT require full verification (email + ID + payment)
     if ((requestType === "BORROW" || requestType === "RENT") && req.verificationLevel.level !== 'fully_verified') {
       return res.status(403).json({ 
@@ -7186,6 +7200,16 @@ Respond with ONLY the category name, nothing else.`
       return res.status(404).send("Request not found");
     }
 
+    // Declining answers a request nobody has paid for yet. Once it is accepted (and a deposit may be
+    // held) the way out is cancel, which releases and refunds what was charged.
+    if (status === "DECLINED" && request.item_requests.status !== "PENDING") {
+      return res.status(409).json({
+        code: "DECLINE_ONLY_WHEN_PENDING",
+        error: "Only a pending request can be declined. Cancel it instead.",
+        currentStatus: request.item_requests.status,
+      });
+    }
+
     // A PENDING request whose start day is over can no longer be accepted as-is;
     // the owner counters with new dates or declines. Accepting promotes the
     // counter dates when present, so the effective start is the counter's.
@@ -7600,6 +7624,14 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
+    {
+      const rejection = depositMethodRejection(
+        request.item_requests.requestType,
+        depositMethod || request.item_requests.depositMethod,
+      );
+      if (rejection) return res.status(400).json(rejection);
+    }
+
     if (isRequester && request.item_requests.negotiationStatus !== "counter_proposed") {
       return res.status(400).json({ error: "No counter-proposal to respond to with your own counter" });
     }
@@ -7764,6 +7796,13 @@ Respond with ONLY the category name, nothing else.`
         if (!startCheck.valid) {
           return res.status(400).json({ error: startCheck.error, code: startCheck.code });
         }
+      }
+      {
+        const rejection = depositMethodRejection(
+          request.item_requests.requestType,
+          counter.depositMethod || request.item_requests.counterDepositMethod || request.item_requests.depositMethod,
+        );
+        if (rejection) return res.status(400).json(rejection);
       }
       const swapCounterFields = isSwap ? {
         counterSwapOwnerItemIds: Array.isArray(counter.swapOwnerItemIds) ? counter.swapOwnerItemIds.map(Number) : (request.item_requests.counterSwapOwnerItemIds ?? []),
@@ -9281,7 +9320,16 @@ Respond with ONLY the category name, nothing else.`
 
       const [updated] = await db
         .update(itemRequests)
-        .set({ status: "CANCELLED" })
+        .set({
+          status: "CANCELLED",
+          // The cancellation record: a withdrawn PENDING request is free and has no deposit.
+          cancelledAt: new Date(),
+          cancelledBy: req.user.id,
+          cancelledFromStatus: "PENDING",
+          cancelReason: "withdrawn",
+          cancelledWithPenalty: false,
+          cancelDepositState: "none",
+        })
         .where(eq(itemRequests.id, requestId))
         .returning();
 
@@ -9326,7 +9374,34 @@ Respond with ONLY the category name, nothing else.`
     try {
       const requestId = parseInt(req.params.requestId);
       const { reason } = req.body;
-      
+
+      // BORROW and RENT have their own rules (penalty only after a deposit, full refunds, penalty
+      // acknowledgment): see cancel-service.ts. SWAP and GIFT keep the handler below unchanged.
+      if (Number.isInteger(requestId)) {
+        const [typed] = await db
+          .select({ requestType: itemRequests.requestType })
+          .from(itemRequests)
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
+        if (typed && (CANCELLABLE_REQUEST_TYPES as readonly string[]).includes(typed.requestType)) {
+          const result = await cancelBorrowRentRequest(
+            {
+              requestId,
+              actorId: req.user.id,
+              reason: req.body?.reason,
+              acknowledgePenalty: req.body?.acknowledgePenalty,
+            },
+            {
+              stripe: requestExpiryDeps.stripe,
+              onItemFreed: (itemId, itemName) => notifyAvailabilitySubscribers(itemId, itemName),
+              push: (userId, payload) => sendPushToUser(userId, payload, "requests"),
+            },
+            currentTime(),
+          );
+          return res.status(result.status).json(result.body);
+        }
+      }
+
       const [request] = await db
         .select()
         .from(itemRequests)
@@ -14900,7 +14975,11 @@ Respond with ONLY the category name, nothing else.`
       return res.status(404).send("User not found");
     }
 
-    // Get recent reputation activities
+    // Get recent reputation activities.
+    // Known limit: this is the 10 newest score changes that moved the score (0-point rows such as
+    // grace-pass warnings are left out), and there is no paging. The score history pages on web and
+    // mobile show exactly this list, so a change older than the 10th newest is not reachable from
+    // the apps. Raising or paging this needs a client change on both pages.
     const activities = await db
       .select({
         id: reputationActivities.id,

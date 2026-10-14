@@ -170,6 +170,26 @@ describe("web score history navigation", () => {
     expect(screen.queryByText("Updated your profile")).not.toBeInTheDocument();
   });
 
+  it("renders the old -20 cancellation row and the new -5 cancel-after-deposit row side by side", () => {
+    mocks.useQuery.mockReturnValue({
+      data: {
+        ...populatedReputation,
+        recentActivities: [
+          { activityType: "cancel_after_deposit", points: -5, description: 'Cancelled after a deposit was placed on "Camping stove"', createdAt: "2026-10-03T12:00:00.000Z" },
+          { activityType: "cancel_after_acceptance", points: -20, description: 'An accepted request was cancelled on "Tent"', createdAt: "2026-09-01T12:00:00.000Z" },
+        ],
+      },
+      isLoading: false,
+    });
+
+    render(<ScoreHistoryPage />);
+
+    expect(screen.getByText('Cancelled after a deposit was placed on "Camping stove"')).toBeInTheDocument();
+    expect(screen.getByText("−5")).toBeInTheDocument();
+    expect(screen.getByText('An accepted request was cancelled on "Tent"')).toBeInTheDocument();
+    expect(screen.getByText("−20")).toBeInTheDocument();
+  });
+
   it.each([
     ["America/Los_Angeles", "2025-06-15T00:30:00.000Z", "Jun 15, 2025"],
     ["Pacific/Auckland", "2025-06-14T23:30:00.000Z", "Jun 14, 2025"],

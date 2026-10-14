@@ -596,7 +596,7 @@ export async function main(
   }, RUN_TIMEOUT_MS);
 
   try {
-    const [{ pool }, { ensureScheduledJobRunsTable, ensureJobSwitchesTable }, { registerRoutes }, { default: express }] = await Promise.all([
+    const [{ pool }, { ensureScheduledJobRunsTable, ensureJobSwitchesTable, ensureCancellationRecord }, { registerRoutes }, { default: express }] = await Promise.all([
       import("@workspace/db"),
       import("../startup-migrations"),
       import("../routes/routes"),
@@ -606,6 +606,8 @@ export async function main(
     if (!reportOnly) {
       await ensureScheduledJobRunsTable();
       await ensureJobSwitchesTable();
+      // Expiry writes expired_reason and request_refunds rows.
+      await ensureCancellationRecord();
     }
 
     let jobs: ScheduledJobRunners | undefined;

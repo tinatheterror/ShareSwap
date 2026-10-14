@@ -42,7 +42,9 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "x-csrf-token", "Authorization"],
+    // x-app-version and x-app-build are sent by every current client (legacy-cancel-exemption.ts). A header
+    // missing here fails the browser preflight, which the app reports as "Failed to fetch".
+    allowedHeaders: ["Content-Type", "x-csrf-token", "Authorization", "x-app-version", "x-app-build"],
   }),
 );
 

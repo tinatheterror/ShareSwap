@@ -24,13 +24,13 @@ describe("depositCopy", () => {
     expect(resolveDepositPhase({ mode: "refundable_charge", status: "secured", phase: "hold" })).toBe("charged");
   });
 
-  it("never calls a captured deposit a hold", () => {
-    const line = depositSummaryLine({ phase: "charged", amount: 105, chargedAmount: 105 });
-    expect(line).toContain("Charged");
-    expect(line).not.toMatch(/hold/i);
-    expect(depositSummaryLine({ phase: "hold", amount: 105 })).toContain("Temporary hold");
-    expect(depositSummaryLine({ phase: "released", amount: 105 })).toContain("Hold released");
-    expect(depositSummaryLine({ phase: "released", amount: 105 })).not.toMatch(/refund/i);
+  it("the request card's deposit line is the amount only, whatever happened to the deposit", () => {
+    for (const phase of ["none", "hold", "charged", "released", "resolved"] as const) {
+      expect(depositSummaryLine({ phase, amount: 105, chargedAmount: 105, refundedAmount: 5, retainedAmount: 100 })).toBe("Deposit: $105");
+    }
+    expect(depositSummaryLine({ mode: "refundable_charge", status: "released", amount: 42 })).toBe("Deposit: $42");
+    expect(depositSummaryLine(null, 42)).toBe("Deposit: $42");
+    expect(depositSummaryLine(null)).toBeNull();
   });
 
   it("builds hold explainers", () => {

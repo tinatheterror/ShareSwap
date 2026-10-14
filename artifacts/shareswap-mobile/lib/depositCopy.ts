@@ -96,20 +96,13 @@ export function depositPhaseDescription(
   }
 }
 
-/** Short stage-card line, e.g. "Deposit: $105 · Temporary hold". */
+/**
+ * The deposit line on the request card in chat: just the amount, e.g. "Deposit: $105". What happened to the
+ * deposit (hold placed, released, charged, ...) is told by the chat event stamps, not by the card.
+ */
 export function depositSummaryLine(deposit: DepositLike | null | undefined, fallbackAmount?: number | null): string | null {
   const amount = num(deposit?.amount) ?? fallbackAmount ?? null;
-  if (amount == null) return null;
-  const refundable = deposit?.mode === "refundable_charge";
-  const phase = resolveDepositPhase(deposit);
-  const amt = formatMoney(amount);
-  switch (phase) {
-    case "hold": return `Deposit: ${amt} · Temporary hold (not charged)`;
-    case "charged": return refundable ? `Deposit: ${amt} · Refundable charge` : `Deposit: ${formatMoney(deposit?.chargedAmount ?? amount)} · Charged (claim open)`;
-    case "released": return `Deposit: ${amt} · Hold released`;
-    case "resolved": return `Deposit: ${formatMoney(deposit?.chargedAmount ?? amount)} charged · ${formatMoney(deposit?.refundedAmount ?? 0)} refunded · ${formatMoney(deposit?.retainedAmount ?? 0)} retained`;
-    default: return `Deposit: ${amt}`;
-  }
+  return amount == null ? null : `Deposit: ${formatMoney(amount)}`;
 }
 
 // ── Hold explainer constants / builders ─────────────────────────────────────

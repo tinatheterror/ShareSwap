@@ -10,7 +10,8 @@
 
 export const PENALTY_ACK_REQUIRED_CODE = "PENALTY_ACK_REQUIRED";
 export const CANCEL_PENALTY_POINTS = 5;
-export const PENALTY_MODAL_TEXT = `A trust score penalty of -${CANCEL_PENALTY_POINTS} will be applied for this cancellation`;
+export const PENALTY_MODAL_TEXT = `Cancelling will result in a −${CANCEL_PENALTY_POINTS} Trust Score penalty.`;
+export const PENALTY_MODAL_HINT = "If you still want to proceed, you can cancel below.";
 export const PROCEED_TO_CANCEL = "Proceed to cancel";
 export const CONTINUE_WITH_TRANSACTION = "Continue with transaction";
 
@@ -61,13 +62,15 @@ export interface CancelDialogSpec {
   primary: "keep" | "confirm";
 }
 
-/** The -5 modal. The server's own sentence is used when it sent one, so the two never drift apart. */
+/**
+ * The -5 modal. The server's own sentence is used when it sent one, so the two never drift apart.
+ * otherPartyName is accepted but no longer shown: the hint no longer names the other person.
+ */
 export function penaltyDialog(options: { role: CancelRole; otherPartyName?: string | null; serverError?: string | null }): CancelDialogSpec {
-  const other = options.otherPartyName?.trim() || "the other person";
   return {
     title: options.role === "owner" ? "Cancel this request?" : "Cancel this booking?",
     message: options.serverError?.trim() || PENALTY_MODAL_TEXT,
-    hint: `If plans have changed, message ${other} to agree a change first.`,
+    hint: PENALTY_MODAL_HINT,
     confirmLabel: PROCEED_TO_CANCEL,
     keepLabel: CONTINUE_WITH_TRANSACTION,
     primary: "keep",

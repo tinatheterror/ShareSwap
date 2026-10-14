@@ -6,10 +6,10 @@ import { useCancelRequest } from "@/hooks/useCancelRequest";
 // penalty modal -> "Proceed to cancel" sends it again with the acknowledgment.
 
 const penaltyError = () =>
-  Object.assign(new Error("A trust score penalty of -5 will be applied for this cancellation"), {
+  Object.assign(new Error("Cancelling will result in a −5 Trust Score penalty."), {
     status: 409,
     code: "PENALTY_ACK_REQUIRED",
-    error: "A trust score penalty of -5 will be applied for this cancellation",
+    error: "Cancelling will result in a −5 Trust Score penalty.",
     penalty: { points: 5, type: "cancel_after_deposit" },
   });
 
@@ -53,7 +53,7 @@ describe("useCancelRequest on mobile", () => {
     await act(async () => { await api().cancel(context); });
     expect(api().prompt?.spec).toMatchObject({
       title: "Cancel this booking?",
-      message: "A trust score penalty of -5 will be applied for this cancellation",
+      message: "Cancelling will result in a −5 Trust Score penalty.",
       keepLabel: "Continue with transaction",
       confirmLabel: "Proceed to cancel",
       primary: "keep",

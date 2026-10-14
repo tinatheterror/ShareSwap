@@ -204,7 +204,7 @@ test("with a hold placed: 409 PENALTY_ACK_REQUIRED, then the same call with ackn
   assert.equal(challenged.status, 409);
   const challengeBody: any = await challenged.json();
   assert.equal(challengeBody.code, "PENALTY_ACK_REQUIRED");
-  assert.equal(challengeBody.error, "A trust score penalty of -5 will be applied for this cancellation");
+  assert.equal(challengeBody.error, "Cancelling will result in a −5 Trust Score penalty.");
   assert.deepEqual(challengeBody.penalty, { points: 5, type: "cancel_after_deposit" });
   assert.equal((await load(id)).status, "DEPOSIT_CONFIRMED");
   assert.equal(stripe.calls.cancel.length + stripe.calls.refunds.length, 0);

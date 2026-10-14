@@ -12,8 +12,8 @@ describe("web CancelDialog", () => {
     render(<CancelDialog spec={penaltyDialog({ role: "requester", otherPartyName: "Sam" })} pending={false} onConfirm={onConfirm} onKeep={onKeep} />);
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("A trust score penalty of -5 will be applied for this cancellation")).toBeInTheDocument();
-    expect(screen.getByTestId("cancel-dialog-hint")).toHaveTextContent("message Sam to agree a change first");
+    expect(screen.getByText("Cancelling will result in a −5 Trust Score penalty.")).toBeInTheDocument();
+    expect(screen.getByTestId("cancel-dialog-hint")).toHaveTextContent("you can cancel below");
 
     const buttons = screen.getAllByRole("button").filter((b) => b.getAttribute("data-testid")?.startsWith("cancel-dialog-"));
     expect(buttons.map((b) => b.textContent)).toEqual(["Continue with transaction", "Proceed to cancel"]);

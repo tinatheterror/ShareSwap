@@ -29,8 +29,8 @@ describe("mobile CancelDialog", () => {
     expect(tree.root.findByType(Modal).props.visible).toBe(true);
     expect(texts(tree)).toEqual([
       "Cancel this booking?",
-      "A trust score penalty of -5 will be applied for this cancellation",
-      "If plans have changed, message Sam to agree a change first.",
+      "Cancelling will result in a −5 Trust Score penalty.",
+      "If you still want to proceed, you can cancel below.",
       "Continue with transaction",
       "Proceed to cancel",
     ]);

@@ -225,7 +225,7 @@ test("a placed hold needs the penalty acknowledged: the first call is a 409 that
   assert.equal(result.status, 409);
   assert.deepEqual(result.body, {
     code: "PENALTY_ACK_REQUIRED",
-    error: "A trust score penalty of -5 will be applied for this cancellation",
+    error: "Cancelling will result in a −5 Trust Score penalty.",
     penalty: { points: 5, type: "cancel_after_deposit" },
     depositState: "authorized",
     requestStatus: "DEPOSIT_CONFIRMED",

@@ -101,8 +101,8 @@ describe("cancel flow: dialogs", () => {
   it("the penalty modal says what the server says, labels both buttons, and makes Continue the default", () => {
     const spec = penaltyDialog({ role: "requester", otherPartyName: "Sam", serverError: PENALTY_MODAL_TEXT });
     expect(spec.title).toBe("Cancel this booking?");
-    expect(spec.message).toBe("A trust score penalty of -5 will be applied for this cancellation");
-    expect(spec.hint).toBe("If plans have changed, message Sam to agree a change first.");
+    expect(spec.message).toBe("Cancelling will result in a −5 Trust Score penalty.");
+    expect(spec.hint).toBe("If you still want to proceed, you can cancel below.");
     expect(spec.keepLabel).toBe(CONTINUE_WITH_TRANSACTION);
     expect(spec.confirmLabel).toBe(PROCEED_TO_CANCEL);
     expect([spec.keepLabel, spec.confirmLabel]).toEqual(["Continue with transaction", "Proceed to cancel"]);
@@ -113,7 +113,7 @@ describe("cancel flow: dialogs", () => {
     const spec = penaltyDialog({ role: "owner" });
     expect(spec.title).toBe("Cancel this request?");
     expect(spec.message).toBe(PENALTY_MODAL_TEXT);
-    expect(spec.hint).toBe("If plans have changed, message the other person to agree a change first.");
+    expect(spec.hint).toBe("If you still want to proceed, you can cancel below.");
   });
 });
 
@@ -127,11 +127,11 @@ describe("cancel flow: talking to the server", () => {
   });
 
   it("a PENALTY_ACK_REQUIRED error is a prompt, not a failure", async () => {
-    const error = Object.assign(new Error("A trust score penalty of -5 will be applied for this cancellation"), {
-      status: 409, code: "PENALTY_ACK_REQUIRED", error: "A trust score penalty of -5 will be applied for this cancellation", penalty: { points: 5 },
+    const error = Object.assign(new Error("Cancelling will result in a −5 Trust Score penalty."), {
+      status: 409, code: "PENALTY_ACK_REQUIRED", error: "Cancelling will result in a −5 Trust Score penalty.", penalty: { points: 5 },
     });
     expect(await submitCancel(async () => { throw error; })).toEqual({
-      kind: "ack_required", error: "A trust score penalty of -5 will be applied for this cancellation", points: 5,
+      kind: "ack_required", error: "Cancelling will result in a −5 Trust Score penalty.", points: 5,
     });
   });
 

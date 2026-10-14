@@ -6,10 +6,10 @@ import { useCancelRequest } from "./use-cancel-request";
 // penalty modal -> "Proceed to cancel" sends it again with the acknowledgment.
 
 const penaltyError = () =>
-  Object.assign(new Error("A trust score penalty of -5 will be applied for this cancellation"), {
+  Object.assign(new Error("Cancelling will result in a −5 Trust Score penalty."), {
     status: 409,
     code: "PENALTY_ACK_REQUIRED",
-    error: "A trust score penalty of -5 will be applied for this cancellation",
+    error: "Cancelling will result in a −5 Trust Score penalty.",
     penalty: { points: 5, type: "cancel_after_deposit" },
   });
 
@@ -45,8 +45,8 @@ describe("useCancelRequest on web", () => {
 
     expect(result.current.prompt?.spec).toMatchObject({
       title: "Cancel this booking?",
-      message: "A trust score penalty of -5 will be applied for this cancellation",
-      hint: "If plans have changed, message Sam to agree a change first.",
+      message: "Cancelling will result in a −5 Trust Score penalty.",
+      hint: "If you still want to proceed, you can cancel below.",
       keepLabel: "Continue with transaction",
       confirmLabel: "Proceed to cancel",
       primary: "keep",

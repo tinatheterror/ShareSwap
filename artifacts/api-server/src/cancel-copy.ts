@@ -25,7 +25,7 @@ export const REQUEST_ALREADY_CANCELLED_MESSAGE = "This request was already cance
 export const CANCEL_REFUND_TIMING = "Refunds can take 5–10 days to appear on your statement.";
 
 export function penaltyAckRequiredError(points: number) {
-  return `A trust score penalty of -${points} will be applied for this cancellation`;
+  return `Cancelling will result in a −${points} Trust Score penalty.`;
 }
 
 export function composeCancelMessage(input: CancelMessageInput): string {

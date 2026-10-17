@@ -274,15 +274,13 @@ export function PayRentalSheet({
           ) : refundableConsent ? (
             <View style={s.centeredWrap}>
               <Shield size={40} color={PRIMARY_GREEN} strokeWidth={1.5} />
+              <Text style={[s.nextStepText, { color: PRIMARY_GREEN, textAlign: "center", fontFamily: "Inter_500Medium" }]}>Payment Confirmation</Text>
               <Text style={[s.successTitle, { color: colors.foreground }]}>Confirm refundable deposit</Text>
-              <Text style={[s.nextStepText, { color: colors.foreground, textAlign: "center", fontFamily: "Inter_500Medium" }]}>
-                This is a real, refundable charge to your card, not a temporary hold.
+              <Text style={[s.nextStepText, { color: colors.foreground, textAlign: "center", fontFamily: "Inter_700Bold" }]}>
+                Security Deposit Charge{"\n"}${refundableConsent.amount.toFixed(2)}
               </Text>
               <Text style={[s.nextStepText, { color: colors.mutedForeground, textAlign: "center" }]}>
-                {refundableConsent.message}{"\n\n"}
-                <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground }}>
-                  ${refundableConsent.amount.toFixed(2)} refundable payment
-                </Text>
+                {refundableConsent.message}
               </Text>
               {error && <View style={s.errorBox}><Text style={s.errorText}>{error}</Text></View>}
               <Pressable style={[s.primaryBtn, { backgroundColor: PRIMARY_GREEN, opacity: processing ? 0.7 : 1 }]} onPress={handleConfirmRefundablePayment} disabled={processing}>

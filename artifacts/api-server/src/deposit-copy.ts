@@ -225,7 +225,7 @@ export function stripeRefundableChargeDescription(requestId: number) {
 export function refundableConsentMessage(amount: number, kind: "rental" | "borrow") {
   const what = kind === "borrow" ? "trust deposit" : "security deposit";
   const reason = kind === "borrow" ? "borrow" : "rental";
-  return `Your ${what} needs a refundable deposit charge of ${formatMoney(amount)} because a temporary card hold can't cover this ${reason}. This is a real charge to your card, refunded after the item is returned normally.`;
+  return `A temporary hold is not available for this ${reason}. Your ${what} will be charged now and refunded after return.`;
 }
 
 // ── Lifecycle deposit view ────────────────────────────────────────────────

@@ -320,12 +320,12 @@ export function PayDepositSheet({
             </View>
           ) : refundableConsent ? (
             <View style={s.content}>
-              <Text style={[s.subtitle, { color: PRIMARY }]}>Refundable payment confirmation</Text>
+              <Text style={[s.subtitle, { color: PRIMARY }]}>Payment Confirmation</Text>
               <Text style={[s.title, { color: colors.foreground }]}>Confirm refundable deposit</Text>
               <View style={[s.breakdownBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                 <View style={s.breakdownRow}>
                   <Text style={[s.breakdownLabel, { color: colors.foreground, fontFamily: "Inter_500Medium" }]}>
-                    Refundable security deposit
+                    Trust Deposit Charge
                   </Text>
                   <Text style={[s.breakdownValue, { color: colors.foreground }]}>
                     ${refundableConsent.amount.toFixed(2)}

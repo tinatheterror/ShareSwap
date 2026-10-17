@@ -284,14 +284,13 @@ export function TrustDepositModal({
         ) : consent ? (
           <div className="flex flex-col px-7 pt-8 pb-7" data-testid="screen-refundable-deposit-consent">
             <div className="text-center mb-6">
-              <p className="text-xs font-semibold uppercase tracking-widest text-teal-500 mb-1">Refundable deposit required</p>
-              <p className="text-lg font-bold text-gray-900">{item.name}</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-teal-500 mb-1">Payment Confirmation</p>
+              <p className="text-lg font-bold text-gray-900">Confirm refundable deposit</p>
             </div>
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900 mb-4" data-testid="text-refundable-consent-message">{consent.consentMessage}</div>
             <div className="bg-gray-50 rounded-xl p-4 mb-4 flex justify-between text-sm">
-              <span className="text-gray-600">Refundable deposit payment</span><span className="font-semibold">${consent.depositAmount.toFixed(2)}</span>
+              <span className="text-gray-600">{isRental ? "Security Deposit Charge" : "Trust Deposit Charge"}</span><span className="font-semibold">${consent.depositAmount.toFixed(2)}</span>
             </div>
-            <p className="text-xs text-gray-500 text-center mb-4">This is a real, refundable charge — not a temporary hold. It is refunded after the item is returned safely unless a claim is opened.</p>
             {authenticationClientSecret ? (
               <Elements stripe={stripePromise} options={{ clientSecret: authenticationClientSecret }}>
                 <RefundablePaymentAuthentication clientSecret={authenticationClientSecret} onAuthenticated={() => confirmRefundableMutation.mutate()} onCancel={onClose} />

@@ -59,10 +59,11 @@ describe("deposit-copy", () => {
 
   it("claim strings", () => {
     expect(claimOpenedChargedLine(105, "4242")).toBe("$105.00 has been charged to your card •••• 4242.");
-    expect(claimOpenedOwnerLine(105)).toBe("Claim opened and under review, $105.00 security deposit has been charged");
+    expect(claimOpenedOwnerLine(105)).toBe("Claim opened. Deposit charged while it’s reviewed.");
+    expect(claimOpenedOwnerLine(105, "refundable_charge")).toBe("Claim opened. Deposit held while it’s reviewed.");
     expect(claimRefundedLine(105, "4242")).toBe("$105.00 refunded to your card •••• 4242.");
     expect(claimResolvedOwnerLine({ refundedAmount: 75, retainedAmount: 30 })).toBe(
-      "Claim has been resolved. $75.00 refunded · $30.00 retained",
+      "Claim resolved · $75.00 refunded · $30.00 kept",
     );
   });
 
@@ -75,8 +76,8 @@ describe("deposit-copy", () => {
   });
 
   it("stamp label and notification kinds", () => {
-    expect(depositConfirmedStampLabel()).toBe("🔒 Temporary hold placed");
-    expect(depositConfirmedStampLabel({ mode: "refundable_charge" })).toBe("🔒 Refundable deposit charged");
+    expect(depositConfirmedStampLabel()).toBe("🔒 Deposit hold authorized. It’s only charged if a claim is opened.");
+    expect(depositConfirmedStampLabel({ mode: "refundable_charge" })).toBe("🔒 Deposit charged. Refunded after the item is returned.");
     expect(depositNotificationKind("security_deposit_charged")).toBe("charged");
     expect(depositNotificationKind("security_claim_opened_owner")).toBe("charged");
     expect(depositNotificationKind("security_deposit_refunded")).toBe("refunded");
@@ -87,17 +88,17 @@ describe("deposit-copy", () => {
 });
 
 describe("depositReleasedStampLabel", () => {
-  it("a released temporary hold names the amount", () => {
-    expect(depositReleasedStampLabel({ depositMode: "authorization", amount: 42 })).toBe("🔓 $42 Deposit hold released, no charge was made.");
-    expect(depositReleasedStampLabel({ amount: "42.00" })).toBe("🔓 $42 Deposit hold released, no charge was made.");
+  it("a released temporary hold reads as released", () => {
+    expect(depositReleasedStampLabel({ depositMode: "authorization", amount: 42 })).toBe("✅ Deposit hold released. You weren’t charged.");
+    expect(depositReleasedStampLabel({ amount: "42.00" })).toBe("✅ Deposit hold released. You weren’t charged.");
   });
 
   it("a released refundable deposit says so", () => {
-    expect(depositReleasedStampLabel({ depositMode: "refundable_charge", amount: 42 })).toBe("🔓 $42 Refundable Deposit released, no charge was made.");
+    expect(depositReleasedStampLabel({ depositMode: "refundable_charge", amount: 42 })).toBe("✅ Deposit refunded. It may take 5–10 business days to show on your card.");
   });
 
-  it("without an amount the line still reads naturally", () => {
-    expect(depositReleasedStampLabel({ depositMode: "authorization" })).toBe("🔓 Deposit hold released, no charge was made.");
-    expect(depositReleasedStampLabel({ depositMode: "refundable_charge", amount: null })).toBe("🔓 Refundable Deposit released, no charge was made.");
+  it("the amount is not shown", () => {
+    expect(depositReleasedStampLabel({ depositMode: "authorization" })).toBe("✅ Deposit hold released. You weren’t charged.");
+    expect(depositReleasedStampLabel({ depositMode: "refundable_charge", amount: null })).toBe("✅ Deposit refunded. It may take 5–10 business days to show on your card.");
   });
 });

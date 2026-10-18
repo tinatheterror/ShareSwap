@@ -41,12 +41,12 @@ describe("depositCopy", () => {
     expect(holdReleasedMessage(105)).toBe("$105 temporary hold released. You were not charged.");
   });
 
-  it("a released deposit is a one-line chat stamp that names the amount", () => {
-    expect(depositReleasedStamp({ depositMode: "authorization", amount: 42 })).toBe("🔓 $42 Deposit hold released, no charge was made.");
-    expect(depositReleasedStamp({ amount: "42.00" })).toBe("🔓 $42 Deposit hold released, no charge was made.");
-    expect(depositReleasedStamp({ depositMode: "refundable_charge", amount: 42 })).toBe("🔓 $42 Refundable Deposit released, no charge was made.");
-    expect(depositReleasedStamp(undefined)).toBe("🔓 Deposit hold released, no charge was made.");
-    expect(depositReleasedStamp({ depositMode: "refundable_charge" })).toBe("🔓 Refundable Deposit released, no charge was made.");
+  it("a released deposit is a one-line chat stamp that is mode-based", () => {
+    expect(depositReleasedStamp({ depositMode: "authorization", amount: 42 })).toBe("✅ Deposit hold released. You weren’t charged.");
+    expect(depositReleasedStamp({ amount: "42.00" })).toBe("✅ Deposit hold released. You weren’t charged.");
+    expect(depositReleasedStamp({ depositMode: "refundable_charge", amount: 42 })).toBe("✅ Deposit refunded. It may take 5–10 business days to show on your card.");
+    expect(depositReleasedStamp(undefined)).toBe("✅ Deposit hold released. You weren’t charged.");
+    expect(depositReleasedStamp({ depositMode: "refundable_charge" })).toBe("✅ Deposit refunded. It may take 5–10 business days to show on your card.");
   });
 
   it("claim opened copy is explicit", () => {
@@ -55,7 +55,8 @@ describe("depositCopy", () => {
     expect(c.body).toBe("$105 has been charged to your card •••• 4242.");
     expect(c.detail).toMatch(/converted into an actual charge/);
     expect(JSON.stringify(c)).not.toMatch(/deposit held|on hold|secured/i);
-    expect(claimOpenedOwnerLine(105)).toBe("Claim opened and under review, $105 security deposit has been charged");
+    expect(claimOpenedOwnerLine(105)).toBe("Claim opened. Deposit charged while it’s reviewed.");
+    expect(claimOpenedOwnerLine(105, "refundable_charge")).toBe("Claim opened. Deposit held while it’s reviewed.");
     expect(CLAIM_REVIEW_TOP.whyTitle).toBe("Why was I charged?");
   });
 
@@ -73,12 +74,12 @@ describe("depositCopy", () => {
     expect(kept.title).toBe("Security deposit retained");
     expect(kept.body).toBe("$30 of your $105 security deposit was retained based on the claim outcome.");
     expect(JSON.stringify([full, partial, kept])).not.toMatch(/\bfee\b/i);
-    expect(claimResolvedOwnerLine(75, 30)).toBe("Claim has been resolved. $75 refunded · $30 retained");
+    expect(claimResolvedOwnerLine(75, 30)).toBe("Claim resolved · $75 refunded · $30 kept");
   });
 
   it("relabels the deposit_confirmed stamp", () => {
-    expect(depositConfirmedStamp({})).toBe("🔒 Temporary hold placed");
-    expect(depositConfirmedStamp({ mode: "refundable_charge" })).toBe("🔒 Refundable deposit charged");
+    expect(depositConfirmedStamp({})).toBe("🔒 Deposit hold authorized. It’s only charged if a claim is opened.");
+    expect(depositConfirmedStamp({ mode: "refundable_charge" })).toBe("🔒 Deposit charged. Refunded after the item is returned.");
     expect(depositConfirmedStamp(undefined)).not.toMatch(BANNED);
   });
 

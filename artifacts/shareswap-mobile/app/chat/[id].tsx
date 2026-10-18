@@ -1998,7 +1998,7 @@ function DepositEventCard({ eventType, metadata, content, isOwnerView, colors }:
     const amount = n("amount");
     if (isOwnerView) {
       eyebrow = "Claim opened";
-      body = amount != null ? claimOpenedOwnerLine(amount) : content;
+      body = amount != null ? claimOpenedOwnerLine(amount, metadata.depositMode as string | undefined) : content;
     } else {
       const c = claimOpenedBorrowerCopy({ amount, cardLast4: last4 });
       ({ eyebrow, title, body, detail, footer } = c);

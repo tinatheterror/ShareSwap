@@ -46,23 +46,27 @@ export function outcomeFor(chargedAmount: number, refundedAmount: number, retain
 
 // ── Chat event stamps ──────────────────────────────────────────────────────
 
-export function holdPlacedChat(amount: number | string): string {
-  return `Temporary hold placed — ${formatMoney(amount)} on your card. This is a temporary hold, not a charge. You are not charged unless a claim is opened.`;
+const REFUND_TIMING = "It may take 5–10 business days to show on your card.";
+
+export function holdPlacedChat(_amount?: number | string): string {
+  return "🔒 Deposit hold authorized. It’s only charged if a claim is opened.";
 }
-export function refundableChargedChat(amount: number | string): string {
-  return `Refundable deposit charged — ${formatMoney(amount)} was charged to your card and is refunded after the item is returned normally.`;
+export function refundableChargedChat(_amount?: number | string): string {
+  return "🔒 Deposit charged. Refunded after the item is returned.";
 }
-export function holdReleasedChat(amount: number | string): string {
-  return `Deposit hold released — ${formatMoney(amount)} temporary hold released. You were not charged.`;
+export function holdReleasedChat(_amount?: number | string): string {
+  return "✅ Deposit hold released. You weren’t charged.";
 }
-export function refundableRefundedChat(amount: number | string): string {
-  return `Refundable deposit refunded — ${formatMoney(amount)} was refunded to your card.`;
+export function refundableRefundedChat(_amount?: number | string): string {
+  return `✅ Deposit refunded. ${REFUND_TIMING}`;
 }
-export function claimOpenedChat(amount: number | string): string {
-  return `Claim opened and under review, ${formatMoney(amount)} security deposit has been charged`;
+export function claimOpenedChat(_amount: number | string, refundable = false): string {
+  return refundable
+    ? "⚠️ Claim opened. Deposit held while it’s reviewed."
+    : "⚠️ Claim opened. Deposit charged while it’s reviewed.";
 }
 export function claimResolvedChat(refunded: number | string, retained: number | string): string {
-  return `Claim has been resolved. ${formatMoney(refunded)} refunded · ${formatMoney(retained)} retained`;
+  return `Claim resolved · ${formatMoney(refunded)} refunded · ${formatMoney(retained)} kept`;
 }
 
 // ── Notifications ──────────────────────────────────────────────────────────
@@ -172,12 +176,12 @@ export function returnConfirmedNotice(itemName: string, hasPlatformDeposit: bool
     : `"${itemName}" returned to owner. Temporary hold released.`;
 }
 export function returnConfirmedChat(hasPlatformDeposit: boolean, refundable = false) {
-  if (!hasPlatformDeposit) return "✅ Return confirmed — item received in good condition.";
+  if (!hasPlatformDeposit) return "✅ Item returned in good condition.";
   return refundable
-    ? "✅ Return confirmed — item received in good condition. Refundable deposit refunded."
-    : "✅ Return confirmed — item received in good condition. Temporary hold released. You were not charged.";
+    ? `✅ Item returned in good condition. Deposit refunded. ${REFUND_TIMING}`
+    : "✅ Item returned in good condition. Deposit hold released.";
 }
-export const CANCELLED_HOLD_RELEASED_CHAT = "Deposit hold released — the temporary hold was released. You were not charged.";
+export const CANCELLED_HOLD_RELEASED_CHAT = "✅ Deposit hold released. You weren’t charged.";
 export function renewalFailedBorrowerBody(itemName: string) {
   return `We couldn't extend the temporary deposit hold for "${itemName}". Retry now or update your saved payment method. You are not charged unless a claim is opened.`;
 }

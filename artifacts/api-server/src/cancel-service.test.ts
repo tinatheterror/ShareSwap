@@ -458,7 +458,7 @@ test("a refundable-charge deposit is refunded in full, never cancelled or captur
   assert.deepEqual(stripe.calls.capture, []);
   assert.equal((result.body.outcome as any).deposit, "charge_refunded");
   assert.match(String(result.body.message), /Your \$42 refundable deposit was refunded to your card\./);
-  assert.match((await chat(id)).find((m) => (m.metadata as any)?.eventType === "deposit_released")!.content ?? "", /Refundable deposit refunded/);
+  assert.match((await chat(id)).find((m) => (m.metadata as any)?.eventType === "deposit_released")!.content ?? "", /Deposit refunded\. It may take 5–10 business days/);
 });
 
 // ── A failed Stripe call changes nothing; the retry completes ─────────────────

@@ -9,9 +9,9 @@ test("money formatting drops empty cents", () => {
 });
 
 test("spec strings are exact", () => {
-  assert.equal(copy.claimOpenedChat(105), "Claim opened and under review, $105 security deposit has been charged");
-  assert.equal(copy.claimResolvedChat(75, 30), "Claim has been resolved. $75 refunded · $30 retained");
-  assert.equal(copy.holdReleasedChat(105), "Deposit hold released — $105 temporary hold released. You were not charged.");
+  assert.equal(copy.claimOpenedChat(105), "⚠️ Claim opened. Deposit charged while it’s reviewed.");
+  assert.equal(copy.claimResolvedChat(75, 30), "Claim resolved · $75 refunded · $30 kept");
+  assert.equal(copy.holdReleasedChat(105), "✅ Deposit hold released. You weren’t charged.");
   const n = copy.depositChargedBorrower(105, "Tineco vacuum mop");
   assert.equal(n.type, "security_deposit_charged");
   assert.equal(n.title, "Security deposit charged");

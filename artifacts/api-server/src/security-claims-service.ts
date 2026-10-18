@@ -144,7 +144,7 @@ async function finalizeClaimCapture(args: {
       { userId: claim.borrowerId, requestId, itemId: owned.itemId, ...borrowerCopy },
       { userId: claim.ownerId, requestId, itemId: owned.itemId, ...ownerCopy },
     ]);
-    await insertClaimChatEvent(tx, claim, requestId, claimOpenedChat(deposit), {
+    await insertClaimChatEvent(tx, claim, requestId, claimOpenedChat(deposit, owned.depositMode === "refundable_charge"), {
       eventType: "claim_opened", claimId, depositMode: owned.depositMode, amount: deposit, cardLast4: card.last4, cardBrand: card.brand, itemTitle: itemName,
     });
     return true;

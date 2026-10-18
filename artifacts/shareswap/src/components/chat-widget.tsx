@@ -317,7 +317,7 @@ function ClaimEventCard({ eventType, metadata, content, viewerIsBorrower }: {
     if (!viewerIsBorrower) {
       return (
         <div className="w-full max-w-sm mx-auto rounded-lg border border-red-200 bg-red-50 p-3 text-center" data-testid="event-claim-opened-owner">
-          <p className="text-xs font-semibold text-red-800">{EVENT_ICONS.claim_opened} {amount != null ? claimOpenedOwnerLine(amount) : content}</p>
+          <p className="text-xs font-semibold text-red-800">{EVENT_ICONS.claim_opened} {amount != null ? claimOpenedOwnerLine(amount, (md as any).depositMode) : content}</p>
         </div>
       );
     }

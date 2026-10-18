@@ -321,10 +321,10 @@ test("persists the return release operation before Stripe and releases current a
   assert.equal(final.notices.length, 1);
   assert.equal(final.notices[0].title, "Return Confirmed");
   assert.equal(final.messages.filter((m) => m.messageType === "system").length, 1);
-  assert.match(final.messages.find((m) => m.messageType === "system")!.content, /Temporary hold released\. You were not charged\./);
+  assert.match(final.messages.find((m) => m.messageType === "system")!.content, /Deposit hold released\./);
   // No claim was opened: a distinct "hold released" event + notification, never "refunded".
   const released = final.messages.find((m) => (m.metadata as any)?.eventType === "deposit_released")!;
-  assert.match(released.content, /^Deposit hold released — \$[\d.]+ temporary hold released\. You were not charged\.$/);
+  assert.match(released.content, /^✅ Deposit hold released\. You weren’t charged\.$/);
   assert.equal((released.metadata as any).depositMode, "authorization");
   assert.ok((released.metadata as any).amount > 0);
   const releaseNotices = await db.select().from(notifications).where(and(eq(notifications.requestId, request.id), eq(notifications.type, "deposit_hold_released")));

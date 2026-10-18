@@ -138,8 +138,10 @@ export function claimOpenedBorrowerCopy(p: { amount: number | string | null | un
   };
 }
 
-export function claimOpenedOwnerLine(amount: number | string | null | undefined): string {
-  return `Claim opened and under review, ${formatMoney(amount)} security deposit has been charged`;
+export function claimOpenedOwnerLine(_amount?: number | string | null, mode?: string | null): string {
+  return mode === "refundable_charge"
+    ? "Claim opened. Deposit held while it’s reviewed."
+    : "Claim opened. Deposit charged while it’s reviewed.";
 }
 
 export const CLAIM_REVIEW_TOP = {
@@ -206,23 +208,20 @@ export function claimResolvedBorrowerCopy(p: {
 }
 
 export function claimResolvedOwnerLine(refunded: number | string | null | undefined, retained: number | string | null | undefined): string {
-  return `Claim has been resolved. ${formatMoney(refunded)} refunded · ${formatMoney(retained)} retained`;
+  return `Claim resolved · ${formatMoney(refunded)} refunded · ${formatMoney(retained)} kept`;
 }
 
 // ── Chat event stamps ───────────────────────────────────────────────────────
-/**
- * The chat stamp for a released deposit: a temporary hold, or a refundable charge that was released. The amount
- * is shown when the event carries one.
- */
+/** The chat stamp for a released deposit: a hold released, or a refundable charge refunded. No amount is shown. */
 export function depositReleasedStamp(meta: { depositMode?: string | null; amount?: number | string | null } | null | undefined): string {
-  const amount = meta?.amount == null || meta.amount === "" ? "" : `${formatMoney(meta.amount)} `;
-  const what = meta?.depositMode === "refundable_charge" ? "Refundable Deposit released" : "Deposit hold released";
-  return `🔓 ${amount}${what}, no charge was made.`;
+  return meta?.depositMode === "refundable_charge"
+    ? "✅ Deposit refunded. It may take 5–10 business days to show on your card."
+    : "✅ Deposit hold released. You weren’t charged.";
 }
 
 export function depositConfirmedStamp(meta?: { mode?: string | null; depositMode?: string | null } | null): string {
   const mode = meta?.mode ?? meta?.depositMode;
-  return mode === "refundable_charge" ? "🔒 Refundable deposit charged" : "🔒 Temporary hold placed";
+  return mode === "refundable_charge" ? "🔒 Deposit charged. Refunded after the item is returned." : "🔒 Deposit hold authorized. It’s only charged if a claim is opened.";
 }
 
 // ── Notifications ───────────────────────────────────────────────────────────

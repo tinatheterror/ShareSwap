@@ -92,7 +92,7 @@ export function DepositStatusCard({ deposit, role, fallbackRetainedAmount }: Dep
         <div className={`${base} border-red-200 bg-red-50 text-red-900`} data-testid="deposit-card-charged-owner">
           <p className="font-semibold">Security deposit</p>
           <p className="text-sm font-semibold">{formatMoney(charged)} charged</p>
-          <p>{claimOpenedOwnerLine(charged)}</p>
+          <p>{claimOpenedOwnerLine(charged, deposit.mode)}</p>
         </div>
       );
     }

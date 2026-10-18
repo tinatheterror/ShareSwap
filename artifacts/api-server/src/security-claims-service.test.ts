@@ -236,7 +236,7 @@ test("opening a claim captures the FULL deposit once, records card + amount, and
   assert.equal(final.notes.find(n => n.userId === ownerId)!.type, "security_claim_opened_owner");
   const stamp = final.chat.find(m => (m.metadata as any)?.eventType === "claim_opened")!;
   assert.equal(stamp.messageType, "event");
-  assert.equal(stamp.content, "Claim opened and under review, $105 security deposit has been charged");
+  assert.equal(stamp.content, "⚠️ Claim opened. Deposit charged while it’s reviewed.");
   assert.deepEqual({ ...(stamp.metadata as any), itemTitle: undefined }, {
     eventType: "claim_opened", claimId: claim.id, depositMode: "authorization", amount: 105, cardLast4: "4242", cardBrand: "visa", itemTitle: undefined,
   });
@@ -378,7 +378,7 @@ test("approved claim refunds deposit minus approved amount, retains the approved
   assert.equal(settlement.retainedAmount, "30.00");
   assert.equal(settlement.releasedAmount, "75.00");
   const resolved = state.chat.find(m => (m.metadata as any)?.eventType === "claim_resolved")!;
-  assert.equal(resolved.content, "Claim has been resolved. $75 refunded · $30 retained");
+  assert.equal(resolved.content, "Claim resolved · $75 refunded · $30 kept");
   assert.deepEqual(resolved.metadata, {
     eventType: "claim_resolved", claimId: claim.id, chargedAmount: 105, refundedAmount: 75, retainedAmount: 30,
     cardLast4: "4242", depositMode: "authorization", outcome: "refunded_partial",
@@ -399,7 +399,7 @@ test("approved claim for the full deposit retains everything with no refund call
   assert.equal(state.request.depositRetainedAmount, "100.00");
   const resolved = state.chat.find(m => (m.metadata as any)?.eventType === "claim_resolved")!;
   assert.equal((resolved.metadata as any).outcome, "retained_full");
-  assert.equal(resolved.content, "Claim has been resolved. $0 refunded · $100 retained");
+  assert.equal(resolved.content, "Claim resolved · $0 refunded · $100 kept");
   const note = state.notes.find(n => n.type === "security_deposit_retained" && n.userId === borrowerId)!;
   assert.equal(note.title, "Security deposit retained");
 });
@@ -473,7 +473,7 @@ test("rejected claim refunds the whole charged deposit (authorization-mode captu
     assert.equal(state.request.depositOperationToken, null);
     const resolved = state.chat.find(m => (m.metadata as any)?.eventType === "claim_resolved")!;
     assert.equal((resolved.metadata as any).outcome, "refunded_full");
-    assert.equal(resolved.content, "Claim has been resolved. $100 refunded · $0 retained");
+    assert.equal(resolved.content, "Claim resolved · $100 refunded · $0 kept");
   }
 });
 
@@ -488,7 +488,7 @@ test("rejected claim whose deposit was never charged simply releases the hold", 
   assert.equal(state.request.depositStatus, "released");
   assert.equal(state.request.depositRefundedAmount, null);
   const released = state.chat.find(m => (m.metadata as any)?.eventType === "deposit_released")!;
-  assert.equal(released.content, "Deposit hold released — $100 temporary hold released. You were not charged.");
+  assert.equal(released.content, "✅ Deposit hold released. You weren’t charged.");
   assert.equal((released.metadata as any).amount, 100);
   assert.ok(state.notes.every(n => !/refunded/i.test(n.message)), "never says refunded for a hold");
 });

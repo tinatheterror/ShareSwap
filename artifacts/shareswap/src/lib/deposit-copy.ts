@@ -183,8 +183,10 @@ export const CLAIM_OPENED_CONVERSION =
 export const CLAIM_OPENED_REFUND_NOTE =
   "If the claim is resolved in your favor, the charged amount will be refunded.";
 
-export function claimOpenedOwnerLine(amount: number | string | null | undefined): string {
-  return `Claim opened and under review, ${formatMoney(amount)} security deposit has been charged`;
+export function claimOpenedOwnerLine(_amount?: number | string | null, mode?: string | null): string {
+  return isRefundableChargeMode(mode)
+    ? "Claim opened. Deposit held while it’s reviewed."
+    : "Claim opened. Deposit charged while it’s reviewed.";
 }
 
 /* ---------- Claim review (borrower) ---------- */
@@ -247,34 +249,29 @@ export const CLAIM_RESOLVED_PREVIOUSLY_CHARGED =
   "The security deposit was previously charged because a claim was opened. The applicable amount has now been refunded.";
 
 export function claimResolvedOwnerLine(a: ClaimAmounts): string {
-  return `Claim has been resolved. ${formatMoney(a.refundedAmount ?? 0)} refunded · ${formatMoney(a.retainedAmount ?? 0)} retained`;
+  return `Claim resolved · ${formatMoney(a.refundedAmount ?? 0)} refunded · ${formatMoney(a.retainedAmount ?? 0)} kept`;
 }
 
 /* ---------- Chat event stamps ---------- */
 
 export const EVENT_ICONS = {
-  claim_opened: "🚩",
+  claim_opened: "⚠️",
   claim_resolved: "⚖️",
   deposit_released: "🔓",
   deposit_confirmed: "🔒",
 } as const;
 
-/**
- * The chat stamp for a released deposit: a temporary hold, or a refundable charge that was released. The amount
- * is shown when the event carries one.
- */
+/** The chat stamp for a released deposit: a hold released, or a refundable charge refunded. No amount is shown. */
 export function depositReleasedStampLabel(opts: { depositMode?: string | null; amount?: number | string | null }): string {
-  const value = toAmount(opts.amount);
-  // Whole dollars read as "$42", like the server's and the mobile app's copy; cents only when there are some.
-  const amount = value == null ? "" : `${Number.isInteger(value) ? `$${value}` : formatMoney(value)} `;
-  const what = isRefundableChargeMode(opts.depositMode) ? "Refundable Deposit released" : "Deposit hold released";
-  return `${EVENT_ICONS.deposit_released} ${amount}${what}, no charge was made.`;
+  return isRefundableChargeMode(opts.depositMode)
+    ? "✅ Deposit refunded. It may take 5–10 business days to show on your card."
+    : "✅ Deposit hold released. You weren’t charged.";
 }
 
 export function depositConfirmedStampLabel(opts?: { mode?: string | null; refundable?: boolean }): string {
   return opts?.refundable || isRefundableChargeMode(opts?.mode)
-    ? "🔒 Refundable deposit charged"
-    : "🔒 Temporary hold placed";
+    ? "🔒 Deposit charged. Refunded after the item is returned."
+    : "🔒 Deposit hold authorized. It’s only charged if a claim is opened.";
 }
 
 /* ---------- Notifications ---------- */

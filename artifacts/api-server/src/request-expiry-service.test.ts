@@ -318,7 +318,7 @@ test("a refundable-charge deposit is refunded, never captured or cancelled", asy
   assert.deepEqual(stripe.calls.capture, []);
   assert.deepEqual(stripe.calls.cancel, []);
   assert.deepEqual(stripe.calls.refunds.map((r) => r.params), [{ payment_intent: "pi_refundable" }]);
-  assert.match((await chat(id)).map((m) => m.content).join("\n"), /Refundable deposit refunded/);
+  assert.match((await chat(id)).map((m) => m.content).join("\n"), /Deposit refunded\. It may take 5–10 business days/);
 });
 
 test("an in-person deposit has nothing to release and makes no Stripe call", async () => {

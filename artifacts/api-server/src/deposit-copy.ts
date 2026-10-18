@@ -205,6 +205,8 @@ export const HOLD_EXPIRED_BODY =
 export function disputeOpenedNotice(itemName: string) {
   return `"${itemName}" — a claim was opened and is under review.`;
 }
+export const IN_PERSON_DEPOSIT_NO_CLAIM =
+  "This deposit was paid in person, so it can’t be charged through ShareSwap. Please settle any damage with the borrower directly.";
 export const DISPUTE_OPENED_CHAT =
   "🚩 Claim opened — our team will contact both parties within 24 hours.";
 export const DISPUTE_OPENED_RESPONSE = "Claim opened and under review.";

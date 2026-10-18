@@ -11173,8 +11173,11 @@ Respond with ONLY the category name, nothing else.`
       if (activeClaim) {
         return res.json({ success: true, returnedPendingReview: true, message: depositCopy.RETURN_RECORDED_WITH_CLAIM });
       }
+      // A deposit paid in person has no payment intent, so a claim can neither be opened nor charged.
+      // The return is still confirmed below; the owner is told to settle any damage directly.
+      const inPersonClaimBlocked = !!triggerDispute && request.item_requests.depositMethod === "in_person";
       // Handle dispute if owner reports damage
-      if (triggerDispute) {
+      if (triggerDispute && !inPersonClaimBlocked) {
         const terminalClaim = await claimDepositTerminalAction(requestId, "dispute");
         if (terminalClaim.status !== "claimed") {
           return res.status(409).json({ error: terminalClaim.reason });
@@ -11291,12 +11294,14 @@ Respond with ONLY the category name, nothing else.`
       const returnMessage = isEarlyReturn
         ? (inPerson ? "Item returned early." : "Item returned early. Deposit hold lifted.")
         : (inPerson ? "Return confirmed!" : "Return confirmed! Deposit hold lifted.");
+      const claimNotOpened = inPersonClaimBlocked ? { claimNotOpened: true, claimNotOpenedReason: depositCopy.IN_PERSON_DEPOSIT_NO_CLAIM } : {};
       return res.json({
         success: true,
         request: result.request,
         depositReleased: true,
         isEarlyReturn,
-        message: returnMessage,
+        message: inPersonClaimBlocked ? `${returnMessage} ${depositCopy.IN_PERSON_DEPOSIT_NO_CLAIM}` : returnMessage,
+        ...claimNotOpened,
         recovered: result.recovered,
         alreadyCompleted: result.alreadyCompleted,
       });
@@ -11890,10 +11895,11 @@ Respond with ONLY the category name, nothing else.`
     try {
       const claim = await db.transaction(async tx => {
         await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);
-        const [row] = await tx.select({ ownerId: items.ownerId, borrowerId: itemRequests.requesterId, deposit: itemRequests.trustDepositAmount, pi: itemRequests.depositPaymentIntentId, depositStatus: itemRequests.depositStatus, depositOperation: itemRequests.depositRenewalStatus, stage: itemRequests.overdueStage, expires: itemRequests.depositAuthorizationExpiresAt })
+        const [row] = await tx.select({ ownerId: items.ownerId, borrowerId: itemRequests.requesterId, deposit: itemRequests.trustDepositAmount, pi: itemRequests.depositPaymentIntentId, depositMethod: itemRequests.depositMethod, depositStatus: itemRequests.depositStatus, depositOperation: itemRequests.depositRenewalStatus, stage: itemRequests.overdueStage, expires: itemRequests.depositAuthorizationExpiresAt })
           .from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(eq(itemRequests.id, requestId)).limit(1);
         if (!row) throw Object.assign(new Error("Request not found"), { status: 404 });
         if (row.ownerId !== req.user.id) throw Object.assign(new Error("Only the owner can open a claim"), { status: 403 });
+        if (row.depositMethod === "in_person") throw Object.assign(new Error(depositCopy.IN_PERSON_DEPOSIT_NO_CLAIM), { status: 409 });
         if (!row.pi || row.depositOperation === "terminal_action" || !["authorized", "held", "disputed", "SECURED_REFUNDABLE", "secured_refundable"].includes(row.depositStatus || ""))
           throw Object.assign(new Error("No deposit hold or charged deposit is available for this request"), { status: 409 });
         const nonReturn = ["non_return", "lost"].includes(claimType);

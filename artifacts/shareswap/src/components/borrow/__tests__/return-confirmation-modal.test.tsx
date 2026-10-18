@@ -55,4 +55,40 @@ describe("ReturnConfirmationModal", () => {
       });
     });
   });
+
+  it("tells the owner no claim was opened when damage is reported on an in-person deposit", async () => {
+    const reason = "This deposit was paid in person, so it can’t be charged through ShareSwap. Please settle any damage with the borrower directly.";
+    mocks.apiRequest.mockResolvedValueOnce({
+      json: async () => ({ success: true, claimNotOpened: true, claimNotOpenedReason: reason }),
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ReturnConfirmationModal
+          isOpen
+          onClose={vi.fn()}
+          requestId={42}
+          itemName="Camping stove"
+          depositAmount={20}
+          userRole="owner"
+          requestType="BORROW"
+          endDate="2026-08-01"
+          depositMethod="in_person"
+          onSuccess={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Return" }));
+
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledWith({
+        title: "Return confirmed — no claim opened",
+        description: reason,
+      });
+    });
+  });
 });

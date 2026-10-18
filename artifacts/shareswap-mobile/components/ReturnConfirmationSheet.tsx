@@ -190,7 +190,7 @@ export function ReturnConfirmationSheet({
         }
       }
 
-      return apiPost(`/api/requests/${requestId}/confirm-return`, {
+      return apiPost<{ claimNotOpened?: boolean; claimNotOpenedReason?: string }>(`/api/requests/${requestId}/confirm-return`, {
         conditionRating: sameCondition ? 5 : conditionRating,
         conditionNotes,
         sameCondition,
@@ -198,13 +198,17 @@ export function ReturnConfirmationSheet({
         disputePhotoUrl,
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       if (completionHandled.current) return;
       completionHandled.current = true;
       setRecoveryPending(false);
       setSubmitError(null);
       invalidate();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Damage was reported on a deposit paid in person: the return is confirmed but no claim was opened.
+      if (data?.claimNotOpened && data.claimNotOpenedReason) {
+        Alert.alert("Return confirmed — no claim opened", data.claimNotOpenedReason);
+      }
       onSuccess();
     },
     onError: handleSubmitError,

@@ -1,6 +1,7 @@
 import React from "react";
 import { act } from "react";
 import renderer from "react-test-renderer";
+import { Alert } from "react-native";
 import { ReturnConfirmationSheet } from "../ReturnConfirmationSheet";
 import { apiGet, apiPost } from "@/lib/api";
 
@@ -246,6 +247,37 @@ test("a failed owner confirmation shows a visible error", async () => {
 
   expect(tree.root.findAllByProps({ children: error.message }).length).toBeGreaterThan(0);
   expect(tree.root.findByProps({ testID: "submit-confirm-return" })).toBeTruthy();
+});
+
+test("an in-person damage report tells the owner no claim was opened and shows the server's reason", async () => {
+  const reason = "This deposit was paid in person, so it can’t be charged through ShareSwap. Please settle any damage with the borrower directly.";
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+  const onSuccess = jest.fn();
+  jest.mocked(apiPost).mockResolvedValueOnce({ success: true, claimNotOpened: true, claimNotOpenedReason: reason });
+  const tree = renderSheet({ onSuccess, depositMethod: "in_person" });
+
+  await act(async () => {
+    tree.root.findByProps({ testID: "submit-confirm-return" }).props.onPress();
+    await flushMicrotasks();
+  });
+
+  expect(alert).toHaveBeenCalledWith("Return confirmed — no claim opened", reason);
+  expect(onSuccess).toHaveBeenCalledTimes(1);
+  alert.mockRestore();
+});
+
+test("a normal owner confirmation shows no extra alert", async () => {
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+  jest.mocked(apiPost).mockResolvedValueOnce({ success: true });
+  const tree = renderSheet();
+
+  await act(async () => {
+    tree.root.findByProps({ testID: "submit-confirm-return" }).props.onPress();
+    await flushMicrotasks();
+  });
+
+  expect(alert).not.toHaveBeenCalled();
+  alert.mockRestore();
 });
 
 test("an expired session offers sign-in instead of silently retrying the return", async () => {

@@ -188,7 +188,13 @@ export function ReturnConfirmationModal({
       completionHandled.current = true;
       setRecoveryPending(false);
       setIsProcessing(false);
-      if (shouldTriggerDispute) {
+      if (data?.claimNotOpened) {
+        // Damage was reported on a deposit paid in person: the return is confirmed but no claim was opened.
+        toast({
+          title: "Return confirmed — no claim opened",
+          description: data.claimNotOpenedReason,
+        });
+      } else if (shouldTriggerDispute) {
         toast({
           title: "Dispute opened",
           description: "We'll review your claim and contact both parties.",

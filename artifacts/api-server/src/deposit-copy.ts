@@ -33,7 +33,7 @@ export function shortItemName(name: string | null | undefined, limit = 40): stri
 }
 
 export const HOLD_EXPLAINER =
-  "This is a temporary hold, not a charge. Your card may show the amount as pending or temporarily unavailable.";
+  "This is a deposit hold, not a charge. Your card may show the amount as pending or temporarily unavailable.";
 export const HOLD_RELEASE_EXPLAINER =
   "After the item is returned normally, the hold is released. If a claim is opened, the deposit may be charged while the claim is reviewed.";
 export const NOT_CHARGED_UNLESS_CLAIM = "Not charged unless a claim is opened.";
@@ -182,7 +182,9 @@ export function returnConfirmedNotice(itemName: string, hasPlatformDeposit: bool
     ? `"${itemName}" returned to owner. Refundable deposit refunded.`
     : `"${itemName}" returned to owner. Deposit hold released.`;
 }
-export function returnConfirmedChat(hasPlatformDeposit: boolean, refundable = false) {
+export function returnConfirmedChat(hasPlatformDeposit: boolean, refundable = false, inPersonDeposit = false) {
+  // Cash handed over in person: there is no hold or refund to report; the lender has to hand it back.
+  if (inPersonDeposit) return "✅ Item returned in good condition. In-person deposit can be returned.";
   if (!hasPlatformDeposit) return "✅ Item returned in good condition.";
   return refundable
     ? `✅ Item returned in good condition. Deposit refunded. ${REFUND_TIMING}`
@@ -236,7 +238,7 @@ export function stripeRefundableChargeDescription(requestId: number) {
 export function refundableConsentMessage(amount: number, kind: "rental" | "borrow") {
   const what = kind === "borrow" ? "trust deposit" : "security deposit";
   const reason = kind === "borrow" ? "borrow" : "rental";
-  return `A temporary hold is not available for this ${reason}. Your ${what} will be charged now and refunded after return.`;
+  return `A deposit hold isn’t available for this ${reason}. Your ${what} will be charged now and refunded after return.`;
 }
 
 // ── Lifecycle deposit view ────────────────────────────────────────────────

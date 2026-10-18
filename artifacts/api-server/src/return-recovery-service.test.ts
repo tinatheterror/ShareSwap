@@ -291,7 +291,7 @@ test("a normal return sends only the merged return stamp, in hold mode and charg
   }
 });
 
-test("an in-person return with a deposit uses the merged stamp; without one it is the plain stamp", async (t) => {
+test("an in-person return with a deposit says the in-person deposit can be returned; without one it is the plain stamp", async (t) => {
   const withDeposit = await fixture(t, { inPerson: true });
   const first = await confirmApprovedReturn({
     requestId: withDeposit.request.id, conditionRating: 5, conditionNotes: "", sameCondition: true, stripeClient: withDeposit.stripe,
@@ -299,7 +299,7 @@ test("an in-person return with a deposit uses the merged stamp; without one it i
   assert.equal(first.status, "completed");
   assert.deepEqual(
     (await state(withDeposit.request.id)).messages.map((m) => m.content),
-    ["✅ Item returned in good condition. Deposit hold released."],
+    ["✅ Item returned in good condition. In-person deposit can be returned."],
   );
 
   const noDeposit = await fixture(t, { inPerson: true });

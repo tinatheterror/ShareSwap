@@ -281,7 +281,7 @@ export default function FAQPage() {
                         { icon: Search, label: "Find & Request Item" },
                         {
                           icon: Lock,
-                          label: "Temporary deposit hold placed",
+                          label: "Deposit hold authorized",
                         },
                         { icon: MapPin, label: "Item Pickup" },
                         {
@@ -1093,9 +1093,9 @@ export default function FAQPage() {
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
                     A <span className="font-semibold">trust deposit</span> is a{" "}
-                    <span className="font-semibold">temporary card hold</span>{" "}
+                    <span className="font-semibold">hold on your card</span>{" "}
                     placed when you borrow an item. It's there to protect the
-                    lender. This is a temporary hold, not a charge — your card
+                    lender. It's a hold, not a charge — your card
                     may show the amount as pending or temporarily unavailable.
                   </p>
                   <p>
@@ -1172,7 +1172,7 @@ export default function FAQPage() {
                   <p>
                     A security deposit is a{" "}
                     <span className="font-semibold">
-                      temporary card hold during a rental
+                      deposit hold during a rental
                     </span>{" "}
                     to protect the owner. When the item is returned normally,
                     the hold is released and you were not charged.
@@ -1182,7 +1182,7 @@ export default function FAQPage() {
                     coverage, but the final price is up to you.
                   </p>
                   <p className="text-sm italic text-gray-500">
-                    Deposits are a temporary hold, not a charge. Your card may
+                    Deposits are a hold, not a charge. Your card may
                     show the amount as pending. Not charged unless a claim is
                     opened.
                   </p>
@@ -1286,7 +1286,7 @@ export default function FAQPage() {
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span>Your temporary deposit hold is released — you were not charged</span>
+                      <span>Your deposit hold is released — you were not charged</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
@@ -1342,7 +1342,7 @@ export default function FAQPage() {
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
-                        A temporary deposit hold is placed during each borrowing
+                        A deposit hold is placed during each borrowing
                         or renting transaction
                       </span>
                     </li>
@@ -1599,7 +1599,7 @@ export default function FAQPage() {
                     <p className="font-medium text-gray-700">How it works:</p>
                     <ul className="list-disc list-inside space-y-1 text-sm">
                       <li>
-                        Renter pays the rental fee upfront; the security deposit is a temporary card hold, not a charge
+                        Renter pays the rental fee upfront; the security deposit is a hold, not a charge
                       </li>
                       <li>
                         The rental payment is held until the rental is complete; the deposit hold is released after a normal return
@@ -1670,7 +1670,7 @@ export default function FAQPage() {
                       <ul className="text-sm space-y-1">
                         <li>• Responsibility transfers at handoff</li>
                         <li>• Both parties confirm in-person</li>
-                        <li>• Temporary deposit hold placed immediately</li>
+                        <li>• Deposit hold authorized immediately</li>
                       </ul>
                     </div>
                     <div className="bg-white rounded-lg p-3">
@@ -1685,7 +1685,7 @@ export default function FAQPage() {
                         </li>
                         <li>• Sender handles courier issues</li>
                         <li>
-                          • Temporary deposit hold placed after delivery confirmation
+                          • Deposit hold authorized after delivery confirmation
                         </li>
                         <li>
                           • ShareSwap does not cover courier-related loss or

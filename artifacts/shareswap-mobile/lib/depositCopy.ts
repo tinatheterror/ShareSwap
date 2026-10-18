@@ -82,13 +82,13 @@ export function depositPhaseDescription(
   const amt = formatMoney(opts.amount);
   switch (phase) {
     case "hold":
-      return `${amt} temporary card hold. Not charged unless a claim is opened.`;
+      return `${amt} deposit hold. Not charged unless a claim is opened.`;
     case "charged":
       return opts.refundable
         ? `${amt} refundable deposit charge. Refunded after the item is returned in good condition.`
         : `${formatMoney(opts.chargedAmount ?? opts.amount)} charged because a claim was opened. It may be refunded depending on the outcome.`;
     case "released":
-      return `${amt} temporary hold released. You were not charged.`;
+      return `${amt} deposit hold released. You were not charged.`;
     case "resolved":
       return "The claim was resolved. See the refund and retained amounts below.";
     default:
@@ -106,12 +106,12 @@ export function depositSummaryLine(deposit: DepositLike | null | undefined, fall
 }
 
 // ── Hold explainer constants / builders ─────────────────────────────────────
-export const HOLD_NOT_A_CHARGE = "This is a temporary hold, not a charge.";
+export const HOLD_NOT_A_CHARGE = "This is a deposit hold, not a charge.";
 export const NOT_CHARGED_UNLESS_CLAIM = "Not charged unless a claim is opened.";
 export const HOLD_COVERAGE_NOTE = "The hold covers your return date plus one extra day for return processing.";
 
 export function holdTitle(amount: number | string | null | undefined): string {
-  return `${formatMoney(amount)} temporary card hold`;
+  return `${formatMoney(amount)} deposit hold`;
 }
 export function holdPendingNote(amount: number | string | null | undefined): string {
   return `${HOLD_NOT_A_CHARGE} Your card may show ${formatMoney(amount)} as pending or temporarily unavailable.`;
@@ -120,7 +120,7 @@ export function holdReleaseExplainer(amount: number | string | null | undefined)
   return `After the item is returned normally, the ${formatMoney(amount)} hold is released. If a claim is opened, the deposit may be charged while the claim is reviewed.`;
 }
 export function holdPlacedMessage(amount: number | string | null | undefined): string {
-  return `Your ${formatMoney(amount)} temporary hold is in place. You have not been charged. ${NOT_CHARGED_UNLESS_CLAIM}`;
+  return `Your ${formatMoney(amount)} deposit hold is in place. You have not been charged. ${NOT_CHARGED_UNLESS_CLAIM}`;
 }
 export function holdReleasedMessage(amount: number | string | null | undefined): string {
   return `${formatMoney(amount)} deposit hold released. You were not charged.`;
@@ -250,6 +250,6 @@ export function depositNotificationKind(type: string): DepositNotifKind {
   }
 }
 
-export const DEPOSIT_HOLD_FAILURE_NOTE = "No temporary hold was placed and your security deposit was not charged.";
+export const DEPOSIT_HOLD_FAILURE_NOTE = "No deposit hold was placed and your security deposit was not charged.";
 export const REFUNDABLE_CHARGE_NOTE =
-  "This is a real, refundable charge (not a temporary hold). It is refunded after the item is returned in good condition.";
+  "This is a real, refundable charge (not a deposit hold). It is refunded after the item is returned in good condition.";

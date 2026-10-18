@@ -70,11 +70,11 @@ export function isRefundableChargeMode(mode: string | null | undefined): boolean
   return mode === "refundable_charge";
 }
 
-export const HOLD_EXPLAINER_SHORT = "This is a temporary hold, not a charge.";
+export const HOLD_EXPLAINER_SHORT = "This is a deposit hold, not a charge.";
 export const NOT_CHARGED_UNLESS_CLAIM = "Not charged unless a claim is opened.";
 
 export function holdPendingNotice(amount: number | string | null | undefined): string {
-  return `This is a temporary hold, not a charge. Your card may show ${formatMoney(amount)} as pending or temporarily unavailable.`;
+  return `This is a deposit hold, not a charge. Your card may show ${formatMoney(amount)} as pending or temporarily unavailable.`;
 }
 
 export function holdReleaseExplainer(amount: number | string | null | undefined): string {
@@ -83,14 +83,14 @@ export function holdReleaseExplainer(amount: number | string | null | undefined)
 }
 
 export function temporaryHoldLabel(amount: number | string | null | undefined): string {
-  return `${formatMoney(amount)} temporary card hold`;
+  return `${formatMoney(amount)} deposit hold`;
 }
 
 export const HOLD_COVERAGE_NOTE =
   "The hold covers your scheduled return date plus one extra day for return processing.";
 
 export const REFUNDABLE_CHARGE_NOTE =
-  "This is a real, refundable charge (not a temporary hold). It is refunded after the item is returned safely unless a claim is opened.";
+  "This is a real, refundable charge (not a deposit hold). It is refunded after the item is returned safely unless a claim is opened.";
 
 export function holdReleasedTitle(): string {
   return "Deposit hold released";
@@ -129,7 +129,7 @@ export function depositPhaseCopy(deposit: DepositLike | null | undefined, opts?:
         label: "Temporary hold",
         description:
           viewer === "owner"
-            ? `${amt} temporary card hold on the borrower's card. Not charged unless a claim is opened.`
+            ? `${amt} deposit hold on the borrower's card. Not charged unless a claim is opened.`
             : `${temporaryHoldLabel(amount)}. ${NOT_CHARGED_UNLESS_CLAIM}`,
         tone: "hold",
       };

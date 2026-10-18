@@ -1345,7 +1345,7 @@ export default function RequestsPage() {
           <Card className="max-w-md w-full">
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold mb-2">Place security deposit hold</h3>
-              <p className="text-xs text-muted-foreground mb-4">This is a temporary hold, not a charge. {NOT_CHARGED_UNLESS_CLAIM}</p>
+              <p className="text-xs text-muted-foreground mb-4">This is a deposit hold, not a charge. {NOT_CHARGED_UNLESS_CLAIM}</p>
               <Elements stripe={stripePromise} options={{ clientSecret: depositClientSecret }}>
                 <DepositPaymentForm
                   clientSecret={depositClientSecret}
@@ -1633,7 +1633,7 @@ export default function RequestsPage() {
                 <RadioGroup value={proposedDepositMethod} onValueChange={setProposedDepositMethod}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="in_app" id="cp-deposit-inapp" />
-                    <Label htmlFor="cp-deposit-inapp" className="font-normal cursor-pointer">In-app (temporary card hold)</Label>
+                    <Label htmlFor="cp-deposit-inapp" className="font-normal cursor-pointer">In-app (deposit hold)</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="in_person" id="cp-deposit-inperson" />

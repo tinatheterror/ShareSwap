@@ -48,6 +48,13 @@ test("lifecycle phases never confuse hold, charge, release and refund", () => {
   assert.equal(copy.depositLifecycleView({ ...base, mode: "authorization", status: "EXPIRED_UNSECURED" }).phase, "none");
 });
 
+test("return stamp has an in-person version that never mentions a hold or refund", () => {
+  const s = copy.returnConfirmedChat(true, false, true);
+  assert.equal(s, "✅ Item returned in good condition. In-person deposit can be returned.");
+  assert.doesNotMatch(s, /hold|refund/i);
+  assert.equal(copy.returnConfirmedChat(false, false, false), "✅ Item returned in good condition.");
+});
+
 test("claim-opened copy depends on the deposit mode", () => {
   // Hold mode: the hold is charged while the claim is reviewed.
   assert.equal(copy.claimOpenedChat(105), "⚠️ Claim opened. Deposit charged while it’s reviewed.");

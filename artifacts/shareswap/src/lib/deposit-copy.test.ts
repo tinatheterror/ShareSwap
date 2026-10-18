@@ -55,7 +55,7 @@ describe("deposit-copy", () => {
   });
 
   it("holds copy", () => {
-    expect(holdPendingNotice(105)).toContain("temporary hold, not a charge");
+    expect(holdPendingNotice(105)).toContain("deposit hold, not a charge");
     expect(holdReleaseExplainer(105)).toContain("$105.00 hold is released");
     expect(holdReleasedBody(105)).toBe("$105.00 deposit hold released. You were not charged.");
   });
@@ -110,7 +110,7 @@ describe("deposit-copy", () => {
 });
 
 describe("depositReleasedStampLabel", () => {
-  it("a released temporary hold reads as released", () => {
+  it("a released deposit hold reads as released", () => {
     expect(depositReleasedStampLabel({ depositMode: "authorization", amount: 42 })).toBe("✅ Deposit hold released. You weren’t charged.");
     expect(depositReleasedStampLabel({ amount: "42.00" })).toBe("✅ Deposit hold released. You weren’t charged.");
   });

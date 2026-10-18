@@ -185,12 +185,12 @@ function buildTimeline(tx: TransactionDetail): TimelineEvent[] {
   }
   if (tx.depositAuthorizedAt) {
     events.push({
-      label: "Temporary deposit hold placed",
+      label: "Deposit hold authorized",
       timestamp: tx.depositAuthorizedAt,
       icon: <Lock className="h-4 w-4 text-white" />,
       iconBg: "bg-purple-500",
       metadata: tx.trustDepositAmount
-        ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} temporary hold — not charged`
+        ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} deposit hold — not charged`
         : undefined,
     });
   }
@@ -574,7 +574,7 @@ export default function TransactionDetailPage() {
                       {tx.depositAuthorizedAt && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                           <Lock className="h-3.5 w-3.5" />
-                          Temporary hold placed on{" "}
+                          Deposit hold authorized on{" "}
                           {format(new Date(tx.depositAuthorizedAt), "MMM d, yyyy 'at' h:mm a")}
                         </p>
                       )}

@@ -129,7 +129,7 @@ function SavedCardConfirmForm(props: FormProps) {
           ) : (
             <>
               <span className="flex items-center gap-1.5 leading-none"><CreditCard className="h-4 w-4" />Pay ${totalChargedToday.toFixed(2)}</span>
-              <span className="text-[10px] opacity-75 font-normal leading-none -mt-0.5">Plus a separate {formatMoney(depositAmount)} temporary hold</span>
+              <span className="text-[10px] opacity-75 font-normal leading-none -mt-0.5">Plus a separate {formatMoney(depositAmount)} deposit hold</span>
             </>
           )}
         </Button>
@@ -199,7 +199,7 @@ function BreakdownRows({ rentalPrice, rentalSubtotal, discountPct, discountAmoun
           </span>
           <span className="font-medium">${depositAmount.toFixed(2)}</span>
         </div>
-        <p className="text-[10px] text-gray-400 mt-0.5">Temporary hold only — {NOT_CHARGED_UNLESS_CLAIM}</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">Deposit hold only — {NOT_CHARGED_UNLESS_CLAIM}</p>
       </div>
 
       {/* Total */}
@@ -432,7 +432,7 @@ export function RentalDepositModal({
                 <span className="text-gray-600">Refundable deposit payment</span>
                 <span className="font-semibold">${consent.depositAmount.toFixed(2)}</span>
               </div>
-              <p className="text-xs text-gray-500 mb-4">This is a real, refundable charge — not a temporary hold. It is refunded after a safe return unless a claim is opened.</p>
+              <p className="text-xs text-gray-500 mb-4">This is a real, refundable charge — not a deposit hold. It is refunded after a safe return unless a claim is opened.</p>
               {authenticationClientSecret ? (
                 <Elements stripe={stripePromise} options={{ clientSecret: authenticationClientSecret }}>
                   <RefundablePaymentAuthentication clientSecret={authenticationClientSecret} onAuthenticated={() => confirmRefundableMutation.mutate()} onCancel={handleClose} />

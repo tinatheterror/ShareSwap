@@ -34,8 +34,8 @@ describe("depositCopy", () => {
   });
 
   it("builds hold explainers", () => {
-    expect(holdTitle(105)).toBe("$105 temporary card hold");
-    expect(holdPendingNote(105)).toContain("This is a temporary hold, not a charge. Your card may show $105 as pending or temporarily unavailable.");
+    expect(holdTitle(105)).toBe("$105 deposit hold");
+    expect(holdPendingNote(105)).toContain("This is a deposit hold, not a charge. Your card may show $105 as pending or temporarily unavailable.");
     expect(holdReleaseExplainer(105)).toBe("After the item is returned normally, the $105 hold is released. If a claim is opened, the deposit may be charged while the claim is reviewed.");
     expect(CANCEL_BOOKING_MESSAGE).toBe("Your deposit hold will be released. You will not be charged.");
     expect(holdReleasedMessage(105)).toBe("$105 deposit hold released. You were not charged.");

@@ -891,7 +891,7 @@ async function finalizeReturn(
     const itemName = row.item.name.length > 20 ? `${row.item.name.slice(0, 20)}…` : row.item.name;
     const isInPerson = row.request.depositMethod === "in_person";
     const refundableDeposit = row.request.depositMode === "refundable_charge";
-    // An in-person deposit has no platform payment, but the return stamp still reports it when one exists.
+    // An in-person deposit has no platform payment; the return stamp tells the lender it can be handed back.
     const hasDeposit = !isInPerson || Number(row.request.trustDepositAmount ?? 0) > 0;
     const finalNoticeMessage = depositCopy.returnConfirmedNotice(itemName, !isInPerson, refundableDeposit);
     const [existingNotice] = await tx.select({ id: notifications.id })
@@ -922,7 +922,7 @@ async function finalizeReturn(
     }
 
     await tx.insert(messages).values({
-      content: depositCopy.returnConfirmedChat(hasDeposit, refundableDeposit),
+      content: depositCopy.returnConfirmedChat(hasDeposit, refundableDeposit, isInPerson && hasDeposit),
       senderId: row.item.ownerId!,
       receiverId: row.request.requesterId!,
       messageType: "system",

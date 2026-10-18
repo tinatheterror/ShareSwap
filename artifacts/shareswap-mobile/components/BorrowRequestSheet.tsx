@@ -424,7 +424,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
                     <View style={s.splitRow}>
                       <View style={s.rowLeft}>
                         <Shield size={12} color={colors.mutedForeground} strokeWidth={2} />
-                        <Text style={[s.rowLabel, { color: colors.mutedForeground }]}>Trust deposit (temporary hold)</Text>
+                        <Text style={[s.rowLabel, { color: colors.mutedForeground }]}>Trust deposit (deposit hold)</Text>
                       </View>
                       {depositCalc.discountPercentage > 0 ? (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

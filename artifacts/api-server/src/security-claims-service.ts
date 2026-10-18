@@ -137,6 +137,10 @@ async function finalizeClaimCapture(args: {
       claimDecisionDeadlineAt: null, settlementStartDeadlineAt: null,
       depositRenewalStatus: null, depositOperationToken: null, depositOperationType: null,
     }).where(and(eq(itemRequests.id, requestId), eq(itemRequests.depositOperationToken, fenceToken)));
+    // The charge went through after all: clear a manual-review flag raised by an earlier failed attempt, so the
+    // approved claim can still settle. (A hold that expired is never captured, so it keeps its flag.)
+    await tx.update(securityClaims).set({ settlementStatus: "PENDING", updatedAt: completedAt })
+      .where(and(eq(securityClaims.id, claimId), eq(securityClaims.settlementStatus, "MANUAL_REVIEW")));
     const itemName = await itemNameFor(tx, owned.itemId);
     const borrowerCopy = depositChargedBorrower(deposit, itemName, owned.depositMode === "refundable_charge");
     const ownerCopy = claimOpenedOwner(deposit, itemName, owned.depositMode === "refundable_charge");
@@ -259,6 +263,8 @@ export async function ensureClaimDepositCaptured(
     return result;
   } catch (error) {
     const uncertain = financialCallInvoked && stripeOutcomeIsIndeterminate(error);
+    // Flag first: a failure while writing the ledger below must not skip the manual-review flag.
+    await flagCaptureFailure(claimId, identity.requestId, error, uncertain);
     if (operation) {
       await db.update(depositSettlementOperations).set({
         status: uncertain ? "INDETERMINATE" : "FAILED",
@@ -274,6 +280,21 @@ export async function ensureClaimDepositCaptured(
     if (!current || !["SETTLED", "INDETERMINATE", "PROCESSING"].includes(current.status)) {
       await releaseDepositTerminalClaim(terminal);
     }
+  }
+}
+
+/**
+ * A deposit capture that did not complete is never silent: it is logged and the claim is flagged for manual
+ * review, so an admin sees it in the claim queue. A later capture that succeeds clears the flag again
+ * (see finalizeClaimCapture). This runs inside failure handlers, so it must never throw.
+ */
+async function flagCaptureFailure(claimId: number, requestId: number, error: unknown, indeterminate: boolean) {
+  try {
+    console.error(`[claims] deposit capture ${indeterminate ? "indeterminate" : "failed"} for claim ${claimId} (request ${requestId}): ${safeOperationError(error)}`);
+    await db.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", updatedAt: new Date() })
+      .where(and(eq(securityClaims.id, claimId), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));
+  } catch (flagError) {
+    try { console.error(`[claims] could not flag claim ${claimId} for manual review:`, flagError); } catch { /* nothing left to do */ }
   }
 }
 
@@ -296,6 +317,7 @@ export async function reconcileClaimCaptureOperation(operationId: number, stripe
     await db.update(depositSettlementOperations).set({ status: "FAILED", error: `definitive: ${safeOperationError(error)}` })
       .where(and(eq(depositSettlementOperations.id, operationId), ne(depositSettlementOperations.status, "SETTLED")));
     await releaseDepositFenceIfOwned(request.id, fenceToken);
+    await flagCaptureFailure(operation.claimId!, request.id, error, false);
     return { status: "pending", reason: safeOperationError(error), indeterminate: false };
   };
   let captureId: string | null = null;
@@ -313,7 +335,10 @@ export async function reconcileClaimCaptureOperation(operationId: number, stripe
         const captured = await stripe.paymentIntents.capture(intent.id, {}, { idempotencyKey: `${operation.operationKey}-capture`, maxNetworkRetries: 0 });
         captureId = chargeIdOf(captured) || chargeIdOf(intent);
       } catch (error) {
-        if (stripeOutcomeIsIndeterminate(error)) return { status: "pending", reason: safeOperationError(error), indeterminate: true };
+        if (stripeOutcomeIsIndeterminate(error)) {
+          await flagCaptureFailure(operation.claimId!, request.id, error, true);
+          return { status: "pending", reason: safeOperationError(error), indeterminate: true };
+        }
         return fail(error);
       }
     } else {

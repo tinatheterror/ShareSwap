@@ -323,6 +323,37 @@ test("definitive capture failure leaves the claim open, the deposit uncharged, a
   assert.equal(state.request.depositStatus, "captured");
 });
 
+test("a failed or indeterminate capture is logged, flags the claim, and never posts the charged stamp or notifications", async (t) => {
+  const logged = t.mock.method(console, "error", () => undefined);
+  for (const [label, captureError, indeterminate] of [["definitive", definitiveError(), false], ["indeterminate", connectionError(), true]] as const) {
+    const { request, claim } = await fixture("authorization", "CUSTOMER_RESPONSE_PENDING", 0, 100);
+    const stripe = stripeFor(request, "requires_capture", { captureError });
+    const before = logged.mock.callCount();
+    const result = await ensureClaimDepositCaptured(claim.id, stripe as any);
+    assert.equal(result.status, "pending", label);
+    assert.equal((result as any).indeterminate, indeterminate, label);
+    const state = await rows(claim.id, request.id);
+    assert.equal(state.claim.settlementStatus, "MANUAL_REVIEW", `${label}: flagged for manual review`);
+    assert.equal(state.request.depositStatus, "authorized", `${label}: still uncharged`);
+    assert.equal(state.chat.filter(m => (m.metadata as any)?.eventType === "claim_opened").length, 0, `${label}: no claim_opened stamp`);
+    assert.equal(state.notes.filter(n => n.type === "security_deposit_charged" || n.type === "security_claim_opened_owner").length, 0, `${label}: no charged notifications`);
+    assert.ok(logged.mock.calls.slice(before).some(c => /\[claims\] deposit capture (failed|indeterminate) for claim/.test(String(c.arguments[0]))), `${label}: logged`);
+  }
+});
+
+test("a capture that succeeds on retry clears the manual-review flag and posts the stamp exactly once", async () => {
+  const { request, claim } = await fixture("authorization", "CUSTOMER_RESPONSE_PENDING", 0, 100);
+  const failing = stripeFor(request, "requires_capture", { captureError: definitiveError() });
+  assert.equal((await ensureClaimDepositCaptured(claim.id, failing as any)).status, "pending");
+  assert.equal((await rows(claim.id, request.id)).claim.settlementStatus, "MANUAL_REVIEW");
+
+  const working = stripeFor(request, "requires_capture");
+  assert.equal((await ensureClaimDepositCaptured(claim.id, working as any)).status, "captured");
+  const state = await rows(claim.id, request.id);
+  assert.equal(state.claim.settlementStatus, "PENDING", "an approved claim can still settle");
+  assert.equal(state.chat.filter(m => (m.metadata as any)?.eventType === "claim_opened").length, 1);
+});
+
 test("an expired hold is never captured; the claim is flagged for manual review", async () => {
   const { request, claim } = await fixture("authorization", "CUSTOMER_RESPONSE_PENDING", 0, 100);
   const stripe = stripeFor(request, "requires_capture");

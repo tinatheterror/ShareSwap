@@ -138,8 +138,8 @@ async function finalizeClaimCapture(args: {
       depositRenewalStatus: null, depositOperationToken: null, depositOperationType: null,
     }).where(and(eq(itemRequests.id, requestId), eq(itemRequests.depositOperationToken, fenceToken)));
     const itemName = await itemNameFor(tx, owned.itemId);
-    const borrowerCopy = depositChargedBorrower(deposit, itemName);
-    const ownerCopy = claimOpenedOwner(deposit, itemName);
+    const borrowerCopy = depositChargedBorrower(deposit, itemName, owned.depositMode === "refundable_charge");
+    const ownerCopy = claimOpenedOwner(deposit, itemName, owned.depositMode === "refundable_charge");
     await tx.insert(notifications).values([
       { userId: claim.borrowerId, requestId, itemId: owned.itemId, ...borrowerCopy },
       { userId: claim.ownerId, requestId, itemId: owned.itemId, ...ownerCopy },

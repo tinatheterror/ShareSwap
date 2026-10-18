@@ -149,10 +149,12 @@ async function fixture(
     mode = "authorization",
     previousPaymentIntentId = null,
     currentIntentStatus,
+    inPerson = false,
   }: {
     mode?: DepositMode;
     previousPaymentIntentId?: string | null;
     currentIntentStatus?: string;
+    inPerson?: boolean;
   } = {},
 ) {
   const suffix = randomUUID();
@@ -197,8 +199,8 @@ async function fixture(
     trustDepositAmount: "100.00",
     depositStatus: mode === "authorization" ? "authorized" : "SECURED_REFUNDABLE",
     depositMode: mode,
-    depositMethod: "in_app",
-    depositPaymentIntentId: currentPaymentIntentId,
+    depositMethod: inPerson ? "in_person" : "in_app",
+    depositPaymentIntentId: inPerson ? null : currentPaymentIntentId,
     depositPreviousPaymentIntentId: previousPaymentIntentId,
     isEarlyReturn: false,
   }).returning();
@@ -273,6 +275,45 @@ after(async () => {
   await pool.end();
 });
 
+test("a normal return sends only the merged return stamp, in hold mode and charge mode", async (t) => {
+  const cases = [
+    { mode: "authorization" as const, stamp: "✅ Item returned in good condition. Deposit hold released." },
+    { mode: "refundable_charge" as const, stamp: "✅ Item returned in good condition. Deposit refunded. It may take 5–10 business days to show on your card." },
+  ];
+  for (const { mode, stamp } of cases) {
+    const { request, stripe } = await fixture(t, { mode });
+    const result = await confirmApprovedReturn({
+      requestId: request.id, conditionRating: 5, conditionNotes: "", sameCondition: true, stripeClient: stripe,
+    });
+    assert.equal(result.status, "completed");
+    const final = await state(request.id);
+    assert.deepEqual(final.messages.map((m) => m.content), [stamp], mode);
+  }
+});
+
+test("an in-person return with a deposit uses the merged stamp; without one it is the plain stamp", async (t) => {
+  const withDeposit = await fixture(t, { inPerson: true });
+  const first = await confirmApprovedReturn({
+    requestId: withDeposit.request.id, conditionRating: 5, conditionNotes: "", sameCondition: true, stripeClient: withDeposit.stripe,
+  });
+  assert.equal(first.status, "completed");
+  assert.deepEqual(
+    (await state(withDeposit.request.id)).messages.map((m) => m.content),
+    ["✅ Item returned in good condition. Deposit hold released."],
+  );
+
+  const noDeposit = await fixture(t, { inPerson: true });
+  await db.update(itemRequests).set({ trustDepositAmount: "0" }).where(eq(itemRequests.id, noDeposit.request.id));
+  const second = await confirmApprovedReturn({
+    requestId: noDeposit.request.id, conditionRating: 5, conditionNotes: "", sameCondition: true, stripeClient: noDeposit.stripe,
+  });
+  assert.equal(second.status, "completed");
+  assert.deepEqual(
+    (await state(noDeposit.request.id)).messages.map((m) => m.content),
+    ["✅ Item returned in good condition."],
+  );
+});
+
 test("persists the return release operation before Stripe and releases current and previous authorizations", async (t) => {
   const previousPaymentIntentId = `pi_return_previous_${randomUUID()}`;
   const { request, stripe } = await fixture(t, { previousPaymentIntentId });
@@ -321,16 +362,14 @@ test("persists the return release operation before Stripe and releases current a
   assert.equal(final.notices.length, 1);
   assert.equal(final.notices[0].title, "Return Confirmed");
   assert.equal(final.messages.filter((m) => m.messageType === "system").length, 1);
-  assert.match(final.messages.find((m) => m.messageType === "system")!.content, /Deposit hold released\./);
-  // No claim was opened: a distinct "hold released" event + notification, never "refunded".
-  const released = final.messages.find((m) => (m.metadata as any)?.eventType === "deposit_released")!;
-  assert.match(released.content, /^✅ Deposit hold released\. You weren’t charged\.$/);
-  assert.equal((released.metadata as any).depositMode, "authorization");
-  assert.ok((released.metadata as any).amount > 0);
+  // One merged stamp on a normal return: no separate "released" event in the chat.
+  assert.equal(final.messages.find((m) => m.messageType === "system")!.content, "✅ Item returned in good condition. Deposit hold released.");
+  assert.equal(final.messages.filter((m) => (m.metadata as any)?.eventType === "deposit_released").length, 0);
+  // No claim was opened: the durable notification still says the hold was released, never "refunded".
   const releaseNotices = await db.select().from(notifications).where(and(eq(notifications.requestId, request.id), eq(notifications.type, "deposit_hold_released")));
   assert.equal(releaseNotices.length, 1);
   assert.equal(releaseNotices[0].title, "Deposit hold released");
-  assert.match(releaseNotices[0].message, /temporary hold released\. You were not charged\.$/);
+  assert.match(releaseNotices[0].message, /deposit hold released\. You were not charged\.$/);
 });
 
 test("a captured refundable deposit is discovered and refunded, unlike an already-canceled authorization", async (t) => {
@@ -544,7 +583,7 @@ test("partial, pending, and failed refunds never mark the deposit released befor
   assert.equal(partialState.request.depositStatus, "SECURED_REFUNDABLE");
   assert.equal(partialState.operations[0].status, "INDETERMINATE");
   assert.equal(partialState.notices.length, 1);
-  assert.match(partialState.notices[0].message, /part of the temporary hold was released/);
+  assert.match(partialState.notices[0].message, /part of the deposit hold was released/);
 
   const failedFixture = await fixture(t, {
     mode: "refundable_charge",

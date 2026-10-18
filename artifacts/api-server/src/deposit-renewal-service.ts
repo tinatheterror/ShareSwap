@@ -284,13 +284,13 @@ async function markRenewalFailure(
     const recipients = [
       {
         userId: request.requesterId,
-        title: "Temporary deposit hold needs attention",
+        title: "Deposit hold needs attention",
         body: depositCopy.renewalFailedBorrowerBody(item.name),
       },
       ...(item.ownerId && item.ownerId !== request.requesterId
         ? [{
             userId: item.ownerId,
-            title: "Temporary deposit hold needs attention",
+            title: "Deposit hold needs attention",
             body: depositCopy.renewalFailedOwnerBody(item.name),
           }]
         : []),

@@ -39,8 +39,8 @@ export function composeCancelMessage(input: CancelMessageInput): string {
     case "authorized":
       parts.push(
         owner
-          ? `${who} ${amount(input.depositAmount)}temporary hold was released.`
-          : `${who} ${amount(input.depositAmount)}temporary hold was released. You were not charged.`,
+          ? `${who} ${amount(input.depositAmount)}deposit hold was released.`
+          : `${who} ${amount(input.depositAmount)}deposit hold was released. You were not charged.`,
       );
       break;
     case "charged":

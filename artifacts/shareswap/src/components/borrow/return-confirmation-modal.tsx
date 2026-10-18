@@ -245,7 +245,7 @@ export function ReturnConfirmationModal({
               <p className="text-sm text-gray-600">
                 {isRental
                   ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
-                  : "You're returning this item early. No penalty applies. The temporary deposit hold will be released once the owner confirms its safe return — you will not be charged."}
+                  : "You're returning this item early. No penalty applies. The deposit hold will be released once the owner confirms its safe return — you will not be charged."}
               </p>
             )}
 
@@ -332,7 +332,7 @@ export function ReturnConfirmationModal({
               <p className="text-sm text-blue-600 mt-1">
                 {isRental
                   ? "You keep the full rental amount — no refund for unused days."
-                  : "No ShareCoins deducted for early return. Borrower's temporary deposit hold will be released."}
+                  : "No ShareCoins deducted for early return. Borrower's deposit hold will be released."}
               </p>
             </div>
           )}

@@ -149,9 +149,9 @@ describe("cancel flow: talking to the server", () => {
   });
 
   it("the toast leads with 'Request cancelled' and then what was released or refunded", () => {
-    expect(cancelToast({ alreadyCancelled: false, message: "Request cancelled. Your $42 temporary hold was released. You were not charged. A trust score penalty of -5 was applied." })).toEqual({
+    expect(cancelToast({ alreadyCancelled: false, message: "Request cancelled. Your $42 deposit hold was released. You were not charged. A trust score penalty of -5 was applied." })).toEqual({
       title: "Request cancelled",
-      description: "Your $42 temporary hold was released. You were not charged. A trust score penalty of -5 was applied.",
+      description: "Your $42 deposit hold was released. You were not charged. A trust score penalty of -5 was applied.",
     });
     expect(cancelToast({ alreadyCancelled: false, message: "Request cancelled." })).toEqual({ title: "Request cancelled", description: undefined });
     expect(cancelToast({ alreadyCancelled: false, message: "Gift cancelled. Your item is available again." })).toEqual({

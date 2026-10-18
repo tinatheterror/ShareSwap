@@ -1136,7 +1136,7 @@ export default function ChatScreen() {
             {isOwner && status === "ACCEPTED" && request.depositMethod === "in_app" && (
               <View style={[card.infoBanner, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                 <Text style={[card.infoBannerText, { color: colors.mutedForeground }]}>
-                  Waiting for the borrower to place their temporary deposit hold.
+                  Waiting for the borrower to place their deposit hold.
                 </Text>
               </View>
             )}
@@ -2000,7 +2000,7 @@ function DepositEventCard({ eventType, metadata, content, isOwnerView, colors }:
       eyebrow = "Claim opened";
       body = amount != null ? claimOpenedOwnerLine(amount, metadata.depositMode as string | undefined) : content;
     } else {
-      const c = claimOpenedBorrowerCopy({ amount, cardLast4: last4 });
+      const c = claimOpenedBorrowerCopy({ amount, cardLast4: last4, mode: metadata.depositMode as string | undefined });
       ({ eyebrow, title, body, detail, footer } = c);
       if (amount == null) body = content;
     }

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   claimOpenedChargedLine,
+  claimOpenedExplainer,
+  claimOpenedHeadline,
+  claimReviewWhy,
   claimOpenedOwnerLine,
   claimOutcome,
   claimRefundedLine,
@@ -48,13 +51,32 @@ describe("deposit-copy", () => {
     const released = depositPhaseCopy({ status: "released", amount: 105 });
     expect(released.label).toBe("Hold released");
     expect(released.description).not.toMatch(/refund/i);
-    expect(released.description).toBe("$105.00 temporary hold released. You were not charged.");
+    expect(released.description).toBe("$105.00 deposit hold released. You were not charged.");
   });
 
   it("holds copy", () => {
     expect(holdPendingNotice(105)).toContain("temporary hold, not a charge");
     expect(holdReleaseExplainer(105)).toContain("$105.00 hold is released");
-    expect(holdReleasedBody(105)).toBe("$105.00 temporary hold released. You were not charged.");
+    expect(holdReleasedBody(105)).toBe("$105.00 deposit hold released. You were not charged.");
+  });
+
+  it("claim opened copy depends on the deposit mode", () => {
+    // Hold mode: the hold is charged while the claim is reviewed.
+    expect(claimOpenedHeadline("authorization")).toBe("Security deposit charged");
+    expect(claimOpenedHeadline()).toBe("Security deposit charged");
+    expect(claimOpenedChargedLine(105, "4242", "authorization")).toBe("$105.00 has been charged to your card •••• 4242.");
+    expect(claimOpenedExplainer("authorization")).toBe("Your deposit hold was charged while the claim is reviewed.");
+    expect(claimReviewWhy("authorization").title).toBe("Why was I charged?");
+    expect(claimOpenedOwnerLine(105, "authorization")).toBe("Claim opened. Deposit charged while it’s reviewed.");
+    // Charge mode: already charged, so it is held while the claim is reviewed.
+    expect(claimOpenedHeadline("refundable_charge")).toBe("Security deposit held");
+    expect(claimOpenedChargedLine(105, "4242", "refundable_charge")).toBe("$105.00 is held while the claim is reviewed.");
+    expect(claimOpenedExplainer("refundable_charge")).toBe("Your deposit was already charged. It stays held while the claim is reviewed.");
+    expect(claimReviewWhy("refundable_charge").title).toBe("Why is my deposit held?");
+    expect(claimOpenedOwnerLine(105, "refundable_charge")).toBe("Claim opened. Deposit held while it’s reviewed.");
+    for (const mode of ["authorization", "refundable_charge"]) {
+      expect(JSON.stringify([claimOpenedExplainer(mode), claimReviewWhy(mode)])).not.toMatch(/temporary hold/i);
+    }
   });
 
   it("claim strings", () => {

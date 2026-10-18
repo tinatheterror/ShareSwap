@@ -97,7 +97,7 @@ export function holdReleasedTitle(): string {
 }
 
 export function holdReleasedBody(amount: number | string | null | undefined): string {
-  return `${formatMoney(amount)} temporary hold released. You were not charged.`;
+  return `${formatMoney(amount)} deposit hold released. You were not charged.`;
 }
 
 export function cardSuffix(cardLast4?: string | null): string {
@@ -172,14 +172,23 @@ export function depositPhaseCopy(deposit: DepositLike | null | undefined, opts?:
 /* ---------- Claim opened ---------- */
 
 export const CLAIM_OPENED_TITLE = "Claim opened";
-export const CLAIM_CHARGED_HEADLINE = "Security deposit charged";
 
-export function claimOpenedChargedLine(amount: number | string | null | undefined, cardLast4?: string | null): string {
-  return `${formatMoney(amount)} has been charged to your card${cardSuffix(cardLast4)}.`;
+/** Claim opened, borrower view. A hold is charged when a claim opens; a refundable charge was already charged, so it is held. */
+export function claimOpenedHeadline(mode?: string | null): string {
+  return isRefundableChargeMode(mode) ? "Security deposit held" : "Security deposit charged";
 }
 
-export const CLAIM_OPENED_CONVERSION =
-  "The temporary hold has been converted into an actual charge while the claim is reviewed.";
+export function claimOpenedChargedLine(amount: number | string | null | undefined, cardLast4?: string | null, mode?: string | null): string {
+  return isRefundableChargeMode(mode)
+    ? `${formatMoney(amount)} is held while the claim is reviewed.`
+    : `${formatMoney(amount)} has been charged to your card${cardSuffix(cardLast4)}.`;
+}
+
+export function claimOpenedExplainer(mode?: string | null): string {
+  return isRefundableChargeMode(mode)
+    ? "Your deposit was already charged. It stays held while the claim is reviewed."
+    : "Your deposit hold was charged while the claim is reviewed.";
+}
 export const CLAIM_OPENED_REFUND_NOTE =
   "If the claim is resolved in your favor, the charged amount will be refunded.";
 
@@ -191,9 +200,11 @@ export function claimOpenedOwnerLine(_amount?: number | string | null, mode?: st
 
 /* ---------- Claim review (borrower) ---------- */
 
-export const CLAIM_REVIEW_WHY_TITLE = "Why was I charged?";
-export const CLAIM_REVIEW_WHY_BODY =
-  "A claim was opened for this transaction, so the temporary security-deposit hold was converted into an actual charge.";
+export function claimReviewWhy(mode?: string | null): { title: string; body: string } {
+  return isRefundableChargeMode(mode)
+    ? { title: "Why is my deposit held?", body: "A claim was opened for this transaction, so your refundable deposit stays held while the claim is reviewed." }
+    : { title: "Why was I charged?", body: "A claim was opened for this transaction, so your security deposit hold was charged." };
+}
 export const CLAIM_REVIEW_NEXT_TITLE = "What happens next?";
 export const CLAIM_REVIEW_NEXT_BODY =
   "Your claim will be reviewed. If you are found responsible, some or all of the charge may be kept. If you are not responsible, the applicable amount will be refunded.";

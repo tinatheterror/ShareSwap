@@ -216,7 +216,7 @@ test("with a hold placed: 409 PENALTY_ACK_REQUIRED, then the same call with ackn
     deposit: "hold_released", depositAmount: 42, platformFeeRefunded: 3.5, rentalRefunded: null,
     penaltyApplied: true, penaltyPoints: 5, newScore: before - 5,
   });
-  assert.match(body.message, /^Request cancelled\. Your \$42 temporary hold was released\. You were not charged\. Your \$3\.50 platform fee was refunded\./);
+  assert.match(body.message, /^Request cancelled\. Your \$42 deposit hold was released\. You were not charged\. Your \$3\.50 platform fee was refunded\./);
   assert.equal(stripe.calls.capture.length, 0);
 
   const again = await borrower.post(`/api/requests/${id}/cancel`, { acknowledgePenalty: 5 });

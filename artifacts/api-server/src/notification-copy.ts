@@ -80,15 +80,15 @@ function rewriteBody(message: string, isBadge = false): string {
   }
   return message
     .replace(
-      /^"([^"]+)" — temporary hold released; return confirmation is pending while we finish updating your request\.$/,
+      /^"([^"]+)" — deposit hold released; return confirmation is pending while we finish updating your request\.$/,
       'Hold released. Return pending: "$1".',
     )
     .replace(
-      /^"([^"]+)" — part of the temporary hold was released; return confirmation is pending while we release the rest\.$/,
+      /^"([^"]+)" — part of the deposit hold was released; return confirmation is pending while we release the rest\.$/,
       'Partial release; return pending: "$1".',
     )
     .replace(
-      /^"([^"]+)" returned to owner\. Temporary hold released\.$/,
+      /^"([^"]+)" returned to owner\. Deposit hold released\.$/,
       '"$1" returned. Hold released.',
     )
     .replace(

@@ -243,7 +243,7 @@ export function ReturnConfirmationSheet({
             <Text style={[ss.sub, { color: colors.mutedForeground }]}>
               {isRental
                 ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
-                : "You're returning this item early. No penalty applies. Your temporary deposit hold will be released once the owner confirms its safe return. You will not be charged."}
+                : "You're returning this item early. No penalty applies. Your deposit hold will be released once the owner confirms its safe return. You will not be charged."}
             </Text>
           )}
 
@@ -334,7 +334,7 @@ export function ReturnConfirmationSheet({
                 <Text style={{ color: "#1d4ed8", fontSize: 13, flex: 1 }}>
                   {isRental
                     ? "You keep the full rental amount — no refund for unused days."
-                    : "No ShareCoins deducted for early return. The borrower's temporary deposit hold will be released (they will not be charged)."}
+                    : "No ShareCoins deducted for early return. The borrower's deposit hold will be released (they will not be charged)."}
                 </Text>
               </View>
             )}

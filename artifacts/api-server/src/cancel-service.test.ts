@@ -253,7 +253,7 @@ test("acknowledged: the hold is released (never captured), -5 is recorded with i
     deposit: "hold_released", depositAmount: 42, platformFeeRefunded: null, rentalRefunded: null,
     penaltyApplied: true, penaltyPoints: 5, newScore: 75,
   });
-  assert.equal(result.body.message, "Request cancelled. Your $42 temporary hold was released. You were not charged. A trust score penalty of -5 was applied.");
+  assert.equal(result.body.message, "Request cancelled. Your $42 deposit hold was released. You were not charged. A trust score penalty of -5 was applied.");
   assert.deepEqual((result.body.request as any).cancelledFromStatus, "DEPOSIT_CONFIRMED");
 
   assert.deepEqual(stripe.calls.cancel, [{ id: "pi_deposit_hold", options: { idempotencyKey: `cancel-${id}-pi_deposit_hold` } }]);
@@ -534,7 +534,7 @@ test("an owner who cancels after the borrower's hold is penalised and the borrow
   assert.equal((await score(borrower)).s, 80, "the borrower loses nothing");
   assert.deepEqual(stripe.calls.cancel.map((c) => c.id), ["pi_deposit_hold"]);
   assert.equal(stripe.calls.refunds.length, 1);
-  assert.match(String(result.body.message), /^Request cancelled\. The borrower's \$42 temporary hold was released\. The borrower's \$3\.50 platform fee was refunded\. A trust score penalty of -5 was applied\.$/);
+  assert.match(String(result.body.message), /^Request cancelled\. The borrower's \$42 deposit hold was released\. The borrower's \$3\.50 platform fee was refunded\. A trust score penalty of -5 was applied\.$/);
   const toBorrower = (await notes(id)).filter((n) => n.userId === borrower);
   assert.match(toBorrower[0].message, /the owner cancelled the request/);
   assert.equal((await chat(id)).find((m) => (m.metadata as any)?.eventType === "request_cancelled")!.senderId, owner);

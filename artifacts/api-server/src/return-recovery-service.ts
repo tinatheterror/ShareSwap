@@ -891,6 +891,8 @@ async function finalizeReturn(
     const itemName = row.item.name.length > 20 ? `${row.item.name.slice(0, 20)}…` : row.item.name;
     const isInPerson = row.request.depositMethod === "in_person";
     const refundableDeposit = row.request.depositMode === "refundable_charge";
+    // An in-person deposit has no platform payment, but the return stamp still reports it when one exists.
+    const hasDeposit = !isInPerson || Number(row.request.trustDepositAmount ?? 0) > 0;
     const finalNoticeMessage = depositCopy.returnConfirmedNotice(itemName, !isInPerson, refundableDeposit);
     const [existingNotice] = await tx.select({ id: notifications.id })
       .from(notifications)
@@ -920,15 +922,15 @@ async function finalizeReturn(
     }
 
     await tx.insert(messages).values({
-      content: depositCopy.returnConfirmedChat(!isInPerson, refundableDeposit),
+      content: depositCopy.returnConfirmedChat(hasDeposit, refundableDeposit),
       senderId: row.item.ownerId!,
       receiverId: row.request.requesterId!,
       messageType: "system",
       requestId,
     });
 
-    // No claim was opened: the hold is released (or a refundable charge refunded).
-    // Distinct, durable notice + chat event so the borrower can see they were not charged.
+    // No claim was opened: the hold is released (or a refundable charge refunded). The chat already has the
+    // merged return stamp above, so only the durable notice is added here.
     if (!isInPerson && (row.request.depositPaymentIntentId || row.request.depositPreviousPaymentIntentId)) {
       const releasedAmount = Number(row.request.trustDepositAmount ?? 0);
       const releaseNotice = refundableDeposit ? depositCopy.refundableDepositRefunded(releasedAmount) : depositCopy.depositHoldReleased(releasedAmount);
@@ -937,11 +939,6 @@ async function finalizeReturn(
       )).limit(1);
       if (!existingRelease) {
         await tx.insert(notifications).values({ userId: row.request.requesterId!, requestId, itemId: row.item.id, isRead: false, ...releaseNotice });
-        await tx.insert(messages).values({
-          senderId: row.item.ownerId!, receiverId: row.request.requesterId!, requestId, messageType: "event",
-          content: refundableDeposit ? depositCopy.refundableRefundedChat(releasedAmount) : depositCopy.holdReleasedChat(releasedAmount),
-          metadata: { eventType: "deposit_released", amount: releasedAmount, depositMode: refundableDeposit ? "refundable_charge" : "authorization" },
-        });
       }
     }
 

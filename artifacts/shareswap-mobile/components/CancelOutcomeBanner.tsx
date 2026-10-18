@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 /**
- * What a cancel did ("Request cancelled. Your $42 temporary hold was released..."), or why it failed.
+ * What a cancel did ("Request cancelled. Your $42 deposit hold was released..."), or why it failed.
  * Mobile has no toast, and Alert.alert is silent on react-native-web, so this is a small banner that
  * hides itself.
  */

@@ -1,8 +1,7 @@
 import {
   CLAIM_REVIEW_NEXT_BODY,
   CLAIM_REVIEW_NEXT_TITLE,
-  CLAIM_REVIEW_WHY_BODY,
-  CLAIM_REVIEW_WHY_TITLE,
+  claimReviewWhy,
   CLAIM_RESOLVED_PREVIOUSLY_CHARGED,
   HOLD_COVERAGE_NOTE,
   NOT_CHARGED_UNLESS_CLAIM,
@@ -101,8 +100,8 @@ export function DepositStatusCard({ deposit, role, fallbackRetainedAmount }: Dep
         <p className="font-semibold">Security deposit</p>
         <p className="text-base font-bold">{formatMoney(charged)} charged</p>
         <div>
-          <p className="font-semibold">{CLAIM_REVIEW_WHY_TITLE}</p>
-          <p>{CLAIM_REVIEW_WHY_BODY}</p>
+          <p className="font-semibold">{claimReviewWhy(deposit.mode).title}</p>
+          <p>{claimReviewWhy(deposit.mode).body}</p>
         </div>
         <div>
           <p className="font-semibold">{CLAIM_REVIEW_NEXT_TITLE}</p>

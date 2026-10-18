@@ -37,8 +37,8 @@ describe("depositCopy", () => {
     expect(holdTitle(105)).toBe("$105 temporary card hold");
     expect(holdPendingNote(105)).toContain("This is a temporary hold, not a charge. Your card may show $105 as pending or temporarily unavailable.");
     expect(holdReleaseExplainer(105)).toBe("After the item is returned normally, the $105 hold is released. If a claim is opened, the deposit may be charged while the claim is reviewed.");
-    expect(CANCEL_BOOKING_MESSAGE).toBe("Your temporary hold will be released. You will not be charged.");
-    expect(holdReleasedMessage(105)).toBe("$105 temporary hold released. You were not charged.");
+    expect(CANCEL_BOOKING_MESSAGE).toBe("Your deposit hold will be released. You will not be charged.");
+    expect(holdReleasedMessage(105)).toBe("$105 deposit hold released. You were not charged.");
   });
 
   it("a released deposit is a one-line chat stamp that is mode-based", () => {
@@ -49,11 +49,26 @@ describe("depositCopy", () => {
     expect(depositReleasedStamp({ depositMode: "refundable_charge" })).toBe("✅ Deposit refunded. It may take 5–10 business days to show on your card.");
   });
 
+  it("claim opened copy depends on the deposit mode", () => {
+    const hold = claimOpenedBorrowerCopy({ amount: 105, cardLast4: "4242", mode: "authorization" });
+    expect(hold.title).toBe("Security deposit charged");
+    expect(hold.body).toBe("$105 has been charged to your card •••• 4242.");
+    expect(hold.detail).toBe("Your deposit hold was charged while the claim is reviewed.");
+    expect(claimOpenedOwnerLine(105, "authorization")).toBe("Claim opened. Deposit charged while it’s reviewed.");
+    const charge = claimOpenedBorrowerCopy({ amount: 105, cardLast4: "4242", mode: "refundable_charge" });
+    expect(charge.title).toBe("Security deposit held");
+    expect(charge.body).toBe("$105 is held while the claim is reviewed.");
+    expect(charge.detail).toBe("Your deposit was already charged. It stays held while the claim is reviewed.");
+    expect(claimOpenedOwnerLine(105, "refundable_charge")).toBe("Claim opened. Deposit held while it’s reviewed.");
+    expect(JSON.stringify([hold, charge])).not.toMatch(/temporary hold/i);
+  });
+
   it("claim opened copy is explicit", () => {
     const c = claimOpenedBorrowerCopy({ amount: 105, cardLast4: "4242" });
     expect(c.title).toBe("Security deposit charged");
     expect(c.body).toBe("$105 has been charged to your card •••• 4242.");
-    expect(c.detail).toMatch(/converted into an actual charge/);
+    expect(c.detail).toBe("Your deposit hold was charged while the claim is reviewed.");
+    expect(JSON.stringify(c)).not.toMatch(/temporary hold/i);
     expect(JSON.stringify(c)).not.toMatch(/deposit held|on hold|secured/i);
     expect(claimOpenedOwnerLine(105)).toBe("Claim opened. Deposit charged while it’s reviewed.");
     expect(claimOpenedOwnerLine(105, "refundable_charge")).toBe("Claim opened. Deposit held while it’s reviewed.");

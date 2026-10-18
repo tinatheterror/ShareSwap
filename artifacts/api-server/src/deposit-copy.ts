@@ -71,18 +71,25 @@ export function claimResolvedChat(refunded: number | string, retained: number | 
 
 // ── Notifications ──────────────────────────────────────────────────────────
 
-export function depositChargedBorrower(amount: number | string, itemName?: string | null) {
+export function depositChargedBorrower(amount: number | string, itemName?: string | null, refundable = false) {
+  if (refundable) {
+    return {
+      type: "security_deposit_charged",
+      title: "Claim opened — deposit held",
+      message: `A claim was opened for your ${shortItemName(itemName)}. Your ${formatMoney(amount)} security deposit is held while the claim is reviewed and may be refunded depending on the outcome.`,
+    };
+  }
   return {
     type: "security_deposit_charged",
-    title: "Security deposit charged",
-    message: `A ${formatMoney(amount)} security deposit was charged to your card because a claim was opened for your ${shortItemName(itemName)}. The charge will remain while the claim is reviewed and may be refunded depending on the outcome.`,
+    title: "Claim opened — deposit charged",
+    message: `A claim was opened for your ${shortItemName(itemName)}. Your ${formatMoney(amount)} security deposit was charged to your card while the claim is reviewed and may be refunded depending on the outcome.`,
   };
 }
-export function claimOpenedOwner(amount: number | string, itemName?: string | null) {
+export function claimOpenedOwner(amount: number | string, itemName?: string | null, refundable = false) {
   return {
     type: "security_claim_opened_owner",
-    title: "Claim opened — deposit charged",
-    message: `Your claim for ${shortItemName(itemName)} is under review. The borrower's ${formatMoney(amount)} security deposit was charged to their card while the claim is reviewed.`,
+    title: refundable ? "Claim opened — deposit held" : "Claim opened — deposit charged",
+    message: `Your claim for ${shortItemName(itemName)} is under review. The borrower's ${formatMoney(amount)} security deposit ${refundable ? "is held" : "was charged to their card"} while the claim is reviewed.`,
   };
 }
 export function claimOpenedPendingCharge(itemName?: string | null) {
@@ -96,7 +103,7 @@ export function depositHoldReleased(amount: number | string) {
   return {
     type: "deposit_hold_released",
     title: "Deposit hold released",
-    message: `${formatMoney(amount)} temporary hold released. You were not charged.`,
+    message: `${formatMoney(amount)} deposit hold released. You were not charged.`,
   };
 }
 export function refundableDepositRefunded(amount: number | string) {
@@ -150,14 +157,14 @@ export function rejectedHoldReleasedBorrower(amount: number | string) {
   return {
     type: "security_claim_rejected",
     title: "Claim rejected — hold released",
-    message: `The claim was rejected. Your ${formatMoney(amount)} temporary hold was released. You were not charged.`,
+    message: `The claim was rejected. Your ${formatMoney(amount)} deposit hold was released. You were not charged.`,
   };
 }
 export function rejectedHoldReleasedOwner(amount: number | string) {
   return {
     type: "security_claim_rejected",
     title: "Claim rejected",
-    message: `The claim was rejected. The borrower's ${formatMoney(amount)} temporary hold was released.`,
+    message: `The claim was rejected. The borrower's ${formatMoney(amount)} deposit hold was released.`,
   };
 }
 
@@ -166,14 +173,14 @@ export function rejectedHoldReleasedOwner(amount: number | string) {
 export const DEPOSIT_RELEASED_TITLE = "Deposit hold released";
 export function returnHoldReleasedNotice(itemName: string, partial = false) {
   return partial
-    ? `"${itemName}" — part of the temporary hold was released; return confirmation is pending while we release the rest.`
-    : `"${itemName}" — temporary hold released; return confirmation is pending while we finish updating your request.`;
+    ? `"${itemName}" — part of the deposit hold was released; return confirmation is pending while we release the rest.`
+    : `"${itemName}" — deposit hold released; return confirmation is pending while we finish updating your request.`;
 }
 export function returnConfirmedNotice(itemName: string, hasPlatformDeposit: boolean, refundable = false) {
   if (!hasPlatformDeposit) return `"${itemName}" returned to owner.`;
   return refundable
     ? `"${itemName}" returned to owner. Refundable deposit refunded.`
-    : `"${itemName}" returned to owner. Temporary hold released.`;
+    : `"${itemName}" returned to owner. Deposit hold released.`;
 }
 export function returnConfirmedChat(hasPlatformDeposit: boolean, refundable = false) {
   if (!hasPlatformDeposit) return "✅ Item returned in good condition.";
@@ -183,16 +190,16 @@ export function returnConfirmedChat(hasPlatformDeposit: boolean, refundable = fa
 }
 export const CANCELLED_HOLD_RELEASED_CHAT = "✅ Deposit hold released. You weren’t charged.";
 export function renewalFailedBorrowerBody(itemName: string) {
-  return `We couldn't extend the temporary deposit hold for "${itemName}". Retry now or update your saved payment method. You are not charged unless a claim is opened.`;
+  return `We couldn't extend the deposit hold for "${itemName}". Retry now or update your saved payment method. You are not charged unless a claim is opened.`;
 }
 export function renewalFailedOwnerBody(itemName: string) {
-  return `The temporary deposit hold for "${itemName}" could not be extended. The borrower has been asked to update their payment method.`;
+  return `The deposit hold for "${itemName}" could not be extended. The borrower has been asked to update their payment method.`;
 }
-export const RENEWAL_CARD_ERROR = "Your saved card could not extend the temporary deposit hold.";
-export const RENEWAL_GENERIC_ERROR = "The temporary deposit hold could not be extended automatically.";
-export const HOLD_EXPIRED_TITLE = "Temporary hold expired";
+export const RENEWAL_CARD_ERROR = "Your saved card could not extend the deposit hold.";
+export const RENEWAL_GENERIC_ERROR = "The deposit hold could not be extended automatically.";
+export const HOLD_EXPIRED_TITLE = "Deposit hold expired";
 export const HOLD_EXPIRED_BODY =
-  "The temporary hold expired and was not renewed or charged. Any claim requires manual review.";
+  "The deposit hold expired and was not renewed or charged. Any claim requires manual review.";
 export function disputeOpenedNotice(itemName: string) {
   return `"${itemName}" — a claim was opened and is under review.`;
 }
@@ -200,9 +207,9 @@ export const DISPUTE_OPENED_CHAT =
   "🚩 Claim opened — our team will contact both parties within 24 hours.";
 export const DISPUTE_OPENED_RESPONSE = "Claim opened and under review.";
 export const RETURN_RECORDED_WITH_CLAIM = "Return recorded. The existing claim remains under review.";
-export const TRANSACTION_EXPIRED_HOLD_CHAT = "⏰ Transaction expired. The temporary deposit hold was not placed in time.";
+export const TRANSACTION_EXPIRED_HOLD_CHAT = "⏰ Transaction expired. The deposit hold was not placed in time.";
 export function transactionExpiredHoldBody(itemShort: string) {
-  return `"${itemShort}" — the temporary deposit hold was not placed in time.`;
+  return `"${itemShort}" — the deposit hold was not placed in time.`;
 }
 export function disputeBorrowerResolvedNotice(itemName: string) {
   return `"${itemName}" return reviewed. No claim was upheld; you were not charged.`;

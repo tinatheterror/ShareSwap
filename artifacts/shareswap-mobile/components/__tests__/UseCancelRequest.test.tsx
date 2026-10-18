@@ -47,7 +47,7 @@ describe("useCancelRequest on mobile", () => {
   it("a 409 opens the penalty modal; Proceed to cancel re-sends with the acknowledgment and closes it", async () => {
     const send = jest.fn()
       .mockRejectedValueOnce(penaltyError())
-      .mockResolvedValueOnce({ success: true, message: "Request cancelled. Your $42 temporary hold was released. You were not charged. A trust score penalty of -5 was applied." });
+      .mockResolvedValueOnce({ success: true, message: "Request cancelled. Your $42 deposit hold was released. You were not charged. A trust score penalty of -5 was applied." });
     const { api, onDone, unmount } = mount(send);
 
     await act(async () => { await api().cancel(context); });

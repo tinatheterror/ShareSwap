@@ -14,12 +14,12 @@ test("spec strings are exact", () => {
   assert.equal(copy.holdReleasedChat(105), "✅ Deposit hold released. You weren’t charged.");
   const n = copy.depositChargedBorrower(105, "Tineco vacuum mop");
   assert.equal(n.type, "security_deposit_charged");
-  assert.equal(n.title, "Security deposit charged");
-  assert.equal(n.message, "A $105 security deposit was charged to your card because a claim was opened for your Tineco vacuum mop. The charge will remain while the claim is reviewed and may be refunded depending on the outcome.");
+  assert.equal(n.title, "Claim opened — deposit charged");
+  assert.equal(n.message, "A claim was opened for your Tineco vacuum mop. Your $105 security deposit was charged to your card while the claim is reviewed and may be refunded depending on the outcome.");
   const owner = copy.claimOpenedOwner(105, "Tineco vacuum mop");
   assert.equal(owner.title, "Claim opened — deposit charged");
   assert.equal(owner.message, "Your claim for Tineco vacuum mop is under review. The borrower's $105 security deposit was charged to their card while the claim is reviewed.");
-  assert.deepEqual(copy.depositHoldReleased(105), { type: "deposit_hold_released", title: "Deposit hold released", message: "$105 temporary hold released. You were not charged." });
+  assert.deepEqual(copy.depositHoldReleased(105), { type: "deposit_hold_released", title: "Deposit hold released", message: "$105 deposit hold released. You were not charged." });
 });
 
 test("resolution copy distinguishes full refund, partial refund, and retained", () => {
@@ -46,6 +46,23 @@ test("lifecycle phases never confuse hold, charge, release and refund", () => {
   assert.equal(resolved.refundedAmount, 75);
   assert.equal(resolved.retainedAmount, 30);
   assert.equal(copy.depositLifecycleView({ ...base, mode: "authorization", status: "EXPIRED_UNSECURED" }).phase, "none");
+});
+
+test("claim-opened copy depends on the deposit mode", () => {
+  // Hold mode: the hold is charged while the claim is reviewed.
+  assert.equal(copy.claimOpenedChat(105), "⚠️ Claim opened. Deposit charged while it’s reviewed.");
+  assert.equal(copy.claimOpenedChat(105, false), "⚠️ Claim opened. Deposit charged while it’s reviewed.");
+  assert.equal(copy.depositChargedBorrower(105, "Mop").title, "Claim opened — deposit charged");
+  assert.match(copy.depositChargedBorrower(105, "Mop").message, /charged to your card while the claim is reviewed/);
+  assert.match(copy.claimOpenedOwner(105, "Mop").message, /was charged to their card while the claim is reviewed/);
+  // Charge mode: the deposit was already charged, so it is held while the claim is reviewed.
+  assert.equal(copy.claimOpenedChat(105, true), "⚠️ Claim opened. Deposit held while it’s reviewed.");
+  assert.equal(copy.depositChargedBorrower(105, "Mop", true).title, "Claim opened — deposit held");
+  assert.match(copy.depositChargedBorrower(105, "Mop", true).message, /security deposit is held while the claim is reviewed/);
+  assert.match(copy.claimOpenedOwner(105, "Mop", true).message, /is held while the claim is reviewed/);
+  for (const s of [copy.claimOpenedChat(105), copy.claimOpenedChat(105, true), copy.depositChargedBorrower(105, "Mop").message, copy.depositChargedBorrower(105, "Mop", true).message]) {
+    assert.doesNotMatch(s, /temporary hold/i, s);
+  }
 });
 
 test("server-generated copy avoids ambiguous terminology", () => {

@@ -38,7 +38,7 @@ test("combined return notice preserves deposit release even with a long item nam
   for (const name of ["Hermes scarf", "Camping stove", "A very long item name that must be shortened"]) {
     const copy = compactNotificationCopy({
       title: "Return Confirmed",
-      message: `"${name}" returned to owner. Temporary hold released.`,
+      message: `"${name}" returned to owner. Deposit hold released.`,
     });
     assert.equal(copy.title, "Return Confirmed");
     assert.match(copy.message, /returned\. Hold released\.$/);
@@ -58,7 +58,7 @@ test("pending return copy keeps both the release and pending state visible", () 
   for (const name of ["Camping stove", "A very long item name that must be shortened"]) {
     const copy = compactNotificationCopy({
       title: "Deposit hold released",
-      message: `"${name}" — temporary hold released; return confirmation is pending while we finish updating your request.`,
+      message: `"${name}" — deposit hold released; return confirmation is pending while we finish updating your request.`,
     });
     assert.match(copy.message, /Hold released\. Return pending:/);
     assert.ok(copy.message.length <= notificationCopyLimits.body);
@@ -68,7 +68,7 @@ test("pending return copy keeps both the release and pending state visible", () 
 test("partially released return copy does not imply the entire deposit was released", () => {
   const copy = compactNotificationCopy({
     title: "Deposit Release Pending",
-    message: '"A very long item name that must be shortened" — part of the temporary hold was released; return confirmation is pending while we release the rest.',
+    message: '"A very long item name that must be shortened" — part of the deposit hold was released; return confirmation is pending while we release the rest.',
   });
   assert.match(copy.message, /^Partial release; return pending:/);
   assert.ok(copy.message.length <= notificationCopyLimits.body);
@@ -106,8 +106,8 @@ test("renames existing overdue notifications by recipient role", () => {
   );
 });
 test("charge, refund and hold-release notices keep their full wording", () => {
-  const body = "A $105 security deposit was charged to your card because a claim was opened for your Tineco vacuum mop. The charge will remain while the claim is reviewed and may be refunded depending on the outcome.";
-  const copy = compactNotificationCopy({ type: "security_deposit_charged", title: "Security deposit charged", message: body });
+  const body = "A claim was opened for your Tineco vacuum mop. Your $105 security deposit was charged to your card while the claim is reviewed and may be refunded depending on the outcome.";
+  const copy = compactNotificationCopy({ type: "security_deposit_charged", title: "Claim opened — deposit charged", message: body });
   assert.equal(copy.message, body);
-  assert.equal(copy.title, "Security deposit charged");
+  assert.equal(copy.title, "Claim opened — deposit charged");
 });

@@ -11895,7 +11895,7 @@ Respond with ONLY the category name, nothing else.`
         if (!row) throw Object.assign(new Error("Request not found"), { status: 404 });
         if (row.ownerId !== req.user.id) throw Object.assign(new Error("Only the owner can open a claim"), { status: 403 });
         if (!row.pi || row.depositOperation === "terminal_action" || !["authorized", "held", "disputed", "SECURED_REFUNDABLE", "secured_refundable"].includes(row.depositStatus || ""))
-          throw Object.assign(new Error("No temporary hold or charged deposit is available for this request"), { status: 409 });
+          throw Object.assign(new Error("No deposit hold or charged deposit is available for this request"), { status: 409 });
         const nonReturn = ["non_return", "lost"].includes(claimType);
         if (nonReturn && !claimAllowedAtStage(claimType, row.stage))
           throw Object.assign(new Error("Non-return claims require the item to be at least 24 hours overdue"), { status: 409 });

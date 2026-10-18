@@ -68,7 +68,7 @@ import {
 import { getStripePromise } from "@/lib/stripe-client";
 import { RequestLifecyclePanel } from "@/components/request-lifecycle-panel";
 import {
-  CLAIM_CHARGED_HEADLINE, CLAIM_OPENED_CONVERSION, CLAIM_OPENED_REFUND_NOTE, CLAIM_OPENED_TITLE, CLAIM_RESOLVED_PREVIOUSLY_CHARGED,
+  claimOpenedExplainer, claimOpenedHeadline, CLAIM_OPENED_REFUND_NOTE, CLAIM_OPENED_TITLE, CLAIM_RESOLVED_PREVIOUSLY_CHARGED,
   EVENT_ICONS, cardSuffix, claimOpenedChargedLine, claimOpenedOwnerLine, claimOutcome, claimRefundedLine, claimResolvedOwnerLine,
   claimResolvedTitle, claimRetainedLine, depositConfirmedStampLabel, depositReleasedStampLabel, formatMoney, toAmount,
 } from "@/lib/deposit-copy";
@@ -324,9 +324,9 @@ function ClaimEventCard({ eventType, metadata, content, viewerIsBorrower }: {
     return (
       <div className="w-full max-w-sm mx-auto rounded-lg border border-red-300 bg-red-50 p-3 text-left space-y-1" data-testid="event-claim-opened-borrower">
         <p className="text-xs font-bold uppercase tracking-wide text-red-700">{EVENT_ICONS.claim_opened} {CLAIM_OPENED_TITLE}</p>
-        <p className="text-sm font-semibold text-red-900">{CLAIM_CHARGED_HEADLINE}</p>
-        {amount != null && <p className="text-sm text-red-900">{claimOpenedChargedLine(amount, md.cardLast4)}</p>}
-        <p className="text-xs text-red-800">{CLAIM_OPENED_CONVERSION}</p>
+        <p className="text-sm font-semibold text-red-900">{claimOpenedHeadline((md as any).depositMode)}</p>
+        {amount != null && <p className="text-sm text-red-900">{claimOpenedChargedLine(amount, md.cardLast4, (md as any).depositMode)}</p>}
+        <p className="text-xs text-red-800">{claimOpenedExplainer((md as any).depositMode)}</p>
         <p className="text-xs text-red-800">{CLAIM_OPENED_REFUND_NOTE}</p>
       </div>
     );
@@ -2823,7 +2823,7 @@ export function ChatWidget() {
             setSelectedRequest(null);
             toast({
               title: "Rental booking confirmed",
-              description: "Your deposit is a temporary hold, not a charge. Coordinate with the owner to pick up your rental.",
+              description: "Your deposit hold is authorized, not charged. Coordinate with the owner to pick up your rental.",
             });
           }}
         />

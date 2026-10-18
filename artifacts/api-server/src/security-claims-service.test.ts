@@ -231,8 +231,8 @@ test("opening a claim captures the FULL deposit once, records card + amount, and
   assert.equal(final.operations[0].status, "SETTLED");
   const borrowerNote = final.notes.find(n => n.userId === borrowerId)!;
   assert.equal(borrowerNote.type, "security_deposit_charged");
-  assert.equal(borrowerNote.title, "Security deposit charged");
-  assert.match(borrowerNote.message, /^A \$105 security deposit was charged to your card because a claim was opened for your .+\. The charge will remain while the claim is reviewed and may be refunded depending on the outcome\.$/);
+  assert.equal(borrowerNote.title, "Claim opened — deposit charged");
+  assert.match(borrowerNote.message, /^A claim was opened for your .+\. Your \$105 security deposit was charged to your card while the claim is reviewed and may be refunded depending on the outcome\.$/);
   assert.equal(final.notes.find(n => n.userId === ownerId)!.type, "security_claim_opened_owner");
   const stamp = final.chat.find(m => (m.metadata as any)?.eventType === "claim_opened")!;
   assert.equal(stamp.messageType, "event");
@@ -258,6 +258,12 @@ test("refundable deposit is already a charge: no capture call, but it is recorde
   const state = await rows(claim.id, request.id);
   assert.equal(state.request.depositStatus, "captured");
   assert.equal(state.request.depositCardLast4, "4242");
+  // Charge mode: the deposit is already charged, so the claim-opened copy says it is held, not charged.
+  const stamp = state.chat.find(m => (m.metadata as any)?.eventType === "claim_opened")!;
+  assert.equal(stamp.content, "⚠️ Claim opened. Deposit held while it’s reviewed.");
+  const borrowerNote = state.notes.find(n => n.userId === borrowerId)!;
+  assert.equal(borrowerNote.title, "Claim opened — deposit held");
+  assert.doesNotMatch(borrowerNote.message, /charged to your card/);
 });
 
 test("indeterminate capture keeps the fence, stays uncharged, and retries with the original key without double capture", async () => {

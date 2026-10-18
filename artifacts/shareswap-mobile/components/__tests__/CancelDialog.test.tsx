@@ -81,8 +81,8 @@ describe("CancelOutcomeBanner", () => {
 
   it("shows what the cancel did and hides itself", () => {
     const onHide = jest.fn();
-    const tree = render(<CancelOutcomeBanner title="Request cancelled" message="Your $42 temporary hold was released. You were not charged." onHide={onHide} hideAfterMs={5000} />);
-    expect(texts(tree)).toEqual(["Request cancelled", "Your $42 temporary hold was released. You were not charged."]);
+    const tree = render(<CancelOutcomeBanner title="Request cancelled" message="Your $42 deposit hold was released. You were not charged." onHide={onHide} hideAfterMs={5000} />);
+    expect(texts(tree)).toEqual(["Request cancelled", "Your $42 deposit hold was released. You were not charged."]);
     act(() => { jest.advanceTimersByTime(4999); });
     expect(onHide).not.toHaveBeenCalled();
     act(() => { jest.advanceTimersByTime(1); });

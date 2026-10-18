@@ -22,7 +22,7 @@ describe("DepositStatusCard", () => {
 
   it("shows owner charged state", () => {
     render(<DepositStatusCard role="owner" deposit={{ status: "captured", amount: "105" }} />);
-    expect(screen.getByTestId("deposit-card-charged-owner").textContent).toContain("under review, $105.00 security deposit has been charged");
+    expect(screen.getByTestId("deposit-card-charged-owner").textContent).toContain("Claim opened. Deposit charged while it’s reviewed.");
   });
 
   it("shows released as hold released, not refunded", () => {

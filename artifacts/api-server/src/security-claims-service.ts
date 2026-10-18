@@ -512,7 +512,7 @@ export async function reconcileClaimDeadlines(
         const [existingAttention] = await tx.select({ id: notifications.id }).from(notifications).where(and(
           eq(notifications.requestId, row.id), eq(notifications.type, "settlement_reconciliation_required"),
         )).limit(1);
-        if (!existingAttention) await tx.insert(notifications).values({
+        if (!existingAttention && row.requesterId) await tx.insert(notifications).values({
           userId: row.requesterId, requestId: row.id, type: "settlement_reconciliation_required",
           title: "Payment reconciliation in progress", message: "A deposit payment action needs reconciliation; no second payment action has been started.",
         });
@@ -532,7 +532,9 @@ export async function reconcileClaimDeadlines(
         const activeClaims = await tx.select({ ownerId: securityClaims.ownerId, borrowerId: securityClaims.borrowerId }).from(securityClaims)
           .where(and(eq(securityClaims.requestId, row.id), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));
         const recipients = activeClaims.length ? [...new Set(activeClaims.flatMap(c => [c.ownerId, c.borrowerId]))] : [row.requesterId];
-        await tx.insert(notifications).values(recipients.map(userId => ({
+        // A request without a requester has nobody to notify; the expiry itself still applies.
+        const notified = recipients.filter((userId): userId is number => userId !== null);
+        if (notified.length) await tx.insert(notifications).values(notified.map(userId => ({
           userId, type: "deposit_unsecured", title: HOLD_EXPIRED_TITLE,
           message: HOLD_EXPIRED_BODY, requestId: row.id,
         })));

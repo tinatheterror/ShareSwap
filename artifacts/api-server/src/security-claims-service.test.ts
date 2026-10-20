@@ -351,6 +351,7 @@ test("a capture that succeeds on retry clears the manual-review flag and posts t
   assert.equal((await ensureClaimDepositCaptured(claim.id, working as any)).status, "captured");
   const state = await rows(claim.id, request.id);
   assert.equal(state.claim.settlementStatus, "PENDING", "an approved claim can still settle");
+  assert.equal(state.claim.manualReviewReason, null);
   assert.equal(state.chat.filter(m => (m.metadata as any)?.eventType === "claim_opened").length, 1);
 });
 
@@ -363,7 +364,40 @@ test("an expired hold is never captured; the claim is flagged for manual review"
   assert.equal(stripe.calls.capture.length, 0);
   const state = await rows(claim.id, request.id);
   assert.equal(state.claim.settlementStatus, "MANUAL_REVIEW");
+  assert.equal(state.claim.manualReviewReason, "HOLD_EXPIRED", "the capture-failure flag does not overwrite the expiry reason");
   assert.equal(state.request.depositStatus, "EXPIRED_UNSECURED");
+});
+
+test("a manual-review flag with another reason survives a successful capture", async () => {
+  for (const reason of ["HOLD_EXPIRED", null] as const) {
+    const { request, claim } = await fixture("authorization", "CUSTOMER_RESPONSE_PENDING", 0, 100);
+    await db.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", manualReviewReason: reason }).where(eq(securityClaims.id, claim.id));
+    const stripe = stripeFor(request, "requires_capture");
+    assert.equal((await ensureClaimDepositCaptured(claim.id, stripe as any)).status, "captured", String(reason));
+    const state = await rows(claim.id, request.id);
+    assert.equal(state.claim.settlementStatus, "MANUAL_REVIEW", `${reason}: flag kept`);
+    assert.equal(state.claim.manualReviewReason, reason);
+  }
+});
+
+test("if flagging the claim itself throws, the capture failure is still logged and the caller completes", async (t) => {
+  const logged = t.mock.method(console, "error", () => undefined);
+  const { request, claim } = await fixture("authorization", "CUSTOMER_RESPONSE_PENDING", 0, 100);
+  const stripe = stripeFor(request, "requires_capture", { captureError: definitiveError() });
+  const realUpdate = db.update.bind(db);
+  t.mock.method(db, "update", ((table: unknown) => {
+    if (table === securityClaims) throw new Error("db down while flagging");
+    return realUpdate(table as any);
+  }) as any);
+  const result = await ensureClaimDepositCaptured(claim.id, stripe as any);
+  t.mock.restoreAll();
+  assert.equal(result.status, "pending");
+  const messagesLogged = logged.mock.calls.map(c => String(c.arguments[0]));
+  assert.ok(messagesLogged.some(m => /deposit capture failed for claim/.test(m)), "the failure is logged");
+  assert.ok(messagesLogged.some(m => /could not flag claim .* for manual review/.test(m)), "the flagging failure is logged");
+  const state = await rows(claim.id, request.id);
+  assert.equal(state.claim.settlementStatus, "PENDING", "the flag write failed, so nothing changed");
+  assert.equal(state.operations[0]?.status, "FAILED", "the ledger is still updated after the flag failure");
 });
 
 test("overdue/expiry sweep never charges: it only marks an uncharged hold unsecured and ignores charged deposits", async () => {

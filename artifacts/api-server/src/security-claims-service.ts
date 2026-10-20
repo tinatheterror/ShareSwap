@@ -22,6 +22,8 @@ export type ClaimStripeClient = Pick<Stripe, "paymentIntents" | "refunds">;
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+/** manual_review_reason of a claim flagged because its deposit capture failed; the only flag a later successful capture clears. */
+const CAPTURE_FAILED_REASON = "CAPTURE_FAILED";
 const ACTIVE_CLAIM_STATUSES = ["OPEN", "CUSTOMER_RESPONSE_PENDING", "UNDER_REVIEW", "APPROVED", "PROCESSING"];
 /** Deposit states from which a claim may charge (or record the charge of) the deposit. */
 const SECURED_DEPOSIT_STATUSES = ["authorized", "held", "disputed", "SECURED_REFUNDABLE", "secured_refundable"];
@@ -137,10 +139,10 @@ async function finalizeClaimCapture(args: {
       claimDecisionDeadlineAt: null, settlementStartDeadlineAt: null,
       depositRenewalStatus: null, depositOperationToken: null, depositOperationType: null,
     }).where(and(eq(itemRequests.id, requestId), eq(itemRequests.depositOperationToken, fenceToken)));
-    // The charge went through after all: clear a manual-review flag raised by an earlier failed attempt, so the
-    // approved claim can still settle. (A hold that expired is never captured, so it keeps its flag.)
-    await tx.update(securityClaims).set({ settlementStatus: "PENDING", updatedAt: completedAt })
-      .where(and(eq(securityClaims.id, claimId), eq(securityClaims.settlementStatus, "MANUAL_REVIEW")));
+    // The charge went through after all: clear a manual-review flag raised by an earlier failed capture, so the
+    // approved claim can still settle. A flag raised for another reason (expired hold, missing requester) stays.
+    await tx.update(securityClaims).set({ settlementStatus: "PENDING", manualReviewReason: null, updatedAt: completedAt })
+      .where(and(eq(securityClaims.id, claimId), eq(securityClaims.settlementStatus, "MANUAL_REVIEW"), eq(securityClaims.manualReviewReason, CAPTURE_FAILED_REASON)));
     const itemName = await itemNameFor(tx, owned.itemId);
     const borrowerCopy = depositChargedBorrower(deposit, itemName, owned.depositMode === "refundable_charge");
     const ownerCopy = claimOpenedOwner(deposit, itemName, owned.depositMode === "refundable_charge");
@@ -236,7 +238,7 @@ export async function ensureClaimDepositCaptured(
             await db.transaction(async tx => {
               await tx.update(itemRequests).set({ depositStatus: "EXPIRED_UNSECURED" })
                 .where(and(eq(itemRequests.id, request.id), eq(itemRequests.depositOperationToken, terminal.operationToken)));
-              await tx.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", updatedAt: new Date() })
+              await tx.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", manualReviewReason: "HOLD_EXPIRED", updatedAt: new Date() })
                 .where(and(eq(securityClaims.id, claimId), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));
             });
             throw new Error("The temporary hold expired before it could be charged; manual payment review required");
@@ -291,8 +293,9 @@ export async function ensureClaimDepositCaptured(
 async function flagCaptureFailure(claimId: number, requestId: number, error: unknown, indeterminate: boolean) {
   try {
     console.error(`[claims] deposit capture ${indeterminate ? "indeterminate" : "failed"} for claim ${claimId} (request ${requestId}): ${safeOperationError(error)}`);
-    await db.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", updatedAt: new Date() })
-      .where(and(eq(securityClaims.id, claimId), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));
+    // An existing flag keeps its own reason (the expired-hold branch flags the claim and then throws into here).
+    await db.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", manualReviewReason: CAPTURE_FAILED_REASON, updatedAt: new Date() })
+      .where(and(eq(securityClaims.id, claimId), ne(securityClaims.settlementStatus, "MANUAL_REVIEW"), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));
   } catch (flagError) {
     try { console.error(`[claims] could not flag claim ${claimId} for manual review:`, flagError); } catch { /* nothing left to do */ }
   }
@@ -552,7 +555,7 @@ export async function reconcileClaimDeadlines(
         current.depositOperationToken ? eq(itemRequests.depositOperationToken, current.depositOperationToken) : isNull(itemRequests.depositOperationToken),
       )).returning({ id: itemRequests.id });
       if (!expiredRequest) return false;
-        await tx.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", updatedAt: now })
+        await tx.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", manualReviewReason: "HOLD_EXPIRED", updatedAt: now })
           .where(and(eq(securityClaims.requestId, row.id), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));
         const activeClaims = await tx.select({ ownerId: securityClaims.ownerId, borrowerId: securityClaims.borrowerId }).from(securityClaims)
           .where(and(eq(securityClaims.requestId, row.id), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));

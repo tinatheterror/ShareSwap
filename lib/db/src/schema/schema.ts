@@ -1012,6 +1012,8 @@ export const securityClaims = pgTable("security_claims", {
   decidedAt: timestamp("decided_at"),
   depositPaymentIntentId: text("deposit_payment_intent_id"),
   settlementStatus: text("settlement_status").notNull().default("PENDING"),
+  // Why settlement_status is MANUAL_REVIEW ('CAPTURE_FAILED' | 'HOLD_EXPIRED'); null otherwise.
+  manualReviewReason: text("manual_review_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({

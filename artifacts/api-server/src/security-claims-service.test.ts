@@ -459,6 +459,9 @@ test("a borrower release closes the open claim with the request: not upheld, not
   assert.equal(closed.claim.decidedBy, ownerId);
   assert.ok(closed.claim.decidedAt);
   assert.equal(stripe.calls.capture.length, 0, "nothing captured");
+  const stamps = closed.chat.filter(m => (m.metadata as any)?.eventType === "claim_resolved");
+  assert.equal(stamps.length, 1);
+  assert.equal(stamps[0].content, "Claim resolved · $100 refunded · $0 kept");
 
   // The sweep ignores the released request; even if the request looked unsecured again it could not reach the closed claim.
   await reconcileClaimDeadlines(new Date(), { onlyRequestIds: [request.id] });

@@ -358,11 +358,19 @@ export async function finalizeDisputeReleaseToBorrower(
       request.depositPaymentIntentId ? eq(itemRequests.depositPaymentIntentId, request.depositPaymentIntentId) : isNull(itemRequests.depositPaymentIntentId),
     )).returning({ id: itemRequests.id });
     if (!finalized) return false;
-    await tx.update(securityClaims).set({
+    const closed = await tx.update(securityClaims).set({
       status: "REJECTED", settlementStatus: "SETTLED", manualReviewReason: null, approvedAmount: "0.00",
       decisionReason: "Dispute closed by an admin: the deposit was released to the borrower and no claim was upheld.",
       decidedBy: adminId, decidedAt: now, updatedAt: now,
-    }).where(and(eq(securityClaims.requestId, request.id), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));
+    }).where(and(eq(securityClaims.requestId, request.id), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)))
+      .returning({ id: securityClaims.id, ownerId: securityClaims.ownerId, borrowerId: securityClaims.borrowerId });
+    const amount = Number(request.depositCapturedAmount ?? request.trustDepositAmount ?? 0);
+    for (const claim of closed) {
+      await insertClaimChatEvent(tx, claim, request.id, claimResolvedChat(amount, 0), {
+        eventType: "claim_resolved", claimId: claim.id, chargedAmount: amount, refundedAmount: amount, retainedAmount: 0,
+        cardLast4: request.depositCardLast4, depositMode: request.depositMode, outcome: "refunded_full",
+      });
+    }
     return true;
   });
 }

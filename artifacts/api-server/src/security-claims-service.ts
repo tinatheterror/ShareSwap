@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db, depositSettlementOperations, itemRequests, items, messages, notifications, requestLifecycleEvents, securityClaims } from "@workspace/db";
 import { OVERDUE_POLICY } from "./overdue-policy";
-import { claimDepositTerminalAction, getPaymentIntentCaptureBefore, releaseDepositTerminalClaim } from "./deposit-renewal-service";
+import { claimDepositTerminalAction, getPaymentIntentCaptureBefore, releaseDepositTerminalClaim, resolveClaimedDepositIntents } from "./deposit-renewal-service";
 import {
   HOLD_EXPIRED_BODY,
   HOLD_EXPIRED_TITLE,
@@ -298,6 +298,40 @@ async function flagCaptureFailure(claimId: number, requestId: number, error: unk
       .where(and(eq(securityClaims.id, claimId), ne(securityClaims.settlementStatus, "MANUAL_REVIEW"), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));
   } catch (flagError) {
     try { console.error(`[claims] could not flag claim ${claimId} for manual review:`, flagError); } catch { /* nothing left to do */ }
+  }
+}
+
+export type DisputeReleaseResult =
+  | { ok: true }
+  | { ok: false; indeterminate: boolean; reason: string };
+
+/**
+ * Releases the deposit of a legacy DISPUTED request back to the borrower. The Stripe cancel/refund key is
+ * deterministic, so a retry replays instead of acting twice. On any failure the terminal fence is released
+ * (the request stays retryable), the failure is logged, and the request's active claims are flagged for
+ * manual review. This runs inside a failure handler, so the cleanup steps can never throw.
+ */
+export async function releaseDisputedDepositToBorrower(
+  terminalClaim: Parameters<typeof resolveClaimedDepositIntents>[0],
+  stripe: Parameters<typeof resolveClaimedDepositIntents>[1],
+): Promise<DisputeReleaseResult> {
+  const requestId = terminalClaim.request.id;
+  try {
+    await resolveClaimedDepositIntents(terminalClaim, stripe, "cancel", {
+      cancelIdempotencyKey: paymentIntentId => `dispute-release-${requestId}-${paymentIntentId}`,
+    });
+    return { ok: true };
+  } catch (error) {
+    const indeterminate = stripeOutcomeIsIndeterminate(error);
+    const reason = safeOperationError(error);
+    try { console.error(`[claims] dispute deposit release ${indeterminate ? "indeterminate" : "failed"} for request ${requestId}: ${reason}`); } catch { /* nothing left to do */ }
+    try { await releaseDepositTerminalClaim(terminalClaim); }
+    catch (fenceError) { try { console.error(`[claims] could not release the deposit fence for request ${requestId}:`, fenceError); } catch { /* nothing left to do */ } }
+    try {
+      await db.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", manualReviewReason: "RELEASE_FAILED", updatedAt: new Date() })
+        .where(and(eq(securityClaims.requestId, requestId), ne(securityClaims.settlementStatus, "MANUAL_REVIEW"), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));
+    } catch (flagError) { try { console.error(`[claims] could not flag request ${requestId} for manual review:`, flagError); } catch { /* nothing left to do */ } }
+    return { ok: false, indeterminate, reason };
   }
 }
 

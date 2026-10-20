@@ -17,7 +17,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatMoney } from "@/lib/deposit-copy";
-import { AlertTriangle, CheckCircle, XCircle, Star, Package, User, DollarSign, Clock } from "lucide-react";
+import { AlertTriangle, CheckCircle, Star, Package, User, DollarSign, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 
@@ -65,7 +65,7 @@ function StarRating({ rating }: { rating: number | null }) {
 
 export default function AdminDisputesPage() {
   const { toast } = useToast();
-  const [resolving, setResolving] = useState<{ id: number; decision: "owner" | "borrower" } | null>(null);
+  const [resolving, setResolving] = useState<{ id: number } | null>(null);
   const [deciding, setDeciding] = useState<SecurityClaim | null>(null);
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
   const [approvedAmount, setApprovedAmount] = useState("");
@@ -93,22 +93,17 @@ export default function AdminDisputesPage() {
   });
 
   const resolveMutation = useMutation({
-    mutationFn: async ({ id, decision }: { id: number; decision: "owner" | "borrower" }) => {
-      const res = await apiRequest("POST", `/api/admin/disputes/${id}/resolve`, { decision });
+    mutationFn: async ({ id }: { id: number }) => {
+      const res = await apiRequest("POST", `/api/admin/disputes/${id}/resolve`, { decision: "borrower" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not resolve the dispute");
       return res.json();
     },
-    onSuccess: (_, { decision }) => {
-      toast({
-        title: "Dispute resolved",
-        description:
-          decision === "owner"
-            ? "Charged deposit retained for the owner — damage confirmed."
-            : "Deposit refunded or hold released for the borrower.",
-      });
+    onSuccess: () => {
+      toast({ title: "Dispute resolved", description: "Deposit refunded or hold released for the borrower." });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/disputes"] });
     },
-    onError: () => {
-      toast({ title: "Failed to resolve dispute", variant: "destructive" });
+    onError: (e: Error) => {
+      toast({ title: "Failed to resolve dispute", description: e.message, variant: "destructive" });
     },
     onSettled: () => setResolving(null),
   });
@@ -270,20 +265,15 @@ export default function AdminDisputesPage() {
                 <div className="flex flex-col gap-2 pt-1 sm:flex-row">
                   <Button
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => setResolving({ id: d.id, decision: "borrower" })}
+                    onClick={() => setResolving({ id: d.id })}
                     disabled={resolveMutation.isPending}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Refund / release to borrower
                   </Button>
-                  <Button
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                    onClick={() => setResolving({ id: d.id, decision: "owner" })}
-                    disabled={resolveMutation.isPending}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Retain for owner
-                  </Button>
+                  <p className="flex-1 text-sm text-muted-foreground self-center" data-testid="text-award-via-claims">
+                    Use the claims flow to award the deposit.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -295,15 +285,10 @@ export default function AdminDisputesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {resolving?.decision === "borrower"
-                ? "Refund deposit to borrower?"
-                : "Retain deposit for owner?"}
+              Refund deposit to borrower?
             </DialogTitle>
             <DialogDescription>
-              {resolving?.decision === "borrower"
-                ? "The borrower's security deposit will be refunded in full (or the temporary hold released if it was never charged). This confirms the item was returned in acceptable condition."
-                : "The charged security deposit will be retained for the owner. This confirms damage was found and the owner's claim is valid."}{" "}
-              This action cannot be undone.
+              The borrower's security deposit will be refunded in full (or the temporary hold released if it was never charged). This confirms the item was returned in acceptable condition. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -311,7 +296,7 @@ export default function AdminDisputesPage() {
               Cancel
             </Button>
             <Button
-              className={resolving?.decision === "borrower" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+              className="bg-green-600 hover:bg-green-700"
               onClick={() => resolving && resolveMutation.mutate(resolving)}
               disabled={resolveMutation.isPending}
             >

@@ -19,6 +19,7 @@ import {
   reconcileClaimDeadlines,
   reconcileRejectedReleaseOperation,
   reconcileSettlementOperation,
+  releaseDisputedDepositToBorrower,
   releaseRejectedClaim,
   settleApprovedClaim,
 } from "./security-claims-service.js";
@@ -398,6 +399,45 @@ test("if flagging the claim itself throws, the capture failure is still logged a
   const state = await rows(claim.id, request.id);
   assert.equal(state.claim.settlementStatus, "PENDING", "the flag write failed, so nothing changed");
   assert.equal(state.operations[0]?.status, "FAILED", "the ledger is still updated after the flag failure");
+});
+
+async function claimedFence(requestId: number) {
+  const fence = await claimDepositTerminalAction(requestId, "cancel");
+  assert.equal(fence.status, "claimed");
+  return fence as Extract<typeof fence, { status: "claimed" }>;
+}
+
+test("a borrower release uses a deterministic cancel key and leaves the fence for the caller to finalize", async () => {
+  const { request } = await fixture("authorization", "CUSTOMER_RESPONSE_PENDING", 0, 100);
+  const stripe = stripeFor(request, "requires_capture");
+  const result = await releaseDisputedDepositToBorrower(await claimedFence(request.id), stripe as any);
+  assert.deepEqual(result, { ok: true });
+  assert.equal(stripe.calls.cancel[0].options.idempotencyKey, `dispute-release-${request.id}-${request.depositPaymentIntentId}`);
+  const [row] = await db.select().from(itemRequests).where(eq(itemRequests.id, request.id));
+  assert.equal(row.depositRenewalStatus, "terminal_action", "the route finalizes the request under the fence");
+});
+
+test("a failed or indeterminate borrower release frees the fence, flags the claim, and can be retried with the same key", async (t) => {
+  const logged = t.mock.method(console, "error", () => undefined);
+  for (const [label, cancelError, indeterminate] of [["definitive", definitiveError("cancel rejected"), false], ["indeterminate", connectionError(), true]] as const) {
+    const { request, claim } = await fixture("authorization", "CUSTOMER_RESPONSE_PENDING", 0, 100);
+    const failing = stripeFor(request, "requires_capture", { cancelError });
+    const result = await releaseDisputedDepositToBorrower(await claimedFence(request.id), failing as any);
+    assert.equal(result.ok, false, label);
+    assert.equal((result as any).indeterminate, indeterminate, label);
+
+    const state = await rows(claim.id, request.id);
+    assert.equal(state.request.depositOperationToken, null, `${label}: fence released`);
+    assert.notEqual(state.request.depositRenewalStatus, "terminal_action", `${label}: fence released`);
+    assert.equal(state.claim.settlementStatus, "MANUAL_REVIEW", `${label}: flagged`);
+    assert.equal(state.claim.manualReviewReason, "RELEASE_FAILED", label);
+    assert.ok(logged.mock.calls.some(c => new RegExp(`dispute deposit release ${indeterminate ? "indeterminate" : "failed"} for request ${request.id}`).test(String(c.arguments[0]))), `${label}: logged`);
+
+    const working = stripeFor(request, "requires_capture");
+    const retry = await releaseDisputedDepositToBorrower(await claimedFence(request.id), working as any);
+    assert.deepEqual(retry, { ok: true }, `${label}: retryable`);
+    assert.equal(working.calls.cancel[0].options.idempotencyKey, failing.calls.cancel[0].options.idempotencyKey, `${label}: same key on retry`);
+  }
 });
 
 test("overdue/expiry sweep never charges: it only marks an uncharged hold unsecured and ignores charged deposits", async () => {

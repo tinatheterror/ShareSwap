@@ -16,6 +16,7 @@ import {
 import { claimDepositTerminalAction } from "./deposit-renewal-service.js";
 import {
   ensureClaimDepositCaptured,
+  finalizeDisputeReleaseToBorrower,
   reconcileClaimDeadlines,
   reconcileRejectedReleaseOperation,
   reconcileSettlementOperation,
@@ -438,6 +439,48 @@ test("a failed or indeterminate borrower release frees the fence, flags the clai
     assert.deepEqual(retry, { ok: true }, `${label}: retryable`);
     assert.equal(working.calls.cancel[0].options.idempotencyKey, failing.calls.cancel[0].options.idempotencyKey, `${label}: same key on retry`);
   }
+});
+
+test("a borrower release closes the open claim with the request: not upheld, nothing captured, and the sweep and settlement never touch it", async () => {
+  const { request, claim } = await fixture("authorization", "CUSTOMER_RESPONSE_PENDING", 0, 100);
+  await db.update(itemRequests).set({ status: "DISPUTED", claimDecisionDeadlineAt: new Date(Date.now() - 1000), depositAuthorizationExpiresAt: new Date(Date.now() - 1000) })
+    .where(eq(itemRequests.id, request.id));
+  const stripe = stripeFor(request, "requires_capture");
+  const fence = await claimedFence(request.id);
+  assert.deepEqual(await releaseDisputedDepositToBorrower(fence, stripe as any), { ok: true });
+  assert.equal(await finalizeDisputeReleaseToBorrower(fence, ownerId), true);
+
+  const closed = await rows(claim.id, request.id);
+  assert.equal(closed.request.status, "COMPLETED");
+  assert.equal(closed.request.depositStatus, "released");
+  assert.equal(closed.claim.status, "REJECTED");
+  assert.equal(closed.claim.settlementStatus, "SETTLED");
+  assert.equal(closed.claim.approvedAmount, "0.00");
+  assert.equal(closed.claim.decidedBy, ownerId);
+  assert.ok(closed.claim.decidedAt);
+  assert.equal(stripe.calls.capture.length, 0, "nothing captured");
+
+  // The sweep ignores the released request; even if the request looked unsecured again it could not reach the closed claim.
+  await reconcileClaimDeadlines(new Date(), { onlyRequestIds: [request.id] });
+  assert.equal((await rows(claim.id, request.id)).notes.filter(n => n.type === "deposit_unsecured").length, 0, "the sweep does nothing for the released request");
+  await db.update(itemRequests).set({ depositStatus: "authorized" }).where(eq(itemRequests.id, request.id));
+  await reconcileClaimDeadlines(new Date(), { onlyRequestIds: [request.id] });
+  const afterSweep = await rows(claim.id, request.id);
+  assert.equal(afterSweep.claim.status, "REJECTED");
+  assert.equal(afterSweep.claim.settlementStatus, "SETTLED", "not flagged for manual review");
+  assert.deepEqual(await settleApprovedClaim(claim.id, stripe as any), { done: true }, "settlement sees it as already done");
+  assert.equal(stripe.calls.capture.length, 0);
+});
+
+test("a superseded fence changes neither the request nor the claim", async () => {
+  const { request, claim } = await fixture("authorization", "CUSTOMER_RESPONSE_PENDING", 0, 100);
+  await db.update(itemRequests).set({ status: "DISPUTED" }).where(eq(itemRequests.id, request.id));
+  const fence = await claimedFence(request.id);
+  await db.update(itemRequests).set({ depositOperationToken: "someone-else" }).where(eq(itemRequests.id, request.id));
+  assert.equal(await finalizeDisputeReleaseToBorrower(fence, ownerId), false);
+  const state = await rows(claim.id, request.id);
+  assert.equal(state.request.status, "DISPUTED");
+  assert.equal(state.claim.status, "CUSTOMER_RESPONSE_PENDING");
 });
 
 test("overdue/expiry sweep never charges: it only marks an uncharged hold unsecured and ignores charged deposits", async () => {

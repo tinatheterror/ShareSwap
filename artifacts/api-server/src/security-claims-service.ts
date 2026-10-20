@@ -335,6 +335,38 @@ export async function releaseDisputedDepositToBorrower(
   }
 }
 
+/**
+ * Completes a legacy dispute release: moves the request to COMPLETED / released under the terminal fence and, in
+ * the same transaction, closes every open claim on it as rejected (not upheld, nothing captured, nothing left to
+ * settle). Closed claims are outside ACTIVE_CLAIM_STATUSES, so the deadline sweep, capture and settlement can never
+ * act on them. Returns false, changing nothing, when the fence was superseded.
+ */
+export async function finalizeDisputeReleaseToBorrower(
+  terminalClaim: Parameters<typeof resolveClaimedDepositIntents>[0],
+  adminId: number | null,
+  now = new Date(),
+): Promise<boolean> {
+  const { request } = terminalClaim;
+  return db.transaction(async tx => {
+    const [finalized] = await tx.update(itemRequests).set({
+      status: "COMPLETED", depositStatus: "released", depositReleasedAt: now,
+      depositPreviousPaymentIntentId: null, depositRenewalStatus: null, depositOperationToken: null, depositOperationType: null,
+    }).where(and(
+      eq(itemRequests.id, request.id),
+      eq(itemRequests.depositRenewalStatus, "terminal_action"),
+      eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
+      request.depositPaymentIntentId ? eq(itemRequests.depositPaymentIntentId, request.depositPaymentIntentId) : isNull(itemRequests.depositPaymentIntentId),
+    )).returning({ id: itemRequests.id });
+    if (!finalized) return false;
+    await tx.update(securityClaims).set({
+      status: "REJECTED", settlementStatus: "SETTLED", manualReviewReason: null, approvedAmount: "0.00",
+      decisionReason: "Dispute closed by an admin: the deposit was released to the borrower and no claim was upheld.",
+      decidedBy: adminId, decidedAt: now, updatedAt: now,
+    }).where(and(eq(securityClaims.requestId, request.id), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));
+    return true;
+  });
+}
+
 /** Resolves an INDETERMINATE/PROCESSING capture using the ledger's original idempotency key. */
 export async function reconcileClaimCaptureOperation(operationId: number, stripe: ClaimStripeClient): Promise<EnsureCaptureResult> {
   const snapshot = await db.transaction(async tx => {

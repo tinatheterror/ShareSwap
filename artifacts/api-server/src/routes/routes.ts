@@ -54,7 +54,7 @@ import {
   releaseDepositTerminalClaim,
   resolveClaimedDepositIntents,
 } from "../deposit-renewal-service";
-import { ensureClaimDepositCaptured, reconcileClaimDeadlines, reconcileSettlementOperation, releaseDisputedDepositToBorrower, releaseRejectedClaim, settleApprovedClaim } from "../security-claims-service";
+import { ensureClaimDepositCaptured, reconcileClaimDeadlines, reconcileSettlementOperation, finalizeDisputeReleaseToBorrower, releaseDisputedDepositToBorrower, releaseRejectedClaim, settleApprovedClaim } from "../security-claims-service";
 import * as depositCopy from "../deposit-copy";
 import {
   EXPIRABLE_REQUEST_TYPES,
@@ -14647,22 +14647,8 @@ Respond with ONLY the category name, nothing else.`
             : `The deposit could not be released: ${released.reason}. The request was flagged for manual review and can be retried.`,
         });
       }
-      const [finalized] = await db.update(itemRequests).set({
-        status: "COMPLETED",
-        depositStatus: "released",
-        depositReleasedAt: new Date(),
-        depositPreviousPaymentIntentId: null,
-        depositRenewalStatus: null,
-        depositOperationToken: null,
-        depositOperationType: null,
-      }).where(and(
-        eq(itemRequests.id, requestId),
-        eq(itemRequests.depositRenewalStatus, "terminal_action"),
-        eq(itemRequests.depositOperationToken, terminalClaim.operationToken),
-        terminalClaim.request.depositPaymentIntentId
-          ? eq(itemRequests.depositPaymentIntentId, terminalClaim.request.depositPaymentIntentId)
-          : isNull(itemRequests.depositPaymentIntentId),
-      )).returning({ id: itemRequests.id });
+      // Request -> COMPLETED and any open claim -> rejected (not upheld) in one transaction.
+      const finalized = await finalizeDisputeReleaseToBorrower(terminalClaim, req.user?.id ?? null);
       if (!finalized) return res.status(409).json({ error: "Deposit operation was superseded" });
       await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.items.id));
       notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});

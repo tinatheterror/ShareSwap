@@ -176,15 +176,15 @@ export function resolutionBorrower(a: ResolutionAmounts, last4?: string | null) 
   if (outcome === "retained_full") {
     return {
       type: "security_deposit_retained",
-      title: "Security deposit retained",
-      message: `${formatMoney(a.retained)} of your ${formatMoney(a.charged)} security deposit was retained based on the claim outcome. Charged: ${formatMoney(a.charged)}, refunded: ${formatMoney(0)}, retained: ${formatMoney(a.retained)}.`,
+      title: "Security deposit awarded to owner",
+      message: `${formatMoney(a.retained)} of your ${formatMoney(a.charged)} security deposit was awarded to owner based on the claim outcome. Charged: ${formatMoney(a.charged)}, refunded: ${formatMoney(0)}, awarded to owner: ${formatMoney(a.retained)}.`,
     };
   }
   if (outcome === "refunded_partial") {
     return {
       type: "security_deposit_refunded",
       title: "Security deposit partly refunded",
-      message: `${formatMoney(a.refunded)} refunded to ${cardLabel(last4)}. ${formatMoney(a.retained)} of your ${formatMoney(a.charged)} security deposit was retained based on the claim outcome.`,
+      message: `${formatMoney(a.refunded)} refunded to ${cardLabel(last4)}. ${formatMoney(a.retained)} of your ${formatMoney(a.charged)} security deposit was awarded to owner based on the claim outcome.`,
     };
   }
   return {
@@ -198,14 +198,16 @@ export function resolutionOwner(a: ResolutionAmounts) {
   if (outcome === "retained_full") {
     return {
       type: "security_deposit_retained",
-      title: "Security deposit retained",
-      message: `Claim resolved. ${formatMoney(a.retained)} of the borrower's ${formatMoney(a.charged)} security deposit was retained.`,
+      title: "Security deposit awarded to owner",
+      message: `Claim resolved. ${formatMoney(a.retained)} of the borrower's ${formatMoney(a.charged)} security deposit was awarded to owner.`,
     };
   }
   return {
     type: "security_deposit_refunded",
     title: outcome === "refunded_partial" ? "Security deposit partly refunded" : "Security deposit refunded",
-    message: `Claim resolved. ${formatMoney(a.refunded)} refunded to the borrower · ${formatMoney(a.retained)} retained.`,
+    message: outcome === "refunded_partial"
+      ? `Claim resolved. ${formatMoney(a.refunded)} refunded to the borrower · ${formatMoney(a.retained)} awarded to owner.`
+      : `Claim resolved. ${formatMoney(a.refunded)} refunded to the borrower.`,
   };
 }
 export function rejectedHoldReleasedBorrower(amount: number | string) {

@@ -22,13 +22,13 @@ test("spec strings are exact", () => {
   assert.deepEqual(copy.depositHoldReleased(105), { type: "deposit_hold_released", title: "Deposit hold released", message: "$105 deposit hold released. You were not charged." });
 });
 
-test("resolution copy distinguishes full refund, partial refund, and retained", () => {
+test("resolution copy distinguishes full refund, partial refund, and awarded to owner", () => {
   assert.equal(copy.resolutionBorrower({ charged: 105, refunded: 105, retained: 0 }, "4242").title, "Security deposit refunded");
   assert.equal(copy.resolutionBorrower({ charged: 105, refunded: 75, retained: 30 }, "4242").title, "Security deposit partly refunded");
   assert.match(copy.resolutionBorrower({ charged: 105, refunded: 75, retained: 30 }, "4242").message, /^\$75 refunded to your card •••• 4242\. \$30 of your \$105/);
-  const kept = copy.resolutionBorrower({ charged: 105, refunded: 0, retained: 105 });
-  assert.equal(kept.title, "Security deposit retained");
-  assert.match(kept.message, /Charged: \$105, refunded: \$0, retained: \$105/);
+  const awarded = copy.resolutionBorrower({ charged: 105, refunded: 0, retained: 105 });
+  assert.equal(awarded.title, "Security deposit awarded to owner");
+  assert.match(awarded.message, /Charged: \$105, refunded: \$0, awarded to owner: \$105/);
   assert.equal(copy.outcomeFor(105, 75, 30), "refunded_partial");
 });
 
@@ -133,4 +133,20 @@ test("a hold that was never captured states no amounts even if amounts are passe
 test("cents are kept and zero parts are dropped", () => {
   assert.equal(copy.claimResolvedStamp({ refunded: "12.50", awarded: "0.00", captured: true }).content, "Claim resolved · $12.50 refunded");
   assert.equal(copy.claimResolvedStamp({ refunded: 0.1 + 0.2, awarded: 0, captured: true }).content, "Claim resolved · $0.30 refunded");
+});
+
+test("claim notifications say \"awarded to owner\", only for money that moved, and never retained or kept", () => {
+  const split = { charged: 100, refunded: 40, retained: 60 };
+  const award = { charged: 100, refunded: 0, retained: 100 };
+  const refund = { charged: 100, refunded: 100, retained: 0 };
+  assert.equal(copy.resolutionOwner(split).message, "Claim resolved. $40 refunded to the borrower · $60 awarded to owner.");
+  assert.equal(copy.resolutionOwner(award).title, "Security deposit awarded to owner");
+  assert.equal(copy.resolutionOwner(award).message, "Claim resolved. $100 of the borrower's $100 security deposit was awarded to owner.");
+  assert.equal(copy.resolutionOwner(refund).message, "Claim resolved. $100 refunded to the borrower.");
+  assert.equal(copy.resolutionBorrower(split, "4242").message, "$40 refunded to your card •••• 4242. $60 of your $100 security deposit was awarded to owner based on the claim outcome.");
+  // The notification types stay the same: the apps pick icons from them.
+  assert.equal(copy.resolutionOwner(award).type, "security_deposit_retained");
+  for (const n of [copy.resolutionOwner(split), copy.resolutionOwner(award), copy.resolutionOwner(refund), copy.resolutionBorrower(split), copy.resolutionBorrower(award), copy.resolutionBorrower(refund)]) {
+    assert.doesNotMatch(`${n.title} ${n.message}`, /retained|\bkept\b|paid to owner|\$0 (retained|awarded)/i, n.message);
+  }
 });

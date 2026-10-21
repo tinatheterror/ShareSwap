@@ -557,7 +557,7 @@ test("approved claim refunds deposit minus approved amount, retains the approved
   });
   const borrowerNote = state.notes.filter(n => n.userId === borrowerId).find(n => n.type !== "security_deposit_charged")!;
   assert.equal(borrowerNote.title, "Security deposit partly refunded");
-  assert.match(borrowerNote.message, /^\$75 refunded to your card •••• 4242\. \$30 of your \$105 security deposit was retained based on the claim outcome\.$/);
+  assert.match(borrowerNote.message, /^\$75 refunded to your card •••• 4242\. \$30 of your \$105 security deposit was awarded to owner based on the claim outcome\.$/);
 });
 
 test("approved claim for the full deposit retains everything with no refund call", async () => {
@@ -573,7 +573,7 @@ test("approved claim for the full deposit retains everything with no refund call
   assert.equal((resolved.metadata as any).outcome, "awarded_full");
   assert.equal(resolved.content, "Claim resolved · $100 awarded to owner");
   const note = state.notes.find(n => n.type === "security_deposit_retained" && n.userId === borrowerId)!;
-  assert.equal(note.title, "Security deposit retained");
+  assert.equal(note.title, "Security deposit awarded to owner");
 });
 
 test("settlement does not run until the deposit is really charged", async () => {

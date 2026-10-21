@@ -30,6 +30,7 @@ import { borrowTrustDepositQuote } from "@/lib/deposit-calculator";
 import { TrustDepositLine } from "@/components/TrustDepositLine";
 import { Item } from "@/components/ItemCard";
 import { VerificationGateModal } from "@/components/VerificationGateModal";
+import { promptFor, type CapabilityFlag } from "@/lib/verificationCapabilities";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { SwapInventorySelector } from "@/components/SwapInventorySelector";
 import { BorrowRequestSheet, BorrowRequestData } from "@/components/BorrowRequestSheet";
@@ -196,6 +197,22 @@ export default function ItemDetailScreen() {
       Alert.alert("Could not add to wishlist", "Please try again.");
     },
   });
+
+  /** Shows the prompt for what the server says is missing and returns true when the action is locked. */
+  function blockedByVerification(flag: CapabilityFlag): boolean {
+    const prompt = promptFor(user, flag);
+    if (!prompt) return false;
+    if (prompt.kind === "email") {
+      Alert.alert("Verify your email first", "Please verify your email address to swap, claim gifts or list items.", [
+        { text: "Not now", style: "cancel" },
+        { text: "Verify email", onPress: () => router.push("/verify-email-prompt" as never) },
+      ]);
+    } else {
+      setVerifMissing(prompt.missing);
+      setShowVerifModal(true);
+    }
+    return true;
+  }
 
   async function handleSendRequest(
     type: RequestType,
@@ -593,7 +610,7 @@ export default function ItemDetailScreen() {
         <View style={{ gap: 8 }}>
           {hasPendingGift
             ? renderPendingBtn("Request Pending")
-            : renderActionBtn("Claim Gift", "gift", () => setActiveRequestType("GIFT"), "#ec4899", hasAnyPending)}
+            : renderActionBtn("Claim Gift", "gift", () => { if (!blockedByVerification("canClaimGift")) setActiveRequestType("GIFT"); }, "#ec4899", hasAnyPending)}
           <Text style={[styles.giftHint, { color: colors.mutedForeground }]}>
             This item is being given away for free
           </Text>
@@ -642,6 +659,7 @@ export default function ItemDetailScreen() {
                       ]);
                       return;
                     }
+                    if (blockedByVerification("canBorrow")) return;
                     setShowBorrowSheet(true);
                   },
                   colors.primary,
@@ -665,7 +683,7 @@ export default function ItemDetailScreen() {
           {!ownerView && (
             hasPendingRent
               ? renderPendingBtn("Request Pending")
-              : renderActionBtn("Request to Rent", <DollarSign size={15} color={hasAnyPending ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => setActiveRequestType("RENT"), colors.primary, hasAnyPending)
+              : renderActionBtn("Request to Rent", <DollarSign size={15} color={hasAnyPending ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => { if (!blockedByVerification("canRent")) setActiveRequestType("RENT"); }, colors.primary, hasAnyPending)
           )}
         </View>,
       );
@@ -715,6 +733,7 @@ export default function ItemDetailScreen() {
                     ]);
                     return;
                   }
+                  if (blockedByVerification("canSwap")) return;
                   setShowSwapSelector(true);
                 }, colors.primary, hasAnyPending)
           )}
@@ -735,7 +754,7 @@ export default function ItemDetailScreen() {
           {!ownerView && (
             hasPendingGift
               ? renderPendingBtn("Request Pending")
-              : renderActionBtn("Send Gift Request", <Gift size={15} color={hasAnyPending ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => setActiveRequestType("GIFT"), "#ec4899", hasAnyPending)
+              : renderActionBtn("Send Gift Request", <Gift size={15} color={hasAnyPending ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => { if (!blockedByVerification("canClaimGift")) setActiveRequestType("GIFT"); }, "#ec4899", hasAnyPending)
           )}
         </View>,
       );

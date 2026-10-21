@@ -250,7 +250,7 @@ export default function ProfileScreen() {
                   {displayName}
                 </Text>
                 {user.isVerified ? (
-                  <View style={{ width: 18, height: 18 }}>
+                  <View style={{ width: 18, height: 18 }} accessibilityRole="image" accessibilityLabel="ID verified">
                     <MaterialCommunityIcons name="check-decagram" size={22} color="white" style={{ position: "absolute", top: -2, left: -2 }} />
                     <MaterialCommunityIcons name="check-decagram" size={18} color="#0DCEA1" style={{ position: "absolute" }} />
                   </View>
@@ -327,7 +327,7 @@ export default function ProfileScreen() {
                 borderColor: user.isVerified ? "#86efac" : "#fcd34d" },
             ]}>
               <Text style={[styles.verifiedChipText, { color: user.isVerified ? "#15803d" : "#92400e" }]}>
-                {user.isVerified ? "Verified" : "Unverified"}
+                {user.isVerified ? "ID verified" : "ID not verified"}
               </Text>
             </View>
           </View>

@@ -34,6 +34,13 @@ interface User {
   locationRadius?: number | null;
   emailVerified?: boolean;
   authProvider?: string;
+  // Capability flags decided by the server; the app only reads them.
+  canSwap?: boolean;
+  canClaimGift?: boolean;
+  canList?: boolean;
+  canBorrow?: boolean;
+  canRent?: boolean;
+  missing?: ("email" | "id" | "card")[];
 }
 
 interface AuthContextValue {

@@ -4,10 +4,11 @@ import React, { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { needsEmailVerification } from "@/lib/verificationCapabilities";
 
 /**
  * Mirrors the web's EmailVerificationBanner in navbar.tsx.
- * Shows only when emailVerified is false and authProvider is not 'google'.
+ * Shows only when the server lists "email" as missing for the current user.
  * Tapping "Resend" calls POST /api/auth/resend-verification.
  */
 export function EmailVerificationBanner() {
@@ -18,7 +19,7 @@ export function EmailVerificationBanner() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(false);
 
-  if (!user || user.emailVerified || user.authProvider === "google") return null;
+  if (!user || !needsEmailVerification(user)) return null;
 
   async function handleResend() {
     if (resending || sent) return;

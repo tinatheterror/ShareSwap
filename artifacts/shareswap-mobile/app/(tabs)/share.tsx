@@ -49,6 +49,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { isLocked } from "@/lib/verificationCapabilities";
 import { HeartPeopleIcon } from "@/components/HeartPeopleIcon";
 import { NotificationBell } from "@/components/NotificationBell";
 import Svg, { Path, Circle, Rect } from "react-native-svg";
@@ -1121,7 +1122,16 @@ export default function ShareScreen() {
 
           <Pressable
             style={[styles.submitBtn, { backgroundColor: colors.primary, opacity: createItemMutation.isPending ? 0.7 : 1 }]}
-            onPress={() => createItemMutation.mutate()}
+            onPress={() => {
+              if (isLocked(user, "canList")) {
+                Alert.alert("Verify your email first", "Please verify your email address to list items.", [
+                  { text: "Not now", style: "cancel" },
+                  { text: "Verify email", onPress: () => router.push("/verify-email-prompt" as never) },
+                ]);
+                return;
+              }
+              createItemMutation.mutate();
+            }}
             disabled={createItemMutation.isPending}
           >
             {createItemMutation.isPending ? (

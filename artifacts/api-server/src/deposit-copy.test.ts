@@ -10,7 +10,7 @@ test("money formatting drops empty cents", () => {
 
 test("spec strings are exact", () => {
   assert.equal(copy.claimOpenedChat(105), "⚠️ Claim opened. Deposit charged while it’s reviewed.");
-  assert.equal(copy.claimResolvedChat(75, 30), "Claim resolved · $75 refunded · $30 kept");
+  assert.equal(copy.claimResolvedStamp({ refunded: 75, awarded: 30, captured: true }).content, "Claim resolved · $75 refunded · $30 awarded to owner");
   assert.equal(copy.holdReleasedChat(105), "✅ Deposit hold released. You weren’t charged.");
   const n = copy.depositChargedBorrower(105, "Tineco vacuum mop");
   assert.equal(n.type, "security_deposit_charged");
@@ -83,7 +83,7 @@ test("server-generated copy avoids ambiguous terminology", () => {
   }
   collect([
     copy.holdPlacedChat(105), copy.refundableChargedChat(105), copy.holdReleasedChat(105), copy.refundableRefundedChat(105),
-    copy.claimOpenedChat(105), copy.claimResolvedChat(75, 30), copy.depositChargedBorrower(105, "Mop"), copy.claimOpenedOwner(105, "Mop"),
+    copy.claimOpenedChat(105), copy.claimResolvedStamp({ refunded: 75, awarded: 30, captured: true }).content, copy.claimResolvedStamp({ refunded: 0, awarded: 0, captured: false }).content, copy.depositChargedBorrower(105, "Mop"), copy.claimOpenedOwner(105, "Mop"),
     copy.claimOpenedPendingCharge("Mop"), copy.depositHoldReleased(105), copy.refundableDepositRefunded(105),
     copy.resolutionBorrower({ charged: 105, refunded: 75, retained: 30 }, "4242"), copy.resolutionBorrower({ charged: 105, refunded: 0, retained: 105 }),
     copy.resolutionOwner({ charged: 105, refunded: 105, retained: 0 }), copy.rejectedHoldReleasedBorrower(105), copy.rejectedHoldReleasedOwner(105),
@@ -97,7 +97,40 @@ test("server-generated copy avoids ambiguous terminology", () => {
     assert.doesNotMatch(s, /refund/i, s);
   }
   // "temporary hold" is never used after capture.
-  for (const s of [copy.claimOpenedChat(105), copy.depositChargedBorrower(105, "Mop").message, copy.claimResolvedChat(75, 30)]) {
+  for (const s of [copy.claimOpenedChat(105), copy.depositChargedBorrower(105, "Mop").message, copy.claimResolvedStamp({ refunded: 75, awarded: 30, captured: true }).content]) {
     assert.doesNotMatch(s, /temporary hold|\bheld\b/i, s);
   }
+});
+
+test("the claim-resolved stamp states only the money that moved, in four distinct cases", () => {
+  const full = copy.claimResolvedStamp({ refunded: 100, awarded: 0, captured: true });
+  assert.equal(full.content, "Claim resolved · $100 refunded");
+  assert.deepEqual(full.metadata, { eventType: "claim_resolved", outcome: "refunded_full", chargedAmount: 100, refundedAmount: 100, awardedAmount: 0, retainedAmount: 0 });
+
+  const award = copy.claimResolvedStamp({ refunded: 0, awarded: 100, captured: true });
+  assert.equal(award.content, "Claim resolved · $100 awarded to owner");
+  assert.deepEqual(award.metadata, { eventType: "claim_resolved", outcome: "awarded_full", chargedAmount: 100, refundedAmount: 0, awardedAmount: 100, retainedAmount: 100 });
+
+  const split = copy.claimResolvedStamp({ refunded: 40, awarded: 60, captured: true });
+  assert.equal(split.content, "Claim resolved · $40 refunded · $60 awarded to owner");
+  assert.deepEqual(split.metadata, { eventType: "claim_resolved", outcome: "refunded_partial", chargedAmount: 100, refundedAmount: 40, awardedAmount: 60, retainedAmount: 60 });
+
+  const hold = copy.claimResolvedStamp({ refunded: 0, awarded: 0, captured: false });
+  assert.equal(hold.content, "Claim resolved · Deposit hold released");
+  assert.deepEqual(hold.metadata, { eventType: "claim_resolved", outcome: "hold_released", chargedAmount: 0, refundedAmount: 0, awardedAmount: 0, retainedAmount: 0 });
+
+  for (const stamp of [full, award, split, hold]) {
+    assert.doesNotMatch(stamp.content, /\$0\b|\bkept\b|retained|\bpaid\b/i, stamp.content);
+  }
+});
+
+test("a hold that was never captured states no amounts even if amounts are passed", () => {
+  const stamp = copy.claimResolvedStamp({ refunded: 100, awarded: 0, captured: false });
+  assert.equal(stamp.content, "Claim resolved · Deposit hold released");
+  assert.equal(stamp.metadata.refundedAmount, 0);
+});
+
+test("cents are kept and zero parts are dropped", () => {
+  assert.equal(copy.claimResolvedStamp({ refunded: "12.50", awarded: "0.00", captured: true }).content, "Claim resolved · $12.50 refunded");
+  assert.equal(copy.claimResolvedStamp({ refunded: 0.1 + 0.2, awarded: 0, captured: true }).content, "Claim resolved · $0.30 refunded");
 });

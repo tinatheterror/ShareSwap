@@ -1,6 +1,6 @@
 import {
   formatMoney, holdReleasedMessage, resolveDepositPhase, depositSummaryLine, holdTitle, holdPendingNote, holdReleaseExplainer,
-  claimOpenedBorrowerCopy, claimOpenedOwnerLine, claimResolvedBorrowerCopy, claimResolvedOwnerLine,
+  claimOpenedBorrowerCopy, claimOpenedOwnerLine, claimResolvedBorrowerCopy, claimResolvedCardView, claimResolvedOwnerLine,
   depositConfirmedStamp, depositNotificationKind, depositReleasedStamp, CANCEL_BOOKING_MESSAGE, CLAIM_REVIEW_TOP,
 } from "../depositCopy";
 
@@ -89,7 +89,9 @@ describe("depositCopy", () => {
     expect(kept.title).toBe("Security deposit retained");
     expect(kept.body).toBe("$30 of your $105 security deposit was retained based on the claim outcome.");
     expect(JSON.stringify([full, partial, kept])).not.toMatch(/\bfee\b/i);
-    expect(claimResolvedOwnerLine(75, 30)).toBe("Claim resolved · $75 refunded · $30 kept");
+    expect(claimResolvedOwnerLine(75, 30)).toBe("Claim resolved · $75 refunded · $30 awarded to owner");
+    expect(claimResolvedOwnerLine(100, 0)).toBe("Claim resolved · $100 refunded");
+    expect(claimResolvedOwnerLine(0, 100)).toBe("Claim resolved · $100 awarded to owner");
   });
 
   it("relabels the deposit_confirmed stamp", () => {
@@ -105,5 +107,32 @@ describe("depositCopy", () => {
     expect(depositNotificationKind("security_deposit_retained")).toBe("retained");
     expect(depositNotificationKind("deposit_hold_released")).toBe("released");
     expect(depositNotificationKind("badge_earned")).toBeNull();
+  });
+});
+
+describe("claimResolvedCardView", () => {
+  const cases: [string, string][] = [
+    ["refunded_full", "Claim resolved · $100 refunded"],
+    ["awarded_full", "Claim resolved · $100 awarded to owner"],
+    ["refunded_partial", "Claim resolved · $40 refunded · $60 awarded to owner"],
+    ["hold_released", "Claim resolved · Deposit hold released"],
+  ];
+  it.each(cases)("renders the server text for %s to both the borrower and the owner", (outcome, content) => {
+    for (const isOwnerView of [true, false]) {
+      const view = claimResolvedCardView({ content, outcome, isOwnerView });
+      expect(view.body).toBe(content);
+      expect(`${view.body} ${view.detail}`).not.toMatch(/retained|\bkept\b/i);
+    }
+  });
+  it("only says the deposit was previously charged when money was actually charged", () => {
+    expect(claimResolvedCardView({ content: "x", outcome: "hold_released", isOwnerView: false }).detail).toBe("");
+    expect(claimResolvedCardView({ content: "x", outcome: "refunded_full", isOwnerView: false }).detail).toMatch(/previously charged/);
+    expect(claimResolvedCardView({ content: "x", outcome: "refunded_full", isOwnerView: true }).detail).toBe("");
+  });
+  it("tones the card by who got the money", () => {
+    expect(claimResolvedCardView({ content: "x", outcome: "awarded_full", isOwnerView: false }).tone).toBe("awarded");
+    expect(claimResolvedCardView({ content: "x", outcome: "retained_full", isOwnerView: false }).tone).toBe("awarded");
+    expect(claimResolvedCardView({ content: "x", outcome: "refunded_partial", isOwnerView: false }).tone).toBe("refunded");
+    expect(claimResolvedCardView({ content: "x", outcome: "awarded_full", isOwnerView: true }).tone).toBe("owner");
   });
 });

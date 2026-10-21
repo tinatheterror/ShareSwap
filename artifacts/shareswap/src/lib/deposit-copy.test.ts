@@ -85,8 +85,10 @@ describe("deposit-copy", () => {
     expect(claimOpenedOwnerLine(105, "refundable_charge")).toBe("Claim opened. Deposit held while it’s reviewed.");
     expect(claimRefundedLine(105, "4242")).toBe("$105.00 refunded to your card •••• 4242.");
     expect(claimResolvedOwnerLine({ refundedAmount: 75, retainedAmount: 30 })).toBe(
-      "Claim resolved · $75.00 refunded · $30.00 kept",
+      "Claim resolved · $75.00 refunded · $30.00 awarded to owner",
     );
+    expect(claimResolvedOwnerLine({ refundedAmount: 100, retainedAmount: 0 })).toBe("Claim resolved · $100.00 refunded");
+    expect(claimResolvedOwnerLine({ refundedAmount: 0, retainedAmount: 100 })).toBe("Claim resolved · $100.00 awarded to owner");
   });
 
   it("outcomes", () => {

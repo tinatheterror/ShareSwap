@@ -7,6 +7,7 @@
  *   Refunded        - only when previously charged money is returned
  *   Hold released   - authorization released, never a charge
  *   Claim opened    - explicit trigger that converts the hold into a charge
+ *   Awarded to owner - charged money a resolved claim pays out to the owner (never "kept", "retained" or "paid")
  *
  * Never use "secured", "processed", "funds secured", "Payment completed" or
  * "Authorization expires" in user-facing copy.
@@ -65,8 +66,62 @@ export function claimOpenedChat(_amount: number | string, refundable = false): s
     ? "⚠️ Claim opened. Deposit held while it’s reviewed."
     : "⚠️ Claim opened. Deposit charged while it’s reviewed.";
 }
-export function claimResolvedChat(refunded: number | string, retained: number | string): string {
-  return `Claim resolved · ${formatMoney(refunded)} refunded · ${formatMoney(retained)} kept`;
+/** What actually happened to the money when a claim was resolved. */
+export type ClaimResolvedOutcome = "refunded_full" | "refunded_partial" | "awarded_full" | "hold_released";
+
+export interface ClaimResolvedMoney {
+  /** Returned to the borrower's card. */
+  refunded: number | string;
+  /** Paid out to the owner. */
+  awarded: number | string;
+  /** False when the deposit was only ever a hold and the hold was cancelled: no money moved. */
+  captured: boolean;
+}
+
+export interface ClaimResolvedStamp {
+  content: string;
+  /** Spread into the chat event's metadata; one distinct `outcome` per case. */
+  metadata: {
+    eventType: "claim_resolved";
+    outcome: ClaimResolvedOutcome;
+    chargedAmount: number;
+    refundedAmount: number;
+    awardedAmount: number;
+    /** Same value as awardedAmount, for chat events and clients written before the wording changed. */
+    retainedAmount: number;
+  };
+}
+
+const roundCents = (value: number | string) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
+};
+
+/**
+ * The one chat stamp for a resolved claim, built from the money that really moved. Only amounts above zero
+ * are mentioned, and money is "refunded" (to the borrower) or "awarded to owner", never "kept" or "paid".
+ *   $100 refunded  |  $100 awarded to owner  |  $40 refunded · $60 awarded to owner  |  Deposit hold released
+ */
+export function claimResolvedStamp(money: ClaimResolvedMoney): ClaimResolvedStamp {
+  if (!money.captured) {
+    return {
+      content: "Claim resolved · Deposit hold released",
+      metadata: { eventType: "claim_resolved", outcome: "hold_released", chargedAmount: 0, refundedAmount: 0, awardedAmount: 0, retainedAmount: 0 },
+    };
+  }
+  const refunded = Math.max(0, roundCents(money.refunded));
+  const awarded = Math.max(0, roundCents(money.awarded));
+  const parts = ["Claim resolved"];
+  if (refunded > 0) parts.push(`${formatMoney(refunded)} refunded`);
+  if (awarded > 0) parts.push(`${formatMoney(awarded)} awarded to owner`);
+  const outcome: ClaimResolvedOutcome = refunded > 0 && awarded > 0 ? "refunded_partial" : awarded > 0 ? "awarded_full" : "refunded_full";
+  return {
+    content: parts.join(" · "),
+    metadata: {
+      eventType: "claim_resolved", outcome,
+      chargedAmount: roundCents(refunded + awarded), refundedAmount: refunded, awardedAmount: awarded, retainedAmount: awarded,
+    },
+  };
 }
 
 // ── Notifications ──────────────────────────────────────────────────────────

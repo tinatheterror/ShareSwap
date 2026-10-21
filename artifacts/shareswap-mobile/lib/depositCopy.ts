@@ -213,8 +213,21 @@ export function claimResolvedBorrowerCopy(p: {
   };
 }
 
-export function claimResolvedOwnerLine(refunded: number | string | null | undefined, retained: number | string | null | undefined): string {
-  return `Claim resolved · ${formatMoney(refunded)} refunded · ${formatMoney(retained)} kept`;
+/** What the claim-resolved chat card shows: the server's own stamp text, never a client-built "Retained" line. */
+export function claimResolvedCardView(p: { content: string; outcome?: string | null; isOwnerView: boolean }) {
+  const awarded = p.outcome === "awarded_full" || p.outcome === "retained_full";
+  return {
+    body: p.content,
+    detail: !p.isOwnerView && p.outcome !== "hold_released" ? "The security deposit was previously charged because a claim was opened." : "",
+    tone: p.isOwnerView ? ("owner" as const) : awarded ? ("awarded" as const) : ("refunded" as const),
+  };
+}
+
+export function claimResolvedOwnerLine(refunded: number | string | null | undefined, awarded: number | string | null | undefined): string {
+  const parts = ["Claim resolved"];
+  if (Number(refunded) > 0) parts.push(`${formatMoney(refunded)} refunded`);
+  if (Number(awarded) > 0) parts.push(`${formatMoney(awarded)} awarded to owner`);
+  return parts.join(" · ");
 }
 
 // ── Chat event stamps ───────────────────────────────────────────────────────

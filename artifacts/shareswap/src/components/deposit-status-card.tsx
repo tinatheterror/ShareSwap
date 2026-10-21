@@ -136,7 +136,7 @@ export function DepositStatusCard({ deposit, role, fallbackRetainedAmount }: Dep
       <dl className="pt-1 space-y-0.5">
         <div className="flex justify-between"><dt>Charged</dt><dd className="font-medium">{formatMoney(charged)}</dd></div>
         <div className="flex justify-between"><dt>Refunded</dt><dd className="font-medium">{formatMoney(refunded)}</dd></div>
-        <div className="flex justify-between"><dt>Retained</dt><dd className="font-medium">{formatMoney(retained)}</dd></div>
+        <div className="flex justify-between"><dt>Awarded to owner</dt><dd className="font-medium">{formatMoney(retained)}</dd></div>
       </dl>
     </div>
   );

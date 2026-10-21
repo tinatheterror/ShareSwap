@@ -257,10 +257,13 @@ export function claimRetainedLine(retained: number | string | null | undefined):
 }
 
 export const CLAIM_RESOLVED_PREVIOUSLY_CHARGED =
-  "The security deposit was previously charged because a claim was opened. The applicable amount has now been refunded.";
+  "The security deposit was previously charged because a claim was opened.";
 
 export function claimResolvedOwnerLine(a: ClaimAmounts): string {
-  return `Claim resolved · ${formatMoney(a.refundedAmount ?? 0)} refunded · ${formatMoney(a.retainedAmount ?? 0)} kept`;
+  const parts = ["Claim resolved"];
+  if (Number(a.refundedAmount) > 0) parts.push(`${formatMoney(a.refundedAmount)} refunded`);
+  if (Number(a.retainedAmount) > 0) parts.push(`${formatMoney(a.retainedAmount)} awarded to owner`);
+  return parts.join(" · ");
 }
 
 /* ---------- Chat event stamps ---------- */

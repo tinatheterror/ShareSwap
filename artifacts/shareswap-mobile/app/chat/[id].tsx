@@ -38,7 +38,7 @@ import { CancelOutcomeBanner } from "@/components/CancelOutcomeBanner";
 import { useCancelRequest } from "@/hooks/useCancelRequest";
 import { cancelAction, cancelToast, legacyCancelDialog, type CancelRole } from "@workspace/api-client-react/cancel-flow";
 import {
-  resolveDepositPhase, depositSummaryLine, depositConfirmedStamp, claimOpenedBorrowerCopy, claimResolvedBorrowerCopy,
+  resolveDepositPhase, depositSummaryLine, depositConfirmedStamp, claimOpenedBorrowerCopy, claimResolvedCardView,
   claimOpenedOwnerLine, claimResolvedOwnerLine, depositReleasedStamp, CLAIM_REVIEW_TOP, claimReviewChargedLabel,
   formatMoney, depositPhaseDescription,
 } from "@/lib/depositCopy";
@@ -830,7 +830,7 @@ export default function ChatScreen() {
                 <Text style={[card.lifecycleTitle, { color: "#b91c1c", fontSize: 15 }]}>{claimReviewChargedLabel(depositInfo?.chargedAmount ?? depositInfo?.amount)}</Text>
                 {depositPhase === "resolved" && (
                   <Text style={[card.lifecycleText, { color: "#4338ca" }]}>
-                    Refunded: {formatMoney(depositInfo?.refundedAmount ?? 0)} · Retained: {formatMoney(depositInfo?.retainedAmount ?? 0)}
+                    Refunded: {formatMoney(depositInfo?.refundedAmount ?? 0)} · Awarded to owner: {formatMoney(depositInfo?.retainedAmount ?? 0)}
                   </Text>
                 )}
                 <Text style={[card.lifecycleTitle, { color: "#3730a3", marginTop: 4 }]}>{CLAIM_REVIEW_TOP.whyTitle}</Text>
@@ -2006,22 +2006,12 @@ function DepositEventCard({ eventType, metadata, content, isOwnerView, colors }:
     }
   } else if (eventType === "claim_resolved") {
     emoji = "⚖️"; accent = "#4338ca"; bg = "#eef2ff";
-    const charged = n("chargedAmount"), refunded = n("refundedAmount"), retained = n("retainedAmount");
-    if (isOwnerView || charged == null) {
-      eyebrow = "Claim resolved";
-      body = refunded != null && retained != null ? claimResolvedOwnerLine(refunded, retained) : content;
-      if (!isOwnerView) { /* fall back to server content when amounts are missing */ }
-      if (isOwnerView && charged != null) rows = [
-        { label: "Charged", value: formatMoney(charged) },
-        { label: "Refunded", value: formatMoney(refunded ?? 0) },
-        { label: "Retained", value: formatMoney(retained ?? 0) },
-      ];
-    } else {
-      const c = claimResolvedBorrowerCopy({ chargedAmount: charged, refundedAmount: refunded, retainedAmount: retained, cardLast4: last4, outcome: metadata.outcome as string | undefined });
-      ({ eyebrow, title, body, detail, rows } = c);
-      if ((retained ?? 0) > 0 && (refunded ?? 0) <= 0) { accent = "#b45309"; bg = "#fffbeb"; }
-      else accent = "#15803d", bg = "#f0fdf4";
-    }
+    // The server words the stamp from the money that actually moved; the card shows that text as is.
+    const view = claimResolvedCardView({ content, outcome: metadata.outcome as string | undefined, isOwnerView });
+    body = view.body;
+    detail = view.detail;
+    if (view.tone === "awarded") { accent = "#b45309"; bg = "#fffbeb"; }
+    else if (view.tone === "refunded") { accent = "#15803d"; bg = "#f0fdf4"; }
   }
   return (
     <View testID={`deposit-event-${eventType}`} style={{ alignSelf: "center", maxWidth: "92%", marginVertical: 6, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: accent + "66", backgroundColor: bg, gap: 4 }}>

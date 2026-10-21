@@ -461,7 +461,8 @@ test("a borrower release closes the open claim with the request: not upheld, not
   assert.equal(stripe.calls.capture.length, 0, "nothing captured");
   const stamps = closed.chat.filter(m => (m.metadata as any)?.eventType === "claim_resolved");
   assert.equal(stamps.length, 1);
-  assert.equal(stamps[0].content, "Claim resolved · $100 refunded · $0 kept");
+  assert.equal(stamps[0].content, "Claim resolved · Deposit hold released", "the deposit was only ever a hold, so nothing was refunded");
+  assert.equal((stamps[0].metadata as any).outcome, "hold_released");
 
   // The sweep ignores the released request; even if the request looked unsecured again it could not reach the closed claim.
   await reconcileClaimDeadlines(new Date(), { onlyRequestIds: [request.id] });
@@ -473,6 +474,20 @@ test("a borrower release closes the open claim with the request: not upheld, not
   assert.equal(afterSweep.claim.settlementStatus, "SETTLED", "not flagged for manual review");
   assert.deepEqual(await settleApprovedClaim(claim.id, stripe as any), { done: true }, "settlement sees it as already done");
   assert.equal(stripe.calls.capture.length, 0);
+});
+
+test("a borrower release of a deposit that was charged posts a refunded stamp, not a hold-released one", async () => {
+  const { request, claim } = await fixture("refundable_charge", "CUSTOMER_RESPONSE_PENDING", 0, 100, { captured: true });
+  await db.update(itemRequests).set({ status: "DISPUTED" }).where(eq(itemRequests.id, request.id));
+  const stripe = stripeFor(request, "succeeded");
+  const fence = await claimedFence(request.id);
+  assert.deepEqual(await releaseDisputedDepositToBorrower(fence, stripe as any), { ok: true });
+  assert.equal(await finalizeDisputeReleaseToBorrower(fence, ownerId), true);
+  const stamps = (await rows(claim.id, request.id)).chat.filter(m => (m.metadata as any)?.eventType === "claim_resolved");
+  assert.equal(stamps.length, 1);
+  assert.equal(stamps[0].content, "Claim resolved · $100 refunded");
+  assert.equal((stamps[0].metadata as any).outcome, "refunded_full");
+  assert.equal((stamps[0].metadata as any).refundedAmount, 100);
 });
 
 test("a superseded fence changes neither the request nor the claim", async () => {
@@ -535,9 +550,9 @@ test("approved claim refunds deposit minus approved amount, retains the approved
   assert.equal(settlement.retainedAmount, "30.00");
   assert.equal(settlement.releasedAmount, "75.00");
   const resolved = state.chat.find(m => (m.metadata as any)?.eventType === "claim_resolved")!;
-  assert.equal(resolved.content, "Claim resolved · $75 refunded · $30 kept");
+  assert.equal(resolved.content, "Claim resolved · $75 refunded · $30 awarded to owner");
   assert.deepEqual(resolved.metadata, {
-    eventType: "claim_resolved", claimId: claim.id, chargedAmount: 105, refundedAmount: 75, retainedAmount: 30,
+    eventType: "claim_resolved", claimId: claim.id, chargedAmount: 105, refundedAmount: 75, awardedAmount: 30, retainedAmount: 30,
     cardLast4: "4242", depositMode: "authorization", outcome: "refunded_partial",
   });
   const borrowerNote = state.notes.filter(n => n.userId === borrowerId).find(n => n.type !== "security_deposit_charged")!;
@@ -555,8 +570,8 @@ test("approved claim for the full deposit retains everything with no refund call
   assert.equal(state.request.depositRefundedAmount, "0.00");
   assert.equal(state.request.depositRetainedAmount, "100.00");
   const resolved = state.chat.find(m => (m.metadata as any)?.eventType === "claim_resolved")!;
-  assert.equal((resolved.metadata as any).outcome, "retained_full");
-  assert.equal(resolved.content, "Claim resolved · $0 refunded · $100 kept");
+  assert.equal((resolved.metadata as any).outcome, "awarded_full");
+  assert.equal(resolved.content, "Claim resolved · $100 awarded to owner");
   const note = state.notes.find(n => n.type === "security_deposit_retained" && n.userId === borrowerId)!;
   assert.equal(note.title, "Security deposit retained");
 });
@@ -630,7 +645,7 @@ test("rejected claim refunds the whole charged deposit (authorization-mode captu
     assert.equal(state.request.depositOperationToken, null);
     const resolved = state.chat.find(m => (m.metadata as any)?.eventType === "claim_resolved")!;
     assert.equal((resolved.metadata as any).outcome, "refunded_full");
-    assert.equal(resolved.content, "Claim resolved · $100 refunded · $0 kept");
+    assert.equal(resolved.content, "Claim resolved · $100 refunded");
   }
 });
 
@@ -644,8 +659,9 @@ test("rejected claim whose deposit was never charged simply releases the hold", 
   const state = await rows(claim.id, request.id);
   assert.equal(state.request.depositStatus, "released");
   assert.equal(state.request.depositRefundedAmount, null);
-  const released = state.chat.find(m => (m.metadata as any)?.eventType === "deposit_released")!;
-  assert.equal(released.content, "✅ Deposit hold released. You weren’t charged.");
+  const released = state.chat.find(m => (m.metadata as any)?.eventType === "claim_resolved")!;
+  assert.equal(released.content, "Claim resolved · Deposit hold released");
+  assert.equal((released.metadata as any).outcome, "hold_released");
   assert.equal((released.metadata as any).amount, 100);
   assert.ok(state.notes.every(n => !/refunded/i.test(n.message)), "never says refunded for a hold");
 });

@@ -9,10 +9,8 @@ import {
   HOLD_EXPIRED_TITLE,
   claimOpenedChat,
   claimOpenedOwner,
-  claimResolvedChat,
+  claimResolvedStamp,
   depositChargedBorrower,
-  holdReleasedChat,
-  outcomeFor,
   rejectedHoldReleasedBorrower,
   rejectedHoldReleasedOwner,
   resolutionBorrower,
@@ -28,6 +26,10 @@ const CAPTURE_FAILED_REASON = "CAPTURE_FAILED";
 const ACTIVE_CLAIM_STATUSES = ["OPEN", "CUSTOMER_RESPONSE_PENDING", "UNDER_REVIEW", "APPROVED", "PROCESSING"];
 /** Deposit states from which a claim may charge (or record the charge of) the deposit. */
 const SECURED_DEPOSIT_STATUSES = ["authorized", "held", "disputed", "SECURED_REFUNDABLE", "secured_refundable"];
+
+/** True once the deposit has really been charged (captured, or a refundable charge); false for a hold that was only authorized. */
+const depositWasCharged = (request: { depositCapturedAt?: Date | null; depositMode?: string | null }) =>
+  !!request.depositCapturedAt || request.depositMode === "refundable_charge";
 
 const isSimulatedIntent = (id?: string | null) => !!id && id.startsWith("simulated-");
 const cents = (amount: number) => Math.round(amount * 100);
@@ -357,10 +359,10 @@ export async function finalizeDisputeReleaseToBorrower(
     }).where(and(eq(securityClaims.requestId, request.id), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)))
       .returning({ id: securityClaims.id, ownerId: securityClaims.ownerId, borrowerId: securityClaims.borrowerId });
     const amount = Number(request.depositCapturedAmount ?? request.trustDepositAmount ?? 0);
+    const stamp = claimResolvedStamp({ refunded: amount, awarded: 0, captured: depositWasCharged(request) });
     for (const claim of closed) {
-      await insertClaimChatEvent(tx, claim, request.id, claimResolvedChat(amount, 0), {
-        eventType: "claim_resolved", claimId: claim.id, chargedAmount: amount, refundedAmount: amount, retainedAmount: 0,
-        cardLast4: request.depositCardLast4, depositMode: request.depositMode, outcome: "refunded_full",
+      await insertClaimChatEvent(tx, claim, request.id, stamp.content, {
+        ...stamp.metadata, claimId: claim.id, cardLast4: request.depositCardLast4, depositMode: request.depositMode,
       });
     }
     return true;
@@ -554,9 +556,9 @@ async function finalizeApprovedSettlement(args: {
       { userId: claim.borrowerId, requestId: request.id, itemId: request.itemId, ...borrowerCopy },
       { userId: claim.ownerId, requestId: request.id, itemId: request.itemId, ...ownerCopy },
     ]);
-    await insertClaimChatEvent(tx, claim, request.id, claimResolvedChat(refundAmount, amount), {
-      eventType: "claim_resolved", claimId: claim.id, chargedAmount: deposit, refundedAmount: refundAmount, retainedAmount: amount,
-      cardLast4: request.depositCardLast4, depositMode: request.depositMode, outcome: outcomeFor(deposit, refundAmount, amount),
+    const stamp = claimResolvedStamp({ refunded: refundAmount, awarded: amount, captured: true });
+    await insertClaimChatEvent(tx, claim, request.id, stamp.content, {
+      ...stamp.metadata, claimId: claim.id, cardLast4: request.depositCardLast4, depositMode: request.depositMode,
     });
     return true;
   });
@@ -805,7 +807,7 @@ async function finalizeRejectedRelease(args: {
     )).returning({ id: depositSettlementOperations.id });
     if (!settledOperation) throw new Error(reconciled ? "Reconciled release ledger finalization was superseded" : "Release ledger finalization was superseded");
     await tx.update(securityClaims).set({ settlementStatus: "SETTLED", updatedAt: completedAt }).where(and(eq(securityClaims.id, claim.id), eq(securityClaims.status, "REJECTED")));
-    const wasCharged = !!request.depositCapturedAt || request.depositMode === "refundable_charge";
+    const wasCharged = depositWasCharged(request);
     const amount = Number(request.depositCapturedAmount ?? request.trustDepositAmount ?? 0);
     await tx.update(itemRequests).set({
       depositStatus: wasCharged ? "settled" : "released", depositReleasedAt: completedAt,
@@ -818,16 +820,19 @@ async function finalizeRejectedRelease(args: {
         { userId: claim.borrowerId, requestId: request.id, itemId: request.itemId, ...resolutionBorrower(amounts, request.depositCardLast4) },
         { userId: claim.ownerId, requestId: request.id, itemId: request.itemId, ...resolutionOwner(amounts) },
       ]);
-      await insertClaimChatEvent(tx, claim, request.id, claimResolvedChat(amount, 0), {
-        eventType: "claim_resolved", claimId: claim.id, chargedAmount: amount, refundedAmount: amount, retainedAmount: 0,
-        cardLast4: request.depositCardLast4, depositMode: request.depositMode, outcome: "refunded_full",
+      const stamp = claimResolvedStamp({ refunded: amount, awarded: 0, captured: true });
+      await insertClaimChatEvent(tx, claim, request.id, stamp.content, {
+        ...stamp.metadata, claimId: claim.id, cardLast4: request.depositCardLast4, depositMode: request.depositMode,
       });
     } else {
       await tx.insert(notifications).values([
         { userId: claim.borrowerId, requestId: request.id, itemId: request.itemId, ...rejectedHoldReleasedBorrower(amount) },
         { userId: claim.ownerId, requestId: request.id, itemId: request.itemId, ...rejectedHoldReleasedOwner(amount) },
       ]);
-      await insertClaimChatEvent(tx, claim, request.id, holdReleasedChat(amount), { eventType: "deposit_released", amount, depositMode: request.depositMode });
+      const stamp = claimResolvedStamp({ refunded: 0, awarded: 0, captured: false });
+      await insertClaimChatEvent(tx, claim, request.id, stamp.content, {
+        ...stamp.metadata, claimId: claim.id, amount, depositMode: request.depositMode,
+      });
     }
     return true;
   });

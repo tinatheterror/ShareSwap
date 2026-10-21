@@ -69,8 +69,7 @@ import { getStripePromise } from "@/lib/stripe-client";
 import { RequestLifecyclePanel } from "@/components/request-lifecycle-panel";
 import {
   claimOpenedExplainer, claimOpenedHeadline, CLAIM_OPENED_REFUND_NOTE, CLAIM_OPENED_TITLE, CLAIM_RESOLVED_PREVIOUSLY_CHARGED,
-  EVENT_ICONS, cardSuffix, claimOpenedChargedLine, claimOpenedOwnerLine, claimOutcome, claimRefundedLine, claimResolvedOwnerLine,
-  claimResolvedTitle, claimRetainedLine, depositConfirmedStampLabel, depositReleasedStampLabel, formatMoney, toAmount,
+  EVENT_ICONS, claimOpenedChargedLine, claimOpenedOwnerLine, depositConfirmedStampLabel, depositReleasedStampLabel, toAmount,
 } from "@/lib/deposit-copy";
 
 const stripePromise = getStripePromise();
@@ -151,7 +150,7 @@ type Message = {
     retainedAmount?: number | string | null;
     cardLast4?: string | null;
     cardBrand?: string | null;
-    outcome?: "refunded_full" | "refunded_partial" | "retained_full";
+    outcome?: "refunded_full" | "refunded_partial" | "awarded_full" | "hold_released" | "retained_full";
     itemTitle?: string;
   };
   requestId?: number;
@@ -305,7 +304,7 @@ function DepositPaymentForm({
   );
 }
 
-function ClaimEventCard({ eventType, metadata, content, viewerIsBorrower }: {
+export function ClaimEventCard({ eventType, metadata, content, viewerIsBorrower }: {
   eventType: "claim_opened" | "claim_resolved";
   metadata?: Message["metadata"];
   content: string;
@@ -331,40 +330,20 @@ function ClaimEventCard({ eventType, metadata, content, viewerIsBorrower }: {
       </div>
     );
   }
-  const charged = toAmount(md.chargedAmount);
-  const refunded = toAmount(md.refundedAmount) ?? 0;
-  const retained = toAmount(md.retainedAmount) ?? 0;
-  const outcome = md.outcome ?? claimOutcome({ refundedAmount: refunded, retainedAmount: retained });
+  // The server words the stamp from the money that actually moved; the card shows that text as is.
+  const awardedToOwner = md.outcome === "awarded_full" || md.outcome === "retained_full";
+  const holdOnly = md.outcome === "hold_released";
   if (!viewerIsBorrower) {
     return (
       <div className="w-full max-w-sm mx-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-center" data-testid="event-claim-resolved-owner">
-        <p className="text-xs font-semibold text-slate-800">{EVENT_ICONS.claim_resolved} {claimResolvedOwnerLine({ refundedAmount: refunded, retainedAmount: retained })}</p>
+        <p className="text-xs font-semibold text-slate-800">{EVENT_ICONS.claim_resolved} {content}</p>
       </div>
     );
   }
-  const refundedTone = outcome !== "retained_full";
   return (
-    <div className={`w-full max-w-sm mx-auto rounded-lg border p-3 text-left space-y-1 ${refundedTone ? "border-green-300 bg-green-50" : "border-orange-300 bg-orange-50"}`} data-testid="event-claim-resolved-borrower">
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-700">{EVENT_ICONS.claim_resolved} Claim resolved</p>
-      <p className="text-sm font-semibold text-slate-900">{claimResolvedTitle(outcome)}</p>
-      {outcome === "refunded_full" && <p className="text-sm text-slate-900">{claimRefundedLine(refunded || charged, md.cardLast4)}</p>}
-      {outcome === "refunded_partial" && (
-        <>
-          <p className="text-sm text-slate-900">{formatMoney(refunded)} refunded to your card{cardSuffix(md.cardLast4)}.</p>
-          <p className="text-sm text-slate-900">{claimRetainedLine(retained)}</p>
-        </>
-      )}
-      {outcome === "retained_full" && (
-        <p className="text-sm text-slate-900">{formatMoney(retained)} of your {formatMoney(charged ?? retained)} security deposit was retained based on the claim outcome.</p>
-      )}
-      <p className="text-xs text-slate-700">{CLAIM_RESOLVED_PREVIOUSLY_CHARGED}</p>
-      {charged != null && (
-        <dl className="text-xs text-slate-800 pt-1 space-y-0.5" data-testid="claim-resolved-breakdown">
-          <div className="flex justify-between"><dt>Charged</dt><dd className="font-medium">{formatMoney(charged)}</dd></div>
-          <div className="flex justify-between"><dt>Refunded</dt><dd className="font-medium">{formatMoney(refunded)}</dd></div>
-          <div className="flex justify-between"><dt>Retained</dt><dd className="font-medium">{formatMoney(retained)}</dd></div>
-        </dl>
-      )}
+    <div className={`w-full max-w-sm mx-auto rounded-lg border p-3 text-left space-y-1 ${awardedToOwner ? "border-orange-300 bg-orange-50" : "border-green-300 bg-green-50"}`} data-testid="event-claim-resolved-borrower">
+      <p className="text-sm font-semibold text-slate-900">{EVENT_ICONS.claim_resolved} {content}</p>
+      {!holdOnly && <p className="text-xs text-slate-700">{CLAIM_RESOLVED_PREVIOUSLY_CHARGED}</p>}
     </div>
   );
 }

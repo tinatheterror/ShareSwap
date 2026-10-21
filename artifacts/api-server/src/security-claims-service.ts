@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db, depositSettlementOperations, itemRequests, items, messages, notifications, requestLifecycleEvents, securityClaims } from "@workspace/db";
 import { OVERDUE_POLICY } from "./overdue-policy";
+import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
 import { claimDepositTerminalAction, getPaymentIntentCaptureBefore, releaseDepositTerminalClaim, resolveClaimedDepositIntents } from "./deposit-renewal-service";
 import {
   HOLD_EXPIRED_BODY,
@@ -34,15 +35,6 @@ const dollars = (value: number) => Math.round(value * 100) / 100;
 
 async function event(requestId: number, eventType: string, key: string, details: Record<string, unknown> = {}, actorId?: number) {
   await db.insert(requestLifecycleEvents).values({ requestId, eventType, idempotencyKey: key, details, actorId: actorId ?? null }).onConflictDoNothing();
-}
-
-function stripeOutcomeIsIndeterminate(error: unknown): boolean {
-  const value = error as any;
-  const status = Number(value?.statusCode || value?.status || 0);
-  const type = String(value?.type || value?.code || "");
-  return !status || status === 429 || status >= 500 ||
-    /connection|timeout|network|api_connection|rate_limit/i.test(type) ||
-    /connection|timeout|socket|network|temporar/i.test(String(value?.message || ""));
 }
 
 function safeOperationError(error: unknown) {

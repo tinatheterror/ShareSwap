@@ -1,0 +1,178 @@
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { db, rentalPayouts, users } from "@workspace/db";
+import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
+
+export type PayoutStripeClient = {
+  transfers: { create(params: any, options?: any): Promise<{ id: string }> };
+};
+
+/** Statuses of a wallet withdrawal whose Stripe transfer has not been settled either way. */
+const IN_FLIGHT = ["pending_payout", "manual_review"];
+/** Stripe keeps an idempotency key for 24 hours; past that a replay could send the money a second time. */
+const RETRY_WINDOW_MS = 23 * 60 * 60 * 1000;
+export const MIN_PAYOUT = 10;
+
+export const payoutIdempotencyKey = (payoutId: number) => `rental-payout-${payoutId}`;
+
+export type PayoutRow = typeof rentalPayouts.$inferSelect;
+
+export type PayoutFailure = { ok: false; status: number; code: string; error: string; payoutId?: number };
+export type PayoutOutcome = { ok: true; payout: PayoutRow; transferId: string } | PayoutFailure;
+
+const toDollars = (cents: number) => (cents / 100).toFixed(2);
+
+/**
+ * Takes the amount out of the wallet and records the withdrawal as pending_payout in one transaction.
+ * The conditional UPDATE is what makes concurrent withdrawals safe: only a statement that still sees
+ * enough balance matches a row, so two requests can never spend the same money.
+ */
+export async function reservePayout(userId: number, cents: number): Promise<PayoutRow | null> {
+  const amount = toDollars(cents);
+  return db.transaction(async (tx) => {
+    const reserved = await tx
+      .update(users)
+      .set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) - ${amount}::numeric` })
+      .where(and(eq(users.id, userId), sql`COALESCE(${users.rentalBalance}, 0) >= ${amount}::numeric`))
+      .returning({ id: users.id });
+    if (reserved.length === 0) return null;
+    const [row] = await tx.insert(rentalPayouts).values({
+      userId,
+      requestId: null,
+      amount,
+      rentalAmount: amount,
+      platformFee: "0",
+      processingFee: "0",
+      netAmount: amount,
+      status: "pending_payout",
+    }).returning();
+    return row;
+  });
+}
+
+/** Marks the withdrawal failed and puts the money back, once: only a row still in flight is restored. */
+async function failAndRestore(row: PayoutRow): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const failed = await tx
+      .update(rentalPayouts)
+      .set({ status: "failed" })
+      .where(and(eq(rentalPayouts.id, row.id), inArray(rentalPayouts.status, IN_FLIGHT)))
+      .returning({ id: rentalPayouts.id });
+    if (failed.length === 0) return false;
+    await tx
+      .update(users)
+      .set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${row.netAmount}::numeric` })
+      .where(eq(users.id, row.userId));
+    return true;
+  });
+}
+
+/** Never throws: it runs inside a failure handler, and the log line is what an admin searches for. */
+async function flagForManualReview(row: PayoutRow, error: unknown) {
+  try {
+    console.error(
+      `[payout] transfer outcome unknown for rental payout ${row.id} (user ${row.userId}, $${row.netAmount}); ` +
+        `balance not restored, idempotency key ${payoutIdempotencyKey(row.id)}:`,
+      error,
+    );
+    await db.update(rentalPayouts).set({ status: "manual_review" })
+      .where(and(eq(rentalPayouts.id, row.id), inArray(rentalPayouts.status, IN_FLIGHT)));
+  } catch (flagError) {
+    try { console.error(`[payout] could not flag rental payout ${row.id} for manual review:`, flagError); } catch { /* nothing left to do */ }
+  }
+}
+
+/** A concurrent replay of the same key is "in progress", not a refusal, so it must never restore the balance. */
+function transferIsUncertain(error: unknown) {
+  const value = error as any;
+  return stripeOutcomeIsIndeterminate(error) ||
+    value?.type === "StripeIdempotencyError" || value?.code === "idempotency_key_in_use";
+}
+
+function definitiveFailure(row: PayoutRow, error: unknown): PayoutOutcome {
+  const code = (error as any)?.code;
+  if (code === "balance_insufficient") {
+    return {
+      ok: false, status: 503, code: "PAYOUT_UNAVAILABLE", payoutId: row.id,
+      error: "Payouts are temporarily unavailable. Nothing was sent and your balance is unchanged. Please try again later.",
+    };
+  }
+  return {
+    ok: false, status: 502, code: "PAYOUT_FAILED", payoutId: row.id,
+    error: "Your bank payout could not be completed. Nothing was sent and the money is back in your balance.",
+  };
+}
+
+/**
+ * Sends the Stripe transfer for a reserved withdrawal. The transfer's idempotency key is derived from the
+ * payout row's id, so any retry of the same withdrawal replays instead of paying twice.
+ *  - Success: the row becomes paid_out.
+ *  - Definitive Stripe refusal (including insufficient platform balance): the row becomes failed and the
+ *    balance is restored in the same transaction.
+ *  - Unknown result: the balance stays reserved and the row is flagged manual_review.
+ */
+export async function sendPayout(
+  row: PayoutRow,
+  destination: string,
+  stripe: PayoutStripeClient,
+  now: Date = new Date(),
+): Promise<PayoutOutcome> {
+  let transfer: { id: string };
+  try {
+    transfer = await stripe.transfers.create(
+      {
+        amount: Math.round(parseFloat(row.netAmount) * 100),
+        currency: "cad",
+        destination,
+        description: `ShareSwap payout ${now.toISOString().split("T")[0]}`,
+        metadata: { rentalPayoutId: String(row.id), userId: String(row.userId) },
+      },
+      { idempotencyKey: payoutIdempotencyKey(row.id) },
+    );
+  } catch (error) {
+    if (transferIsUncertain(error)) {
+      await flagForManualReview(row, error);
+      return {
+        ok: false, status: 502, code: "PAYOUT_UNCONFIRMED", payoutId: row.id,
+        error: "We could not confirm your payout. Your balance is on hold while we check, so please don't submit it again.",
+      };
+    }
+    console.error(`[payout] transfer for rental payout ${row.id} was refused:`, error);
+    await failAndRestore(row);
+    return definitiveFailure(row, error);
+  }
+
+  try {
+    const [paid] = await db
+      .update(rentalPayouts)
+      .set({ status: "paid_out", stripeTransferId: transfer.id, paidOutAt: now })
+      .where(and(eq(rentalPayouts.id, row.id), inArray(rentalPayouts.status, IN_FLIGHT)))
+      .returning();
+    if (paid) return { ok: true, payout: paid, transferId: transfer.id };
+  } catch (error) {
+    console.error(`[payout] rental payout ${row.id} was sent (${transfer.id}) but its row could not be settled:`, error);
+  }
+  // The money has left; never restore it. The row is left for a retry, which replays the same transfer.
+  return { ok: true, payout: { ...row, status: "paid_out", stripeTransferId: transfer.id, paidOutAt: now }, transferId: transfer.id };
+}
+
+/** Looks up an unsettled withdrawal of this user that may be retried, or says why it may not. */
+export async function findRetryablePayout(userId: number, payoutId: number, now: Date): Promise<{ row: PayoutRow } | { failure: PayoutFailure }> {
+  const [row] = await db.select().from(rentalPayouts).where(and(
+    eq(rentalPayouts.id, payoutId),
+    eq(rentalPayouts.userId, userId),
+    inArray(rentalPayouts.status, IN_FLIGHT),
+  ));
+  if (!row || row.requestId !== null) {
+    return { failure: { ok: false, status: 404, code: "PAYOUT_NOT_FOUND", error: "There is no unfinished payout to retry." } };
+  }
+  const age = now.getTime() - new Date(row.createdAt ?? now).getTime();
+  if (age > RETRY_WINDOW_MS) {
+    return {
+      failure: {
+        ok: false, status: 409, code: "PAYOUT_REVIEW_REQUIRED", payoutId: row.id,
+        error: "This payout is being reviewed by our team and can't be retried automatically.",
+      },
+    };
+  }
+  return { row };
+}

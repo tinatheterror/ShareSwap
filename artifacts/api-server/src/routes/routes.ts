@@ -49,6 +49,7 @@ import { AntiFarmingSystem } from "../anti-farming-system";
 import { sendPushToUser, sendPushToUsers } from "../push-notifications";
 import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChangeAlertEmail } from "../sendgrid";
 import { nonProductionOnly } from "../non-production-gate";
+import { MIN_PAYOUT, findRetryablePayout, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
   getPaymentIntentCaptureBefore,
@@ -8745,16 +8746,18 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // Request payout to bank account
+  // Request payout to bank account. The wallet balance is reserved atomically before Stripe is called
+  // (see rental-payout-service.ts); sending { payoutId } retries an unfinished withdrawal under the same
+  // Stripe idempotency key instead of reserving the money again.
   app.post("/api/rental-balance/payout", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
 
     try {
-      const { amount } = req.body;
+      const { amount, payoutId } = req.body;
+      const payoutStripe = (options.stripe ?? stripe) as PayoutStripeClient;
 
-      // Get user's balance
       const [user] = await db
         .select({
           rentalBalance: users.rentalBalance,
@@ -8765,80 +8768,67 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(users.id, req.user.id))
         .limit(1);
 
-      const availableBalance = parseFloat(user?.rentalBalance || "0");
-      const requestedAmount = parseFloat(amount);
-
-      if (requestedAmount <= 0) {
-        return res.status(400).json({ error: "Invalid payout amount" });
-      }
-
-      if (requestedAmount > availableBalance) {
-        return res.status(400).json({ error: "Insufficient balance" });
-      }
-
-      // Minimum payout amount
-      if (requestedAmount < 10) {
-        return res.status(400).json({ error: "Minimum payout amount is $10" });
-      }
-
-      // Verify user has set up a payout method (bank account via Stripe Connect)
       if (!user?.stripeConnectedAccountId) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: "Please set up your payout method first",
           code: "NO_PAYOUT_METHOD"
         });
       }
 
-      // Create real Stripe transfer to connected account
-      const transfer = await stripe.transfers.create({
-        amount: Math.round(requestedAmount * 100), // cents
-        currency: 'cad',
-        destination: user.stripeConnectedAccountId,
-        description: `ShareSwap payout ${new Date().toISOString().split('T')[0]}`,
-      });
+      let payoutRow: PayoutRow;
+      if (payoutId !== undefined && payoutId !== null) {
+        const retry = await findRetryablePayout(req.user.id, Number(payoutId), currentTime());
+        if ("failure" in retry) {
+          const { status, error, code, payoutId: failedId } = retry.failure;
+          return res.status(status).json({ error, code, payoutId: failedId });
+        }
+        payoutRow = retry.row;
+      } else {
+        const requestedAmount = parseFloat(amount);
+        if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+          return res.status(400).json({ error: "Invalid payout amount" });
+        }
+        const cents = Math.round(requestedAmount * 100);
+        if (cents < MIN_PAYOUT * 100) {
+          return res.status(400).json({ error: "Minimum payout amount is $10" });
+        }
+        const reserved = await reservePayout(req.user.id, cents);
+        if (!reserved) {
+          return res.status(400).json({ error: "Insufficient balance" });
+        }
+        payoutRow = reserved;
+      }
 
-      // Deduct from balance
-      await db
-        .update(users)
-        .set({ rentalBalance: sql`${users.rentalBalance} - ${requestedAmount}` })
-        .where(eq(users.id, req.user.id));
+      const outcome = await sendPayout(payoutRow, user.stripeConnectedAccountId, payoutStripe, currentTime());
+      if (!outcome.ok) {
+        return res.status(outcome.status).json({ error: outcome.error, code: outcome.code, payoutId: outcome.payoutId });
+      }
 
-      // Create payout tracking record
-      const [payoutRecord] = await db.insert(rentalPayouts).values({
-        userId: req.user.id,
-        requestId: null,
-        amount: requestedAmount.toString(),
-        rentalAmount: requestedAmount.toString(),
-        platformFee: "0",
-        processingFee: "0",
-        netAmount: requestedAmount.toString(),
-        status: 'paid_out',
-        paidOutAt: new Date(),
-      }).returning();
+      const paidAmount = parseFloat(outcome.payout.netAmount);
 
       // Notify owner
       await db.insert(notifications).values({
         userId: req.user.id,
         type: "payment_received",
         title: "Payout Sent",
-        message: `$${requestedAmount.toFixed(2)} is on its way — arrives in 2–5 business days.`,
+        message: `$${paidAmount.toFixed(2)} is on its way — arrives in 2–5 business days.`,
         isRead: false,
       });
       sendPushToUser(req.user.id, {
         title: "Payout Sent",
-        body: `$${requestedAmount.toFixed(2)} is on its way — arrives in 2–5 business days.`,
+        body: `$${paidAmount.toFixed(2)} is on its way — arrives in 2–5 business days.`,
         data: { screen: "notifications" },
       }, "payments").catch(() => {});
 
       res.json({
         success: true,
-        message: `$${requestedAmount.toFixed(2)} payout initiated. Funds arrive in 2–5 business days.`,
+        message: `$${paidAmount.toFixed(2)} payout initiated. Funds arrive in 2–5 business days.`,
         payout: {
-          id: payoutRecord.id,
-          amount: requestedAmount,
+          id: outcome.payout.id,
+          amount: paidAmount,
           status: 'paid_out',
-          stripeTransferId: transfer.id,
-          estimatedArrival: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+          stripeTransferId: outcome.transferId,
+          estimatedArrival: new Date(currentTime().getTime() + 4 * 24 * 60 * 60 * 1000),
         },
       });
     } catch (error: any) {

@@ -141,6 +141,8 @@ export default function MyBalancePage() {
       case "held": return "Pending Handoff";
       case "pending_payout": return "Payout Processing";
       case "paid_out": return "Paid to Bank";
+      case "failed": return "Payout Failed - Returned to Balance";
+      case "manual_review": return "Payout Under Review";
       default: return status;
     }
   };
@@ -389,7 +391,7 @@ export default function MyBalancePage() {
             {balanceData?.payouts && balanceData.payouts.length > 0 ? (
               <div className="space-y-2">
                 {balanceData.payouts.map((payout) => {
-                  const isPayout = payout.status === "paid_out" || payout.status === "pending_payout";
+                  const isPayout = payout.status === "paid_out" || payout.status === "pending_payout" || payout.status === "failed" || payout.status === "manual_review";
                   const net = parseFloat(payout.netAmount);
                   const date = payout.paidOutAt || payout.releasedAt || payout.createdAt;
                   return (

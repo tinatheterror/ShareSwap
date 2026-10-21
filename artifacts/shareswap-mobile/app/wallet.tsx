@@ -61,12 +61,14 @@ function getStatusLabel(status: string, disputeStatus?: string) {
     case "held": return "Pending Handoff";
     case "pending_payout": return "Payout Processing";
     case "paid_out": return "Paid to Bank";
+    case "failed": return "Payout Failed - Returned to Balance";
+    case "manual_review": return "Payout Under Review";
     default: return status;
   }
 }
 
 function getTxLabel(status: string, disputeStatus?: string) {
-  const isPayout = status === "paid_out" || status === "pending_payout";
+  const isPayout = status === "paid_out" || status === "pending_payout" || status === "failed" || status === "manual_review";
   if (isPayout) return "Bank Payout";
   if (disputeStatus === "captured") return "Damage Compensation";
   if (status === "held") return "Rental Earnings (Held)";
@@ -341,7 +343,7 @@ export default function MyBalanceScreen() {
             {balanceData?.payouts && balanceData.payouts.length > 0 ? (
               <View style={{ gap: 8, marginTop: 12 }}>
                 {balanceData.payouts.map((payout) => {
-                  const isPayout = payout.status === "paid_out" || payout.status === "pending_payout";
+                  const isPayout = payout.status === "paid_out" || payout.status === "pending_payout" || payout.status === "failed" || payout.status === "manual_review";
                   const net = parseFloat(payout.netAmount);
                   const date = payout.paidOutAt || payout.releasedAt || payout.createdAt;
                   return (

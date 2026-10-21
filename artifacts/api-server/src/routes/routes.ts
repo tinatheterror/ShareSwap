@@ -49,6 +49,7 @@ import { AntiFarmingSystem } from "../anti-farming-system";
 import { sendPushToUser, sendPushToUsers } from "../push-notifications";
 import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChangeAlertEmail } from "../sendgrid";
 import { nonProductionOnly } from "../non-production-gate";
+import { fullVerificationRejection } from "../verification-gate";
 import { MIN_PAYOUT, findRetryablePayout, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
@@ -1029,36 +1030,6 @@ async function requireEmailVerified(req: any, res: any, next: any) {
     return res.status(403).json({ 
       error: "Please verify your email address to access this feature",
       code: "EMAIL_NOT_VERIFIED"
-    });
-  }
-
-  req.verificationLevel = verification;
-  next();
-}
-
-// Middleware to require full verification (email + ID + payment) for borrow/rent
-async function requireFullVerification(req: any, res: any, next: any) {
-  if (!req.isAuthenticated() || !req.user) {
-    return res.status(401).json({ error: "Please sign in to continue" });
-  }
-
-  const verification = await checkVerificationLevel(req.user.id);
-  
-  if (!verification.emailVerified) {
-    return res.status(403).json({ 
-      error: "Please verify your email address to access this feature",
-      code: "EMAIL_NOT_VERIFIED"
-    });
-  }
-
-  if (verification.level !== 'fully_verified') {
-    return res.status(403).json({ 
-      error: "Please complete identity and payment verification to borrow or rent items",
-      code: "FULL_VERIFICATION_REQUIRED",
-      missing: {
-        idVerified: verification.idVerified,
-        paymentVerified: verification.paymentVerified
-      }
     });
   }
 
@@ -6664,16 +6635,10 @@ Respond with ONLY the category name, nothing else.`
       if (rejection) return res.status(400).json(rejection);
     }
 
-    // BORROW and RENT require full verification (email + ID + payment)
-    if ((requestType === "BORROW" || requestType === "RENT") && req.verificationLevel.level !== 'fully_verified') {
-      return res.status(403).json({ 
-        error: "Please complete identity and payment verification to borrow or rent items",
-        code: "FULL_VERIFICATION_REQUIRED",
-        missing: {
-          idVerified: req.verificationLevel.idVerified,
-          paymentVerified: req.verificationLevel.paymentVerified
-        }
-      });
+    // BORROW and RENT require full verification (email + ID + payment) of the requester.
+    {
+      const rejection = fullVerificationRejection(requestType, req.verificationLevel);
+      if (rejection) return res.status(403).json(rejection);
     }
 
     // Enforce Free tier borrow limit (max 2 borrows per 30-day window)

@@ -2,12 +2,11 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import cookieParser from "cookie-parser";
 import express from "express";
-import { and, eq, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { db, itemRequests, items, messages, notifications, pool, users, verifications } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { registerRoutes } from "./routes/routes.js";
 import { computeVerification, googleEmailIsVerified } from "./verification.js";
-import { giftClaimLimitRejection } from "./verification-gate.js";
 
 const NONE = { idApproved: false, cardOnFile: false };
 
@@ -74,15 +73,6 @@ test("a Google sign-in only counts when Google says email_verified", () => {
   assert.equal(googleEmailIsVerified({}), false);
 });
 
-test("the gift claim limit applies to gifts only and says what to do", () => {
-  assert.equal(giftClaimLimitRejection("GIFT", 2), null);
-  for (const type of ["SWAP", "BORROW", "RENT", undefined]) assert.equal(giftClaimLimitRejection(type, 9), null, String(type));
-  const rejection = giftClaimLimitRejection("GIFT", 3);
-  assert.equal(rejection?.code, "GIFT_CLAIM_LIMIT_REACHED");
-  assert.equal(rejection?.limit, 3);
-  assert.match(rejection?.error ?? "", /up to 3 open gift claims/);
-});
-
 const UNIQUE = `verification-levels-${Date.now()}`;
 const PASSWORD = "VerificationLevels!42";
 const userIds: number[] = [];
@@ -129,7 +119,6 @@ const clients: Record<"unverified" | "phone" | "email" | "full", TestClient> = {
   full: new TestClient(),
 };
 const giftIds: number[] = [];
-let emailUserId: number;
 
 before(async () => {
   const password = await hashPassword(PASSWORD);
@@ -140,7 +129,6 @@ before(async () => {
     { username: `${UNIQUE}-email`, password, emailVerified: true },
     { username: `${UNIQUE}-full`, password, emailVerified: true, stripePaymentMethodId: `pm_${UNIQUE}` },
   ]).returning({ id: users.id, username: users.username });
-  emailUserId = email.id;
   userIds.push(owner.id, unverified.id, phone.id, email.id, full.id);
   await db.insert(verifications).values({ userId: full.id, status: "approved" });
 
@@ -251,28 +239,10 @@ test("a fully verified requester is not stopped by the verification gate", async
   assert.notEqual(body.code, "EMAIL_NOT_VERIFIED");
 });
 
-test("a fourth open gift claim is refused with a clear message, and a decided claim frees a slot", async () => {
+test("gift claims have no limit on how many can be open", async () => {
   const client = clients.email;
-  for (const id of giftIds.slice(0, 3)) {
+  for (const id of giftIds) {
     const response = await client.post(`/api/items/${id}/request`, { requestType: "GIFT" });
     assert.equal(response.status, 201);
   }
-
-  const fourth = await client.post(`/api/items/${giftIds[3]}/request`, { requestType: "GIFT" });
-  assert.equal(fourth.status, 403);
-  const body = (await fourth.json()) as any;
-  assert.equal(body.code, "GIFT_CLAIM_LIMIT_REACHED");
-  assert.equal(body.limit, 3);
-  assert.match(body.error, /up to 3 open gift claims/);
-
-  // A swap is not a gift claim, so the limit does not block it.
-  const swap = await client.post(`/api/items/${giftIds[3]}/request`, { requestType: "SWAP" });
-  assert.notEqual(((await swap.json().catch(() => ({}))) as any).code, "GIFT_CLAIM_LIMIT_REACHED");
-
-  // Once an owner declines one, the person has a free slot again.
-  const [declined] = await db.select({ id: itemRequests.id }).from(itemRequests)
-    .where(and(eq(itemRequests.itemId, giftIds[0]), eq(itemRequests.requesterId, emailUserId))).limit(1);
-  await db.update(itemRequests).set({ status: "DECLINED" }).where(eq(itemRequests.id, declined.id));
-  const again = await client.post(`/api/items/${giftIds[3]}/request`, { requestType: "GIFT" });
-  assert.equal(again.status, 201);
 });

@@ -49,7 +49,7 @@ import { AntiFarmingSystem } from "../anti-farming-system";
 import { sendPushToUser, sendPushToUsers } from "../push-notifications";
 import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChangeAlertEmail } from "../sendgrid";
 import { nonProductionOnly } from "../non-production-gate";
-import { OPEN_GIFT_CLAIM_STATUSES, fullVerificationRejection, giftClaimLimitRejection } from "../verification-gate";
+import { fullVerificationRejection } from "../verification-gate";
 import { computeVerification, getVerificationForUser } from "../verification";
 import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
@@ -6588,20 +6588,6 @@ Respond with ONLY the category name, nothing else.`
     // BORROW and RENT require full verification (email + ID + payment) of the requester.
     {
       const rejection = fullVerificationRejection(requestType, req.verificationLevel);
-      if (rejection) return res.status(403).json(rejection);
-    }
-
-    // At most 3 gift claims open at a time.
-    if (requestType === "GIFT") {
-      const [{ open }] = await db
-        .select({ open: sql<number>`count(*)::int` })
-        .from(itemRequests)
-        .where(and(
-          eq(itemRequests.requesterId, req.user.id),
-          eq(itemRequests.requestType, "GIFT"),
-          inArray(itemRequests.status, OPEN_GIFT_CLAIM_STATUSES),
-        ));
-      const rejection = giftClaimLimitRejection(requestType, open);
       if (rejection) return res.status(403).json(rejection);
     }
 

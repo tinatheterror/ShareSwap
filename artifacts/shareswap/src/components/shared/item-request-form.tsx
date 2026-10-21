@@ -232,12 +232,6 @@ export function ItemRequestForm({
             </ToastAction>
           ),
         });
-      } else if ((error as any).code === "GIFT_CLAIM_LIMIT_REACHED") {
-        toast({
-          title: "Gift claim limit reached",
-          description: error.message,
-          variant: "destructive",
-        });
       } else if ((error as any).code === "OVERDUE_BORROW_RESTRICTED") {
         toast({
           title: "Return overdue item first",

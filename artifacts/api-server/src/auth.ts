@@ -11,7 +11,6 @@ import {
   users,
   items,
   referrals,
-  verifications,
   insertUserSchema,
   type SelectUser,
 } from "@workspace/db";
@@ -24,6 +23,7 @@ import { resolveGoogleOAuthCallbackURL } from "./google-oauth-config";
 import { shouldRunBackgroundJobs } from "./background-jobs-gate";
 import { guardedJob } from "./guarded-job";
 import { backgroundJobs } from "./background-jobs-registry";
+import { getVerificationForUser, googleEmailIsVerified } from "./verification";
 
 // ---------------------------------------------------------------------------
 // Postgres-backed rate-limit store
@@ -523,12 +523,16 @@ export function setupAuth(app: Express) {
               if (req.session) {
                 delete req.session.pendingReferralCode;
               }
-              // Update email if not stored yet
+              // Update email if not stored yet, and record Google's email_verified claim
               const googleEmail = profile.emails?.[0]?.value;
-              if (googleEmail && !existingUser.email) {
+              const googleVerified = googleEmailIsVerified(profile);
+              const updates: Partial<typeof users.$inferInsert> = {};
+              if (googleEmail && !existingUser.email) updates.email = googleEmail;
+              if (googleVerified && !existingUser.emailVerified) updates.emailVerified = true;
+              if (Object.keys(updates).length > 0) {
                 const [updated] = await db
                   .update(users)
-                  .set({ email: googleEmail })
+                  .set(updates)
                   .where(eq(users.id, existingUser.id))
                   .returning();
                 return done(null, updated || existingUser);
@@ -597,6 +601,8 @@ export function setupAuth(app: Express) {
                 email: email || null,
                 googleId: profile.id,
                 authProvider: "google",
+                // Only a Google-verified email makes a verified account.
+                emailVerified: googleEmailIsVerified(profile),
                 isVerified: false,
                 password: null,
                 referredBy: referrerId,
@@ -1439,36 +1445,7 @@ export function setupAuth(app: Express) {
       return res.status(401).json({ message: "Not authenticated" });
     }
 
-    // Check verification levels
-    const emailVerified =
-      req.user.emailVerified ||
-      !!req.user.googleId ||
-      req.user.authProvider === "google";
-
-    // Check identity verification (verifications table has an approved record)
-    const [idVerification] = await db
-      .select({ status: verifications.status })
-      .from(verifications)
-      .where(
-        and(
-          eq(verifications.userId, req.user.id),
-          eq(verifications.status, "approved"),
-        ),
-      )
-      .limit(1);
-    const idVerified = !!idVerification;
-
-    // Check payment method verification (user has a Stripe payment method on file)
-    const paymentVerified = !!req.user.stripePaymentMethodId;
-
-    // Determine verification level
-    let verificationLevel: "unverified" | "email_only" | "fully_verified" =
-      "unverified";
-    if (emailVerified && idVerified && paymentVerified) {
-      verificationLevel = "fully_verified";
-    } else if (emailVerified) {
-      verificationLevel = "email_only";
-    }
+    const verification = await getVerificationForUser(req.user.id);
 
     const [activeStatus, responseTime] = await Promise.all([
       Promise.resolve(
@@ -1479,10 +1456,16 @@ export function setupAuth(app: Express) {
 
     res.json({
       ...req.user,
-      emailVerified,
-      idVerified,
-      paymentVerified,
-      verificationLevel,
+      emailVerified: verification.emailVerified,
+      idVerified: verification.idVerified,
+      paymentVerified: verification.paymentVerified,
+      verificationLevel: verification.level,
+      canSwap: verification.canSwap,
+      canClaimGift: verification.canClaimGift,
+      canList: verification.canList,
+      canBorrow: verification.canBorrow,
+      canRent: verification.canRent,
+      missing: verification.missing,
       activeStatus,
       responseTime,
     });

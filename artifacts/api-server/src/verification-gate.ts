@@ -28,3 +28,21 @@ export function fullVerificationRejection(
     missing: { idVerified: verification.idVerified, paymentVerified: verification.paymentVerified },
   };
 }
+
+// Open gift claims: a person may hold at most this many at once (waiting for an answer or for the handoff).
+export const OPEN_GIFT_CLAIM_LIMIT = 3;
+export const OPEN_GIFT_CLAIM_STATUSES = ["PENDING", "ACCEPTED"];
+export const GIFT_CLAIM_LIMIT_CODE = "GIFT_CLAIM_LIMIT_REACHED";
+
+/** The 403 body to send when this person already has too many open gift claims, otherwise null. */
+export function giftClaimLimitRejection(
+  requestType: string | null | undefined,
+  openGiftClaims: number,
+): { error: string; code: typeof GIFT_CLAIM_LIMIT_CODE; limit: number } | null {
+  if (requestType !== "GIFT" || openGiftClaims < OPEN_GIFT_CLAIM_LIMIT) return null;
+  return {
+    error: `You can have up to ${OPEN_GIFT_CLAIM_LIMIT} open gift claims at a time. Wait for an owner to answer, or cancel one, before claiming another gift.`,
+    code: GIFT_CLAIM_LIMIT_CODE,
+    limit: OPEN_GIFT_CLAIM_LIMIT,
+  };
+}

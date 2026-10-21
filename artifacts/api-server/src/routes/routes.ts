@@ -49,7 +49,8 @@ import { AntiFarmingSystem } from "../anti-farming-system";
 import { sendPushToUser, sendPushToUsers } from "../push-notifications";
 import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChangeAlertEmail } from "../sendgrid";
 import { nonProductionOnly } from "../non-production-gate";
-import { fullVerificationRejection } from "../verification-gate";
+import { OPEN_GIFT_CLAIM_STATUSES, fullVerificationRejection, giftClaimLimitRejection } from "../verification-gate";
+import { computeVerification, getVerificationForUser } from "../verification";
 import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
@@ -967,65 +968,14 @@ const upload = multer({
   },
 });
 
-// Verification level helper types and functions
-type VerificationLevel = 'unverified' | 'email_only' | 'fully_verified';
-
-interface VerificationCheckResult {
-  level: VerificationLevel;
-  emailVerified: boolean;
-  idVerified: boolean;
-  paymentVerified: boolean;
-}
-
-// Check user's verification level
-async function checkVerificationLevel(userId: number): Promise<VerificationCheckResult> {
-  const [user] = await db
-    .select({
-      emailVerified: users.emailVerified,
-      googleId: users.googleId,
-      authProvider: users.authProvider,
-      stripePaymentMethodId: users.stripePaymentMethodId,
-    })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-
-  // Google OAuth users are automatically email verified
-  const emailVerified = user?.emailVerified || !!user?.googleId || user?.authProvider === 'google';
-
-  // Check identity verification (verifications table has an approved record)
-  const [idVerification] = await db
-    .select({ status: verifications.status })
-    .from(verifications)
-    .where(
-      and(
-        eq(verifications.userId, userId),
-        eq(verifications.status, 'approved')
-      )
-    )
-    .limit(1);
-  const idVerified = !!idVerification;
-
-  // Check payment method verification (user has Stripe payment method on file)
-  const paymentVerified = !!user?.stripePaymentMethodId;
-
-  let level: VerificationLevel = 'unverified';
-  if (emailVerified && idVerified && paymentVerified) {
-    level = 'fully_verified';
-  } else if (emailVerified) {
-    level = 'email_only';
-  }
-
-  return { level, emailVerified, idVerified, paymentVerified };
-}
-
+// Verification level: the rule lives in ../verification.ts so every route and /api/user agree.
 // Middleware to require email verification for most actions
 async function requireEmailVerified(req: any, res: any, next: any) {
   if (!req.isAuthenticated() || !req.user) {
     return res.status(401).json({ error: "Please sign in to continue" });
   }
 
-  const verification = await checkVerificationLevel(req.user.id);
+  const verification = await getVerificationForUser(req.user.id);
   if (!verification.emailVerified) {
     return res.status(403).json({ 
       error: "Please verify your email address to access this feature",
@@ -6638,6 +6588,20 @@ Respond with ONLY the category name, nothing else.`
     // BORROW and RENT require full verification (email + ID + payment) of the requester.
     {
       const rejection = fullVerificationRejection(requestType, req.verificationLevel);
+      if (rejection) return res.status(403).json(rejection);
+    }
+
+    // At most 3 gift claims open at a time.
+    if (requestType === "GIFT") {
+      const [{ open }] = await db
+        .select({ open: sql<number>`count(*)::int` })
+        .from(itemRequests)
+        .where(and(
+          eq(itemRequests.requesterId, req.user.id),
+          eq(itemRequests.requestType, "GIFT"),
+          inArray(itemRequests.status, OPEN_GIFT_CLAIM_STATUSES),
+        ));
+      const rejection = giftClaimLimitRejection(requestType, open);
       if (rejection) return res.status(403).json(rejection);
     }
 
@@ -13103,6 +13067,12 @@ Respond with ONLY the category name, nothing else.`
       const idVerified = !!idVerification;
       const paymentVerified = !!user.stripePaymentMethodId;
       const isVerified = idVerified && paymentVerified;
+      const verification = computeVerification({
+        emailVerified: user.emailVerified,
+        phoneVerified: user.phoneVerified,
+        idApproved: idVerified,
+        cardOnFile: paymentVerified,
+      });
 
       const uid = req.user.id;
       const [
@@ -13164,9 +13134,15 @@ Respond with ONLY the category name, nothing else.`
       res.json({
         ...user,
         isVerified,
-        emailVerified: user.emailVerified || !!user.googleId || user.authProvider === 'google',
+        emailVerified: verification.emailVerified,
         paymentVerified,
         idVerified,
+        canSwap: verification.canSwap,
+        canClaimGift: verification.canClaimGift,
+        canList: verification.canList,
+        canBorrow: verification.canBorrow,
+        canRent: verification.canRent,
+        missing: verification.missing,
         completedShares,
         onTimeReturnRate,
         replyRate,

@@ -6,7 +6,7 @@ import { inArray } from "drizzle-orm";
 import { db, itemRequests, items, messages, notifications, pool, users, verifications } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { registerRoutes } from "./routes/routes.js";
-import { computeVerification, googleEmailIsVerified } from "./verification.js";
+import { computeVerification, googleEmailIsVerified, verificationRecipient } from "./verification.js";
 
 const NONE = { idApproved: false, cardOnFile: false };
 
@@ -73,6 +73,13 @@ test("a Google sign-in only counts when Google says email_verified", () => {
   assert.equal(googleEmailIsVerified({}), false);
 });
 
+test("the verification link goes to the stored email, which a Google account needs", () => {
+  assert.equal(verificationRecipient({ username: "jane", email: "jane@example.com" }), "jane@example.com");
+  assert.equal(verificationRecipient({ username: "jane@example.com", email: null }), "jane@example.com");
+  assert.equal(verificationRecipient({ username: "jane", email: null }), null);
+  assert.equal(verificationRecipient({ username: "jane", email: "  " }), null);
+});
+
 const UNIQUE = `verification-levels-${Date.now()}`;
 const PASSWORD = "VerificationLevels!42";
 const userIds: number[] = [];
@@ -112,24 +119,27 @@ class TestClient {
   }
 }
 
-const clients: Record<"unverified" | "phone" | "email" | "full", TestClient> = {
+const clients: Record<"unverified" | "phone" | "email" | "full" | "google", TestClient> = {
   unverified: new TestClient(),
   phone: new TestClient(),
   email: new TestClient(),
   full: new TestClient(),
+  google: new TestClient(),
 };
 const giftIds: number[] = [];
 
 before(async () => {
   const password = await hashPassword(PASSWORD);
-  const [owner, unverified, phone, email, full] = await db.insert(users).values([
+  const [owner, unverified, phone, email, full, google] = await db.insert(users).values([
     { username: `${UNIQUE}-owner`, password, emailVerified: true },
     { username: `${UNIQUE}-unverified`, password, emailVerified: false },
     { username: `${UNIQUE}-phone`, password, emailVerified: false, phoneVerified: true, authProvider: "phone" },
     { username: `${UNIQUE}-email`, password, emailVerified: true },
     { username: `${UNIQUE}-full`, password, emailVerified: true, stripePaymentMethodId: `pm_${UNIQUE}` },
+    // A Google sign-in whose email Google did not verify: no password login in real life, but the test needs one.
+    { username: `${UNIQUE}-google`, password, emailVerified: false, authProvider: "google", googleId: `g-${UNIQUE}`, email: `${UNIQUE}-google@example.com`, emailVerificationToken: `token-${UNIQUE}`, emailVerificationExpires: new Date(Date.now() + 3600_000) },
   ]).returning({ id: users.id, username: users.username });
-  userIds.push(owner.id, unverified.id, phone.id, email.id, full.id);
+  userIds.push(owner.id, unverified.id, phone.id, email.id, full.id, google.id);
   await db.insert(verifications).values({ userId: full.id, status: "approved" });
 
   const gifts = await db.insert(items).values(
@@ -159,6 +169,7 @@ before(async () => {
   await clients.phone.login(phone.username);
   await clients.email.login(email.username);
   await clients.full.login(full.username);
+  await clients.google.login(google.username);
 });
 
 after(async () => {
@@ -245,4 +256,18 @@ test("gift claims have no limit on how many can be open", async () => {
     const response = await client.post(`/api/items/${id}/request`, { requestType: "GIFT" });
     assert.equal(response.status, 201);
   }
+});
+
+test("a Google account whose email Google did not verify can still verify through the email link", async () => {
+  const before = await currentUser(clients.google);
+  assert.deepEqual(flags(before), [false, false, false, false, false]);
+  assert.deepEqual(before.missing, ["email", "id", "card"]);
+
+  const link = await clients.google.request(`/api/auth/verify-email?token=token-${UNIQUE}`, { redirect: "manual" });
+  assert.equal(link.status, 302);
+  assert.match(link.headers.get("location") ?? "", /verified=true/);
+
+  const after = await currentUser(clients.google);
+  assert.deepEqual(flags(after), [true, true, true, false, false]);
+  assert.deepEqual(after.missing, ["id", "card"]);
 });

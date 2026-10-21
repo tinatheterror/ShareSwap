@@ -23,7 +23,7 @@ import { resolveGoogleOAuthCallbackURL } from "./google-oauth-config";
 import { shouldRunBackgroundJobs } from "./background-jobs-gate";
 import { guardedJob } from "./guarded-job";
 import { backgroundJobs } from "./background-jobs-registry";
-import { getVerificationForUser, googleEmailIsVerified } from "./verification";
+import { getVerificationForUser, googleEmailIsVerified, verificationRecipient } from "./verification";
 
 // ---------------------------------------------------------------------------
 // Postgres-backed rate-limit store
@@ -1143,6 +1143,11 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ message: "Email already verified" });
       }
 
+      const recipient = verificationRecipient(user);
+      if (!recipient) {
+        return res.status(400).json({ message: "No email address on file to verify" });
+      }
+
       // Generate new token
       const emailVerificationToken = generateEmailVerificationToken();
       const emailVerificationExpires = new Date(
@@ -1159,7 +1164,7 @@ export function setupAuth(app: Express) {
 
       // Send verification email
       const sent = await sendVerificationEmail(
-        user.username,
+        recipient,
         emailVerificationToken,
         user.displayName || undefined,
       );

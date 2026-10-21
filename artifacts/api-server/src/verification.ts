@@ -93,3 +93,14 @@ export function googleEmailIsVerified(profile: {
   const flag = profile.emails?.[0]?.verified ?? profile._json?.email_verified;
   return flag === true || flag === "true";
 }
+
+/**
+ * Where to send the verification link: the stored email, else a username that is itself an address.
+ * Google accounts have a username like "jane" and an email on file, so the username alone is not enough.
+ */
+export function verificationRecipient(user: { email?: string | null; username?: string | null }): string | null {
+  const email = user.email?.trim();
+  if (email) return email;
+  const username = user.username?.trim();
+  return username && username.includes("@") ? username : null;
+}

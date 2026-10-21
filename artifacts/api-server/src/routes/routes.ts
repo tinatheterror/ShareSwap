@@ -48,6 +48,7 @@ import { platformConfig, calculateCommission } from "../platform-config";
 import { AntiFarmingSystem } from "../anti-farming-system";
 import { sendPushToUser, sendPushToUsers } from "../push-notifications";
 import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChangeAlertEmail } from "../sendgrid";
+import { nonProductionOnly } from "../non-production-gate";
 import {
   claimDepositTerminalAction,
   getPaymentIntentCaptureBefore,
@@ -2708,8 +2709,8 @@ export function registerRoutes(
     }
   });
 
-  // Admin: Approve user verification (for demo/testing - auto-approve own verification)
-  app.post("/api/verify/approve", async (req, res) => {
+  // Demo/testing only: lets a user approve their own verification, so it is never reachable in production.
+  app.post("/api/verify/approve", nonProductionOnly, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }

@@ -52,6 +52,7 @@ import {
   getDiscountLabel,
 } from "@/lib/rental-calculator";
 import { useVerification } from "@/hooks/use-verification";
+import { capabilityForRequestType, isLocked, readCapabilities } from "@/lib/verification-capabilities";
 
 const formSchema = z.object({
   message: z.string().max(140).optional().default(""),
@@ -100,7 +101,7 @@ export function ItemRequestForm({
 }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { requireVerification, showVerificationModal, VerificationModal } =
+  const { requireCapability, showVerificationModal, VerificationModal } =
     useVerification();
 
   // Get current user info for personalized messages
@@ -147,10 +148,8 @@ export function ItemRequestForm({
   const user = userData as {
     id?: number;
     username?: string;
-    verificationLevel?: "unverified" | "email_only" | "fully_verified";
-    idVerified?: boolean;
-    paymentVerified?: boolean;
   } | null;
+  const missingVerification = readCapabilities(userData as any)?.missing ?? [];
 
   // When the form opens with prefill data (e.g. after a withdrawn offer), apply it
   useEffect(() => {
@@ -233,6 +232,12 @@ export function ItemRequestForm({
             </ToastAction>
           ),
         });
+      } else if ((error as any).code === "GIFT_CLAIM_LIMIT_REACHED") {
+        toast({
+          title: "Gift claim limit reached",
+          description: error.message,
+          variant: "destructive",
+        });
       } else if ((error as any).code === "OVERDUE_BORROW_RESTRICTED") {
         toast({
           title: "Return overdue item first",
@@ -267,7 +272,7 @@ export function ItemRequestForm({
           {/* Verification warning for BORROW/RENT if user is not fully verified */}
           {(requestType === "BORROW" || requestType === "RENT") &&
             user &&
-            user.verificationLevel !== "fully_verified" && (
+            isLocked(userData as any, capabilityForRequestType(requestType)) && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
                 <div className="flex items-center gap-1 text-amber-800 font-medium">
                   <BadgeCheck className="h-4 w-4" />
@@ -279,28 +284,28 @@ export function ItemRequestForm({
                 </div>
                 <div className="flex flex-col gap-1 text-sm">
                   <div className="flex items-center gap-2">
-                    {user.idVerified ? (
+                    {!missingVerification.includes("id") ? (
                       <Check className="h-4 w-4 text-green-600" />
                     ) : (
                       <div className="h-4 w-4 rounded border-2 border-amber-400" />
                     )}
                     <span
                       className={
-                        user.idVerified ? "text-green-700" : "text-amber-700"
+                        !missingVerification.includes("id") ? "text-green-700" : "text-amber-700"
                       }
                     >
                       Identity verification
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {user.paymentVerified ? (
+                    {!missingVerification.includes("card") ? (
                       <Check className="h-4 w-4 text-green-600" />
                     ) : (
                       <div className="h-4 w-4 rounded border-2 border-amber-400" />
                     )}
                     <span
                       className={
-                        user.paymentVerified
+                        !missingVerification.includes("card")
                           ? "text-green-700"
                           : "text-amber-700"
                       }
@@ -500,11 +505,9 @@ export function ItemRequestForm({
                     }
                   }
                 }
-                if (requestType === "SWAP" || requestType === "GIFT") {
-                  createRequestMutation.mutate(data);
-                } else {
-                  requireVerification(() => createRequestMutation.mutate(data));
-                }
+                requireCapability(capabilityForRequestType(requestType), () =>
+                  createRequestMutation.mutate(data),
+                );
               })}
               className="space-y-4 mt-4"
             >

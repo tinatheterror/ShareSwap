@@ -1341,7 +1341,7 @@ export default function ProfilePage() {
                         variant="outline"
                         className="flex-shrink-0 bg-amber-100 text-amber-700 border-amber-300"
                       >
-                        Unverified
+                        ID not verified
                       </Badge>
                     )}
                     {profile?.isVerified && (
@@ -1349,7 +1349,7 @@ export default function ProfilePage() {
                         variant="outline"
                         className="flex-shrink-0 bg-green-100 text-green-700 border-green-300"
                       >
-                        Verified
+                        ID verified
                       </Badge>
                     )}
                   </div>
@@ -1774,7 +1774,7 @@ export default function ProfilePage() {
                         variant="outline"
                         className="flex-shrink-0 bg-amber-100 text-amber-700 border-amber-300"
                       >
-                        Unverified
+                        ID not verified
                       </Badge>
                     )}
                     {profile?.isVerified && (
@@ -1782,7 +1782,7 @@ export default function ProfilePage() {
                         variant="outline"
                         className="flex-shrink-0 bg-green-100 text-green-700 border-green-300"
                       >
-                        Verified
+                        ID verified
                       </Badge>
                     )}
                   </div>

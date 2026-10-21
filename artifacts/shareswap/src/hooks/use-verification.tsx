@@ -1,57 +1,60 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { VerificationModal } from "@/components/shared/verification-modal";
+import {
+  isLocked,
+  lockedPrompt,
+  readCapabilities,
+  type CapabilityFlag,
+} from "@/lib/verification-capabilities";
 
 export function useVerification() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
 
-  const checkVerification = useCallback(
-    (onVerified: () => void): boolean => {
-      if (!user) {
-        return false;
-      }
-
-      if (user.isVerified) {
-        onVerified();
-        return true;
-      }
-
-      setShowModal(true);
-      return false;
-    },
-    [user]
-  );
-
-  const requireVerification = useCallback(
-    (action: () => void) => {
+  /** Runs the action if the server allows it, otherwise shows the prompt for what is missing. */
+  const requireCapability = useCallback(
+    (flag: CapabilityFlag, action: () => void) => {
       if (!user) {
         return;
       }
 
-      if (user.isVerified) {
+      if (!isLocked(user, flag)) {
         action();
+        return;
+      }
+
+      if (lockedPrompt(user) === "email") {
+        toast({
+          title: "Verify your email first",
+          description: "Please verify your email address to swap, claim gifts or list items.",
+          variant: "destructive",
+        });
       } else {
         setShowModal(true);
       }
     },
-    [user]
+    [user, toast]
   );
+
+  const missing = readCapabilities(user)?.missing ?? [];
 
   const VerificationModalComponent = useCallback(
     () => (
       <VerificationModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
+        missing={missing}
       />
     ),
-    [showModal]
+    [showModal, missing.join(",")]
   );
 
   return {
-    isVerified: user?.isVerified ?? false,
-    checkVerification,
-    requireVerification,
+    capabilities: readCapabilities(user),
+    requireCapability,
     showVerificationModal: () => setShowModal(true),
     VerificationModal: VerificationModalComponent,
   };

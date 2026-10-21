@@ -37,6 +37,8 @@ import {
 } from "@/lib/swap-calculator";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useVerification } from "@/hooks/use-verification";
+import { isLocked } from "@/lib/verification-capabilities";
 import {
   Form,
   FormControl,
@@ -456,6 +458,8 @@ function MatchModal({
 export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { requireCapability } = useVerification();
+  const listingLocked = isLocked(user as any, "canList");
   const [, navigate] = useLocation();
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
@@ -1753,6 +1757,11 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 pt-0 md:pt-4 pb-8">
+        {listingLocked && (
+          <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+            <p>Verify your email address to list items. You can fill in the form now and publish once you are verified.</p>
+          </div>
+        )}
         {isFromSwap && (
           <div className="mb-4 flex items-start gap-3 bg-teal-50 border border-teal-200 rounded-lg p-3 text-sm text-teal-800">
             <Package className="h-4 w-4 mt-0.5 shrink-0 text-teal-600" />
@@ -1767,11 +1776,13 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit((data) => {
-              if (isEditMode) {
-                updateItemMutation.mutate(data);
-              } else {
-                createItemMutation.mutate(data);
-              }
+              requireCapability("canList", () => {
+                if (isEditMode) {
+                  updateItemMutation.mutate(data);
+                } else {
+                  createItemMutation.mutate(data);
+                }
+              });
             })}
             className="grid grid-cols-1 lg:grid-cols-3 gap-6"
           >

@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { needsEmailVerification } from "@/lib/verification-capabilities";
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -284,7 +285,7 @@ function EmailVerificationBanner() {
   const [isResending, setIsResending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   
-  if (!user || user.emailVerified || user.authProvider === 'google') {
+  if (!user || !needsEmailVerification(user as any)) {
     return null;
   }
   

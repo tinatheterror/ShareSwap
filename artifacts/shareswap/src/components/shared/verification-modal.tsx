@@ -12,9 +12,12 @@ import { useLocation } from "wouter";
 interface VerificationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  missing?: ("email" | "id" | "card")[];
 }
 
-export function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
+const MISSING_LABELS = { email: "a verified email", id: "your ID", card: "a card on file" } as const;
+
+export function VerificationModal({ isOpen, onClose, missing = [] }: VerificationModalProps) {
   const [, navigate] = useLocation();
 
   const handleVerifyNow = () => {
@@ -36,6 +39,11 @@ export function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
           </div>
           <DialogDescription className="text-gray-600 pt-3 text-center">
             Verification helps keep the community safe and builds trust with neighbours.
+            {missing.length > 0 && (
+              <span className="block mt-2 font-medium text-gray-800">
+                Still needed: {missing.map((m) => MISSING_LABELS[m]).join(", ")}
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 

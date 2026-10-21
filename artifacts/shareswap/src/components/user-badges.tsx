@@ -53,7 +53,7 @@ export function UserBadges({
   return (
     <div className="flex items-center gap-1">
       {isVerified && (
-        <BadgeCheck className={`${size === "sm" ? "h-6 w-6" : size === "md" ? "h-8 w-8" : "h-10 w-10"} fill-[#0DCEA1] stroke-white hover:scale-110 transition-transform cursor-pointer`} />
+        <BadgeCheck aria-label="ID verified" role="img" className={`${size === "sm" ? "h-6 w-6" : size === "md" ? "h-8 w-8" : "h-10 w-10"} fill-[#0DCEA1] stroke-white hover:scale-110 transition-transform cursor-pointer`} />
       )}
       {reputationBadge && (
         <Badge className={`${reputationBadge.color} ${badgeSize}`}>

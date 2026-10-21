@@ -22,7 +22,6 @@ import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
 import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmation-modal";
 import { ReturnConfirmationModal } from "@/components/borrow/return-confirmation-modal";
 import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sharecoins-modal";
-import { useVerification } from "@/hooks/use-verification";
 import { getStripePromise } from "@/lib/stripe-client";
 import { RequestLifecyclePanel } from "@/components/request-lifecycle-panel";
 import { REQUEST_DATES_PASSED_MESSAGE, acceptBlockedByDates } from "@/lib/request-dates";
@@ -179,7 +178,6 @@ export default function RequestsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
-  const { requireVerification, VerificationModal } = useVerification();
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [depositClientSecret, setDepositClientSecret] = useState<string | null>(null);
@@ -409,39 +407,38 @@ export default function RequestsPage() {
 
   const [acceptingGiftRequest, setAcceptingGiftRequest] = useState<ItemRequest | null>(null);
 
-  const handleAcceptClick = (request: ItemRequest) => {
-    requireVerification(async () => {
-      if (request.requestType === "GIFT") {
-        setAcceptingGiftRequest(request);
-        acceptMutation.mutate(request.id);
-      } else {
-        // If a counter-proposal was accepted, use the owner's counter-proposed terms
-        // otherwise fall back to the requester's original choices
-        const effectiveDelivery = request.negotiationStatus === "terms_accepted" && request.counterDeliveryMethod
-          ? request.counterDeliveryMethod
-          : request.deliveryMethod;
-        const effectiveDeposit = request.negotiationStatus === "terms_accepted" && request.counterDepositMethod
-          ? request.counterDepositMethod
-          : request.depositMethod;
+  // Accepting is the owner's side of a request: a verified email is all that is required (no ID or card).
+  const handleAcceptClick = async (request: ItemRequest) => {
+    if (request.requestType === "GIFT") {
+      setAcceptingGiftRequest(request);
+      acceptMutation.mutate(request.id);
+    } else {
+      // If a counter-proposal was accepted, use the owner's counter-proposed terms
+      // otherwise fall back to the requester's original choices
+      const effectiveDelivery = request.negotiationStatus === "terms_accepted" && request.counterDeliveryMethod
+        ? request.counterDeliveryMethod
+        : request.deliveryMethod;
+      const effectiveDeposit = request.negotiationStatus === "terms_accepted" && request.counterDepositMethod
+        ? request.counterDepositMethod
+        : request.depositMethod;
 
-        // Map to arrangement values
-        const deliveryMethod = effectiveDelivery === "courier"
-          ? "shareswap_delivery"
-          : "self_arrange";
-        const depositMethod = effectiveDeposit === "in_app"
-          ? "shareswap_deposit"
-          : "self_arrange";
+      // Map to arrangement values
+      const deliveryMethod = effectiveDelivery === "courier"
+        ? "shareswap_delivery"
+        : "self_arrange";
+      const depositMethod = effectiveDeposit === "in_app"
+        ? "shareswap_deposit"
+        : "self_arrange";
 
-        const itemValue = request.item.replacementValue || 50;
+      const itemValue = request.item.replacementValue || 50;
 
-        await finalizeAcceptance(request.id, {
-          deliveryMethod,
-          depositMethod,
-          depositAmount: depositMethod === "shareswap_deposit" ? itemValue : undefined,
-          depositProcessingFee: depositMethod === "shareswap_deposit" ? itemValue * 0.05 : undefined,
-        }, null);
-      }
-    });
+      await finalizeAcceptance(request.id, {
+        deliveryMethod,
+        depositMethod,
+        depositAmount: depositMethod === "shareswap_deposit" ? itemValue : undefined,
+        depositProcessingFee: depositMethod === "shareswap_deposit" ? itemValue * 0.05 : undefined,
+      }, null);
+    }
   };
 
   const handleDepositPaymentSuccess = async (paymentIntentId: string) => {
@@ -552,7 +549,6 @@ export default function RequestsPage() {
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
-      <VerificationModal />
       
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6 text-teal-800">Item Requests</h1>

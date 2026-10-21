@@ -94,7 +94,6 @@ import "react-image-crop/dist/ReactCrop.css";
 import sharesmartIcon from "@/assets/sharesmart-icon.png";
 import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
-import { useVerification } from "@/hooks/use-verification";
 
 const ITEM_TYPES = [
   "Baby & Kids",
@@ -458,7 +457,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const { requireVerification, VerificationModal } = useVerification();
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const editItemId = searchParams.get("edit");
@@ -1754,7 +1752,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         />
       </div>
 
-      <VerificationModal />
       <main className="max-w-7xl mx-auto px-4 pt-0 md:pt-4 pb-8">
         {isFromSwap && (
           <div className="mb-4 flex items-start gap-3 bg-teal-50 border border-teal-200 rounded-lg p-3 text-sm text-teal-800">

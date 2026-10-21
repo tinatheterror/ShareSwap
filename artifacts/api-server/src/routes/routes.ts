@@ -50,7 +50,7 @@ import { sendPushToUser, sendPushToUsers } from "../push-notifications";
 import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChangeAlertEmail } from "../sendgrid";
 import { nonProductionOnly } from "../non-production-gate";
 import { fullVerificationRejection } from "../verification-gate";
-import { MIN_PAYOUT, findRetryablePayout, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
+import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
   getPaymentIntentCaptureBefore,
@@ -9606,6 +9606,35 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "You have already confirmed the handoff" });
       }
 
+      // Claim the handoff first, with a conditional update, so it is decided before any ShareCoins or
+      // rental earnings move (the PIN path does the same). A second or concurrent confirmation finds the
+      // status already advanced, matches no row and does nothing below.
+      let claimedHandoff: typeof itemRequests.$inferSelect | undefined;
+      if (bothConfirmed) {
+        // Complete the handoff (manual confirmation path)
+        // SWAP transactions are fully complete at handoff (no return step), so mark COMPLETED
+        updateData.status = isSwapRequest ? "COMPLETED" : "IN_PROGRESS";
+        updateData.handoffConfirmedAt = now;
+        updateData.borrowPeriodStartedAt = now;
+        updateData.actualHandoffAt = now;
+        updateData.shareCoinsCharged = true;
+        updateData.shareCoinsChargedAt = now;
+        updateData.depositStatus = "held";
+        updateData.confirmationMethod = "manual";
+        [claimedHandoff] = await db
+          .update(itemRequests)
+          .set(updateData)
+          .where(and(
+            eq(itemRequests.id, requestId),
+            eq(itemRequests.status, request.item_requests.status),
+            isNull(itemRequests.depositOperationToken),
+          ))
+          .returning();
+        if (!claimedHandoff) {
+          return res.status(409).json({ error: "This request changed before the handoff could be recorded. Please refresh and try again." });
+        }
+      }
+
       // If both parties have now confirmed, complete the handoff
       if (bothConfirmed) {
         // Charge ShareCoins from borrower (only for BORROW type)
@@ -9682,17 +9711,6 @@ Respond with ONLY the category name, nothing else.`
           }
         }
 
-        // Complete the handoff (manual confirmation path)
-        // SWAP transactions are fully complete at handoff (no return step), so mark COMPLETED
-        updateData.status = isSwapRequest ? "COMPLETED" : "IN_PROGRESS";
-        updateData.handoffConfirmedAt = now;
-        updateData.borrowPeriodStartedAt = now;
-        updateData.actualHandoffAt = now;
-        updateData.shareCoinsCharged = true;
-        updateData.shareCoinsChargedAt = now;
-        updateData.depositStatus = "held";
-        updateData.confirmationMethod = "manual";
-
         // Mark item as unavailable
         await db
           .update(items)
@@ -9754,30 +9772,7 @@ Respond with ONLY the category name, nothing else.`
         // For RENT: release rental earnings to owner at handoff (not at return)
         if (request.item_requests.requestType === 'RENT' && request.item_requests.rentalAmount) {
           try {
-            const _rentAmt = parseFloat(request.item_requests.rentalAmount);
-            const _processingFee = _rentAmt * 0.03;
-            const _netAmt = _rentAmt - _processingFee;
-            const _ownerId = request.items.ownerId!;
-            const _sn = (s: string) => s.length > 20 ? s.slice(0, 20) + "…" : s;
-            const [_existingPayout] = await db
-              .select().from(rentalPayouts)
-              .where(and(eq(rentalPayouts.requestId, requestId), eq(rentalPayouts.status, 'held')))
-              .limit(1);
-            if (_existingPayout) {
-              await db.update(rentalPayouts).set({ status: 'released', releasedAt: new Date() }).where(eq(rentalPayouts.id, _existingPayout.id));
-              const _en = parseFloat(_existingPayout.netAmount || "0");
-              await db.update(users).set({
-                pendingRentalBalance: sql`GREATEST(0, COALESCE(${users.pendingRentalBalance}, 0) - ${_en})`,
-                rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${_en}`,
-              }).where(eq(users.id, _ownerId));
-              await db.insert(notifications).values({ userId: _ownerId, type: "payment_received", title: "Rental Payment Ready", message: `$${_en.toFixed(2)} earned from "${_sn(request.items.name)}" — ready to withdraw.`, itemId: request.items.id, requestId, isRead: false });
-              console.log(`[Handoff] Released rental earnings $${_en.toFixed(2)} to owner ${_ownerId}`);
-            } else {
-              await db.insert(rentalPayouts).values({ userId: _ownerId, requestId, amount: _rentAmt.toString(), rentalAmount: _rentAmt.toString(), platformFee: "0", processingFee: _processingFee.toFixed(2), netAmount: _netAmt.toFixed(2), status: 'released', stripePaymentIntentId: request.item_requests.depositPaymentIntentId, releasedAt: new Date() });
-              await db.update(users).set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${_netAmt.toFixed(2)}` }).where(eq(users.id, _ownerId));
-              await db.insert(notifications).values({ userId: _ownerId, type: "payment_received", title: "Rental Payment Ready", message: `$${_netAmt.toFixed(2)} earned from "${_sn(request.items.name)}" — ready to withdraw.`, itemId: request.items.id, requestId, isRead: false });
-              console.log(`[Handoff] Released rental earnings $${_netAmt.toFixed(2)} to owner ${_ownerId} (fallback)`);
-            }
+            await releaseHeldRentalPayout({ requestId, ownerId: request.items.ownerId!, itemId: request.items.id, itemName: request.items.name, logTag: "Handoff" });
           } catch (rentalPayoutErr) {
             console.error("Error releasing rental payment at handoff:", rentalPayoutErr);
           }
@@ -9787,7 +9782,7 @@ Respond with ONLY the category name, nothing else.`
       // Update the request. Conditional on the status we validated and on no deposit
       // operation being in flight, so a request that is being expired at the deadline
       // is never advanced: whichever of the two commits first wins.
-      const [updated] = await db
+      const [updated] = claimedHandoff ? [claimedHandoff] : await db
         .update(itemRequests)
         .set(updateData)
         .where(and(
@@ -10198,29 +10193,7 @@ Respond with ONLY the category name, nothing else.`
         // For RENT: release rental earnings to owner at handoff (not at return)
         if (requestType === 'RENT' && request.item_requests.rentalAmount) {
           try {
-            const _rentAmt = parseFloat(request.item_requests.rentalAmount);
-            const _processingFee = _rentAmt * 0.03;
-            const _netAmt = _rentAmt - _processingFee;
-            const _sn = (s: string) => s.length > 20 ? s.slice(0, 20) + "…" : s;
-            const [_existingPayout] = await db
-              .select().from(rentalPayouts)
-              .where(and(eq(rentalPayouts.requestId, requestId), eq(rentalPayouts.status, 'held')))
-              .limit(1);
-            if (_existingPayout) {
-              await db.update(rentalPayouts).set({ status: 'released', releasedAt: new Date() }).where(eq(rentalPayouts.id, _existingPayout.id));
-              const _en = parseFloat(_existingPayout.netAmount || "0");
-              await db.update(users).set({
-                pendingRentalBalance: sql`GREATEST(0, COALESCE(${users.pendingRentalBalance}, 0) - ${_en})`,
-                rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${_en}`,
-              }).where(eq(users.id, ownerId));
-              await db.insert(notifications).values({ userId: ownerId, type: "payment_received", title: "Rental Payment Ready", message: `$${_en.toFixed(2)} earned from "${_sn(request.items.name)}" — ready to withdraw.`, itemId: request.items.id, requestId, isRead: false });
-              console.log(`[PIN Handoff] Released rental earnings $${_en.toFixed(2)} to owner ${ownerId}`);
-            } else {
-              await db.insert(rentalPayouts).values({ userId: ownerId, requestId, amount: _rentAmt.toString(), rentalAmount: _rentAmt.toString(), platformFee: "0", processingFee: _processingFee.toFixed(2), netAmount: _netAmt.toFixed(2), status: 'released', stripePaymentIntentId: request.item_requests.depositPaymentIntentId, releasedAt: new Date() });
-              await db.update(users).set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${_netAmt.toFixed(2)}` }).where(eq(users.id, ownerId));
-              await db.insert(notifications).values({ userId: ownerId, type: "payment_received", title: "Rental Payment Ready", message: `$${_netAmt.toFixed(2)} earned from "${_sn(request.items.name)}" — ready to withdraw.`, itemId: request.items.id, requestId, isRead: false });
-              console.log(`[PIN Handoff] Released rental earnings $${_netAmt.toFixed(2)} to owner ${ownerId} (fallback)`);
-            }
+            await releaseHeldRentalPayout({ requestId, ownerId, itemId: request.items.id, itemName: request.items.name, logTag: "PIN Handoff" });
           } catch (rentalPayoutErr) {
             console.error("Error releasing rental payment at PIN handoff:", rentalPayoutErr);
           }

@@ -1,5 +1,5 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { db, rentalPayouts, users } from "@workspace/db";
+import { db, notifications, rentalPayouts, users } from "@workspace/db";
 import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
 
 export type PayoutStripeClient = {
@@ -175,4 +175,42 @@ export async function findRetryablePayout(userId: number, payoutId: number, now:
     };
   }
   return { row };
+}
+
+/**
+ * Moves a rental's held earnings into the owner's available balance when the handoff completes.
+ * The held row is claimed with a conditional UPDATE and the balances change in the same transaction,
+ * so the owner is credited exactly once however often this is reached. With no held row there is
+ * nothing to release: it logs and credits nothing rather than inventing an amount.
+ */
+export async function releaseHeldRentalPayout(args: {
+  requestId: number; ownerId: number; itemId: number; itemName: string; logTag: string;
+}): Promise<boolean> {
+  const { requestId, ownerId, itemId, itemName, logTag } = args;
+  const released = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(rentalPayouts)
+      .set({ status: "released", releasedAt: new Date() })
+      .where(and(eq(rentalPayouts.requestId, requestId), eq(rentalPayouts.status, "held")))
+      .returning({ netAmount: rentalPayouts.netAmount });
+    if (!row) return null;
+    const net = parseFloat(row.netAmount || "0");
+    await tx.update(users).set({
+      pendingRentalBalance: sql`GREATEST(0, COALESCE(${users.pendingRentalBalance}, 0) - ${net})`,
+      rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${net}`,
+    }).where(eq(users.id, ownerId));
+    const short = itemName.length > 20 ? `${itemName.slice(0, 20)}…` : itemName;
+    await tx.insert(notifications).values({
+      userId: ownerId, type: "payment_received", title: "Rental Payment Ready",
+      message: `$${net.toFixed(2)} earned from "${short}" — ready to withdraw.`,
+      itemId, requestId, isRead: false,
+    });
+    return net;
+  });
+  if (released === null) {
+    console.error(`[${logTag}] request ${requestId} has no held rental payout; the owner was not credited (already released, or never held)`);
+    return false;
+  }
+  console.log(`[${logTag}] Released rental earnings $${released.toFixed(2)} to owner ${ownerId}`);
+  return true;
 }

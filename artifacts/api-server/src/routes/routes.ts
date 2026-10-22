@@ -11278,7 +11278,7 @@ Respond with ONLY the category name, nothing else.`
 
         // Charge platform fee via Stripe if applicable
         if (platformFee > 0 && requesterProfile?.stripeCustomerId) {
-          const stripe = (await import("stripe")).default(process.env.STRIPE_SECRET_KEY!);
+          const stripe = await getUncachableStripeClient();
           const paymentMethods = await stripe.paymentMethods.list({ customer: requesterProfile.stripeCustomerId, type: "card" });
           if (paymentMethods.data.length > 0) {
             await stripe.paymentIntents.create({

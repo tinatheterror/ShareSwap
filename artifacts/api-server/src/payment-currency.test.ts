@@ -461,6 +461,7 @@ test("every Stripe create site takes its currency from the constant or the reque
   ]) {
     assert.ok(routes.includes(expected), `routes.ts should contain ${expected}`);
   }
+  assert.ok(routes.includes("currency: PLATFORM_CURRENCY, limit: 1"), "subscription checkout prefers a Price in the platform currency");
   const payout = await readFile(new URL("./rental-payout-service.ts", import.meta.url), "utf8");
   assert.match(payout, /currency: PLATFORM_CURRENCY/);
 });

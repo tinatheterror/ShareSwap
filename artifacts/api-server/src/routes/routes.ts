@@ -6977,6 +6977,7 @@ Respond with ONLY the category name, nothing else.`
       depositCapturedAmount: r.depositCapturedAmount,
       depositRefundedAmount: r.depositRefundedAmount,
       depositRetainedAmount: r.depositRetainedAmount,
+      paymentCurrency: recordCurrency(r),
       depositCardLast4: r.depositCardLast4,
       depositCardBrand: r.depositCardBrand,
       depositPhase: depositCopy.depositLifecycleView({ mode: r.depositMode, status: r.depositStatus, amount: r.trustDepositAmount, capturedAmount: r.depositCapturedAmount, refundedAmount: r.depositRefundedAmount, retainedAmount: r.depositRetainedAmount }).phase,
@@ -11622,7 +11623,7 @@ Respond with ONLY the category name, nothing else.`
         settlementStartDeadlineAt: r.settlementStartDeadlineAt,
         role, actions,
         deposit: {
-          mode: r.depositMode, status: r.depositStatus, amount: r.trustDepositAmount, expiresAt: r.depositAuthorizationExpiresAt, protectionReviewRequired: r.depositRenewalStatus === "protection_review_required",
+          currency: recordCurrency(r), mode: r.depositMode, status: r.depositStatus, amount: r.trustDepositAmount, expiresAt: r.depositAuthorizationExpiresAt, protectionReviewRequired: r.depositRenewalStatus === "protection_review_required",
           ...depositCopy.depositLifecycleView({
             mode: r.depositMode, status: r.depositStatus, amount: r.trustDepositAmount, capturedAmount: r.depositCapturedAmount,
             refundedAmount: r.depositRefundedAmount, retainedAmount: r.depositRetainedAmount, cardLast4: r.depositCardLast4, cardBrand: r.depositCardBrand,
@@ -15961,7 +15962,15 @@ Respond with ONLY the category name, nothing else.`
       if (!products.data.length) {
         return res.status(404).json({ message: "Subscription plan not found. Please contact support." });
       }
-      const prices = await stripe.prices.list({ product: products.data[0].id, active: true, limit: 1 });
+      // Subscriptions are sold in the platform currency. Until a Price in that currency exists on the product,
+      // fall back to its other active Price so checkout keeps working, and say so in the log.
+      let prices = await stripe.prices.list({ product: products.data[0].id, active: true, currency: PLATFORM_CURRENCY, limit: 1 });
+      if (!prices.data.length) {
+        prices = await stripe.prices.list({ product: products.data[0].id, active: true, limit: 1 });
+        if (prices.data.length) {
+          console.warn(`[subscription] no active ${PLATFORM_CURRENCY.toUpperCase()} Price on the ${tier} product; checking out with ${prices.data[0].id} (${prices.data[0].currency})`);
+        }
+      }
       if (!prices.data.length) {
         return res.status(404).json({ message: "Price not found for this plan." });
       }

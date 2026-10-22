@@ -7,6 +7,7 @@ import { initializeAchievements, initializeSubscriptionPlans } from "./init-achi
 import { startRateLimitCleanup } from "./auth";
 import { applyStartupMigrations } from "./startup-migrations";
 import { logStripeStartup } from "./stripe.server";
+import { requireSubscriptionWebhookSecret } from "./subscription-webhook";
 import { backgroundJobsBootLine } from "./background-jobs-gate";
 import { backgroundJobs } from "./background-jobs-registry";
 import { installShutdownHandlers } from "./shutdown";
@@ -31,6 +32,9 @@ async function start() {
 
   // One line saying whether the in-process timers run in this process, and why.
   logger.info(backgroundJobsBootLine(process.env));
+
+  // A missing webhook signing secret stops the boot, like missing Stripe keys.
+  requireSubscriptionWebhookSecret();
 
   // Missing Stripe keys stop the boot; a failed account lookup only warns. Otherwise log test/live and the account id (never the keys).
   await logStripeStartup((line) => logger.info(line), (line) => logger.warn(line));

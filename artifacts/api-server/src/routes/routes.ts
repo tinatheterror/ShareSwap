@@ -772,6 +772,7 @@ export async function checkAndAwardAchievements(userId: number) {
 
 // Initialize Stripe - will be loaded from connector
 import { getUncachableStripeClient, getStripePublishableKey } from "../stripe.server";
+import { subscriptionWebhookHandler } from "../subscription-webhook";
 
 // Helper to get stripe client (lazy loaded from connector)
 let stripeClient: Stripe | null = null;
@@ -16029,72 +16030,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Stripe subscription webhook
-  app.post("/api/stripe/subscription-webhook", async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET;
-
-    let event: any;
-    try {
-      if (webhookSecret && sig) {
-        const stripe = await getUncachableStripeClient();
-        event = stripe.webhooks.constructEvent(req.body as Buffer, sig as string, webhookSecret);
-      } else {
-        const bodyStr = Buffer.isBuffer(req.body) ? req.body.toString() : JSON.stringify(req.body);
-        event = JSON.parse(bodyStr);
-        console.warn("⚠️ Stripe subscription webhook: STRIPE_SUBSCRIPTION_WEBHOOK_SECRET not set — skipping signature verification");
-      }
-    } catch (err: any) {
-      console.error("Subscription webhook signature error:", err.message);
-      return res.status(400).json({ error: `Webhook error: ${err.message}` });
-    }
-
-    try {
-      const stripe = await getUncachableStripeClient();
-
-      if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
-        const subscription = event.data.object;
-        const customerId = subscription.customer as string;
-
-        let tier = 'free';
-        const priceId = subscription.items?.data?.[0]?.price?.id;
-        if (priceId) {
-          const price = await stripe.prices.retrieve(priceId, { expand: ['product'] });
-          const product = price.product as any;
-          tier = product?.metadata?.tier || 'free';
-        }
-
-        await db.update(users)
-          .set({
-            subscriptionTier: tier,
-            stripeSubscriptionId: subscription.id,
-            stripeSubscriptionStatus: subscription.status,
-          } as any)
-          .where(eq(users.stripeCustomerId, customerId));
-
-        console.log(`✅ Subscription updated for customer ${customerId}: tier=${tier}, status=${subscription.status}`);
-      }
-
-      if (event.type === 'customer.subscription.deleted') {
-        const subscription = event.data.object;
-        const customerId = subscription.customer as string;
-
-        await db.update(users)
-          .set({
-            subscriptionTier: 'free',
-            stripeSubscriptionId: null,
-            stripeSubscriptionStatus: 'canceled',
-          } as any)
-          .where(eq(users.stripeCustomerId, customerId));
-
-        console.log(`🔴 Subscription canceled for customer ${customerId}`);
-      }
-
-      res.json({ received: true });
-    } catch (error) {
-      console.error("Subscription webhook processing error:", error);
-      res.status(500).json({ error: "Webhook processing failed" });
-    }
-  });
+  app.post("/api/stripe/subscription-webhook", subscriptionWebhookHandler());
 
   // Migrate existing users to have handles (runs once at startup)
   (async () => {

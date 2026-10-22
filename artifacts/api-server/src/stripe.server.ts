@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { resolveStripeConnectorEnvironment } from "./stripe-connector-env";
 
 let connectionSettings: any;
 
@@ -15,8 +16,8 @@ async function getCredentials() {
   }
 
   const connectorName = "stripe";
-  // Always use development (test) keys for now - switch to production when live keys are configured
-  const targetEnvironment = "development";
+  // Chosen at runtime (STRIPE_CONNECTOR_ENV, else the deployment/workspace default). Never falls back.
+  const { environment: targetEnvironment, source } = resolveStripeConnectorEnvironment();
 
   const url = new URL(`https://${hostname}/api/v2/connection`);
   url.searchParams.set("include_secrets", "true");
@@ -30,14 +31,19 @@ async function getCredentials() {
     },
   });
 
-  const data = await response.json();
-  connectionSettings = data.items?.[0];
+  const data: any = await response.json().catch(() => null);
+  connectionSettings = data?.items?.[0];
+  const settings = connectionSettings?.settings;
 
-  if (
-    !connectionSettings ||
-    !connectionSettings.settings.publishable ||
-    !connectionSettings.settings.secret
-  ) {
+  if (!settings?.publishable || !settings?.secret) {
+    // Names and counts only, never key values.
+    console.error(
+      `[stripe] No usable "${targetEnvironment}" Stripe connection (environment chosen by ${source}; ` +
+        `connector HTTP ${response.status}, ${Array.isArray(data?.items) ? data.items.length : "no"} connection(s) returned, ` +
+        `publishable key ${settings?.publishable ? "present" : "missing"}, secret key ${settings?.secret ? "present" : "missing"}). ` +
+        `Not falling back to another environment. Fix the Stripe integration for "${targetEnvironment}" in Replit, ` +
+        `or set STRIPE_CONNECTOR_ENV deliberately.`,
+    );
     throw new Error(`Stripe ${targetEnvironment} connection not found`);
   }
 

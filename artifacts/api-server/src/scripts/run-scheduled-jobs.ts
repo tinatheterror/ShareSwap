@@ -59,12 +59,14 @@ const MAX_REPORTED_LINES = 500;
 // ── Secrets ─────────────────────────────────────────────────────────────────────
 
 /**
- * Names only, never values. Stripe and SendGrid credentials come from the Replit connector
- * (stripe.server.ts / sendgrid.ts), so what the job needs is the connector host plus a token:
- * REPL_IDENTITY in the workspace, WEB_REPL_RENEWAL in a deployment.
+ * Names only, never values. Stripe keys are environment variables (stripe.server.ts); SendGrid
+ * credentials come from the Replit connector (sendgrid.ts), so that needs the connector host plus a
+ * token: REPL_IDENTITY in the workspace, WEB_REPL_RENEWAL in a deployment.
  */
 export const REQUIRED_SECRETS: ReadonlyArray<string | readonly string[]> = [
   "DATABASE_URL",
+  "STRIPE_SECRET_KEY",
+  "STRIPE_PUBLISHABLE_KEY",
   "REPLIT_CONNECTORS_HOSTNAME",
   ["REPL_IDENTITY", "WEB_REPL_RENEWAL"],
 ];

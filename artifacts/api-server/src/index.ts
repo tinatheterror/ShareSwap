@@ -6,7 +6,7 @@ import { initializeSampleGames } from "./init-games";
 import { initializeAchievements, initializeSubscriptionPlans } from "./init-achievements";
 import { startRateLimitCleanup } from "./auth";
 import { applyStartupMigrations } from "./startup-migrations";
-import { stripeConnectorBootLine } from "./stripe-connector-env";
+import { logStripeStartup } from "./stripe.server";
 import { backgroundJobsBootLine } from "./background-jobs-gate";
 import { backgroundJobs } from "./background-jobs-registry";
 import { installShutdownHandlers } from "./shutdown";
@@ -32,8 +32,8 @@ async function start() {
   // One line saying whether the in-process timers run in this process, and why.
   logger.info(backgroundJobsBootLine(process.env));
 
-  // Which Stripe connection (test or live keys) this process will ask for. A bad STRIPE_CONNECTOR_ENV stops the boot.
-  logger.info(stripeConnectorBootLine(process.env));
+  // Missing Stripe keys stop the boot; otherwise log test/live and the account id (never the keys).
+  await logStripeStartup((line) => logger.info(line));
 
   setupStorageRoutes(app);
   const httpServer = registerRoutes(app);

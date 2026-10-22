@@ -1,63 +1,49 @@
 import Stripe from "stripe";
-import { resolveStripeConnectorEnvironment } from "./stripe-connector-env";
 
-let connectionSettings: any;
+const STRIPE_API_VERSION = "2025-11-17.clover";
 
+// Keys come from environment variables (Replit Secrets). Names only in errors, never values.
 async function getCredentials() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY
-    ? "repl " + process.env.REPL_IDENTITY
-    : process.env.WEB_REPL_RENEWAL
-      ? "depl " + process.env.WEB_REPL_RENEWAL
-      : null;
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+  const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY?.trim();
 
-  if (!xReplitToken) {
-    throw new Error("X_REPLIT_TOKEN not found for repl/depl");
-  }
-
-  const connectorName = "stripe";
-  // Chosen at runtime (STRIPE_CONNECTOR_ENV, else the deployment/workspace default). Never falls back.
-  const { environment: targetEnvironment, source } = resolveStripeConnectorEnvironment();
-
-  const url = new URL(`https://${hostname}/api/v2/connection`);
-  url.searchParams.set("include_secrets", "true");
-  url.searchParams.set("connector_names", connectorName);
-  url.searchParams.set("environment", targetEnvironment);
-
-  const response = await fetch(url.toString(), {
-    headers: {
-      Accept: "application/json",
-      X_REPLIT_TOKEN: xReplitToken,
-    },
-  });
-
-  const data: any = await response.json().catch(() => null);
-  connectionSettings = data?.items?.[0];
-  const settings = connectionSettings?.settings;
-
-  if (!settings?.publishable || !settings?.secret) {
-    // Names and counts only, never key values.
-    console.error(
-      `[stripe] No usable "${targetEnvironment}" Stripe connection (environment chosen by ${source}; ` +
-        `connector HTTP ${response.status}, ${Array.isArray(data?.items) ? data.items.length : "no"} connection(s) returned, ` +
-        `publishable key ${settings?.publishable ? "present" : "missing"}, secret key ${settings?.secret ? "present" : "missing"}). ` +
-        `Not falling back to another environment. Fix the Stripe integration for "${targetEnvironment}" in Replit, ` +
-        `or set STRIPE_CONNECTOR_ENV deliberately.`,
+  const missing = [
+    !secretKey && "STRIPE_SECRET_KEY",
+    !publishableKey && "STRIPE_PUBLISHABLE_KEY",
+  ].filter(Boolean);
+  if (!secretKey || !publishableKey) {
+    throw new Error(
+      `Missing required Stripe environment variable(s): ${missing.join(", ")}. ` +
+        `Set them in Replit Secrets (Tools > Secrets).`,
     );
-    throw new Error(`Stripe ${targetEnvironment} connection not found`);
   }
 
-  return {
-    publishableKey: connectionSettings.settings.publishable,
-    secretKey: connectionSettings.settings.secret,
-  };
+  return { publishableKey, secretKey };
+}
+
+export function stripeKeyMode(secretKey: string): "test" | "live" | "unknown" {
+  if (secretKey.startsWith("sk_test_")) return "test";
+  if (secretKey.startsWith("sk_live_")) return "live";
+  return "unknown";
+}
+
+/**
+ * Startup check: fails if either key is missing, then logs whether the keys are test or live and the
+ * Stripe account id. The keys themselves are never logged.
+ */
+export async function logStripeStartup(log: (line: string) => void = console.log) {
+  const { secretKey } = await getCredentials();
+  const mode = stripeKeyMode(secretKey);
+  const stripe = await getUncachableStripeClient();
+  const account = await stripe.accounts.retrieveCurrent();
+  log(`Stripe: ${mode} keys, account ${account.id}`);
 }
 
 export async function getUncachableStripeClient() {
   const { secretKey } = await getCredentials();
 
   return new Stripe(secretKey, {
-    apiVersion: "2025-11-17.clover",
+    apiVersion: STRIPE_API_VERSION,
   });
 }
 

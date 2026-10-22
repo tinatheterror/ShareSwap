@@ -23,9 +23,19 @@ import {
 
 describe("deposit-copy", () => {
   it("formats money", () => {
-    expect(formatMoney(105)).toBe("$105.00");
+    expect(formatMoney(105)).toBe("$105");
     expect(formatMoney("75.5")).toBe("$75.50");
-    expect(formatMoney(null)).toBe("$0.00");
+    expect(formatMoney(null)).toBe("$0");
+  });
+
+  it("says US$ only for a request still charged in USD", () => {
+    expect(formatMoney(105, "usd")).toBe("US$105");
+    expect(formatMoney(105, "cad")).toBe("$105");
+    expect(holdReleasedBody(105, "usd")).toBe("US$105 deposit hold released. You were not charged.");
+    expect(claimResolvedOwnerLine({ refundedAmount: 70, retainedAmount: 30, currency: "usd" })).toBe(
+      "Claim resolved · US$70 refunded · US$30 awarded to owner",
+    );
+    expect(depositPhaseCopy({ phase: "hold", amount: 42, currency: "usd" }).description).toBe("US$42 deposit hold. Not charged unless a claim is opened.");
   });
 
   it("derives phase from legacy status", () => {
@@ -51,26 +61,26 @@ describe("deposit-copy", () => {
     const released = depositPhaseCopy({ status: "released", amount: 105 });
     expect(released.label).toBe("Hold released");
     expect(released.description).not.toMatch(/refund/i);
-    expect(released.description).toBe("$105.00 deposit hold released. You were not charged.");
+    expect(released.description).toBe("$105 deposit hold released. You were not charged.");
   });
 
   it("holds copy", () => {
     expect(holdPendingNotice(105)).toContain("deposit hold, not a charge");
-    expect(holdReleaseExplainer(105)).toContain("$105.00 hold is released");
-    expect(holdReleasedBody(105)).toBe("$105.00 deposit hold released. You were not charged.");
+    expect(holdReleaseExplainer(105)).toContain("$105 hold is released");
+    expect(holdReleasedBody(105)).toBe("$105 deposit hold released. You were not charged.");
   });
 
   it("claim opened copy depends on the deposit mode", () => {
     // Hold mode: the hold is charged while the claim is reviewed.
     expect(claimOpenedHeadline("authorization")).toBe("Security deposit charged");
     expect(claimOpenedHeadline()).toBe("Security deposit charged");
-    expect(claimOpenedChargedLine(105, "4242", "authorization")).toBe("$105.00 has been charged to your card •••• 4242.");
+    expect(claimOpenedChargedLine(105, "4242", "authorization")).toBe("$105 has been charged to your card •••• 4242.");
     expect(claimOpenedExplainer("authorization")).toBe("Your deposit hold was charged while the claim is reviewed.");
     expect(claimReviewWhy("authorization").title).toBe("Why was I charged?");
     expect(claimOpenedOwnerLine(105, "authorization")).toBe("Claim opened. Deposit charged while it’s reviewed.");
     // Charge mode: already charged, so it is held while the claim is reviewed.
     expect(claimOpenedHeadline("refundable_charge")).toBe("Security deposit held");
-    expect(claimOpenedChargedLine(105, "4242", "refundable_charge")).toBe("$105.00 is held while the claim is reviewed.");
+    expect(claimOpenedChargedLine(105, "4242", "refundable_charge")).toBe("$105 is held while the claim is reviewed.");
     expect(claimOpenedExplainer("refundable_charge")).toBe("Your deposit was already charged. It stays held while the claim is reviewed.");
     expect(claimReviewWhy("refundable_charge").title).toBe("Why is my deposit held?");
     expect(claimOpenedOwnerLine(105, "refundable_charge")).toBe("Claim opened. Deposit held while it’s reviewed.");
@@ -80,15 +90,15 @@ describe("deposit-copy", () => {
   });
 
   it("claim strings", () => {
-    expect(claimOpenedChargedLine(105, "4242")).toBe("$105.00 has been charged to your card •••• 4242.");
+    expect(claimOpenedChargedLine(105, "4242")).toBe("$105 has been charged to your card •••• 4242.");
     expect(claimOpenedOwnerLine(105)).toBe("Claim opened. Deposit charged while it’s reviewed.");
     expect(claimOpenedOwnerLine(105, "refundable_charge")).toBe("Claim opened. Deposit held while it’s reviewed.");
-    expect(claimRefundedLine(105, "4242")).toBe("$105.00 refunded to your card •••• 4242.");
+    expect(claimRefundedLine(105, "4242")).toBe("$105 refunded to your card •••• 4242.");
     expect(claimResolvedOwnerLine({ refundedAmount: 75, retainedAmount: 30 })).toBe(
-      "Claim resolved · $75.00 refunded · $30.00 awarded to owner",
+      "Claim resolved · $75 refunded · $30 awarded to owner",
     );
-    expect(claimResolvedOwnerLine({ refundedAmount: 100, retainedAmount: 0 })).toBe("Claim resolved · $100.00 refunded");
-    expect(claimResolvedOwnerLine({ refundedAmount: 0, retainedAmount: 100 })).toBe("Claim resolved · $100.00 awarded to owner");
+    expect(claimResolvedOwnerLine({ refundedAmount: 100, retainedAmount: 0 })).toBe("Claim resolved · $100 refunded");
+    expect(claimResolvedOwnerLine({ refundedAmount: 0, retainedAmount: 100 })).toBe("Claim resolved · $100 awarded to owner");
   });
 
   it("outcomes", () => {

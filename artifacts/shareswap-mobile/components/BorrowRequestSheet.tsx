@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { PRICES_IN_CAD_NOTE } from "@/lib/money";
 import {
   ActivityIndicator,
   Alert,
@@ -445,6 +446,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
                     <Text style={[s.micro, { color: colors.mutedForeground }]}>
                       {holdPendingNote(depositCalc.finalDeposit)} {NOT_CHARGED_UNLESS_CLAIM}
                     </Text>
+                    <Text testID="text-prices-in-cad" style={[s.micro, { color: colors.mutedForeground }]}>{PRICES_IN_CAD_NOTE}</Text>
 
                   </View>
                 )}

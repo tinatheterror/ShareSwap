@@ -157,6 +157,8 @@ interface Lifecycle {
   role: "owner" | "borrower";
   actions: string[];
   deposit: {
+    /** The currency the request was charged in (absent on older servers: the platform currency). */
+    currency?: string | null;
     mode: string | null;
     status: string | null;
     amount: string | number | null;
@@ -827,10 +829,10 @@ export default function ChatScreen() {
             {isBorrower && (depositPhase === "charged" || depositPhase === "resolved") && !depositIsRefundable && (
               <View testID="claim-deposit-summary" style={{ gap: 3, paddingBottom: 6, marginBottom: 2, borderBottomWidth: 1, borderBottomColor: "#c7d2fe" }}>
                 <Text style={[card.lifecycleTitle, { color: "#3730a3" }]}>{CLAIM_REVIEW_TOP.heading}</Text>
-                <Text style={[card.lifecycleTitle, { color: "#b91c1c", fontSize: 15 }]}>{claimReviewChargedLabel(depositInfo?.chargedAmount ?? depositInfo?.amount)}</Text>
+                <Text style={[card.lifecycleTitle, { color: "#b91c1c", fontSize: 15 }]}>{claimReviewChargedLabel(depositInfo?.chargedAmount ?? depositInfo?.amount, depositInfo?.currency)}</Text>
                 {depositPhase === "resolved" && (
                   <Text style={[card.lifecycleText, { color: "#4338ca" }]}>
-                    Refunded: {formatMoney(depositInfo?.refundedAmount ?? 0)} · Awarded to owner: {formatMoney(depositInfo?.retainedAmount ?? 0)}
+                    Refunded: {formatMoney(depositInfo?.refundedAmount ?? 0, depositInfo?.currency)} · Awarded to owner: {formatMoney(depositInfo?.retainedAmount ?? 0, depositInfo?.currency)}
                   </Text>
                 )}
                 <Text style={[card.lifecycleTitle, { color: "#3730a3", marginTop: 4 }]}>{CLAIM_REVIEW_TOP.whyTitle}</Text>
@@ -847,11 +849,11 @@ export default function ChatScreen() {
               <Text testID="claim-owner-deposit-state" style={[card.lifecycleText, { color: "#4338ca", fontFamily: "Inter_600SemiBold" }]}>
                 {depositPhase === "charged"
                   ? claimOpenedOwnerLine(depositInfo?.chargedAmount ?? depositInfo?.amount)
-                  : claimResolvedOwnerLine(depositInfo?.refundedAmount ?? 0, depositInfo?.retainedAmount ?? 0)}
+                  : claimResolvedOwnerLine(depositInfo?.refundedAmount ?? 0, depositInfo?.retainedAmount ?? 0, depositInfo?.currency)}
               </Text>
             )}
             <Text style={[card.lifecycleTitle, { color: "#3730a3" }]}>Claim #{claim.id} · {claim.status.replace(/_/g, " ")}</Text>
-            <Text style={[card.lifecycleText, { color: "#4338ca" }]}>{claim.claimType.replace(/_/g, " ")} · Requested ${Number(claim.requestedAmount).toFixed(2)}{claim.approvedAmount != null ? ` · Approved $${Number(claim.approvedAmount).toFixed(2)}` : ""}</Text>
+            <Text style={[card.lifecycleText, { color: "#4338ca" }]}>{claim.claimType.replace(/_/g, " ")} · Requested {formatMoney(claim.requestedAmount, depositInfo?.currency)}{claim.approvedAmount != null ? ` · Approved ${formatMoney(claim.approvedAmount, depositInfo?.currency)}` : ""}</Text>
             <Text style={[card.lifecycleText, { color: "#4338ca" }]}>{claim.reason}</Text>
             {claim.responseDeadlineAt && claim.status === "CUSTOMER_RESPONSE_PENDING" && <Text style={[card.lifecycleText, { color: "#4338ca" }]}>Respond by {fmtDate(claim.responseDeadlineAt)}</Text>}
             {claim.decisionReason && <Text style={[card.lifecycleText, { color: "#4338ca" }]}>Decision note: {claim.decisionReason}</Text>}

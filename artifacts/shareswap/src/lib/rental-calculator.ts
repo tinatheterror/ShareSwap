@@ -1,3 +1,5 @@
+import { formatMoney } from "./money";
+
 // Rental Rate and Security Deposit Calculator
 
 // Category-based weekly rental rate percentages (of item value)
@@ -120,7 +122,7 @@ export function validateRentalDeposit(
 }
 
 export function formatCurrency(amount: number): string {
-  return `$${amount.toLocaleString()}`;
+  return formatMoney(amount);
 }
 
 export function getCategoryRateInfo(category: string): { percentage: number; description: string } {

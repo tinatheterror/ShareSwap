@@ -47,6 +47,7 @@ interface ItemRequest {
   deliveryMethod: string;
   depositMethod: string;
   trustDepositAmount: string | null;
+paymentCurrency?: string | null;
   trustDepositBaseAmount: string | null;
   trustDiscountPercentage: number | null;
   shareCoinAmount: string | null;
@@ -1072,7 +1073,7 @@ export default function RequestsPage() {
                                     <Shield className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
                                     <p className="text-xs text-red-600">
                                       {request.depositStatus === "captured"
-                                        ? `Your ${formatMoney(request.trustDepositAmount)} security deposit was charged because a claim was opened. It may be refunded depending on the outcome. We'll contact both parties within 24 hours.`
+                                        ? `Your ${formatMoney(request.trustDepositAmount, request.paymentCurrency)} security deposit was charged because a claim was opened. It may be refunded depending on the outcome. We'll contact both parties within 24 hours.`
                                         : "Our team is reviewing this claim. We'll contact both parties within 24 hours."}
                                     </p>
                                   </div>

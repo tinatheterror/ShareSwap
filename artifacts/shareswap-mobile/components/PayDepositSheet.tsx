@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useCallback } from "react";
+import { PRICES_IN_CAD_NOTE } from "@/lib/money";
 import {
   ActivityIndicator,
   Modal,
@@ -391,6 +392,7 @@ export function PayDepositSheet({
                 <Text style={[s.breakdownNote, { color: colors.mutedForeground }]}>
                   {holdReleaseExplainer(depositAmount.toFixed(2))} {HOLD_COVERAGE_NOTE}
                 </Text>
+                <Text testID="text-prices-in-cad" style={[s.breakdownNote, { color: colors.mutedForeground }]}>{PRICES_IN_CAD_NOTE}</Text>
               </View>
 
               {/* ShareCoins note */}

@@ -6,6 +6,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { PRICES_IN_CAD_NOTE } from "@/lib/money";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -668,6 +669,7 @@ export function ItemRequestForm({
                               Authorization hold only
                             </p>
                           </div>
+                          <p className="text-right text-[10px] text-gray-400" data-testid="text-prices-in-cad">{PRICES_IN_CAD_NOTE}</p>
                         </div>
                       ) : (
                         <div className="space-y-1 text-xs text-gray-500">

@@ -407,7 +407,7 @@ export default function MyBalanceScreen() {
                 />
               </View>
               <Text style={[styles.inputHint, { color: colors.mutedForeground }]}>
-                Available: ${available.toFixed(2)} · Minimum: $10.00
+                Available: ${available.toFixed(2)} · Minimum: $10.00 · Paid out in CAD
               </Text>
               <Pressable onPress={() => setPayoutAmount(available.toFixed(2))}>
                 <Text style={styles.fullBalanceLink}>Withdraw full balance</Text>

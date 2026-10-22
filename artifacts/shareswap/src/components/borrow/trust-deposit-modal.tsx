@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PRICES_IN_CAD_NOTE } from "@/lib/money";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
@@ -336,6 +337,8 @@ export function TrustDepositModal({
                 <span className="font-semibold text-gray-900">${depositAmount.toFixed(2)}</span>
               </div>
             </div>
+
+            <p className="text-center text-[11px] text-gray-400 mb-2" data-testid="text-prices-in-cad">{PRICES_IN_CAD_NOTE}</p>
 
             <div className="text-center text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3 space-y-1" data-testid="text-deposit-hold-explainer">
               <p><span className="font-medium">{holdPendingNotice(depositAmount)}</span></p>

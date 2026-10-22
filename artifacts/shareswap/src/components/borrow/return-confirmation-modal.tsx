@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { formatMoney } from "@/lib/money";
 import {
   Dialog,
   DialogContent,
@@ -262,7 +263,7 @@ export function ReturnConfirmationModal({
                   Remember to collect your deposit back in person
                 </div>
                 <p className="text-sm text-amber-600 mt-1">
-                  {`Your $${depositAmount} deposit was paid in person. Make sure the owner returns it to you when you hand back the item.`}
+                  {`Your ${formatMoney(depositAmount)} deposit was paid in person. Make sure the owner returns it to you when you hand back the item.`}
                 </p>
               </div>
             ) : null}

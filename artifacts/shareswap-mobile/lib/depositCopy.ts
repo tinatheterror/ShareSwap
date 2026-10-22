@@ -8,12 +8,16 @@
  *  - resolved  claim resolved after a charge (charged / refunded / retained)
  */
 
+import { formatMoney } from "./money";
+
 export type DepositPhase = "none" | "hold" | "charged" | "released" | "resolved";
 
 export interface DepositLike {
   mode?: string | null;
   status?: string | null;
   amount?: number | string | null;
+  /** The currency the request was charged in; absent means the platform currency. */
+  currency?: string | null;
   phase?: string | null;
   chargedAmount?: number | string | null;
   refundedAmount?: number | string | null;
@@ -22,12 +26,7 @@ export interface DepositLike {
   cardBrand?: string | null;
 }
 
-export function formatMoney(value: number | string | null | undefined): string {
-  const n = Number(value);
-  if (value == null || value === "" || !Number.isFinite(n)) return "$0";
-  const rounded = Math.round(n * 100) / 100;
-  return Number.isInteger(rounded) ? `$${rounded}` : `$${rounded.toFixed(2)}`;
-}
+export { formatMoney };
 
 function num(v: number | string | null | undefined): number | null {
   if (v == null || v === "") return null;
@@ -77,16 +76,16 @@ export function depositPhaseLabel(phase: DepositPhase, refundable = false): stri
 
 export function depositPhaseDescription(
   phase: DepositPhase,
-  opts: { amount?: number | string | null; refundable?: boolean; chargedAmount?: number | string | null } = {},
+  opts: { amount?: number | string | null; refundable?: boolean; chargedAmount?: number | string | null; currency?: string | null } = {},
 ): string {
-  const amt = formatMoney(opts.amount);
+  const amt = formatMoney(opts.amount, opts.currency);
   switch (phase) {
     case "hold":
       return `${amt} deposit hold. Not charged unless a claim is opened.`;
     case "charged":
       return opts.refundable
         ? `${amt} refundable deposit charge. Refunded after the item is returned in good condition.`
-        : `${formatMoney(opts.chargedAmount ?? opts.amount)} charged because a claim was opened. It may be refunded depending on the outcome.`;
+        : `${formatMoney(opts.chargedAmount ?? opts.amount, opts.currency)} charged because a claim was opened. It may be refunded depending on the outcome.`;
     case "released":
       return `${amt} deposit hold released. You were not charged.`;
     case "resolved":
@@ -102,7 +101,7 @@ export function depositPhaseDescription(
  */
 export function depositSummaryLine(deposit: DepositLike | null | undefined, fallbackAmount?: number | null): string | null {
   const amount = num(deposit?.amount) ?? fallbackAmount ?? null;
-  return amount == null ? null : `Deposit: ${formatMoney(amount)}`;
+  return amount == null ? null : `Deposit: ${formatMoney(amount, deposit?.currency)}`;
 }
 
 // ── Hold explainer constants / builders ─────────────────────────────────────
@@ -110,33 +109,33 @@ export const HOLD_NOT_A_CHARGE = "This is a deposit hold, not a charge.";
 export const NOT_CHARGED_UNLESS_CLAIM = "Not charged unless a claim is opened.";
 export const HOLD_COVERAGE_NOTE = "The hold covers your return date plus one extra day for return processing.";
 
-export function holdTitle(amount: number | string | null | undefined): string {
-  return `${formatMoney(amount)} deposit hold`;
+export function holdTitle(amount: number | string | null | undefined, currency?: string | null): string {
+  return `${formatMoney(amount, currency)} deposit hold`;
 }
-export function holdPendingNote(amount: number | string | null | undefined): string {
-  return `${HOLD_NOT_A_CHARGE} Your card may show ${formatMoney(amount)} as pending or temporarily unavailable.`;
+export function holdPendingNote(amount: number | string | null | undefined, currency?: string | null): string {
+  return `${HOLD_NOT_A_CHARGE} Your card may show ${formatMoney(amount, currency)} as pending or temporarily unavailable.`;
 }
-export function holdReleaseExplainer(amount: number | string | null | undefined): string {
-  return `After the item is returned normally, the ${formatMoney(amount)} hold is released. If a claim is opened, the deposit may be charged while the claim is reviewed.`;
+export function holdReleaseExplainer(amount: number | string | null | undefined, currency?: string | null): string {
+  return `After the item is returned normally, the ${formatMoney(amount, currency)} hold is released. If a claim is opened, the deposit may be charged while the claim is reviewed.`;
 }
-export function holdPlacedMessage(amount: number | string | null | undefined): string {
-  return `Your ${formatMoney(amount)} deposit hold is in place. You have not been charged. ${NOT_CHARGED_UNLESS_CLAIM}`;
+export function holdPlacedMessage(amount: number | string | null | undefined, currency?: string | null): string {
+  return `Your ${formatMoney(amount, currency)} deposit hold is in place. You have not been charged. ${NOT_CHARGED_UNLESS_CLAIM}`;
 }
-export function holdReleasedMessage(amount: number | string | null | undefined): string {
-  return `${formatMoney(amount)} deposit hold released. You were not charged.`;
+export function holdReleasedMessage(amount: number | string | null | undefined, currency?: string | null): string {
+  return `${formatMoney(amount, currency)} deposit hold released. You were not charged.`;
 }
 export const CANCEL_BOOKING_MESSAGE = "Your deposit hold will be released. You will not be charged.";
 
 // ── Claim copy ──────────────────────────────────────────────────────────────
-export function claimOpenedBorrowerCopy(p: { amount: number | string | null | undefined; cardLast4?: string | null; mode?: string | null }) {
+export function claimOpenedBorrowerCopy(p: { amount: number | string | null | undefined; cardLast4?: string | null; mode?: string | null; currency?: string | null }) {
   // A hold is charged when a claim opens; a refundable charge was already charged, so it is held.
   const held = p.mode === "refundable_charge";
   return {
     eyebrow: "Claim opened",
     title: held ? "Security deposit held" : "Security deposit charged",
     body: held
-      ? `${formatMoney(p.amount)} is held while the claim is reviewed.`
-      : `${formatMoney(p.amount)} has been charged to your card${cardSuffix(p.cardLast4)}.`,
+      ? `${formatMoney(p.amount, p.currency)} is held while the claim is reviewed.`
+      : `${formatMoney(p.amount, p.currency)} has been charged to your card${cardSuffix(p.cardLast4)}.`,
     detail: held
       ? "Your deposit was already charged. It stays held while the claim is reviewed."
       : "Your deposit hold was charged while the claim is reviewed.",
@@ -157,8 +156,8 @@ export const CLAIM_REVIEW_TOP = {
   nextTitle: "What happens next?",
   nextBody: "Your claim will be reviewed. If you are found responsible, some or all of the charge may be kept. If you are not responsible, the applicable amount will be refunded.",
 };
-export function claimReviewChargedLabel(amount: number | string | null | undefined): string {
-  return `${formatMoney(amount)} charged`;
+export function claimReviewChargedLabel(amount: number | string | null | undefined, currency?: string | null): string {
+  return `${formatMoney(amount, currency)} charged`;
 }
 
 export type ClaimOutcome = "refunded_full" | "refunded_partial" | "retained_full";
@@ -176,21 +175,23 @@ export function claimResolvedBorrowerCopy(p: {
   retainedAmount: number | string | null | undefined;
   cardLast4?: string | null;
   outcome?: string | null;
+  currency?: string | null;
 }) {
+  const money = (value: number | string | null | undefined) => formatMoney(value, p.currency);
   const charged = num(p.chargedAmount) ?? 0;
   const refunded = num(p.refundedAmount) ?? 0;
   const retained = num(p.retainedAmount) ?? Math.max(0, charged - refunded);
   const outcome = (p.outcome as ClaimOutcome | null | undefined) ?? deriveClaimOutcome(charged, refunded, retained);
   const rows = [
-    { label: "Charged", value: formatMoney(charged) },
-    { label: "Refunded", value: formatMoney(refunded) },
-    { label: "Retained", value: formatMoney(retained) },
+    { label: "Charged", value: money(charged) },
+    { label: "Refunded", value: money(refunded) },
+    { label: "Retained", value: money(retained) },
   ];
   if (outcome === "retained_full" || (outcome === "refunded_partial" && false)) {
     return {
       eyebrow: "Claim resolved",
       title: "Security deposit retained",
-      body: `${formatMoney(retained)} of your ${formatMoney(charged)} security deposit was retained based on the claim outcome.`,
+      body: `${money(retained)} of your ${money(charged)} security deposit was retained based on the claim outcome.`,
       detail: "",
       rows,
     };
@@ -199,15 +200,15 @@ export function claimResolvedBorrowerCopy(p: {
     return {
       eyebrow: "Claim resolved",
       title: "Security deposit partly refunded",
-      body: `${formatMoney(refunded)} refunded to your card${cardSuffix(p.cardLast4)}.`,
-      detail: `${formatMoney(retained)} retained based on the claim outcome. The security deposit was previously charged because a claim was opened.`,
+      body: `${money(refunded)} refunded to your card${cardSuffix(p.cardLast4)}.`,
+      detail: `${money(retained)} retained based on the claim outcome. The security deposit was previously charged because a claim was opened.`,
       rows,
     };
   }
   return {
     eyebrow: "Claim resolved",
     title: "Security deposit refunded",
-    body: `${formatMoney(refunded)} refunded to your card${cardSuffix(p.cardLast4)}.`,
+    body: `${money(refunded)} refunded to your card${cardSuffix(p.cardLast4)}.`,
     detail: "The security deposit was previously charged because a claim was opened. The applicable amount has now been refunded.",
     rows,
   };
@@ -223,10 +224,10 @@ export function claimResolvedCardView(p: { content: string; outcome?: string | n
   };
 }
 
-export function claimResolvedOwnerLine(refunded: number | string | null | undefined, awarded: number | string | null | undefined): string {
+export function claimResolvedOwnerLine(refunded: number | string | null | undefined, awarded: number | string | null | undefined, currency?: string | null): string {
   const parts = ["Claim resolved"];
-  if (Number(refunded) > 0) parts.push(`${formatMoney(refunded)} refunded`);
-  if (Number(awarded) > 0) parts.push(`${formatMoney(awarded)} awarded to owner`);
+  if (Number(refunded) > 0) parts.push(`${formatMoney(refunded, currency)} refunded`);
+  if (Number(awarded) > 0) parts.push(`${formatMoney(awarded, currency)} awarded to owner`);
   return parts.join(" · ");
 }
 

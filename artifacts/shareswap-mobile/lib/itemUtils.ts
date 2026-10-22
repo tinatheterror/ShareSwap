@@ -3,6 +3,8 @@
  * Extracted from ItemCard so they can be unit-tested independently of React Native.
  */
 
+import { formatMoney } from "./money";
+
 export interface ItemLike {
   id?: number;
   name?: string;
@@ -39,9 +41,9 @@ export function coinsCount(item: ItemLike): number {
 /** Return a formatted weekly-price string like "$14/wk", or null if no price. */
 export function weeklyPrice(item: ItemLike): string | null {
   if (item.dollarsPrice && Number(item.dollarsPrice) > 0)
-    return `$${Number(item.dollarsPrice).toFixed(0)}/wk`;
+    return `${formatMoney(Math.round(Number(item.dollarsPrice)))}/wk`;
   if (item.pricePerDay && Number(item.pricePerDay) > 0)
-    return `$${(Number(item.pricePerDay) * 7).toFixed(0)}/wk`;
+    return `${formatMoney(Math.round(Number(item.pricePerDay) * 7))}/wk`;
   return null;
 }
 

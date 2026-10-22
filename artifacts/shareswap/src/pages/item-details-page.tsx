@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatMoney } from "@/lib/money";
 import { Navbar } from "@/components/shared/navbar";
 import { ItemRequestForm } from "@/components/shared/item-request-form";
 import { SwapInventorySelector } from "@/components/swap-inventory-selector";
@@ -251,7 +252,7 @@ export default function ItemDetailsPage() {
                 </Tooltip>
               </TooltipProvider>
             ) : (
-              `$${depositCalc.finalDeposit}`
+              formatMoney(depositCalc.finalDeposit)
             )}
           </p>
           {hasValidReplacementValue(itemReplacementValue) && (

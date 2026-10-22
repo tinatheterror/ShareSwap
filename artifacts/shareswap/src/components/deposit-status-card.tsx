@@ -40,11 +40,13 @@ export function DepositStatusCard({ deposit, role, fallbackRetainedAmount }: Dep
   const refundable = isRefundableChargeMode(deposit.mode);
   const isBorrower = role === "borrower";
   const base = "rounded-lg border p-3 text-xs space-y-1.5";
+  const currency = deposit.currency;
+  const money = (value: number | string | null | undefined) => formatMoney(value, currency);
 
   if (phase === "none") {
     return (
       <div className={`${base} bg-muted/30`} data-testid="deposit-card-none">
-        <p><span className="font-medium">Security deposit:</span> {amount != null ? formatMoney(amount) : "none"}</p>
+        <p><span className="font-medium">Security deposit:</span> {amount != null ? money(amount) : "none"}</p>
       </div>
     );
   }
@@ -53,9 +55,9 @@ export function DepositStatusCard({ deposit, role, fallbackRetainedAmount }: Dep
     return (
       <div className={`${base} border-blue-200 bg-blue-50 text-blue-900`} data-testid="deposit-card-hold">
         <p className="font-semibold">Security deposit</p>
-        <p className="text-sm font-semibold">{formatMoney(amount)} temporary card hold</p>
-        <p>{isBorrower ? holdPendingNotice(amount) : "This is a temporary hold on the borrower's card, not a charge."}</p>
-        <p>{holdReleaseExplainer(amount)}</p>
+        <p className="text-sm font-semibold">{money(amount)} temporary card hold</p>
+        <p>{isBorrower ? holdPendingNotice(amount, currency) : "This is a temporary hold on the borrower's card, not a charge."}</p>
+        <p>{holdReleaseExplainer(amount, currency)}</p>
         <p className="opacity-80">{HOLD_COVERAGE_NOTE} {NOT_CHARGED_UNLESS_CLAIM}</p>
         {deposit.protectionReviewRequired && (
           <p className="font-medium text-amber-800" data-testid="deposit-card-protection-review">
@@ -70,7 +72,7 @@ export function DepositStatusCard({ deposit, role, fallbackRetainedAmount }: Dep
     return (
       <div className={`${base} border-green-200 bg-green-50 text-green-900`} data-testid="deposit-card-released">
         <p className="font-semibold">{holdReleasedTitle()}</p>
-        <p>{holdReleasedBody(amount)}</p>
+        <p>{holdReleasedBody(amount, currency)}</p>
       </div>
     );
   }
@@ -79,7 +81,7 @@ export function DepositStatusCard({ deposit, role, fallbackRetainedAmount }: Dep
     return (
       <div className={`${base} border-teal-200 bg-teal-50 text-teal-900`} data-testid="deposit-card-refundable">
         <p className="font-semibold">Security deposit</p>
-        <p className="text-sm font-semibold">{formatMoney(charged)} refundable deposit charged</p>
+        <p className="text-sm font-semibold">{money(charged)} refundable deposit charged</p>
         <p>{REFUNDABLE_CHARGE_NOTE}</p>
       </div>
     );
@@ -90,7 +92,7 @@ export function DepositStatusCard({ deposit, role, fallbackRetainedAmount }: Dep
       return (
         <div className={`${base} border-red-200 bg-red-50 text-red-900`} data-testid="deposit-card-charged-owner">
           <p className="font-semibold">Security deposit</p>
-          <p className="text-sm font-semibold">{formatMoney(charged)} charged</p>
+          <p className="text-sm font-semibold">{money(charged)} charged</p>
           <p>{claimOpenedOwnerLine(charged, deposit.mode)}</p>
         </div>
       );
@@ -98,7 +100,7 @@ export function DepositStatusCard({ deposit, role, fallbackRetainedAmount }: Dep
     return (
       <div className={`${base} border-red-200 bg-red-50 text-red-900`} data-testid="deposit-card-charged-borrower">
         <p className="font-semibold">Security deposit</p>
-        <p className="text-base font-bold">{formatMoney(charged)} charged</p>
+        <p className="text-base font-bold">{money(charged)} charged</p>
         <div>
           <p className="font-semibold">{claimReviewWhy(deposit.mode).title}</p>
           <p>{claimReviewWhy(deposit.mode).body}</p>
@@ -129,14 +131,14 @@ export function DepositStatusCard({ deposit, role, fallbackRetainedAmount }: Dep
       <p className="text-sm font-semibold">{claimResolvedTitle(outcome)}</p>
       <p>
         {isBorrower
-          ? claimResolvedSummary({ chargedAmount: charged, refundedAmount: refunded, retainedAmount: retained })
-          : claimResolvedOwnerLine({ refundedAmount: refunded, retainedAmount: retained })}
+          ? claimResolvedSummary({ chargedAmount: charged, refundedAmount: refunded, retainedAmount: retained, currency })
+          : claimResolvedOwnerLine({ refundedAmount: refunded, retainedAmount: retained, currency })}
       </p>
       {isBorrower && <p className="opacity-80">{CLAIM_RESOLVED_PREVIOUSLY_CHARGED}</p>}
       <dl className="pt-1 space-y-0.5">
-        <div className="flex justify-between"><dt>Charged</dt><dd className="font-medium">{formatMoney(charged)}</dd></div>
-        <div className="flex justify-between"><dt>Refunded</dt><dd className="font-medium">{formatMoney(refunded)}</dd></div>
-        <div className="flex justify-between"><dt>Awarded to owner</dt><dd className="font-medium">{formatMoney(retained)}</dd></div>
+        <div className="flex justify-between"><dt>Charged</dt><dd className="font-medium">{money(charged)}</dd></div>
+        <div className="flex justify-between"><dt>Refunded</dt><dd className="font-medium">{money(refunded)}</dd></div>
+        <div className="flex justify-between"><dt>Awarded to owner</dt><dd className="font-medium">{money(retained)}</dd></div>
       </dl>
     </div>
   );

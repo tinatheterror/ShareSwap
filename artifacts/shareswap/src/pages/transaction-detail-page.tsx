@@ -46,6 +46,7 @@ interface TransactionDetail {
   termsDeclinedAt: string | null;
   counterProposedAt: string | null;
   trustDepositAmount: string | null;
+paymentCurrency?: string | null;
   trustDepositBaseAmount: string | null;
   trustDiscountPercentage: number | null;
   depositStatus: string | null;
@@ -190,7 +191,7 @@ function buildTimeline(tx: TransactionDetail): TimelineEvent[] {
       icon: <Lock className="h-4 w-4 text-white" />,
       iconBg: "bg-purple-500",
       metadata: tx.trustDepositAmount
-        ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} deposit hold — not charged`
+        ? `${formatMoney(tx.trustDepositAmount, tx.paymentCurrency)} deposit hold — not charged`
         : undefined,
     });
   }
@@ -566,7 +567,7 @@ export default function TransactionDetailPage() {
                   )}
                   {phaseFromStatus(tx.depositStatus) === "charged" && tx.trustDepositAmount && (
                     <p className="text-xs text-red-600 pb-1" data-testid="text-tx-deposit-charged-note">
-                      {formatMoney(tx.trustDepositAmount)} was charged because a claim was opened. It may be refunded depending on the claim outcome.
+                      {formatMoney(tx.trustDepositAmount, tx.paymentCurrency)} was charged because a claim was opened. It may be refunded depending on the claim outcome.
                     </p>
                   )}
                   {(tx.depositAuthorizedAt || tx.depositReleasedAt) && (

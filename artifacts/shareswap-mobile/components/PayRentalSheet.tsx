@@ -15,6 +15,7 @@
  */
 
 import React, { useState, useCallback } from "react";
+import { PRICES_IN_CAD_NOTE } from "@/lib/money";
 import { holdTitle, holdPendingNote, holdReleaseExplainer, holdPlacedMessage, HOLD_COVERAGE_NOTE, NOT_CHARGED_UNLESS_CLAIM, DEPOSIT_HOLD_FAILURE_NOTE } from "@/lib/depositCopy";
 import {
   ActivityIndicator,
@@ -398,6 +399,7 @@ export function PayRentalSheet({
                     ${totalDueToday.toFixed(2)}
                   </Text>
                 </View>
+                <Text testID="text-prices-in-cad" style={[s.breakdownNote, { color: colors.mutedForeground }]}>{PRICES_IN_CAD_NOTE}</Text>
               </View>
 
               {/* Hold clarification */}
@@ -405,7 +407,7 @@ export function PayRentalSheet({
                 <AlertCircle size={12} color="#2563eb" strokeWidth={2} />
                 <Text style={s.holdNoteText}>
                   <Text style={{ fontFamily: "Inter_600SemiBold" }}>
-                    ${holdTitle(depositAmount.toFixed(2))}
+                    {holdTitle(depositAmount.toFixed(2))}
                   </Text>
                   {". "}{holdPendingNote(depositAmount.toFixed(2))}{" "}{holdReleaseExplainer(depositAmount.toFixed(2))}{" "}{HOLD_COVERAGE_NOTE}{" "}
                   The{" "}

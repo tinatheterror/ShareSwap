@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { PRICES_IN_CAD_NOTE } from "@/lib/money";
 import {
   Dialog,
   DialogContent,
@@ -207,6 +208,7 @@ function BreakdownRows({ rentalPrice, rentalSubtotal, discountPct, discountAmoun
         <span className="text-gray-900">Charged today</span>
         <span className="text-gray-900 text-base font-bold">${totalChargedToday.toFixed(2)}</span>
       </div>
+      <p className="text-right text-[10px] text-gray-400" data-testid="text-prices-in-cad">{PRICES_IN_CAD_NOTE}</p>
     </div>
   );
 }

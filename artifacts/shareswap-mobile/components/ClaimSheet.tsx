@@ -87,7 +87,7 @@ export function ClaimSheet({ visible, onClose, onSubmit, isPending, depositAmoun
           <TextInput testID="claim-reason" multiline value={reason} onChangeText={setReason} placeholder="Describe the issue and relevant return details…" placeholderTextColor={colors.mutedForeground}
             style={[styles.input, styles.notes, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]} />
           <Text style={[styles.label, { color: colors.foreground }]}>Amount requested</Text>
-          <TextInput testID="claim-requested-amount" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder={`Up to $${maximum.toFixed(2)}`} placeholderTextColor={colors.mutedForeground}
+          <TextInput testID="claim-requested-amount" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder={`Up to ${formatMoney(maximum)}`} placeholderTextColor={colors.mutedForeground}
             style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]} />
           <Text style={[styles.help, { color: requested > maximum ? "#dc2626" : colors.mutedForeground }]}>Maximum claim amount: ${maximum.toFixed(2)}</Text>
           <Text style={[styles.label, { color: colors.foreground }]}>Evidence (optional)</Text>

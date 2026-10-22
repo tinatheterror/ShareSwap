@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PRICES_IN_CAD_NOTE } from "@/lib/money";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,7 +142,7 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
               />
             </div>
             <p className="text-xs text-gray-400">
-              Addresses are shared securely with Uber Direct only. Typical delivery cost is $10–$20.
+              Addresses are shared securely with Uber Direct only. Typical delivery cost is $10–$20. {PRICES_IN_CAD_NOTE}.
             </p>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>

@@ -1,3 +1,5 @@
+import { formatMoney } from "./money";
+
 // Trust-Based Security Deposit Calculator
 
 // Tier-based deposit percentages
@@ -96,5 +98,5 @@ export function calculateSecurityDeposit(
 }
 
 export function formatDeposit(amount: number): string {
-  return `$${amount.toLocaleString()}`;
+  return formatMoney(amount);
 }

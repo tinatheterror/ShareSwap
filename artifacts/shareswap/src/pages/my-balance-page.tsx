@@ -241,7 +241,7 @@ export default function MyBalancePage() {
                     step="0.01"
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Available: ${available.toFixed(2)} · Minimum: $10.00</p>
+                <p className="text-xs text-gray-500 mt-1">Available: ${available.toFixed(2)} · Minimum: $10.00 · Paid out in CAD</p>
               </div>
               <Button variant="link" className="p-0 h-auto text-sm text-[#0BB88C]" onClick={() => setPayoutAmount(available.toFixed(2))}>
                 Withdraw full balance

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { PRICES_IN_CAD_NOTE } from "@/lib/money";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -365,6 +366,10 @@ export default function SubscriptionPage() {
                           )}
                         </p>
                       </div>
+
+                      {tier !== "free" && (
+                        <p className="text-[11px] text-slate-400 -mt-2 mb-3" data-testid={`text-prices-in-cad-${tier}`}>{PRICES_IN_CAD_NOTE}</p>
+                      )}
 
                       {/* Features */}
                       <ul className="space-y-2 mb-4 flex-1">

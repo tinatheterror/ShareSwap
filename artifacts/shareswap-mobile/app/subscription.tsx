@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { PRICES_IN_CAD_NOTE } from "@/lib/money";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -400,6 +401,7 @@ export default function SubscriptionScreen() {
                         <Text style={[s.tierName, { color: colors.foreground }]}>{p.name}</Text>
                         <Text style={[s.tierNote, { color: colors.mutedForeground }]}>
                           {tier === "free" ? "Free forever" : tier === "member" ? "$4.99 / month" : "$9.99 / month"}
+                          {tier !== "free" ? ` · ${PRICES_IN_CAD_NOTE}` : ""}
                         </Text>
                       </View>
                       <Text style={[s.tierPrice, { color: tier === "free" ? "#475569" : colors.foreground }]}>

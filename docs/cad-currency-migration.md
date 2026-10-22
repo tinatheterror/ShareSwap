@@ -1,8 +1,27 @@
 # Plan: charge everything in CAD
 
-Status: plan only, no code. Today every charge to a borrower is created in **USD**, while payout transfers, the
-private-courier fee and the Stripe Connect accounts (country `CA`) are **CAD**. The wallet adds up USD earnings and
-pays the same number out as CAD. This plan moves all charges to CAD so one currency runs end to end.
+Status: **code implemented** (see "What shipped" below). Still to do by hand: run the schema SQL, create CAD subscription
+Prices in Stripe, and decide on the wallet and existing-subscriber questions further down. The sections after "What shipped"
+are the original plan and still describe the reasoning.
+
+## What shipped
+
+- `PLATFORM_CURRENCY = "cad"` in `lib/db/src/currency.ts` is the only place a charge currency is written for new money. Every
+  PaymentIntent create (rental hold, refundable deposit, rental charge, borrow hold, platform fee, private courier fee) and the
+  wallet payout transfer read it, or the request's own record. A test fails if `currency: "usd" | "cad"` appears in API source.
+- `item_requests.payment_currency` (`lib/db/scripts/0011_payment_currency.sql`, existing rows `'usd'`) records the currency of the
+  request's Stripe objects. A request with no PaymentIntent yet is stamped with the platform currency before its first one is
+  created; a request that already has one (deposit hold attempt, deposit, previous hold, or platform fee) keeps what it has, so a
+  USD request in progress holds, captures, refunds and releases in USD. `request_refunds.currency` is written from the request.
+- `renewDepositHold` is permanently disabled (its body is commented out), so there is no renewal path to change today; if it is ever
+  restored it must create the replacement in `recordCurrency(request)`.
+- Display: one money format in both apps and the server text (`lib/money.ts` on web and mobile, `formatMoney` in the server's
+  `deposit-copy.ts`): `$20`, `$20.50`, `$1,250`; checkout lines use `$20.00`. Amounts are Canadian dollars with a bare `$`, and
+  "Prices in CAD" is said once where money is collected (deposit and rental checkout, subscription plans) plus "Paid out in CAD"
+  on the wallet. Only a request still charged in USD says `US$`.
+- Not covered: server-built notification and chat sentences for a USD request in progress still say `$`; they stop mattering once
+  the USD requests drain. A checkout started on an unpaid request that already has a USD hold attempt charges USD under a
+  "Prices in CAD" note; that window is the length of one hold attempt.
 
 ## What is in USD today
 

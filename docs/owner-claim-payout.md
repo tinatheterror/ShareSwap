@@ -65,9 +65,9 @@ Credit inside the existing settlement transaction (`finalizeApprovedSettlement`)
 3. The same transaction writes the notification and the chat lines (section 4), so the owner never sees a stamp
    without money behind it.
 
-**Currency.** Deposits, holds and rental charges are created in **USD**; payout transfers and Connect accounts are
-**CAD**. The wallet adds and pays out the same number in both. Decide the wallet currency before awards go live
-(either create charges in CAD, or hold a USD wallet and convert at withdrawal) and store it on the ledger row.
+**Currency.** New deposits, holds and rental charges are created in **CAD** (`PLATFORM_CURRENCY`), like payout transfers and
+Connect accounts, so a wallet award and its payout are the same currency. Requests that were already charged in USD finish in USD
+(`item_requests.payment_currency`). Store the currency on the wallet transaction row when it is built.
 
 ## 4. Payout setup and the award prompt
 

@@ -43,7 +43,7 @@ async function bundle(entry: string, outName: string, outDir: string) {
     format: "esm",
     logLevel: "silent",
     // Like build.mjs: everything is bundled (a one-file server) except a few optional native packages.
-    external: ["pg-native", "*.node", "bufferutil", "utf-8-validate", "sharp", "nodemailer", "@aws-sdk/*", "stripe-replit-sync", "@replit/object-storage", "handlebars", "@google-cloud/*", "@google/*", "googleapis", "playwright", "puppeteer", "puppeteer-core"],
+    external: ["pg-native", "*.node", "bufferutil", "utf-8-validate", "sharp", "nodemailer", "@aws-sdk/*", "@replit/object-storage", "handlebars", "@google-cloud/*", "@google/*", "googleapis", "playwright", "puppeteer", "puppeteer-core"],
     banner: { js: "import { createRequire as __cr } from 'node:module';\nglobalThis.require = __cr(import.meta.url);" },
   });
   return outfile;

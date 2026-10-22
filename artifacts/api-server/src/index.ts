@@ -32,8 +32,8 @@ async function start() {
   // One line saying whether the in-process timers run in this process, and why.
   logger.info(backgroundJobsBootLine(process.env));
 
-  // Missing Stripe keys stop the boot; otherwise log test/live and the account id (never the keys).
-  await logStripeStartup((line) => logger.info(line));
+  // Missing Stripe keys stop the boot; a failed account lookup only warns. Otherwise log test/live and the account id (never the keys).
+  await logStripeStartup((line) => logger.info(line), (line) => logger.warn(line));
 
   setupStorageRoutes(app);
   const httpServer = registerRoutes(app);

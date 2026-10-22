@@ -28,15 +28,25 @@ export function stripeKeyMode(secretKey: string): "test" | "live" | "unknown" {
 }
 
 /**
- * Startup check: fails if either key is missing, then logs whether the keys are test or live and the
- * Stripe account id. The keys themselves are never logged.
+ * Startup check. Missing keys throw (the boot stops). Otherwise logs whether the keys are test or live
+ * and the Stripe account id (never the keys). If Stripe can't be reached or rejects the lookup, it
+ * warns and the boot continues.
  */
-export async function logStripeStartup(log: (line: string) => void = console.log) {
+export async function logStripeStartup(
+  log: (line: string) => void = console.log,
+  warn: (line: string) => void = console.warn,
+  getClient: () => Promise<Pick<Stripe, "accounts">> = getUncachableStripeClient,
+) {
   const { secretKey } = await getCredentials();
   const mode = stripeKeyMode(secretKey);
-  const stripe = await getUncachableStripeClient();
-  const account = await stripe.accounts.retrieveCurrent();
-  log(`Stripe: ${mode} keys, account ${account.id}`);
+  try {
+    const stripe = await getClient();
+    const account = await stripe.accounts.retrieveCurrent();
+    log(`Stripe: ${mode} keys, account ${account.id}`);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    warn(`Stripe: could not verify account at startup (${mode} keys): ${reason}`);
+  }
 }
 
 export async function getUncachableStripeClient() {

@@ -262,6 +262,27 @@ test("a cancel records each refund and release; a card refund records the fee St
   );
 });
 
+test("every ledger row carries the request's own currency: USD for a request charged in USD, CAD for one charged in CAD", async () => {
+  const owner = await newUser("owner");
+  const borrower = await newUser("borrower");
+  const usd = await newRequest(owner, borrower, withHold({ platformFeeChargeId: "pi_platform_fee", paymentCurrency: "usd" }));
+  const cad = await newRequest(owner, borrower, withHold({ platformFeeChargeId: "pi_platform_fee_cad", depositPaymentIntentId: "pi_deposit_hold_cad", paymentCurrency: "cad" }));
+  const refundable = await newRequest(owner, borrower, withHold({
+    depositMode: "refundable_charge", depositStatus: "held", depositPaymentIntentId: "pi_refundable_usd", paymentCurrency: "usd",
+  }));
+  const stripe = ledgerStripe({ refundAmounts: { pi_platform_fee: 350, pi_platform_fee_cad: 350, pi_refundable_usd: 4200 } });
+  stripe.intentStatus.set("pi_refundable_usd", "succeeded");
+
+  for (const id of [usd, cad, refundable]) {
+    await cancelBorrowRentRequest({ requestId: id, actorId: borrower, acknowledgePenalty: 5 }, cancelDeps(stripe), NOW);
+  }
+
+  assert.deepEqual((await ledger(usd)).map((r) => [r.kind, r.currency]), [["platform_fee_refund", "usd"], ["deposit_hold_release", "usd"]]);
+  assert.deepEqual((await ledger(cad)).map((r) => [r.kind, r.currency]), [["platform_fee_refund", "cad"], ["deposit_hold_release", "cad"]]);
+  assert.deepEqual((await ledger(refundable)).map((r) => [r.kind, r.currency]), [["deposit_refund", "usd"]]);
+  assert.deepEqual(stripe.calls.create, [], "releasing and refunding never creates a charge");
+});
+
 test("the fee is prorated to the refunded share and reduced by any fee Stripe hands back", async () => {
   const owner = await newUser("owner");
   const borrower = await newUser("borrower");

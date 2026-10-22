@@ -1,3 +1,5 @@
+import { PLATFORM_CURRENCY } from '@workspace/db/currency';
+
 const UBER_BASE_URL = 'https://api.uber.com';
 const UBER_AUTH_URL = 'https://login.uber.com/oauth/v2/token';
 const FETCH_TIMEOUT_MS = 10_000;
@@ -112,7 +114,7 @@ export async function getDeliveryQuote(params: {
   return {
     id: data.id,
     fee: data.fee,
-    currency: data.currency ?? 'CAD',
+    currency: data.currency ?? PLATFORM_CURRENCY.toUpperCase(),
     duration: data.duration,
     expires: data.expires,
   };
@@ -179,7 +181,7 @@ export async function createDelivery(params: {
     status: data.status,
     trackingUrl: data.tracking_url ?? '',
     fee: data.fee,
-    currency: data.currency ?? 'CAD',
+    currency: data.currency ?? PLATFORM_CURRENCY.toUpperCase(),
   };
 }
 

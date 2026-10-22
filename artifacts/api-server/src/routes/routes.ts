@@ -11,7 +11,8 @@ import {
   legacyCancelPenaltyExempt,
   LEGACY_CANCEL_ACK_UNTIL_ENV,
 } from "../legacy-cancel-exemption";
-import { db, pool } from "@workspace/db";
+import { db, pool, PLATFORM_CURRENCY } from "@workspace/db";
+import { currencyForNewCharge, recordCurrency, stampPaymentCurrency } from "../payment-currency";
 import { awardAchievementOnce } from "../achievement-awards";
 import {
   verifications,
@@ -1159,13 +1160,17 @@ export async function createRentalPaymentHold({
       }
     }
 
-    return { status: 200 as const, request, pricing, attemptNum, reuseExistingPI, requiredProtectionEnd };
+    // Stamp the currency before any PaymentIntent exists. A request that already has one keeps its own.
+    const currency = currencyForNewCharge(request);
+    await stampPaymentCurrency(tx, requestId, request, currency);
+
+    return { status: 200 as const, request, pricing, attemptNum, reuseExistingPI, requiredProtectionEnd, currency };
   });
 
   if (attemptInfo.status !== 200) {
     return { status: attemptInfo.status, body: attemptInfo.consent ?? { error: attemptInfo.error } };
   }
-  const { request, pricing, attemptNum, reuseExistingPI, requiredProtectionEnd } = attemptInfo;
+  const { request, pricing, attemptNum, reuseExistingPI, requiredProtectionEnd, currency } = attemptInfo;
   const { depositAmount, rentalAmount, processingFee } = pricing;
   const platformFee = 0;
 
@@ -1226,7 +1231,7 @@ export async function createRentalPaymentHold({
 
   const paymentIntentParams: any = {
     amount: Math.round(depositAmount * 100),
-    currency: "usd",
+    currency,
     capture_method: "manual",
     customer: customerId,
     metadata: {
@@ -1358,8 +1363,9 @@ export async function confirmRefundableDeposit({
     if (borrowShareCoins != null && parseFloat(payer.shareCoins || "0") < borrowShareCoins) {
       return { status: 400, body: { error: "insufficient_sharecoins", required: borrowShareCoins, balance: Math.floor(parseFloat(payer.shareCoins || "0")) } };
     }
+    const chargeCurrency = currencyForNewCharge(request);
     const intent = await stripeClient.paymentIntents.create({
-      amount: Math.round(pricing.depositAmount * 100), currency: "usd",
+      amount: Math.round(pricing.depositAmount * 100), currency: chargeCurrency,
       customer: payer.customerId, payment_method: payer.paymentMethodId, confirm: true, off_session: true,
       metadata: {
         type: "refundable_security_deposit", requestId: String(requestId), userId: String(userId),
@@ -1378,6 +1384,7 @@ export async function confirmRefundableDeposit({
     }
     await tx.update(itemRequests).set({
       depositPaymentIntentId: intent.id, trustDepositAmount: String(pricing.depositAmount),
+      paymentCurrency: chargeCurrency,
       depositMode: "refundable_charge", depositSelectionState: "confirmed",
       depositSelectionReason: request.depositSelectionReason, depositRequiredProtectionEnd: requiredProtectionEnd,
       depositConsentAt: new Date(), depositStatus: "held", depositAuthorizedAt: new Date(),
@@ -1539,7 +1546,7 @@ export async function confirmRentalDeposit({
       try {
         const rentalPI = await stripeClient.paymentIntents.create({
           amount: Math.round(rentalChargeAmount * 100),
-          currency: "usd",
+          currency: recordCurrency(request.item_requests),
           customer: depositCustomer,
           payment_method: depositPaymentMethod,
           confirm: true,
@@ -8273,6 +8280,7 @@ Respond with ONLY the category name, nothing else.`
   // Create Stripe payment authorization hold for security deposit
   app.post("/api/stripe/create-deposit-hold", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const dealStripe = (options.stripe ?? stripe) as typeof stripe;
     try {
       const requestId = Number(req.body?.requestId);
       if (!Number.isInteger(requestId)) return res.status(400).json({ error: "Invalid request ID" });
@@ -8296,9 +8304,11 @@ Respond with ONLY the category name, nothing else.`
         if (!userRecord?.stripeCustomerId || !userRecord.stripePaymentMethodId) {
           return { status: 400, body: { error: "No payment method on file. Please add a card in Settings." } };
         }
+        const holdCurrency = currencyForNewCharge(row.request);
+        await stampPaymentCurrency(tx, requestId, row.request, holdCurrency);
         const holdParameters: Stripe.PaymentIntentCreateParams = {
           amount: calculation.amount * 100,
-          currency: "usd",
+          currency: holdCurrency,
           capture_method: "manual",
           customer: userRecord.stripeCustomerId,
           payment_method: userRecord.stripePaymentMethodId,
@@ -8313,7 +8323,7 @@ Respond with ONLY the category name, nothing else.`
         let paymentIntent: Stripe.PaymentIntent;
         try {
           ({ paymentIntent } = await prepareDepositAuthorization({
-            stripeClient: stripe,
+            stripeClient: dealStripe,
             attemptNumber: row.request.depositHoldAttemptNum || 0,
             paymentIntentId: row.request.depositHoldAttemptId,
             // The payload hash keeps a changed card/description/metadata from reusing a key Stripe bound to different parameters.
@@ -8334,7 +8344,7 @@ Respond with ONLY the category name, nothing else.`
         }
         const captureBefore = getPaymentIntentCaptureBefore(paymentIntent);
         if (paymentIntent.status !== "requires_capture" || !captureBefore || (protectionEnd && captureBefore < protectionEnd)) {
-          if (paymentIntent.status === "requires_capture") await stripe.paymentIntents.cancel(paymentIntent.id);
+          if (paymentIntent.status === "requires_capture") await dealStripe.paymentIntents.cancel(paymentIntent.id);
           await tx.update(itemRequests).set({ depositMode: "refundable_charge", depositSelectionState: "consent_required", depositSelectionReason: "authorization_window_insufficient", depositRequiredProtectionEnd: protectionEnd }).where(eq(itemRequests.id, requestId));
           return { status: 409, body: refundableConsentBody(requestId, calculation.amount, protectionEnd, "authorization_window_insufficient", "borrow") };
         }
@@ -8351,6 +8361,7 @@ Respond with ONLY the category name, nothing else.`
   // Charge platform fee immediately (separate from the authorization hold)
   app.post("/api/stripe/charge-platform-fee", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    const dealStripe = (options.stripe ?? stripe) as typeof stripe;
     try {
       const { platformFeeAmount, requestId } = req.body;
       if (!platformFeeAmount || platformFeeAmount <= 0) {
@@ -8381,11 +8392,21 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "No payment method on file. Please add a card in Settings." });
       }
 
+      // The fee is charged in the request's own currency: a USD request in progress stays USD.
+      const feeCurrency = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${Number(requestId)} FOR UPDATE`);
+        const [feeRequest] = await tx.select().from(itemRequests).where(eq(itemRequests.id, Number(requestId))).limit(1);
+        if (!feeRequest) return PLATFORM_CURRENCY;
+        const currency = currencyForNewCharge(feeRequest);
+        await stampPaymentCurrency(tx, feeRequest.id, feeRequest, currency);
+        return currency;
+      });
+
       // Immediate capture — this is the real charge (not a hold)
-      const paymentIntent = await stripe.paymentIntents.create({
-        // Enforce Stripe's $0.50 minimum charge
+      const paymentIntent = await dealStripe.paymentIntents.create({
+        // Enforce Stripe's minimum charge (50 cents)
         amount: Math.max(50, Math.round(platformFeeAmount * 100)),
-        currency: "usd",
+        currency: feeCurrency,
         customer: userRecord.stripeCustomerId,
         payment_method: userRecord.stripePaymentMethodId,
         confirm: true,
@@ -11260,7 +11281,7 @@ Respond with ONLY the category name, nothing else.`
           if (paymentMethods.data.length > 0) {
             await stripe.paymentIntents.create({
               amount: Math.round(platformFee * 100),
-              currency: "cad",
+              currency: PLATFORM_CURRENCY,
               customer: requesterProfile.stripeCustomerId,
               payment_method: paymentMethods.data[0].id,
               confirm: true,

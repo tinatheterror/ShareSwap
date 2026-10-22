@@ -1,6 +1,7 @@
 import { db, rentalPayouts, requestRefunds, type itemRequests } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import type { DepositRelease, DepositRenewalStripeClient } from "./deposit-renewal-service";
+import { recordCurrency } from "./payment-currency";
 
 // The up-front charges of a BORROW/RENT request, other than the deposit itself, that are given
 // back when the request is cancelled or expires before the handoff:
@@ -118,6 +119,8 @@ export interface LedgerRow {
   stripePaymentIntentId: string | null;
   stripeRefundId: string | null;
   amountCents: number | null;
+  /** The request's recorded currency, never the platform constant: a USD request refunds in USD. */
+  currency: string;
   /** The processing fee Stripe took on the original charge, for the refunded share. 0 for a released hold. */
   chargeFeeCents: number | null;
   /** Fee Stripe handed back on the refund (read from the refund's balance transaction), when it did. */
@@ -178,11 +181,12 @@ async function readAbsorbedFee(
  */
 export async function buildRefundLedgerRows(
   stripe: DepositRenewalStripeClient,
-  request: Pick<typeof itemRequests.$inferSelect, "depositPaymentIntentId" | "trustDepositAmount">,
+  request: Pick<typeof itemRequests.$inferSelect, "depositPaymentIntentId" | "trustDepositAmount"> & { paymentCurrency?: string | null },
   upfront: UpfrontRefund[],
   releases: DepositRelease[],
 ): Promise<LedgerRow[]> {
   const rows: LedgerRow[] = [];
+  const currency = recordCurrency(request);
   for (const refund of upfront) {
     if (!refund.refundId) continue;
     rows.push({
@@ -190,6 +194,7 @@ export async function buildRefundLedgerRows(
       stripePaymentIntentId: refund.stripeId.startsWith("ch_") || refund.stripeId.startsWith("py_") ? null : refund.stripeId,
       stripeRefundId: refund.refundId,
       amountCents: refund.amountCents,
+      currency,
       ...(await readAbsorbedFee(stripe, refund.stripeId, refund.refundId, refund.amountCents)),
     });
   }
@@ -202,6 +207,7 @@ export async function buildRefundLedgerRows(
         stripePaymentIntentId: release.paymentIntentId,
         stripeRefundId: null,
         amountCents: release.amountCents ?? (isCurrent && Number.isFinite(declared) ? declared : null),
+        currency,
         chargeFeeCents: 0,
         feeReturnedCents: 0,
         absorbedFeeCents: 0,
@@ -212,6 +218,7 @@ export async function buildRefundLedgerRows(
         stripePaymentIntentId: release.paymentIntentId,
         stripeRefundId: release.refundId ?? null,
         amountCents: release.amountCents ?? null,
+        currency,
         ...(await readAbsorbedFee(stripe, release.paymentIntentId, release.refundId ?? null, release.amountCents ?? null)),
       });
     }
@@ -232,6 +239,7 @@ export async function insertRefundLedger(tx: any, requestId: number, trigger: Re
         stripePaymentIntentId: row.stripePaymentIntentId,
         stripeRefundId: row.stripeRefundId,
         amountCents: row.amountCents,
+        currency: row.currency,
         chargeFeeCents: row.chargeFeeCents,
         feeReturnedCents: row.feeReturnedCents,
         absorbedFeeCents: row.absorbedFeeCents,

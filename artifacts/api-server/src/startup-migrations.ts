@@ -153,11 +153,31 @@ export async function ensureCancellationRecord() {
   }
 }
 
+const PAYMENT_CURRENCY_FILE = "lib/db/scripts/0011_payment_currency.sql";
+
+/**
+ * item_requests.payment_currency (0011): the currency a request's Stripe objects are in. Every request query
+ * selects it, so a missing column would fail them all; the file is idempotent and only runs when it is absent.
+ */
+export async function ensurePaymentCurrencyColumn() {
+  const { rows } = await pool.query(
+    `SELECT EXISTS (SELECT 1 FROM information_schema.columns
+                     WHERE table_schema = current_schema() AND table_name = 'item_requests' AND column_name = 'payment_currency') AS present`,
+  );
+  if (rows[0]?.present === true) return;
+  try {
+    await runMigrationFile(PAYMENT_CURRENCY_FILE);
+  } catch (err) {
+    if ((err as { code?: string }).code !== "42701") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
   }
   await ensureCancellationRecord();
+  await ensurePaymentCurrencyColumn();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
   await ensureJobSwitchesAttributionConstraint();

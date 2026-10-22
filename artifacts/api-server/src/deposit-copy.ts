@@ -1,3 +1,5 @@
+import { LEGACY_PAYMENT_CURRENCY, PLATFORM_CURRENCY } from "@workspace/db/currency";
+
 /**
  * Single source of truth for every server-generated sentence about a security
  * deposit. Keep the terminology strict:
@@ -16,11 +18,23 @@
 export type DepositPhase = "none" | "hold" | "charged" | "released" | "resolved";
 export type ClaimOutcome = "refunded_full" | "refunded_partial" | "retained_full";
 
-export function formatMoney(value: number | string | null | undefined): string {
+/**
+ * "$20" for the platform currency (prices are in CAD, noted once at checkout), "US$20" for a request that
+ * is still in USD, and the code for any other currency, so an amount is never mistaken for another currency.
+ */
+export function currencySymbol(currency: string = PLATFORM_CURRENCY): string {
+  const code = currency.trim().toLowerCase();
+  if (code === PLATFORM_CURRENCY) return "$";
+  if (code === LEGACY_PAYMENT_CURRENCY) return "US$";
+  return `${code.toUpperCase()} `;
+}
+
+export function formatMoney(value: number | string | null | undefined, currency: string = PLATFORM_CURRENCY): string {
+  const symbol = currencySymbol(currency);
   const n = Number(value ?? 0);
-  if (!Number.isFinite(n)) return "$0";
+  if (!Number.isFinite(n)) return `${symbol}0`;
   const rounded = Math.round(n * 100) / 100;
-  return Number.isInteger(rounded) ? `$${rounded}` : `$${rounded.toFixed(2)}`;
+  return Number.isInteger(rounded) ? `${symbol}${rounded}` : `${symbol}${rounded.toFixed(2)}`;
 }
 
 export function cardLabel(last4?: string | null, brand?: string | null): string {

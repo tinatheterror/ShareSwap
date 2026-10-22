@@ -1,5 +1,5 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { db, notifications, rentalPayouts, users } from "@workspace/db";
+import { db, notifications, PLATFORM_CURRENCY, rentalPayouts, users } from "@workspace/db";
 import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
 
 export type PayoutStripeClient = {
@@ -121,7 +121,7 @@ export async function sendPayout(
     transfer = await stripe.transfers.create(
       {
         amount: Math.round(parseFloat(row.netAmount) * 100),
-        currency: "cad",
+        currency: PLATFORM_CURRENCY, // wallet balances are paid out in the platform currency
         destination,
         description: `ShareSwap payout ${now.toISOString().split("T")[0]}`,
         metadata: { rentalPayoutId: String(row.id), userId: String(row.userId) },

@@ -596,7 +596,7 @@ export async function main(
   }, RUN_TIMEOUT_MS);
 
   try {
-    const [{ pool }, { ensureScheduledJobRunsTable, ensureJobSwitchesTable, ensureCancellationRecord }, { registerRoutes }, { default: express }] = await Promise.all([
+    const [{ pool }, { ensureScheduledJobRunsTable, ensureJobSwitchesTable, ensureCancellationRecord, ensurePaymentCurrencyColumn }, { registerRoutes }, { default: express }] = await Promise.all([
       import("@workspace/db"),
       import("../startup-migrations"),
       import("../routes/routes"),
@@ -608,6 +608,8 @@ export async function main(
       await ensureJobSwitchesTable();
       // Expiry writes expired_reason and request_refunds rows.
       await ensureCancellationRecord();
+      // Every request query selects item_requests.payment_currency.
+      await ensurePaymentCurrencyColumn();
     }
 
     let jobs: ScheduledJobRunners | undefined;

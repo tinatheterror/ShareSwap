@@ -79,12 +79,17 @@ test("the reminder reaches users exactly as stored: compaction changes nothing, 
 test("missing secrets are listed by name only, never by value", () => {
   const secretValue = "postgres://user:hunter2@db.example/prod";
   const missing = findMissingSecrets({ DATABASE_URL: secretValue } as NodeJS.ProcessEnv);
-  assert.deepEqual(missing, ["REPLIT_CONNECTORS_HOSTNAME", "REPL_IDENTITY or WEB_REPL_RENEWAL"]);
+  assert.deepEqual(missing, [
+    "STRIPE_SECRET_KEY",
+    "STRIPE_PUBLISHABLE_KEY",
+    "REPLIT_CONNECTORS_HOSTNAME",
+    "REPL_IDENTITY or WEB_REPL_RENEWAL",
+  ]);
   assert.ok(!JSON.stringify(missing).includes("hunter2"));
 });
 
 test("either connector token satisfies the token requirement; blank values count as missing", () => {
-  const base = { DATABASE_URL: "x", REPLIT_CONNECTORS_HOSTNAME: "h" };
+  const base = { DATABASE_URL: "x", STRIPE_SECRET_KEY: "s", STRIPE_PUBLISHABLE_KEY: "p", REPLIT_CONNECTORS_HOSTNAME: "h" };
   assert.deepEqual(findMissingSecrets({ ...base, WEB_REPL_RENEWAL: "t" } as NodeJS.ProcessEnv), []);
   assert.deepEqual(findMissingSecrets({ ...base, REPL_IDENTITY: "t" } as NodeJS.ProcessEnv), []);
   assert.deepEqual(findMissingSecrets({ ...base, REPL_IDENTITY: "   " } as NodeJS.ProcessEnv), [
@@ -92,6 +97,8 @@ test("either connector token satisfies the token requirement; blank values count
   ]);
   assert.deepEqual(findMissingSecrets({} as NodeJS.ProcessEnv), [
     "DATABASE_URL",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_PUBLISHABLE_KEY",
     "REPLIT_CONNECTORS_HOSTNAME",
     "REPL_IDENTITY or WEB_REPL_RENEWAL",
   ]);

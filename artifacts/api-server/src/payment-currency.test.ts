@@ -362,6 +362,24 @@ test("borrow deposit hold and platform fee: CAD for a new request, USD for a USD
   }
 });
 
+test("the request list and the lifecycle endpoint report each request's own currency", async () => {
+  await startRoutes();
+  try {
+    const usd = await newRequest(routeUser.id, { requestType: "BORROW", paymentCurrency: "usd", depositPaymentIntentId: `pi_${UNIQUE}_list_usd`, depositStatus: "authorized", trustDepositAmount: "42.00" });
+    const cad = await newRequest(routeUser.id, { requestType: "BORROW", paymentCurrency: "cad", depositPaymentIntentId: `pi_${UNIQUE}_list_cad`, depositStatus: "authorized", trustDepositAmount: "42.00" });
+
+    const list = (await (await call("/api/requests")).json()) as { id: number; paymentCurrency: string }[];
+    assert.equal(list.find((r) => r.id === usd.id)?.paymentCurrency, "usd");
+    assert.equal(list.find((r) => r.id === cad.id)?.paymentCurrency, "cad");
+
+    const lifecycle = async (id: number) => ((await (await call(`/api/requests/${id}/lifecycle`)).json()) as any).lifecycle.deposit.currency;
+    assert.equal(await lifecycle(usd.id), "usd");
+    assert.equal(await lifecycle(cad.id), "cad");
+  } finally {
+    await closeServer();
+  }
+});
+
 // ── Capture, refund and release stay in the request's currency ──────────────
 
 test("a USD request: the claim capture and the refund are plain calls on the existing intent, never a new CAD charge", async () => {

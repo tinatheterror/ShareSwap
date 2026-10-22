@@ -6906,6 +6906,7 @@ Respond with ONLY the category name, nothing else.`
         borrowerConfirmedHandoff: itemRequests.borrowerConfirmedHandoff,
         handoffConfirmDeadline: itemRequests.handoffConfirmDeadline,
         expiredAt: itemRequests.expiredAt,
+        paymentCurrency: itemRequests.paymentCurrency,
          handoffConfirmedAt: itemRequests.handoffConfirmedAt,
         actualHandoffAt: itemRequests.actualHandoffAt,
         actualReturnAt: itemRequests.actualReturnAt,

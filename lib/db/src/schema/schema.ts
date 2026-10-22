@@ -1,6 +1,7 @@
 import { pgTable, text, serial, bigserial, boolean, timestamp, integer, bigint, decimal, numeric, varchar, index, uniqueIndex, date, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations, sql } from "drizzle-orm";
+import { LEGACY_PAYMENT_CURRENCY } from "../currency";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -412,6 +413,10 @@ export const itemRequests = pgTable("item_requests", {
   depositRequiredProtectionEnd: timestamp("deposit_required_protection_end"),
   depositConsentAt: timestamp("deposit_consent_at"),
   platformFeeChargeId: text("platform_fee_charge_id"), // Stripe charge ID for the immediately-captured platform fee
+  // The currency of every Stripe object on this request (deposit hold or charge, rental charge, platform
+  // fee). Stamped before the first PaymentIntent is created and never changed after, so a request that
+  // started in another currency finishes in it. Existing rows are 'usd'.
+  paymentCurrency: text("payment_currency").default(LEGACY_PAYMENT_CURRENCY).notNull(),
   
   // ShareCoin tracking for borrow
   shareCoinAmount: decimal("share_coin_amount", { precision: 10, scale: 2 }), // ShareCoins to be charged
@@ -1105,7 +1110,7 @@ export const requestRefunds = pgTable("request_refunds", {
   stripePaymentIntentId: text("stripe_payment_intent_id"),
   stripeRefundId: text("stripe_refund_id"),
   amountCents: bigint("amount_cents", { mode: "number" }),
-  currency: text("currency").default("usd").notNull(),
+  currency: text("currency").default(LEGACY_PAYMENT_CURRENCY).notNull(),
   chargeFeeCents: bigint("charge_fee_cents", { mode: "number" }),
   feeReturnedCents: bigint("fee_returned_cents", { mode: "number" }),
   absorbedFeeCents: bigint("absorbed_fee_cents", { mode: "number" }),

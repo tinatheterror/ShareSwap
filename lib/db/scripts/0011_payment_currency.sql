@@ -1,0 +1,14 @@
+-- The currency each request was charged in.
+--
+-- New Stripe charges are created in the platform currency (CAD); requests that already have a deposit
+-- hold, deposit charge, rental charge or platform fee were created in USD and must keep capturing,
+-- refunding and releasing in USD. A PaymentIntent keeps its currency for life, so the request records it.
+--
+--   item_requests.payment_currency   lower-case ISO code of the request's Stripe objects. Existing rows
+--                                    get 'usd'. A request with no PaymentIntent yet is re-stamped with the
+--                                    platform currency when its first one is created.
+--
+-- request_refunds.currency already exists with the same default; the code now writes it from the request.
+--
+-- Safe to re-run. Adding a NOT NULL column with a constant default only rewrites catalog metadata.
+ALTER TABLE item_requests ADD COLUMN IF NOT EXISTS payment_currency text NOT NULL DEFAULT 'usd';

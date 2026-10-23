@@ -1092,6 +1092,10 @@ export async function createRentalPaymentHold({
   confirmIfSaved?: boolean;
   stripeClient?: RentalPaymentHoldStripeClient;
 }): Promise<{ status: number; body: any }> {
+  // A stored card Stripe no longer has (or that sits on another customer) is cleared here, before any lock or charge.
+  if (!(await cardIsUsableBeforeCharge(stripeClient as any, dbCardStore, userId))) {
+    return { status: 400, body: { error: READD_CARD_MESSAGE, code: "CARD_STALE" } };
+  }
   // Lock the request row for the whole read-check-record sequence so two concurrent
   // create-payment-hold calls for the same request can't race on the attempt counter
   // below and each think they need a fresh PaymentIntent.
@@ -1326,6 +1330,9 @@ export async function createRentalPaymentHold({
 export async function confirmRefundableDeposit({
   requestId, userId, stripeClient = stripe,
 }: { requestId: number; userId: number; stripeClient?: any }): Promise<{ status: number; body: any }> {
+  if (!(await cardIsUsableBeforeCharge(stripeClient, dbCardStore, userId))) {
+    return { status: 400, body: { error: READD_CARD_MESSAGE, code: "CARD_STALE" } };
+  }
   const outcome = await db.transaction(async (tx) => {
     await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);
     const [row] = await tx.select({ item_requests: itemRequests, items, trustScore: users.trustScore }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).innerJoin(users, eq(users.id, itemRequests.requesterId))

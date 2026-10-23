@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { users } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getUncachableStripeClient } from "./stripe.server";
+import { grantsTier } from "./subscription-upgrade";
 
 export type SubscriptionWebhookStripe = Pick<Stripe, "webhooks" | "prices">;
 
@@ -83,6 +84,8 @@ export function subscriptionWebhookHandler(deps: SubscriptionWebhookDeps = {}) {
           const product = price.product as any;
           tier = product?.metadata?.tier || "free";
         }
+        // Only a paid-up (or grace-period) subscription grants its tier: an incomplete one is still waiting on the card.
+        if (!grantsTier(subscription.status)) tier = "free";
 
         await store.setSubscription(customerId, {
           subscriptionTier: tier,

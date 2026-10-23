@@ -101,3 +101,14 @@ test("boot requires the secret, naming it and not any value", () => {
   assert.throws(() => requireSubscriptionWebhookSecret({ STRIPE_SUBSCRIPTION_WEBHOOK_SECRET: "  " }), /STRIPE_SUBSCRIPTION_WEBHOOK_SECRET/);
   assert.doesNotThrow(() => requireSubscriptionWebhookSecret({ STRIPE_SUBSCRIPTION_WEBHOOK_SECRET: SECRET }));
 });
+
+test("an incomplete subscription (card not yet charged) does not grant its tier", async () => {
+  const { handler, writes } = setup();
+  const body = Buffer.from(JSON.stringify({
+    id: "evt_2", object: "event", type: "customer.subscription.created",
+    data: { object: { id: "sub_2", customer: "cus_1", status: "incomplete", items: { data: [{ price: { id: "price_1" } }] } } },
+  }));
+  const r = await call(handler, body, sign(body));
+  assert.equal(r.status, 200);
+  assert.deepEqual(writes, [{ customerId: "cus_1", subscriptionTier: "free", stripeSubscriptionId: "sub_2", stripeSubscriptionStatus: "incomplete" }]);
+});

@@ -1,4 +1,5 @@
 import { ensureUsableCustomer } from "../stripe-customer.js";
+import { attachAsDefault, CardOwnershipError, dbCardStore, syncCardWithStripe, cardIsUsableBeforeCharge, READD_CARD_MESSAGE } from "../card-sync";
 import sharp from 'sharp';
 import type { Express } from "express";
 import { createServer, type Server } from "http";
@@ -774,6 +775,7 @@ export async function checkAndAwardAchievements(userId: number) {
 // Initialize Stripe - will be loaded from connector
 import { getUncachableStripeClient, getStripePublishableKey } from "../stripe.server";
 import { subscriptionWebhookHandler } from "../subscription-webhook";
+import { subscribeWithSavedCard, confirmSubscriptionPayment, dbUpgradeStore } from "../subscription-upgrade";
 import { subscriptionReturnHandler, stripeReturnUrl, confirmCheckoutSession, dbConfirmStore } from "../subscription-return";
 
 // Helper to get stripe client (lazy loaded from connector)
@@ -8289,6 +8291,9 @@ Respond with ONLY the category name, nothing else.`
     try {
       const requestId = Number(req.body?.requestId);
       if (!Number.isInteger(requestId)) return res.status(400).json({ error: "Invalid request ID" });
+      if (!(await cardIsUsableBeforeCharge(dealStripe as any, dbCardStore, req.user.id))) {
+        return res.status(400).json({ error: READD_CARD_MESSAGE, code: "CARD_STALE" });
+      }
       const result = await db.transaction(async (tx) => {
         await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);
         const [row] = await tx.select({ request: itemRequests, item: items, reputation: users.trustScore })
@@ -8395,6 +8400,9 @@ Respond with ONLY the category name, nothing else.`
 
       if (!userRecord?.stripeCustomerId || !userRecord?.stripePaymentMethodId) {
         return res.status(400).json({ error: "No payment method on file. Please add a card in Settings." });
+      }
+      if (!(await cardIsUsableBeforeCharge(dealStripe as any, dbCardStore, req.user.id))) {
+        return res.status(400).json({ error: READD_CARD_MESSAGE, code: "CARD_STALE" });
       }
 
       // The fee is charged in the request's own currency: a USD request in progress stays USD.
@@ -12886,8 +12894,10 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // Pro analytics dashboard
-  app.get("/api/analytics/dashboard", async (req, res) => {
+  // Activity & Insights dashboard: withdrawn from the product (it was never gated server-side; the web client only
+  // showed it to Pro). The handler stays for a possible free relaunch; flip the flag to serve it again.
+  const ACTIVITY_DASHBOARD_ENABLED = false;
+  if (ACTIVITY_DASHBOARD_ENABLED) app.get("/api/analytics/dashboard", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const userId = req.user.id;
     const completedStatuses = or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY"));
@@ -13358,6 +13368,25 @@ Respond with ONLY the category name, nothing else.`
         return res.status(404).json({ error: "User not found" });
       }
 
+      // Make the stored card match Stripe: drops a card that is gone or on another customer, and picks up a
+      // card changed in the billing portal. A Stripe outage just shows what we have.
+      if (user.stripePaymentMethodId) {
+        try {
+          const synced = await syncCardWithStripe(await getStripe(), dbCardStore, req.user.id);
+          if (synced.state === "cleared") {
+            return res.json({ hasPaymentMethod: false, status: 'missing', paymentMethod: null, needsReadd: true, message: READD_CARD_MESSAGE });
+          }
+          if (synced.state === "updated") {
+            user.last4 = synced.card.paymentMethodLast4;
+            user.brand = synced.card.paymentMethodBrand;
+            user.expMonth = synced.card.paymentMethodExpMonth;
+            user.expYear = synced.card.paymentMethodExpYear;
+          }
+        } catch (syncError) {
+          console.error("Card sync with Stripe failed; showing stored card:", syncError);
+        }
+      }
+
       // Check if payment method exists
       const hasPaymentMethod = !!user.stripePaymentMethodId;
       
@@ -13568,23 +13597,27 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Invalid payment method type" });
       }
 
-      // Get user's existing payment method
+      // Attach the card to the user's current Stripe customer and make it that customer's default card
       const [user] = await db
         .select({
           existingPaymentMethodId: users.stripePaymentMethodId,
+          stripeCustomerId: users.stripeCustomerId,
+          email: users.email,
+          fullName: users.fullName,
         })
         .from(users)
         .where(eq(users.id, req.user.id))
         .limit(1);
 
-      // Detach the previous payment method if one exists
-      if (user?.existingPaymentMethodId && user.existingPaymentMethodId !== paymentMethod.id) {
-        try {
-          await stripeInstance.paymentMethods.detach(user.existingPaymentMethodId);
-        } catch (detachError) {
-          console.error("Error detaching previous payment method:", detachError);
-        }
+      const { customerId: setupCustomerId, created: setupCustomerCreated } = await ensureUsableCustomer(stripeInstance, user?.stripeCustomerId, {
+        email: user?.email || undefined,
+        name: user?.fullName || undefined,
+        metadata: { userId: String(req.user.id) },
+      });
+      if (setupCustomerCreated) {
+        await db.update(users).set({ stripeCustomerId: setupCustomerId }).where(eq(users.id, req.user.id));
       }
+      await attachAsDefault(stripeInstance, setupCustomerId, paymentMethod, user?.existingPaymentMethodId);
 
       // Check if user has approved ID verification
       const [idVerification] = await db
@@ -13621,6 +13654,7 @@ Respond with ONLY the category name, nothing else.`
         },
       });
     } catch (error) {
+      if (error instanceof CardOwnershipError) return res.status(400).json({ error: error.message });
       console.error("Error completing setup:", error);
       res.status(500).json({ error: "Failed to complete setup" });
     }
@@ -13644,16 +13678,26 @@ Respond with ONLY the category name, nothing else.`
         .select({
           stripeCustomerId: users.stripeCustomerId,
           existingPaymentMethodId: users.stripePaymentMethodId,
+          email: users.email,
+          fullName: users.fullName,
         })
         .from(users)
         .where(eq(users.id, req.user.id))
         .limit(1);
 
-      if (!user?.stripeCustomerId) {
-        return res.status(400).json({ error: "No Stripe customer found. Please try again." });
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
       }
 
       const stripeInstance = await getStripe();
+      const { customerId: saveCustomerId, created: saveCustomerCreated } = await ensureUsableCustomer(stripeInstance, user.stripeCustomerId, {
+        email: user.email || undefined,
+        name: user.fullName || undefined,
+        metadata: { userId: String(req.user.id) },
+      });
+      if (saveCustomerCreated) {
+        await db.update(users).set({ stripeCustomerId: saveCustomerId }).where(eq(users.id, req.user.id));
+      }
 
       // Retrieve payment method details from Stripe
       const paymentMethod = await stripeInstance.paymentMethods.retrieve(paymentMethodId);
@@ -13662,26 +13706,9 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Invalid payment method" });
       }
 
-      // Verify the payment method belongs to this user's Stripe customer
-      if (paymentMethod.customer !== user.stripeCustomerId) {
-        // If not attached, attach it to the customer
-        if (!paymentMethod.customer) {
-          await stripeInstance.paymentMethods.attach(paymentMethodId, {
-            customer: user.stripeCustomerId,
-          });
-        } else {
-          return res.status(400).json({ error: "This payment method does not belong to your account" });
-        }
-      }
-
-      // Detach the previous payment method if one exists
-      if (user.existingPaymentMethodId && user.existingPaymentMethodId !== paymentMethodId) {
-        try {
-          await stripeInstance.paymentMethods.detach(user.existingPaymentMethodId);
-        } catch (detachError) {
-          console.error("Error detaching previous payment method:", detachError);
-        }
-      }
+      // Attach it to the user's current customer (if unattached), make it the customer's default card so the
+      // billing portal and subscriptions use it, and detach the card it replaces.
+      await attachAsDefault(stripeInstance, saveCustomerId, paymentMethod, user.existingPaymentMethodId);
 
       // Check if user has approved ID verification
       const [idVerification] = await db
@@ -13718,6 +13745,7 @@ Respond with ONLY the category name, nothing else.`
         },
       });
     } catch (error) {
+      if (error instanceof CardOwnershipError) return res.status(400).json({ error: error.message });
       console.error("Error saving payment method:", error);
       res.status(500).json({ error: "Failed to save payment method" });
     }
@@ -16019,11 +16047,26 @@ Respond with ONLY the category name, nothing else.`
     if (!req.user) return res.status(401).json({ message: "Not authenticated" });
     try {
       const stripe = await getUncachableStripeClient();
-      const outcome = await confirmCheckoutSession(stripe, dbConfirmStore, req.user.id, req.body?.sessionId);
+      const outcome = req.body?.subscriptionId
+        ? await confirmSubscriptionPayment(stripe, dbUpgradeStore, req.user.id, req.body.subscriptionId)
+        : await confirmCheckoutSession(stripe, dbConfirmStore, req.user.id, req.body?.sessionId);
       res.status(outcome.status).json(outcome.body);
     } catch (error) {
       console.error("Subscription confirm error:", error);
       res.status(500).json({ message: "Failed to confirm subscription" });
+    }
+  });
+
+  // Mobile upgrade with the saved card (web keeps Stripe Checkout). Changes the plan of a live subscription in place.
+  app.post("/api/subscription/subscribe", requireEmailVerified, async (req: any, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    try {
+      const stripe = await getUncachableStripeClient();
+      const outcome = await subscribeWithSavedCard({ stripe, store: dbUpgradeStore, cards: dbCardStore }, req.user.id, req.body?.tier);
+      return res.status(outcome.status).json(outcome.body);
+    } catch (error) {
+      console.error("Subscribe error:", (error as Error)?.message);
+      return res.status(500).json({ message: "Failed to start subscription" });
     }
   });
 

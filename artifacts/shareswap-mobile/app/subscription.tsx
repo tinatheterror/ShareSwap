@@ -1,13 +1,15 @@
 import { Feather } from "@expo/vector-icons";
 import { PRICES_IN_CAD_NOTE } from "@/lib/money";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -66,7 +68,7 @@ const PLAN_META: Record<
     iconColor: "#0d9488",
     borderColor: "#2dd4bf",
     accentColor: "#0d9488",
-    features: ["Unlimited borrows", "Unlimited swaps & gifts & rentals", "5% service fee on rentals"],
+    features: ["Unlimited borrows"],
     limitations: [],
   },
   pro: {
@@ -80,10 +82,8 @@ const PLAN_META: Record<
     accentColor: "#f59e0b",
     features: [
       "Unlimited borrows",
-      "Unlimited swaps & gifts & rentals",
-      "Reduced 4% service fee on rentals",
-      "Activity & Insights dashboard",
-      "$1.50 courier fee waived (5/mo)",
+      "4% rental service fee instead of 5%",
+      "$1.50 courier fee waived for 5 deliveries a month",
     ],
     limitations: [],
   },
@@ -137,23 +137,75 @@ export default function SubscriptionScreen() {
     currentTier !== "free" && subStatus?.stripeSubscriptionStatus === "active";
   const plan = PLAN_META[currentTier] ?? PLAN_META.free;
 
-  const checkoutMutation = useMutation({
-    mutationFn: (tier: string) => {
-      const successUrl = Linking.createURL("/subscription?sub_success=true");
-      const cancelUrl = Linking.createURL("/subscription?sub_canceled=true");
-      return apiPost<{ url: string }>("/api/subscription/checkout", {
-        tier,
-        successUrl,
-        cancelUrl,
-      });
+  // Upgrades use the saved card (no Checkout redirect). Stripe Checkout stays for web.
+  const [confirmTier, setConfirmTier] = useState<Tier | null>(null);
+  const [retryTierAfterCard, setRetryTierAfterCard] = useState<Tier | null>(null);
+  const [sheetError, setSheetError] = useState<string | null>(null);
+  const pendingSubscriptionId = useRef<string | null>(null);
+  const [authUrl, setAuthUrl] = useState<string | null>(null);
+
+  const { data: cardData } = useQuery<SavedCard>({
+    queryKey: ["payment-method"],
+    queryFn: () => apiGet<SavedCard>("/api/payment-method"),
+    enabled: !!user,
+  });
+
+  // Back from adding a card for an upgrade: reopen the sheet so the user can retry.
+  useFocusEffect(
+    useCallback(() => {
+      if (retryTierAfterCard) {
+        qc.invalidateQueries({ queryKey: ["payment-method"] });
+        setConfirmTier(retryTierAfterCard);
+        setRetryTierAfterCard(null);
+      }
+    }, [retryTierAfterCard]),
+  );
+
+  // Back from authenticating the payment in the browser: ask the server to read the subscription from Stripe.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      const subscriptionId = pendingSubscriptionId.current;
+      if (next === "active" && subscriptionId) {
+        pendingSubscriptionId.current = null;
+        apiPost("/api/subscription/confirm", { subscriptionId })
+          .catch(() => undefined)
+          .then(() => qc.invalidateQueries({ queryKey: ["/api/subscription/status"] }));
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  const subscribeMutation = useMutation({
+    mutationFn: (tier: Tier) => apiPost<{ tier: Tier }>("/api/subscription/subscribe", { tier }),
+    onSuccess: (_data, tier) => {
+      setConfirmTier(null);
+      setSheetError(null);
+      setAuthUrl(null);
+      qc.invalidateQueries({ queryKey: ["/api/subscription/status"] });
+      Alert.alert("Subscription activated!", `You're now on the ${PLAN_META[tier].name} plan.`);
     },
-    onSuccess: (data) => {
-      if (data.url) {
-        hasOpenedStripe.current = true;
-        Linking.openURL(data.url);
+    onError: (e: any, tier) => {
+      if (e?.code === "CARD_REQUIRED") {
+        setConfirmTier(null);
+        qc.invalidateQueries({ queryKey: ["payment-method"] });
+        Alert.alert("Please add a card", "Add a card, then come back to finish upgrading.", [
+          { text: "Not now", style: "cancel" },
+          {
+            text: "Add a card",
+            onPress: () => {
+              setRetryTierAfterCard(tier);
+              router.push("/payment-methods" as never);
+            },
+          },
+        ]);
+      } else if (e?.requiresAction) {
+        pendingSubscriptionId.current = e.subscriptionId ?? null;
+        setAuthUrl(e.hostedInvoiceUrl ?? null);
+        setSheetError("Your card needs additional authentication to finish this upgrade.");
+      } else {
+        setSheetError(e?.message || "We couldn't start your subscription. Please try again.");
       }
     },
-    onError: () => Alert.alert("Checkout failed", "Please try again."),
   });
 
   const portalMutation = useMutation({
@@ -170,7 +222,7 @@ export default function SubscriptionScreen() {
     onError: () => Alert.alert("Error", "Could not open subscription portal."),
   });
 
-  const anyMutating = checkoutMutation.isPending || portalMutation.isPending;
+  const anyMutating = subscribeMutation.isPending || portalMutation.isPending;
 
   const billingDate = subStatus?.monthlyBorrowResetAt
     ? new Date(subStatus.monthlyBorrowResetAt).toLocaleDateString(undefined, {
@@ -330,7 +382,7 @@ export default function SubscriptionScreen() {
             {otherTiers.map((tier) => {
               const p = PLAN_META[tier];
               const isCurrent = currentTier === tier;
-              const isCheckingOut = checkoutMutation.isPending && checkoutMutation.variables === tier;
+              const isCheckingOut = false;
 
               // Current free plan gets teal border like paid plans
               const borderColor =
@@ -355,15 +407,11 @@ export default function SubscriptionScreen() {
                   : tier === "member"
                   ? [
                       { text: "Unlimited borrows", included: true },
-                      { text: "Unlimited swaps & gifts & rentals", included: true },
-                      { text: "5% service fee on rentals", included: true },
                     ]
                   : [
                       { text: "Unlimited borrows", included: true },
-                      { text: "Unlimited swaps & gifts & rentals", included: true },
-                      { text: "Reduced 4% service fee on rentals", included: true },
-                      { text: "Activity & Insights dashboard", included: true },
-                      { text: "$1.50 courier fee waived (5/mo)", included: true },
+                      { text: "4% rental service fee instead of 5%", included: true },
+                      { text: "$1.50 courier fee waived for 5 deliveries a month", included: true },
                     ];
 
               return (
@@ -468,7 +516,9 @@ export default function SubscriptionScreen() {
                         ]}
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          hasActivePaidSub ? portalMutation.mutate() : checkoutMutation.mutate(tier);
+                          setSheetError(null);
+                          setAuthUrl(null);
+                          setConfirmTier(tier);
                         }}
                         disabled={anyMutating}
                       >
@@ -495,11 +545,116 @@ export default function SubscriptionScreen() {
         )}
 
       </ScrollView>
+
+      <Modal visible={confirmTier !== null} transparent animationType="slide" onRequestClose={() => setConfirmTier(null)}>
+        <Pressable style={s.sheetBackdrop} onPress={() => !subscribeMutation.isPending && setConfirmTier(null)}>
+          <Pressable style={[s.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]} onPress={() => {}}>
+            {confirmTier && (
+              <ConfirmSheetBody
+                tier={confirmTier}
+                changing={hasActivePaidSub}
+                card={cardData?.hasPaymentMethod ? cardData.paymentMethod : null}
+                pending={subscribeMutation.isPending}
+                error={sheetError}
+                authUrl={authUrl}
+                onConfirm={() => {
+                  setSheetError(null);
+                  subscribeMutation.mutate(confirmTier);
+                }}
+                onAddCard={() => {
+                  setRetryTierAfterCard(confirmTier);
+                  setConfirmTier(null);
+                  router.push("/payment-methods" as never);
+                }}
+                onAuthenticate={() => authUrl && Linking.openURL(authUrl)}
+                onClose={() => setConfirmTier(null)}
+              />
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+interface SavedCard {
+  hasPaymentMethod: boolean;
+  paymentMethod: { last4: string; brand: string } | null;
+}
+
+const BRAND_NAMES: Record<string, string> = { visa: "Visa", mastercard: "Mastercard", amex: "American Express", discover: "Discover", diners: "Diners Club", jcb: "JCB", unionpay: "UnionPay" };
+
+function ConfirmSheetBody(props: {
+  tier: Tier;
+  changing: boolean;
+  card: { last4: string; brand: string } | null;
+  pending: boolean;
+  error: string | null;
+  authUrl: string | null;
+  onConfirm: () => void;
+  onAddCard: () => void;
+  onAuthenticate: () => void;
+  onClose: () => void;
+}) {
+  const colors = useColors();
+  const meta = PLAN_META[props.tier];
+  return (
+    <View style={{ gap: 14 }}>
+      <Text style={[s.sheetTitle, { color: colors.foreground }]}>
+        {props.changing ? `Switch to ${meta.name}` : `Subscribe to ${meta.name}`}
+      </Text>
+      <Text style={[s.sheetPrice, { color: colors.foreground }]}>{`$${meta.priceNum.toFixed(2)} CAD / month`}</Text>
+      <View style={{ gap: 6 }}>
+        {meta.features.map((f) => (
+          <View key={f} style={s.featureRow}>
+            <Feather name="check" size={13} color="#14b8a6" />
+            <Text style={[s.featureText, { color: colors.foreground }]}>{f}</Text>
+          </View>
+        ))}
+      </View>
+      <View style={[s.sheetCardRow, { borderColor: colors.border }]}>
+        <Feather name="credit-card" size={16} color={colors.mutedForeground} />
+        <Text style={{ color: colors.foreground, fontSize: 14 }}>
+          {props.card ? `${BRAND_NAMES[props.card.brand?.toLowerCase()] ?? props.card.brand} •••• ${props.card.last4}` : "No card on file"}
+        </Text>
+      </View>
+      {props.changing && (
+        <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+          Your current subscription changes to this plan. Stripe prorates the difference.
+        </Text>
+      )}
+      {props.error && <Text style={{ color: "#dc2626", fontSize: 13 }}>{props.error}</Text>}
+      {props.authUrl && (
+        <Pressable style={[s.solidBtn, { backgroundColor: "#0d9488" }]} onPress={props.onAuthenticate}>
+          <Text style={s.solidBtnText}>Authenticate card</Text>
+        </Pressable>
+      )}
+      {props.card ? (
+        <Pressable
+          style={[s.solidBtn, { backgroundColor: "#0d9488", opacity: props.pending ? 0.7 : 1 }]}
+          onPress={props.onConfirm}
+          disabled={props.pending}
+        >
+          {props.pending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.solidBtnText}>{`Confirm — $${meta.priceNum.toFixed(2)} CAD/mo`}</Text>}
+        </Pressable>
+      ) : (
+        <Pressable style={[s.solidBtn, { backgroundColor: "#0d9488" }]} onPress={props.onAddCard}>
+          <Text style={s.solidBtnText}>Add a card</Text>
+        </Pressable>
+      )}
+      <Pressable onPress={props.onClose} disabled={props.pending} style={{ alignItems: "center", padding: 6 }}>
+        <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Cancel</Text>
+      </Pressable>
     </View>
   );
 }
 
 const s = StyleSheet.create({
+  sheetBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
+  sheetTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  sheetPrice: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  sheetCardRow: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: 10, padding: 12 },
   container: { flex: 1 },
   scroll: { paddingHorizontal: 16, gap: 0 },
 

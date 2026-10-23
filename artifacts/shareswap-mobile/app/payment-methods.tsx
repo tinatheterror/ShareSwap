@@ -23,6 +23,7 @@ import { apiGet, apiRequest } from "@/lib/api";
 
 interface PaymentMethodData {
   hasPaymentMethod: boolean;
+  needsReadd?: boolean;
   status: "verified" | "expired" | "missing";
   paymentMethod: {
     last4: string;
@@ -231,9 +232,9 @@ export default function PaymentMethodsScreen() {
                   <Feather name="credit-card" size={18} color="#9ca3af" />
                 </View>
                 <View>
-                  <Text style={[styles.cardBrand, { color: "#4b5563" }]}>No card on file</Text>
+                  <Text style={[styles.cardBrand, { color: "#4b5563" }]}>{data?.needsReadd ? "Please re-add your card" : "No card on file"}</Text>
                   <Text style={[styles.cardExpiry, { color: colors.mutedForeground }]}>
-                    Required for borrowing and renting
+                    {data?.needsReadd ? "Your saved card is no longer available" : "Required for borrowing and renting"}
                   </Text>
                 </View>
               </View>

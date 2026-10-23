@@ -37,6 +37,7 @@ import {
 
 interface PaymentMethodData {
   hasPaymentMethod: boolean;
+  needsReadd?: boolean;
   status: "verified" | "expired" | "missing";
   paymentMethod: {
     last4: string;
@@ -296,11 +297,13 @@ export default function PaymentMethodsPage() {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <p className="font-medium text-gray-700">No card on file</p>
+                    <p className="font-medium text-gray-700">{data?.needsReadd ? "Please re-add your card" : "No card on file"}</p>
                     <StatusIndicator status="missing" />
                   </div>
                   <p className="text-sm text-gray-500 mt-1">
-                    A payment method is required for borrowing and renting items
+                    {data?.needsReadd
+                      ? "Your saved card is no longer available. Add a card to keep borrowing and renting."
+                      : "A payment method is required for borrowing and renting items"}
                   </p>
                 </div>
               </div>

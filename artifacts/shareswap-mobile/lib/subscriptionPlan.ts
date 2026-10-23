@@ -55,6 +55,8 @@ export interface SheetCopy {
   headline: string;
   detail: string | null;
   confirmLabel: string;
+  /** Whether the sheet names the card: not for a downgrade, where nothing is charged now. */
+  showCard: boolean;
 }
 
 export function sheetCopy(opts: {
@@ -69,16 +71,27 @@ export function sheetCopy(opts: {
   const name = PLAN_NAMES[target];
   const moving = currentTier !== "free" && currentTier !== target;
   const upgrading = moving && RANK[target] > RANK[currentTier];
-  const title = !moving ? `Subscribe to ${name}` : upgrading ? `Upgrade to ${name}` : `Switch to ${name}`;
   const price = cad(preview?.priceCents ?? MONTHLY_CENTS[target]);
+
+  // A downgrade waits for the end of the paid period: nothing is charged now, so no card is named.
+  if (moving && !upgrading) {
+    const title = preview?.effectiveAt ? `Switch to ${name} on ${formatDate(preview.effectiveAt)}` : `Switch to ${name}`;
+    return {
+      title,
+      headline: `${title}: ${price}/month after that`,
+      detail: preview?.effectiveAt
+        ? "Nothing is charged or refunded now, and you keep your current plan until then."
+        : "Takes effect when your current billing period ends. Nothing is charged or refunded now.",
+      confirmLabel: `Switch to ${name} at period end`,
+      showCard: false,
+    };
+  }
+
+  const title = upgrading ? `Upgrade to ${name}` : `Subscribe to ${name}`;
   const label = cardLabel(card);
   const headline = `${title}: ${price}/month${label ? `, charged to ${label}` : ""}`;
-
   let detail: string | null = null;
-  if (moving && !upgrading) {
-    const when = preview?.effectiveAt ? formatDate(preview.effectiveAt) : "the end of your current billing period";
-    detail = `Takes effect on ${when}, when your current period ends. Nothing is charged or refunded now, and you keep your current plan until then.`;
-  } else if (upgrading) {
+  if (upgrading) {
     detail =
       preview?.amountDueTodayCents != null
         ? `Due today: ${cad(preview.amountDueTodayCents)}, prorated for the rest of this billing period. Then ${price}/month.`
@@ -86,7 +99,22 @@ export function sheetCopy(opts: {
   } else if (preview?.amountDueTodayCents != null) {
     detail = `Due today: ${cad(preview.amountDueTodayCents)}.`;
   }
+  const confirmLabel = upgrading && preview?.amountDueTodayCents != null ? `Pay ${cad(preview.amountDueTodayCents)} and upgrade` : `Confirm ${name}`;
+  return { title, headline, detail, confirmLabel, showCard: true };
+}
 
-  const confirmLabel = moving && !upgrading ? `Switch to ${name} at period end` : upgrading && preview?.amountDueTodayCents != null ? `Pay ${cad(preview.amountDueTodayCents)} and upgrade` : `Confirm ${name}`;
-  return { title, headline, detail, confirmLabel };
+/**
+ * The billing date row: a paid plan shows when it next renews (Stripe's current period end); a free plan shows
+ * when its borrow count resets. A paid plan with no period end shows nothing rather than the borrow-reset date,
+ * which is not a billing date.
+ */
+export function billingRow(opts: {
+  hasActivePaidSub: boolean;
+  currentPeriodEnd?: string | null;
+  monthlyBorrowResetAt?: string | null;
+  formatDate?: (iso: string) => string;
+}): { label: string; date: string } | null {
+  const formatDate = opts.formatDate ?? defaultDate;
+  if (opts.hasActivePaidSub) return opts.currentPeriodEnd ? { label: "Next billing", date: formatDate(opts.currentPeriodEnd) } : null;
+  return opts.monthlyBorrowResetAt ? { label: "Usage resets", date: formatDate(opts.monthlyBorrowResetAt) } : null;
 }

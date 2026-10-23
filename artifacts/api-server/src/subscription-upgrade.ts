@@ -5,6 +5,7 @@ import { PLATFORM_CURRENCY } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { ensureUsableCustomer } from "./stripe-customer.js";
 import { attachedCard, type CardStore } from "./card-sync";
+import { periodEndIso, stripeErrorDetails, subscriptionPeriod } from "./stripe-period";
 
 export type PaidTier = "member" | "pro";
 export const isPaidTier = (tier: unknown): tier is PaidTier => tier === "member" || tier === "pro";
@@ -97,9 +98,6 @@ async function liveSubscription(stripe: UpgradeStripe, subscriptionId: string | 
   }
 }
 
-const periodEnd = (sub: Stripe.Subscription): number | null =>
-  (sub.items.data[0] as any)?.current_period_end ?? (sub as any).current_period_end ?? null;
-
 /** Client secret and PaymentIntent for a subscription's first invoice, when it still needs the customer. */
 async function pendingPayment(stripe: UpgradeStripe, subscription: Stripe.Subscription) {
   const invoice = subscription.latest_invoice;
@@ -180,20 +178,25 @@ async function run(deps: { stripe: UpgradeStripe; store: UpgradeStore; cards: Ca
       // Moving to a cheaper plan waits for the end of the paid period: nothing is refunded and the user keeps
       // what they paid for. Moving up charges the prorated difference now.
       if (price.unitAmount < (item.price.unit_amount ?? 0)) {
-        const effective = periodEnd(existing);
-        const schedule = await stripe.subscriptionSchedules.create({ from_subscription: existing.id });
-        const current = schedule.phases[0];
-        await stripe.subscriptionSchedules.update(schedule.id, {
-          end_behavior: "release",
-          phases: [
-            { items: [{ price: item.price.id, quantity: 1 }], start_date: current.start_date, end_date: current.end_date, proration_behavior: "none" },
-            { items: [{ price: priceId, quantity: 1 }], duration: { interval: "month", interval_count: 1 }, proration_behavior: "none", metadata },
-          ],
-        });
-        return {
-          status: 200,
-          body: { tier, subscriptionId: existing.id, changed: true, scheduledFor: effective ? new Date(effective * 1000).toISOString() : undefined },
-        };
+        const effective = periodEndIso(existing);
+        let scheduleId: string | null = null;
+        try {
+          const schedule = await stripe.subscriptionSchedules.create({ from_subscription: existing.id });
+          scheduleId = schedule.id;
+          const current = schedule.phases[0];
+          await stripe.subscriptionSchedules.update(schedule.id, {
+            end_behavior: "release",
+            phases: [
+              { items: [{ price: item.price.id, quantity: 1 }], start_date: current.start_date, end_date: current.end_date, proration_behavior: "none" },
+              { items: [{ price: priceId, quantity: 1 }], duration: { interval: "month", interval_count: 1 }, proration_behavior: "none", metadata },
+            ],
+          });
+        } catch (error) {
+          console.error(`[subscription] could not schedule the change to ${tier} for user ${userId} (subscription ${existing.id}): ${stripeErrorDetails(error)}`);
+          if (scheduleId) await stripe.subscriptionSchedules.release(scheduleId).catch(() => undefined);
+          return { status: 502, body: { message: "We couldn't schedule your plan change. Nothing has changed. Please try again." } };
+        }
+        return { status: 200, body: { tier, subscriptionId: existing.id, changed: true, scheduledFor: effective ?? undefined } };
       }
 
       // No idempotency key: Stripe replays the first response for a repeated key, so a second change to the same
@@ -357,8 +360,7 @@ export async function previewPlanChange(
   const currentAmount = item.price.unit_amount ?? 0;
   if (item.price.id === price.id) return { status: 200, body: { ...base, change: "same", amountDueTodayCents: 0 } };
   if (price.unitAmount < currentAmount) {
-    const end = periodEnd(existing);
-    return { status: 200, body: { ...base, change: "downgrade", amountDueTodayCents: 0, effectiveAt: end ? new Date(end * 1000).toISOString() : undefined } };
+    return { status: 200, body: { ...base, change: "downgrade", amountDueTodayCents: 0, effectiveAt: periodEndIso(existing) ?? undefined } };
   }
   try {
     const invoice = await stripe.invoices.createPreview({
@@ -368,7 +370,7 @@ export async function previewPlanChange(
     });
     return { status: 200, body: { ...base, change: "upgrade", amountDueTodayCents: invoice.amount_due } };
   } catch (error) {
-    console.warn("[subscription] plan change preview failed:", (error as Error)?.message);
+    console.error(`[subscription] plan change preview failed for user ${userId} (subscription ${existing.id}, to ${tier}): ${stripeErrorDetails(error)}`);
     return { status: 200, body: { ...base, change: "upgrade", amountDueTodayCents: null } };
   }
 }
@@ -377,6 +379,8 @@ export interface SyncedSubscription {
   subscriptionTier: string;
   stripeSubscriptionId: string | null;
   stripeSubscriptionStatus: string | null;
+  /** When the current billing period ends (the next renewal), from Stripe; null without a live subscription. */
+  currentPeriodEnd: string | null;
   pendingPlanChange: { tier: PaidTier; effectiveAt: string } | null;
 }
 
@@ -406,15 +410,17 @@ export async function syncSubscriptionWithStripe(
     stripeSubscriptionId: user.stripeSubscriptionId,
     stripeSubscriptionStatus: user.stripeSubscriptionStatus ?? null,
   };
-  if (stored.subscriptionTier === "free" && !stored.stripeSubscriptionId) return { ...stored, pendingPlanChange: null };
-  if (!user.stripeCustomerId) return { ...stored, pendingPlanChange: null };
+  if (stored.subscriptionTier === "free" && !stored.stripeSubscriptionId) return { ...stored, currentPeriodEnd: null, pendingPlanChange: null };
+  if (!user.stripeCustomerId) return { ...stored, currentPeriodEnd: null, pendingPlanChange: null };
 
   try {
-    const expand = ["data.items.data.price.product", "data.schedule"];
-    const all = await stripe.subscriptions.list({ customer: user.stripeCustomerId, status: "all", limit: 20, expand });
+    // A list cannot expand the product (Stripe allows four levels and a list adds one), so find the subscription
+    // first and read it again with its product and schedule expanded.
+    const all = await stripe.subscriptions.list({ customer: user.stripeCustomerId, status: "all", limit: 20 });
     const live = all.data.filter((sub) => LIVE_STATUSES.has(sub.status)).sort((a, b) => b.created - a.created);
     // Prefer the subscription we already track, else the newest live one.
-    const current = live.find((sub) => sub.id === stored.stripeSubscriptionId) ?? live[0] ?? null;
+    const found = live.find((sub) => sub.id === stored.stripeSubscriptionId) ?? live[0] ?? null;
+    const current = found && (await stripe.subscriptions.retrieve(found.id, { expand: ["items.data.price.product", "schedule"] }));
 
     const truth = current
       ? { subscriptionTier: tierOfSubscription(current) ?? "free", stripeSubscriptionId: current.id, stripeSubscriptionStatus: current.status }
@@ -435,9 +441,9 @@ export async function syncSubscriptionWithStripe(
       );
       await store.setSubscription(userId, truth);
     }
-    return { ...truth, pendingPlanChange: current ? pendingChangeOf(current) : null };
+    return { ...truth, currentPeriodEnd: current ? periodEndIso(current) : null, pendingPlanChange: current ? pendingChangeOf(current) : null };
   } catch (error) {
-    console.warn(`[subscription-sync] user ${userId}: Stripe unreachable, keeping stored values:`, (error as Error)?.message);
-    return { ...stored, pendingPlanChange: null };
+    console.warn(`[subscription-sync] user ${userId}: Stripe unreachable, keeping stored values: ${stripeErrorDetails(error)}`);
+    return { ...stored, currentPeriodEnd: null, pendingPlanChange: null };
   }
 }

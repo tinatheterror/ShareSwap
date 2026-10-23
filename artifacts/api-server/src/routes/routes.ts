@@ -775,6 +775,7 @@ export async function checkAndAwardAchievements(userId: number) {
 // Initialize Stripe - will be loaded from connector
 import { getUncachableStripeClient, getStripePublishableKey } from "../stripe.server";
 import { subscriptionWebhookHandler } from "../subscription-webhook";
+import { stripeErrorDetails } from "../stripe-period";
 import { subscribeWithSavedCard, confirmSubscriptionPayment, previewPlanChange, syncSubscriptionWithStripe, keepCurrentPlan, dbUpgradeStore } from "../subscription-upgrade";
 import { subscriptionReturnHandler, stripeReturnUrl, confirmCheckoutSession, dbConfirmStore } from "../subscription-return";
 
@@ -15977,6 +15978,7 @@ Respond with ONLY the category name, nothing else.`
           stripeSubscriptionId: synced.stripeSubscriptionId,
           stripeSubscriptionStatus: synced.stripeSubscriptionStatus,
         }),
+        currentPeriodEnd: synced?.currentPeriodEnd ?? null,
         pendingPlanChange: synced?.pendingPlanChange ?? null,
       });
     } catch (error) {
@@ -16102,7 +16104,7 @@ Respond with ONLY the category name, nothing else.`
       const outcome = await previewPlanChange({ stripe, store: dbUpgradeStore }, req.user.id, req.query?.tier);
       return res.status(outcome.status).json(outcome.body);
     } catch (error) {
-      console.error("Subscription preview error:", (error as Error)?.message);
+      console.error(`Subscription preview error: ${stripeErrorDetails(error)}`);
       return res.status(500).json({ message: "Failed to preview the plan change" });
     }
   });
@@ -16115,7 +16117,7 @@ Respond with ONLY the category name, nothing else.`
       const outcome = await subscribeWithSavedCard({ stripe, store: dbUpgradeStore, cards: dbCardStore }, req.user.id, req.body?.tier);
       return res.status(outcome.status).json(outcome.body);
     } catch (error) {
-      console.error("Subscribe error:", (error as Error)?.message);
+      console.error(`Subscribe error: ${stripeErrorDetails(error)}`);
       return res.status(500).json({ message: "Failed to start subscription" });
     }
   });

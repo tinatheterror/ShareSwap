@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, photoUrl } from "@/lib/api";
 import { PendingPlanBanner } from "@/components/PendingPlanBanner";
-import { type PendingPlanChange } from "@/lib/subscriptionPlan";
+import { billingRow, type PendingPlanChange } from "@/lib/subscriptionPlan";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
 import { useAuth } from "@/context/AuthContext";
@@ -78,6 +78,7 @@ export default function ProfileScreen() {
     stripeSubscriptionStatus: string | null;
     monthlyBorrowCount: number;
     monthlyBorrowResetAt: string | null;
+    currentPeriodEnd?: string | null;
     pendingPlanChange?: PendingPlanChange | null;
   }
   const { data: subStatus } = useQuery<SubStatus>({
@@ -96,9 +97,7 @@ export default function ProfileScreen() {
   };
   const subPlan = SUB_PLAN[subTier];
 
-  const subBillingDate = subStatus?.monthlyBorrowResetAt
-    ? new Date(subStatus.monthlyBorrowResetAt).toLocaleDateString(undefined, { month: "long", day: "numeric" })
-    : null;
+  const subBilling = billingRow({ hasActivePaidSub, currentPeriodEnd: subStatus?.currentPeriodEnd, monthlyBorrowResetAt: subStatus?.monthlyBorrowResetAt });
   const subBorrowUsed = subStatus?.monthlyBorrowCount ?? 0;
   const subBorrowPct = Math.min((subBorrowUsed / 3) * 100, 100);
 
@@ -404,12 +403,10 @@ export default function ProfileScreen() {
           {/* Billing & usage */}
           <View style={styles.subInfoSection}>
             <PendingPlanBanner pending={subStatus?.pendingPlanChange} currentTier={subTier} />
-            {subBillingDate && (
+            {subBilling && (
               <View style={styles.subInfoRow}>
-                <Text style={[styles.subInfoLabel, { color: colors.mutedForeground }]}>
-                  {hasActivePaidSub ? "Next billing" : "Usage resets"}
-                </Text>
-                <Text style={[styles.subInfoValue, { color: colors.foreground }]}>{subBillingDate}</Text>
+                <Text style={[styles.subInfoLabel, { color: colors.mutedForeground }]}>{subBilling.label}</Text>
+                <Text style={[styles.subInfoValue, { color: colors.foreground }]}>{subBilling.date}</Text>
               </View>
             )}
             {subTier === "free" ? (

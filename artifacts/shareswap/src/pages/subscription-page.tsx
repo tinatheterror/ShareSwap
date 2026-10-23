@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/shared/navbar";
+import { billingRow } from "@/lib/billing-row";
 import { PendingPlanChangeNotice, type PendingPlanChange } from "@/components/pending-plan-change";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ interface SubStatus {
   stripeSubscriptionStatus: string | null;
   monthlyBorrowCount: number;
   monthlyBorrowResetAt: string | null;
+  currentPeriodEnd?: string | null;
   pendingPlanChange?: PendingPlanChange | null;
 }
 
@@ -151,12 +153,7 @@ export default function SubscriptionPage() {
     }
   }, []);
 
-  const billingDate = subStatus?.monthlyBorrowResetAt
-    ? new Date(subStatus.monthlyBorrowResetAt).toLocaleDateString(undefined, {
-        month: "long",
-        day: "numeric",
-      })
-    : null;
+  const billing = billingRow({ hasActivePaidSub, currentPeriodEnd: subStatus?.currentPeriodEnd, monthlyBorrowResetAt: subStatus?.monthlyBorrowResetAt });
   const borrowUsed = subStatus?.monthlyBorrowCount ?? 0;
   const borrowPct = Math.min((borrowUsed / 3) * 100, 100);
 
@@ -203,10 +200,10 @@ export default function SubscriptionPage() {
               {/* Billing + usage */}
               <div className="space-y-3 mb-4">
                 <PendingPlanChangeNotice pending={subStatus?.pendingPlanChange} currentTier={currentTier} />
-                {billingDate && (
+                {billing && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">{hasActivePaidSub ? "Next billing" : "Usage resets"}</span>
-                    <span className="font-medium text-slate-700">{billingDate}</span>
+                    <span className="text-slate-500">{billing.label}</span>
+                    <span className="font-medium text-slate-700">{billing.date}</span>
                   </div>
                 )}
                 {hasActivePaidSub && (

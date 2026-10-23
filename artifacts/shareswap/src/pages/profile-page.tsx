@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { billingRow } from "@/lib/billing-row";
 import { PendingPlanChangeNotice, type PendingPlanChange } from "@/components/pending-plan-change";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -182,6 +183,7 @@ export default function ProfilePage() {
     stripeSubscriptionStatus: string | null;
     monthlyBorrowCount: number;
     monthlyBorrowResetAt: string | null;
+    currentPeriodEnd?: string | null;
     pendingPlanChange?: PendingPlanChange | null;
   }>({
     queryKey: ["/api/subscription/status"],
@@ -210,9 +212,7 @@ export default function ProfilePage() {
     onError: (error: any) => toast({ title: "Failed to open billing portal", description: error.message || "Please try again.", variant: "destructive" }),
   });
 
-  const billingDate = subStatus?.monthlyBorrowResetAt
-    ? new Date(subStatus.monthlyBorrowResetAt).toLocaleDateString(undefined, { month: "long", day: "numeric" })
-    : null;
+  const billing = billingRow({ hasActivePaidSub, currentPeriodEnd: subStatus?.currentPeriodEnd, monthlyBorrowResetAt: subStatus?.monthlyBorrowResetAt });
   const borrowUsed = subStatus?.monthlyBorrowCount ?? 0;
   const borrowPct = Math.min((borrowUsed / 3) * 100, 100);
 
@@ -1446,10 +1446,10 @@ export default function ProfilePage() {
                   {/* Billing & usage */}
                   <div className="space-y-3 mb-4">
                     <PendingPlanChangeNotice pending={subStatus?.pendingPlanChange} currentTier={currentTier} />
-                    {billingDate && (
+                    {billing && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500">{hasActivePaidSub ? "Next billing" : "Usage resets"}</span>
-                        <span className="font-medium text-slate-700">{billingDate}</span>
+                        <span className="text-slate-500">{billing.label}</span>
+                        <span className="font-medium text-slate-700">{billing.date}</span>
                       </div>
                     )}
                     {currentTier === "free" ? (

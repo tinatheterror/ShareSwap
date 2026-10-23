@@ -22,7 +22,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
 import { PendingPlanBanner } from "@/components/PendingPlanBanner";
-import { planButtonAction, sheetCopy, cardLabel, pendingChangeLabel, type PendingPlanChange, type PlanPreview } from "@/lib/subscriptionPlan";
+import { billingRow, planButtonAction, sheetCopy, cardLabel, pendingChangeLabel, type PendingPlanChange, type PlanPreview } from "@/lib/subscriptionPlan";
 
 interface SubStatus {
   subscriptionTier: string;
@@ -30,6 +30,7 @@ interface SubStatus {
   stripeSubscriptionStatus: string | null;
   monthlyBorrowCount: number;
   monthlyBorrowResetAt: string | null;
+  currentPeriodEnd?: string | null;
   pendingPlanChange?: PendingPlanChange | null;
 }
 
@@ -239,12 +240,8 @@ export default function SubscriptionScreen() {
 
   const anyMutating = subscribeMutation.isPending || portalMutation.isPending;
 
-  const billingDate = subStatus?.monthlyBorrowResetAt
-    ? new Date(subStatus.monthlyBorrowResetAt).toLocaleDateString(undefined, {
-        month: "long",
-        day: "numeric",
-      })
-    : null;
+  // A paid plan's "Next billing" is Stripe's period end, not the borrow-count reset date.
+  const billing = billingRow({ hasActivePaidSub, currentPeriodEnd: subStatus?.currentPeriodEnd, monthlyBorrowResetAt: subStatus?.monthlyBorrowResetAt });
 
   const borrowUsed = subStatus?.monthlyBorrowCount ?? 0;
   const borrowPct = Math.min((borrowUsed / 3) * 100, 100);
@@ -319,12 +316,10 @@ export default function SubscriptionScreen() {
             {/* Billing + usage */}
             <View style={s.infoSection}>
               <PendingPlanBanner pending={subStatus?.pendingPlanChange} currentTier={currentTier} />
-              {billingDate && (
+              {billing && (
                 <View style={s.infoRow}>
-                  <Text style={[s.infoLabel, { color: colors.mutedForeground }]}>
-                    {hasActivePaidSub ? "Next billing" : "Usage resets"}
-                  </Text>
-                  <Text style={[s.infoValue, { color: colors.foreground }]}>{billingDate}</Text>
+                  <Text style={[s.infoLabel, { color: colors.mutedForeground }]}>{billing.label}</Text>
+                  <Text style={[s.infoValue, { color: colors.foreground }]}>{billing.date}</Text>
                 </View>
               )}
               {hasActivePaidSub && (
@@ -633,10 +628,12 @@ function ConfirmSheetBody(props: {
           </View>
         ))}
       </View>
-      <View style={[s.sheetCardRow, { borderColor: colors.border }]}>
-        <Feather name="credit-card" size={16} color={colors.mutedForeground} />
-        <Text style={{ color: colors.foreground, fontSize: 14 }}>{cardLabel(props.card) ?? "No card on file"}</Text>
-      </View>
+      {(copy.showCard || !props.card) && (
+        <View style={[s.sheetCardRow, { borderColor: colors.border }]}>
+          <Feather name="credit-card" size={16} color={colors.mutedForeground} />
+          <Text style={{ color: colors.foreground, fontSize: 14 }}>{cardLabel(props.card) ?? "No card on file"}</Text>
+        </View>
+      )}
       {copy.detail && <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>{copy.detail}</Text>}
       {props.error && <Text style={{ color: "#dc2626", fontSize: 13 }}>{props.error}</Text>}
       {props.authUrl && (

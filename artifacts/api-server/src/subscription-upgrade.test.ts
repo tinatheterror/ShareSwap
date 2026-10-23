@@ -320,7 +320,19 @@ function syncSetup(stored: { tier: string; sub: string | null; status: string | 
     setSubscription: async (_u, f) => void writes.push(f),
   };
   let listed = 0;
-  const stripe = { subscriptions: { list: async () => { listed++; if (stripeSubs instanceof Error) throw stripeSubs; return { data: stripeSubs }; } } } as any;
+  // Like Stripe, refuse an expand path deeper than four levels (a list's own "data." counts as one).
+  const checkExpand = (expand: string[] | undefined, isList: boolean) => {
+    for (const path of expand ?? []) {
+      const depth = path.split(".").length + (isList ? 1 : 0);
+      if (depth > 4) throw Object.assign(new Error(`You cannot expand more than 4 levels of a property. Property: ${path}`), { type: "StripeInvalidRequestError", code: "property_expansion_max_depth" });
+    }
+  };
+  const stripe = {
+    subscriptions: {
+      list: async (params: any) => { listed++; checkExpand(params.expand, true); if (stripeSubs instanceof Error) throw stripeSubs; return { data: stripeSubs }; },
+      retrieve: async (id: string, params: any) => { checkExpand(params?.expand, false); return (stripeSubs as any[]).find((x) => x.id === id); },
+    },
+  } as any;
   return { stripe, store, writes, listed: () => listed };
 }
 const liveSub = (id: string, tier: "member" | "pro", over: any = {}) => ({ id, status: "active", created: 1000, customer: "cus_1", schedule: null, items: { data: [{ price: { id: `price_${tier}`, product: { metadata: { tier } } } }] }, ...over });
@@ -363,7 +375,7 @@ test("sync: when Stripe cannot be reached the stored values stand and nothing is
   const { stripe, store, writes } = syncSetup({ tier: "pro", sub: "sub_1", status: "active" }, new Error("network down"));
   const r = await syncSubscriptionWithStripe(stripe, store, 3);
   assert.deepEqual(writes, []);
-  assert.deepEqual(r, { subscriptionTier: "pro", stripeSubscriptionId: "sub_1", stripeSubscriptionStatus: "active", pendingPlanChange: null });
+  assert.deepEqual(r, { subscriptionTier: "pro", stripeSubscriptionId: "sub_1", stripeSubscriptionStatus: "active", currentPeriodEnd: null, pendingPlanChange: null });
 });
 
 test("sync: a free account with no subscription costs no Stripe call; a pending downgrade is reported", async () => {
@@ -376,4 +388,48 @@ test("sync: a free account with no subscription costs no Stripe call; a pending 
   const r = await syncSubscriptionWithStripe(pending.stripe, pending.store, 3);
   assert.deepEqual(r!.pendingPlanChange, { tier: "member", effectiveAt: new Date(2000 * 1000).toISOString() });
   assert.deepEqual(pending.writes, []);
+});
+
+test("sync: reports the current period end from the subscription items (basil/clover), with the subscription-level field as a fallback", async () => {
+  const withItemPeriod = liveSub("sub_1", "pro");
+  (withItemPeriod.items.data[0] as any).current_period_end = 1795462667;
+  const a = syncSetup({ tier: "pro", sub: "sub_1", status: "active" }, [withItemPeriod]);
+  assert.equal((await syncSubscriptionWithStripe(a.stripe, a.store, 3))!.currentPeriodEnd, "2026-11-23T19:37:47.000Z");
+
+  const legacy = { ...liveSub("sub_1", "pro"), current_period_end: 1795462667 };
+  const b = syncSetup({ tier: "pro", sub: "sub_1", status: "active" }, [legacy]);
+  assert.equal((await syncSubscriptionWithStripe(b.stripe, b.store, 3))!.currentPeriodEnd, "2026-11-23T19:37:47.000Z");
+});
+
+test("a failed schedule is logged with the Stripe error type, code and message, leaves nothing behind, and changes nothing", async () => {
+  const existing = { id: "sub_9", status: "active", customer: "cus_1", metadata: { userId: "7", tier: "pro" }, items: { data: [{ id: "si_1", price: { id: "price_pro", unit_amount: 999 }, current_period_end: 2000 }] } };
+  const { deps, log } = setup({ existingSub: existing });
+  (deps.stripe as any).subscriptionSchedules.update = async () => { throw Object.assign(new Error("phases[1].duration is invalid"), { type: "StripeInvalidRequestError", code: "parameter_invalid_empty", param: "phases" }); };
+  const errors: string[] = [];
+  const realError = console.error;
+  console.error = (...a: unknown[]) => void errors.push(a.join(" "));
+  try {
+    const r = await subscribeWithSavedCard(deps, 7, "member");
+    assert.equal(r.status, 502);
+    assert.match(errors.join("\n"), /type=StripeInvalidRequestError code=parameter_invalid_empty param=phases message=phases\[1\]\.duration is invalid/);
+  } finally {
+    console.error = realError;
+  }
+  assert.deepEqual(log.released, ["sched_1"], "the half-made schedule is released");
+  assert.deepEqual(log.store, []);
+});
+
+test("a failed preview is logged with the Stripe error type, code and message, and the sheet falls back to no amount", async () => {
+  const member = { id: "sub_9", status: "active", customer: "cus_1", items: { data: [{ id: "si_1", price: { id: "price_member", unit_amount: 499 }, current_period_end: 2000 }] } };
+  const { deps } = setup({ existingSub: member, previewError: Object.assign(new Error("Invalid subscription_details"), { type: "StripeInvalidRequestError", code: "parameter_invalid_empty" }) });
+  const errors: string[] = [];
+  const realError = console.error;
+  console.error = (...a: unknown[]) => void errors.push(a.join(" "));
+  try {
+    const r = await previewPlanChange(deps, 7, "pro");
+    assert.equal((r.body as any).amountDueTodayCents, null);
+    assert.match(errors.join("\n"), /type=StripeInvalidRequestError code=parameter_invalid_empty message=Invalid subscription_details/);
+  } finally {
+    console.error = realError;
+  }
 });

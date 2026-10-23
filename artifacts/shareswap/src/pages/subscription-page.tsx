@@ -64,7 +64,7 @@ const PLANS: Record<
     iconBg: "bg-teal-50",
     iconColor: "text-teal-600",
     borderColor: "border-teal-400",
-    features: ["Unlimited borrows", "Unlimited swaps & gifts & rentals", "5% service fee on rentals"],
+    features: ["Unlimited borrows"],
     limitations: [],
   },
   pro: {
@@ -77,10 +77,8 @@ const PLANS: Record<
     borderColor: "border-amber-400",
     features: [
       "Unlimited borrows",
-      "Unlimited swaps & gifts & rentals",
-      "Reduced 4% service fee on rentals",
-      "Activity & Insights dashboard",
-      "$1.50 courier fee waived (5/mo)",
+      "4% rental service fee instead of 5%",
+      "$1.50 courier fee waived for 5 deliveries a month",
     ],
     limitations: [],
   },
@@ -308,15 +306,11 @@ export default function SubscriptionPage() {
                     : tier === "member"
                     ? [
                         { text: "Unlimited borrows", ok: true },
-                        { text: "Unlimited swaps & gifts & rentals", ok: true },
-                        { text: "5% service fee on rentals", ok: true },
                       ]
                     : [
                         { text: "Unlimited borrows", ok: true },
-                        { text: "Unlimited swaps & gifts & rentals", ok: true },
-                        { text: "Reduced 4% service fee on rentals", ok: true },
-                        { text: "Activity & Insights dashboard", ok: true },
-                        { text: "$1.50 courier fee waived (5/mo)", ok: true },
+                        { text: "4% rental service fee instead of 5%", ok: true },
+                        { text: "$1.50 courier fee waived for 5 deliveries a month", ok: true },
                       ];
 
                 return (

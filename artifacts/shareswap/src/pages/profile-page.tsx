@@ -111,6 +111,9 @@ const LEVELS = [
 ];
 
 
+/** The Activity & Insights dashboard is withdrawn: nothing links to it and its data is not fetched. */
+const ACTIVITY_DASHBOARD_ENABLED = false;
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -224,7 +227,7 @@ export default function ProfilePage() {
     topItems: { name: string; requests: number }[];
   }>({
     queryKey: ["/api/analytics/dashboard"],
-    enabled: !!user && isPro,
+    enabled: !!user && isPro && ACTIVITY_DASHBOARD_ENABLED,
   });
 
 
@@ -1471,8 +1474,8 @@ export default function ProfilePage() {
                     {(currentTier === "free"
                       ? ["3 borrows per month", "Unlimited swaps & gifts & rentals"]
                       : currentTier === "member"
-                      ? ["Unlimited borrows", "Unlimited swaps & gifts & rentals", "5% service fee on rentals"]
-                      : ["Unlimited borrows", "Unlimited swaps & gifts & rentals", "Reduced 4% service fee on rentals", "Activity & Insights dashboard", "$1.50 courier fee waived (5/mo)"]
+                      ? ["Unlimited borrows"]
+                      : ["Unlimited borrows", "4% rental service fee instead of 5%", "$1.50 courier fee waived for 5 deliveries a month"]
                     ).map((f) => (
                       <li key={f} className="flex items-center gap-2 text-sm text-slate-600">
                         <Check className="h-3.5 w-3.5 text-teal-500 shrink-0" />{f}
@@ -1506,7 +1509,8 @@ export default function ProfilePage() {
               </Card>
             )}
 
-            {/* Activity & Insights Dashboard */}
+            {/* Activity & Insights Dashboard — withdrawn from the product; kept for a possible free relaunch */}
+            {ACTIVITY_DASHBOARD_ENABLED && (
             <div className="mt-6">
               <div className="text-center mb-3 md:mb-4">
                 <h2 className="flex flex-wrap items-center justify-center gap-1.5 md:gap-2 text-base md:text-xl font-bold">
@@ -1659,6 +1663,7 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Account Statistics — Mobile Only (mirrors sidebar card) */}
             <div className="lg:hidden mt-2">

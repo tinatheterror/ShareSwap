@@ -17,7 +17,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, photoUrl } from "@/lib/api";
-import { pendingChangeLabel, type PendingPlanChange } from "@/lib/subscriptionPlan";
+import { PendingPlanBanner } from "@/components/PendingPlanBanner";
+import { type PendingPlanChange } from "@/lib/subscriptionPlan";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
 import { useAuth } from "@/context/AuthContext";
@@ -402,12 +403,7 @@ export default function ProfileScreen() {
 
           {/* Billing & usage */}
           <View style={styles.subInfoSection}>
-            {pendingChangeLabel(subStatus?.pendingPlanChange) && (
-              <View style={styles.subPendingBanner}>
-                <Feather name="clock" size={14} color="#92400e" />
-                <Text style={styles.subPendingBannerText}>{pendingChangeLabel(subStatus?.pendingPlanChange)}</Text>
-              </View>
-            )}
+            <PendingPlanBanner pending={subStatus?.pendingPlanChange} currentTier={subTier} />
             {subBillingDate && (
               <View style={styles.subInfoRow}>
                 <Text style={[styles.subInfoLabel, { color: colors.mutedForeground }]}>
@@ -983,8 +979,6 @@ const styles = StyleSheet.create({
   subPrice: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   subDivider: { height: 1, marginVertical: 14 },
   subInfoSection: { gap: 10, marginBottom: 0 },
-  subPendingBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#fffbeb", borderColor: "#fde68a", borderWidth: 1, borderRadius: 10, padding: 10 },
-  subPendingBannerText: { flex: 1, fontSize: 13, color: "#92400e", fontFamily: "Inter_600SemiBold" },
   subInfoRow: {
     flexDirection: "row",
     justifyContent: "space-between",

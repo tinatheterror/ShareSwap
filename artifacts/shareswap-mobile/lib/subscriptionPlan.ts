@@ -44,6 +44,11 @@ export function pendingChangeLabel(pending: PendingPlanChange | null | undefined
   return `Switching to ${PLAN_NAMES[pending.tier]} on ${formatDate(pending.effectiveAt)}`;
 }
 
+/** "Keep Pro": the button that drops a pending downgrade, named after the plan the user is on. */
+export function keepPlanLabel(currentTier: Tier): string {
+  return currentTier === "free" ? "Keep my plan" : `Keep ${PLAN_NAMES[currentTier]}`;
+}
+
 export interface SheetCopy {
   title: string;
   /** e.g. "Upgrade to Pro: CA$9.99/month, charged to Visa •••• 4242" */

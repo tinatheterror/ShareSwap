@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
+import { PendingPlanBanner } from "@/components/PendingPlanBanner";
 import { planButtonAction, sheetCopy, cardLabel, pendingChangeLabel, type PendingPlanChange, type PlanPreview } from "@/lib/subscriptionPlan";
 
 interface SubStatus {
@@ -317,12 +318,7 @@ export default function SubscriptionScreen() {
 
             {/* Billing + usage */}
             <View style={s.infoSection}>
-              {pendingLabel && (
-                <View style={s.pendingBanner}>
-                  <Feather name="clock" size={14} color="#92400e" />
-                  <Text style={s.pendingBannerText}>{pendingLabel}</Text>
-                </View>
-              )}
+              <PendingPlanBanner pending={subStatus?.pendingPlanChange} currentTier={currentTier} />
               {billingDate && (
                 <View style={s.infoRow}>
                   <Text style={[s.infoLabel, { color: colors.mutedForeground }]}>
@@ -669,8 +665,6 @@ function ConfirmSheetBody(props: {
 }
 
 const s = StyleSheet.create({
-  pendingBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#fffbeb", borderColor: "#fde68a", borderWidth: 1, borderRadius: 10, padding: 10 },
-  pendingBannerText: { flex: 1, fontSize: 13, color: "#92400e", fontFamily: "Inter_600SemiBold" },
   sheetBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
   sheetTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },

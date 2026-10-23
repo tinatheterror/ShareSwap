@@ -1,4 +1,4 @@
-import { cardLabel, pendingChangeLabel, planButtonAction, sheetCopy } from "../subscriptionPlan";
+import { cardLabel, keepPlanLabel, pendingChangeLabel, planButtonAction, sheetCopy } from "../subscriptionPlan";
 
 describe("planButtonAction", () => {
   it("opens the in-app confirm sheet for any paid plan the user is not on, whether or not they already pay", () => {
@@ -61,5 +61,12 @@ describe("pendingChangeLabel", () => {
   it("is empty when nothing is pending", () => {
     expect(pendingChangeLabel(null)).toBeNull();
     expect(pendingChangeLabel(undefined)).toBeNull();
+  });
+});
+
+describe("keepPlanLabel", () => {
+  it("is named after the plan the user is on", () => {
+    expect(keepPlanLabel("pro")).toBe("Keep Pro");
+    expect(keepPlanLabel("member")).toBe("Keep Member");
   });
 });

@@ -774,6 +774,7 @@ export async function checkAndAwardAchievements(userId: number) {
 // Initialize Stripe - will be loaded from connector
 import { getUncachableStripeClient, getStripePublishableKey } from "../stripe.server";
 import { subscriptionWebhookHandler } from "../subscription-webhook";
+import { subscriptionReturnHandler, stripeReturnUrl, confirmCheckoutSession, dbConfirmStore } from "../subscription-return";
 
 // Helper to get stripe client (lazy loaded from connector)
 let stripeClient: Stripe | null = null;
@@ -15988,8 +15989,9 @@ Respond with ONLY the category name, nothing else.`
         payment_method_types: ['card'],
         mode: 'subscription',
         line_items: [{ price: priceId, quantity: 1 }],
-        success_url: successUrl || `${baseUrl}/profile?sub_success=true`,
-        cancel_url: cancelUrl || `${baseUrl}/profile?sub_canceled=true`,
+        // Stripe only takes http(s); app links are bounced through /api/subscription/return.
+        success_url: stripeReturnUrl({ clientUrl: successUrl, result: "success", baseUrl, fallback: `${baseUrl}/profile?sub_success=true` }),
+        cancel_url: stripeReturnUrl({ clientUrl: cancelUrl, result: "canceled", baseUrl, fallback: `${baseUrl}/profile?sub_canceled=true` }),
         metadata: { userId: String(req.user.id), tier },
       });
 
@@ -16006,6 +16008,22 @@ Respond with ONLY the category name, nothing else.`
         cancelUrl: cancelUrl ?? null,
       });
       res.status(500).json({ message: "Failed to create checkout session" });
+    }
+  });
+
+  // Bounce page Stripe returns to; hands the browser back to the app (no auth: the browser has no app session).
+  app.get("/api/subscription/return", subscriptionReturnHandler());
+
+  // Confirm a completed Checkout session straight from Stripe so the new plan shows without waiting for the webhook
+  app.post("/api/subscription/confirm", requireEmailVerified, async (req: any, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    try {
+      const stripe = await getUncachableStripeClient();
+      const outcome = await confirmCheckoutSession(stripe, dbConfirmStore, req.user.id, req.body?.sessionId);
+      res.status(outcome.status).json(outcome.body);
+    } catch (error) {
+      console.error("Subscription confirm error:", error);
+      res.status(500).json({ message: "Failed to confirm subscription" });
     }
   });
 
@@ -16030,7 +16048,7 @@ Respond with ONLY the category name, nothing else.`
 
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: userRecord.stripeCustomerId,
-        return_url: req.body.returnUrl || `${baseUrl}/profile`,
+        return_url: stripeReturnUrl({ clientUrl: req.body.returnUrl, result: "done", baseUrl, fallback: `${baseUrl}/profile` }),
       });
       res.json({ url: portalSession.url });
     } catch (error) {

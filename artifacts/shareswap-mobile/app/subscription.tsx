@@ -100,15 +100,20 @@ export default function SubscriptionScreen() {
   const hasOpenedStripe = useRef(false);
 
   // Handle Stripe deep-link return
-  const params = useLocalSearchParams<{ sub_success?: string; sub_canceled?: string }>();
+  const params = useLocalSearchParams<{ sub_success?: string; sub_canceled?: string; session_id?: string }>();
   useEffect(() => {
     if (params.sub_success === "true") {
-      qc.invalidateQueries({ queryKey: ["/api/subscription/status"] });
+      // Ask the server to read the Checkout session from Stripe so the plan shows now, without waiting on the webhook.
+      const refresh = () => qc.invalidateQueries({ queryKey: ["/api/subscription/status"] });
+      const confirm = params.session_id
+        ? apiPost("/api/subscription/confirm", { sessionId: params.session_id }).catch(() => undefined)
+        : Promise.resolve();
+      confirm.then(refresh);
       Alert.alert("Subscription activated!", "Your new plan benefits are now active.");
     } else if (params.sub_canceled === "true") {
       Alert.alert("Checkout canceled", "No charges were made.");
     }
-  }, [params.sub_success, params.sub_canceled]);
+  }, [params.sub_success, params.sub_canceled, params.session_id]);
 
   // Re-fetch subscription when returning from Stripe
   useEffect(() => {

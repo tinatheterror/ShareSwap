@@ -303,6 +303,22 @@ export async function pendingPlanChange(
   }
 }
 
+/** Drops a plan change waiting for the end of the period ("Keep Pro"). No card needed; nothing is charged. */
+export async function keepCurrentPlan(
+  stripe: Pick<Stripe, "subscriptions" | "subscriptionSchedules">,
+  store: UpgradeStore,
+  userId: number,
+): Promise<{ status: 200; body: { released: boolean } } | { status: 404; body: { message: string } }> {
+  const user = await store.getUser(userId);
+  if (!user?.stripeCustomerId || !user.stripeSubscriptionId) return { status: 404, body: { message: "No subscription found" } };
+  const sub = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+  const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+  if (customerId !== user.stripeCustomerId) return { status: 404, body: { message: "No subscription found" } };
+  if (!sub.schedule) return { status: 200, body: { released: false } };
+  await stripe.subscriptionSchedules.release(typeof sub.schedule === "string" ? sub.schedule : sub.schedule.id);
+  return { status: 200, body: { released: true } };
+}
+
 export interface PlanPreview {
   tier: PaidTier;
   currency: string;

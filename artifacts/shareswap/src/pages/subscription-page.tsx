@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/shared/navbar";
+import { PendingPlanChangeNotice, type PendingPlanChange } from "@/components/pending-plan-change";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,6 +28,7 @@ interface SubStatus {
   stripeSubscriptionStatus: string | null;
   monthlyBorrowCount: number;
   monthlyBorrowResetAt: string | null;
+  pendingPlanChange?: PendingPlanChange | null;
 }
 
 type Tier = "free" | "member" | "pro";
@@ -200,6 +202,7 @@ export default function SubscriptionPage() {
 
               {/* Billing + usage */}
               <div className="space-y-3 mb-4">
+                <PendingPlanChangeNotice pending={subStatus?.pendingPlanChange} currentTier={currentTier} />
                 {billingDate && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-500">{hasActivePaidSub ? "Next billing" : "Usage resets"}</span>

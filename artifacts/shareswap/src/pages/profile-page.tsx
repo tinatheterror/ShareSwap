@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { PendingPlanChangeNotice, type PendingPlanChange } from "@/components/pending-plan-change";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useState, useRef, useCallback, useEffect } from "react";
@@ -181,6 +182,7 @@ export default function ProfilePage() {
     stripeSubscriptionStatus: string | null;
     monthlyBorrowCount: number;
     monthlyBorrowResetAt: string | null;
+    pendingPlanChange?: PendingPlanChange | null;
   }>({
     queryKey: ["/api/subscription/status"],
     enabled: !!user,
@@ -1443,6 +1445,7 @@ export default function ProfilePage() {
 
                   {/* Billing & usage */}
                   <div className="space-y-3 mb-4">
+                    <PendingPlanChangeNotice pending={subStatus?.pendingPlanChange} currentTier={currentTier} />
                     {billingDate && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-slate-500">{hasActivePaidSub ? "Next billing" : "Usage resets"}</span>

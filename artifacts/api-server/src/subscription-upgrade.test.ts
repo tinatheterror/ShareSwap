@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, afterEach } from "node:test";
-import { confirmSubscriptionPayment, pendingPlanChange, previewPlanChange, subscribeWithSavedCard, type UpgradeStore } from "./subscription-upgrade";
+import { confirmSubscriptionPayment, keepCurrentPlan, pendingPlanChange, previewPlanChange, subscribeWithSavedCard, type UpgradeStore } from "./subscription-upgrade";
 import type { CardStore } from "./card-sync";
 
 const warn = console.warn;
@@ -270,4 +270,21 @@ test("pendingPlanChange reports a scheduled downgrade and its date, and nothing 
   assert.equal(await pendingPlanChange(withSchedule(active), null), null);
   const broken = { subscriptions: { retrieve: async () => { throw new Error("stripe down"); } } } as any;
   assert.equal(await pendingPlanChange(broken, "sub_9"), null);
+});
+
+test("keepCurrentPlan releases the user's own pending schedule, and only theirs", async () => {
+  const run = async (sub: any, user: any = { stripeCustomerId: "cus_1", email: null, fullName: null, stripeSubscriptionId: "sub_9" }) => {
+    const released: string[] = [];
+    const stripe = { subscriptions: { retrieve: async () => sub }, subscriptionSchedules: { release: async (id: string) => void released.push(id) } } as any;
+    const store: UpgradeStore = { getUser: async () => user, setCustomer: async () => {}, setSubscription: async () => {} };
+    return { r: await keepCurrentPlan(stripe, store, 7), released };
+  };
+  const mine = await run({ id: "sub_9", customer: "cus_1", schedule: "sched_1" });
+  assert.deepEqual(mine.r, { status: 200, body: { released: true } });
+  assert.deepEqual(mine.released, ["sched_1"]);
+  assert.deepEqual((await run({ id: "sub_9", customer: "cus_1", schedule: null })).r.body, { released: false });
+  const foreign = await run({ id: "sub_9", customer: "cus_other", schedule: "sched_1" });
+  assert.equal(foreign.r.status, 404);
+  assert.deepEqual(foreign.released, []);
+  assert.equal((await run({}, { stripeCustomerId: "cus_1", stripeSubscriptionId: null })).r.status, 404);
 });

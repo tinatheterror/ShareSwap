@@ -13,7 +13,7 @@ const LIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
 /** A tier is granted only while the subscription is paid up (or in its grace period). */
 export const grantsTier = (status: string | null | undefined) => !!status && LIVE_STATUSES.has(status);
 
-export type UpgradeStripe = Pick<Stripe, "customers" | "paymentMethods" | "products" | "prices" | "subscriptions" | "paymentIntents">;
+export type UpgradeStripe = Pick<Stripe, "customers" | "paymentMethods" | "products" | "prices" | "subscriptions" | "paymentIntents" | "subscriptionSchedules" | "invoices">;
 
 export interface UpgradeUser {
   stripeCustomerId: string | null;
@@ -54,19 +54,36 @@ export const dbUpgradeStore: UpgradeStore = {
 };
 
 export type UpgradeOutcome =
-  | { status: 200; body: { tier: PaidTier; subscriptionId: string; changed: boolean } }
+  | { status: 200; body: { tier: PaidTier; subscriptionId: string; changed: boolean; scheduledFor?: string } }
   | { status: 402; body: { requiresAction: true; clientSecret: string; subscriptionId: string; hostedInvoiceUrl: string | null; message: string } }
   | { status: 402; body: { code: "PAYMENT_FAILED"; message: string } }
   | { status: 409; body: { code: "CARD_REQUIRED"; reason: "missing" | "stale"; message: string } }
   | { status: 400 | 404; body: { message: string } };
 
 /** The active CAD Price for a tier's product, found by product metadata. No fallback to another currency. */
-export async function findTierPrice(stripe: Pick<Stripe, "products" | "prices">, tier: PaidTier): Promise<string | null> {
+export async function findTierPrice(stripe: Pick<Stripe, "products" | "prices">, tier: PaidTier): Promise<{ id: string; unitAmount: number } | null> {
   const products = await stripe.products.search({ query: `metadata['tier']:'${tier}' AND metadata['app']:'shareswap'` });
   if (!products.data.length) return null;
   const prices = await stripe.prices.list({ product: products.data[0].id, active: true, currency: PLATFORM_CURRENCY, limit: 1 });
-  return prices.data[0]?.id ?? null;
+  const price = prices.data[0];
+  return price ? { id: price.id, unitAmount: price.unit_amount ?? 0 } : null;
 }
+
+/** The user's live (paid-up) subscription on their current customer, if any. */
+async function liveSubscription(stripe: UpgradeStripe, subscriptionId: string | null, customerId: string) {
+  if (!subscriptionId) return null;
+  try {
+    const sub = await stripe.subscriptions.retrieve(subscriptionId, { expand: ["latest_invoice.confirmation_secret"] });
+    return sub.customer === customerId && LIVE_STATUSES.has(sub.status) ? sub : null;
+  } catch (error) {
+    const err = error as { statusCode?: number; code?: string };
+    if (err?.statusCode === 404 || err?.code === "resource_missing") return null;
+    throw error;
+  }
+}
+
+const periodEnd = (sub: Stripe.Subscription): number | null =>
+  (sub.items.data[0] as any)?.current_period_end ?? (sub as any).current_period_end ?? null;
 
 /** Client secret and PaymentIntent for a subscription's first invoice, when it still needs the customer. */
 async function pendingPayment(stripe: UpgradeStripe, subscription: Stripe.Subscription) {
@@ -120,8 +137,9 @@ async function run(deps: { stripe: UpgradeStripe; store: UpgradeStore; cards: Ca
     return { status: 409, body: { code: "CARD_REQUIRED", reason: "stale", message: "Please add a card" } };
   }
 
-  const priceId = await findTierPrice(stripe, tier);
-  if (!priceId) return { status: 404, body: { message: "Subscription plan not found. Please contact support." } };
+  const price = await findTierPrice(stripe, tier);
+  if (!price) return { status: 404, body: { message: "Subscription plan not found. Please contact support." } };
+  const priceId = price.id;
 
   const metadata = { userId: String(userId), tier };
 
@@ -135,15 +153,54 @@ async function run(deps: { stripe: UpgradeStripe; store: UpgradeStore; cards: Ca
     }
     if (existing && existing.customer === customerId && LIVE_STATUSES.has(existing.status)) {
       const item = existing.items.data[0];
+      // A pending end-of-period change (a schedule) is dropped first: the user's latest choice wins.
+      if (existing.schedule) {
+        await stripe.subscriptionSchedules.release(typeof existing.schedule === "string" ? existing.schedule : existing.schedule.id);
+      }
       if (item.price.id === priceId) {
         await store.setSubscription(userId, { subscriptionTier: tier, stripeSubscriptionId: existing.id, stripeSubscriptionStatus: existing.status });
         return { status: 200, body: { tier, subscriptionId: existing.id, changed: false } };
       }
-      const updated = await stripe.subscriptions.update(
-        existing.id,
-        { items: [{ id: item.id, price: priceId }], metadata, default_payment_method: card.id },
-        { idempotencyKey: `sub-change:${userId}:${existing.id}:${priceId}` },
-      );
+
+      // Moving to a cheaper plan waits for the end of the paid period: nothing is refunded and the user keeps
+      // what they paid for. Moving up charges the prorated difference now.
+      if (price.unitAmount < (item.price.unit_amount ?? 0)) {
+        const effective = periodEnd(existing);
+        const schedule = await stripe.subscriptionSchedules.create({ from_subscription: existing.id });
+        const current = schedule.phases[0];
+        await stripe.subscriptionSchedules.update(schedule.id, {
+          end_behavior: "release",
+          phases: [
+            { items: [{ price: item.price.id, quantity: 1 }], start_date: current.start_date, end_date: current.end_date, proration_behavior: "none" },
+            { items: [{ price: priceId, quantity: 1 }], duration: { interval: "month", interval_count: 1 }, proration_behavior: "none", metadata },
+          ],
+        });
+        return {
+          status: 200,
+          body: { tier, subscriptionId: existing.id, changed: true, scheduledFor: effective ? new Date(effective * 1000).toISOString() : undefined },
+        };
+      }
+
+      let updated: Stripe.Subscription;
+      try {
+        updated = await stripe.subscriptions.update(
+          existing.id,
+          {
+            items: [{ id: item.id, price: priceId }],
+            metadata,
+            default_payment_method: card.id,
+            proration_behavior: "always_invoice",
+            payment_behavior: "error_if_incomplete",
+          },
+          { idempotencyKey: `sub-change:${userId}:${existing.id}:${priceId}` },
+        );
+      } catch (error) {
+        const err = error as { type?: string; message?: string };
+        if (err?.type === "StripeCardError") {
+          return { status: 402, body: { code: "PAYMENT_FAILED", message: err.message || "Your card was declined. Please try another card." } };
+        }
+        throw error;
+      }
       await store.setSubscription(userId, { subscriptionTier: tier, stripeSubscriptionId: updated.id, stripeSubscriptionStatus: updated.status });
       return { status: 200, body: { tier, subscriptionId: updated.id, changed: true } };
     }
@@ -223,4 +280,54 @@ export async function confirmSubscriptionPayment(
   if (!LIVE_STATUSES.has(subscription.status)) return { status: 200, body: { confirmed: false, reason: subscription.status } };
   await store.setSubscription(userId, { subscriptionTier: tier, stripeSubscriptionId: subscription.id, stripeSubscriptionStatus: subscription.status });
   return { status: 200, body: { confirmed: true, tier } };
+}
+
+export interface PlanPreview {
+  tier: PaidTier;
+  currency: string;
+  /** The plan's monthly price, in cents. */
+  priceCents: number;
+  /** What this change charges right now, in cents; null if Stripe could not preview it. */
+  amountDueTodayCents: number | null;
+  /** "new" first subscription, "upgrade" charged now with proration, "downgrade" at the end of the period. */
+  change: "new" | "upgrade" | "downgrade" | "same";
+  /** When a downgrade takes effect. */
+  effectiveAt?: string;
+}
+
+/** What choosing `tier` would do and cost, for the confirm sheet. Changes nothing. */
+export async function previewPlanChange(
+  deps: { stripe: UpgradeStripe; store: UpgradeStore },
+  userId: number,
+  tier: unknown,
+): Promise<{ status: 200; body: PlanPreview } | { status: 400 | 404; body: { message: string } }> {
+  if (!isPaidTier(tier)) return { status: 400, body: { message: "Invalid tier. Must be 'member' or 'pro'" } };
+  const { stripe, store } = deps;
+  const user = await store.getUser(userId);
+  if (!user) return { status: 404, body: { message: "User not found" } };
+  const price = await findTierPrice(stripe, tier);
+  if (!price) return { status: 404, body: { message: "Subscription plan not found." } };
+  const base = { tier, currency: PLATFORM_CURRENCY, priceCents: price.unitAmount };
+
+  const existing = user.stripeCustomerId ? await liveSubscription(stripe, user.stripeSubscriptionId, user.stripeCustomerId) : null;
+  if (!existing) return { status: 200, body: { ...base, change: "new", amountDueTodayCents: price.unitAmount } };
+
+  const item = existing.items.data[0];
+  const currentAmount = item.price.unit_amount ?? 0;
+  if (item.price.id === price.id) return { status: 200, body: { ...base, change: "same", amountDueTodayCents: 0 } };
+  if (price.unitAmount < currentAmount) {
+    const end = periodEnd(existing);
+    return { status: 200, body: { ...base, change: "downgrade", amountDueTodayCents: 0, effectiveAt: end ? new Date(end * 1000).toISOString() : undefined } };
+  }
+  try {
+    const invoice = await stripe.invoices.createPreview({
+      customer: user.stripeCustomerId!,
+      subscription: existing.id,
+      subscription_details: { items: [{ id: item.id, price: price.id }], proration_behavior: "always_invoice" },
+    });
+    return { status: 200, body: { ...base, change: "upgrade", amountDueTodayCents: invoice.amount_due } };
+  } catch (error) {
+    console.warn("[subscription] plan change preview failed:", (error as Error)?.message);
+    return { status: 200, body: { ...base, change: "upgrade", amountDueTodayCents: null } };
+  }
 }

@@ -775,7 +775,7 @@ export async function checkAndAwardAchievements(userId: number) {
 // Initialize Stripe - will be loaded from connector
 import { getUncachableStripeClient, getStripePublishableKey } from "../stripe.server";
 import { subscriptionWebhookHandler } from "../subscription-webhook";
-import { subscribeWithSavedCard, confirmSubscriptionPayment, dbUpgradeStore } from "../subscription-upgrade";
+import { subscribeWithSavedCard, confirmSubscriptionPayment, previewPlanChange, dbUpgradeStore } from "../subscription-upgrade";
 import { subscriptionReturnHandler, stripeReturnUrl, confirmCheckoutSession, dbConfirmStore } from "../subscription-return";
 
 // Helper to get stripe client (lazy loaded from connector)
@@ -16061,6 +16061,19 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Subscription confirm error:", error);
       res.status(500).json({ message: "Failed to confirm subscription" });
+    }
+  });
+
+  // What choosing a plan would charge and when it starts, for the mobile confirm sheet
+  app.get("/api/subscription/preview", requireEmailVerified, async (req: any, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    try {
+      const stripe = await getUncachableStripeClient();
+      const outcome = await previewPlanChange({ stripe, store: dbUpgradeStore }, req.user.id, req.query?.tier);
+      return res.status(outcome.status).json(outcome.body);
+    } catch (error) {
+      console.error("Subscription preview error:", (error as Error)?.message);
+      return res.status(500).json({ message: "Failed to preview the plan change" });
     }
   });
 

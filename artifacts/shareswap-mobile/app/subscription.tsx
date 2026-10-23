@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
+import { planButtonAction, sheetCopy, cardLabel, type PlanPreview } from "@/lib/subscriptionPlan";
 
 interface SubStatus {
   subscriptionTier: string;
@@ -144,6 +145,13 @@ export default function SubscriptionScreen() {
   const pendingSubscriptionId = useRef<string | null>(null);
   const [authUrl, setAuthUrl] = useState<string | null>(null);
 
+  // What the chosen plan would charge today (Stripe's preview) and, for a downgrade, when it starts.
+  const { data: planPreview } = useQuery<PlanPreview>({
+    queryKey: ["/api/subscription/preview", confirmTier],
+    queryFn: () => apiGet<PlanPreview>(`/api/subscription/preview?tier=${confirmTier}`),
+    enabled: !!user && (confirmTier === "member" || confirmTier === "pro"),
+  });
+
   const { data: cardData } = useQuery<SavedCard>({
     queryKey: ["payment-method"],
     queryFn: () => apiGet<SavedCard>("/api/payment-method"),
@@ -176,13 +184,18 @@ export default function SubscriptionScreen() {
   }, []);
 
   const subscribeMutation = useMutation({
-    mutationFn: (tier: Tier) => apiPost<{ tier: Tier }>("/api/subscription/subscribe", { tier }),
-    onSuccess: (_data, tier) => {
+    mutationFn: (tier: Tier) => apiPost<{ tier: Tier; scheduledFor?: string }>("/api/subscription/subscribe", { tier }),
+    onSuccess: (data, tier) => {
       setConfirmTier(null);
       setSheetError(null);
       setAuthUrl(null);
       qc.invalidateQueries({ queryKey: ["/api/subscription/status"] });
-      Alert.alert("Subscription activated!", `You're now on the ${PLAN_META[tier].name} plan.`);
+      if (data.scheduledFor) {
+        const when = new Date(data.scheduledFor).toLocaleDateString(undefined, { month: "long", day: "numeric" });
+        Alert.alert("Plan change scheduled", `You'll move to ${PLAN_META[tier].name} on ${when}. You keep your current plan until then.`);
+      } else {
+        Alert.alert("Subscription activated!", `You're now on the ${PLAN_META[tier].name} plan.`);
+      }
     },
     onError: (e: any, tier) => {
       if (e?.code === "CARD_REQUIRED") {
@@ -504,7 +517,7 @@ export default function SubscriptionScreen() {
                         >
                           <Feather name="settings" size={13} color="#64748b" />
                           <Text style={s.manageRowText}>
-                            {portalMutation.isPending ? "Opening…" : "Manage Subscription"}
+                            {portalMutation.isPending ? "Opening…" : "Manage billing"}
                           </Text>
                         </Pressable>
                       </View>
@@ -516,6 +529,7 @@ export default function SubscriptionScreen() {
                         ]}
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          if (planButtonAction(currentTier, tier) !== "confirm-sheet") return;
                           setSheetError(null);
                           setAuthUrl(null);
                           setConfirmTier(tier);
@@ -552,7 +566,8 @@ export default function SubscriptionScreen() {
             {confirmTier && (
               <ConfirmSheetBody
                 tier={confirmTier}
-                changing={hasActivePaidSub}
+                currentTier={currentTier}
+                preview={planPreview?.tier === confirmTier ? planPreview : null}
                 card={cardData?.hasPaymentMethod ? cardData.paymentMethod : null}
                 pending={subscribeMutation.isPending}
                 error={sheetError}
@@ -582,11 +597,10 @@ interface SavedCard {
   paymentMethod: { last4: string; brand: string } | null;
 }
 
-const BRAND_NAMES: Record<string, string> = { visa: "Visa", mastercard: "Mastercard", amex: "American Express", discover: "Discover", diners: "Diners Club", jcb: "JCB", unionpay: "UnionPay" };
-
 function ConfirmSheetBody(props: {
   tier: Tier;
-  changing: boolean;
+  currentTier: Tier;
+  preview: PlanPreview | null;
   card: { last4: string; brand: string } | null;
   pending: boolean;
   error: string | null;
@@ -598,12 +612,10 @@ function ConfirmSheetBody(props: {
 }) {
   const colors = useColors();
   const meta = PLAN_META[props.tier];
+  const copy = sheetCopy({ currentTier: props.currentTier, target: props.tier as "member" | "pro", card: props.card, preview: props.preview });
   return (
     <View style={{ gap: 14 }}>
-      <Text style={[s.sheetTitle, { color: colors.foreground }]}>
-        {props.changing ? `Switch to ${meta.name}` : `Subscribe to ${meta.name}`}
-      </Text>
-      <Text style={[s.sheetPrice, { color: colors.foreground }]}>{`$${meta.priceNum.toFixed(2)} CAD / month`}</Text>
+      <Text style={[s.sheetTitle, { color: colors.foreground }]}>{copy.headline}</Text>
       <View style={{ gap: 6 }}>
         {meta.features.map((f) => (
           <View key={f} style={s.featureRow}>
@@ -614,15 +626,9 @@ function ConfirmSheetBody(props: {
       </View>
       <View style={[s.sheetCardRow, { borderColor: colors.border }]}>
         <Feather name="credit-card" size={16} color={colors.mutedForeground} />
-        <Text style={{ color: colors.foreground, fontSize: 14 }}>
-          {props.card ? `${BRAND_NAMES[props.card.brand?.toLowerCase()] ?? props.card.brand} •••• ${props.card.last4}` : "No card on file"}
-        </Text>
+        <Text style={{ color: colors.foreground, fontSize: 14 }}>{cardLabel(props.card) ?? "No card on file"}</Text>
       </View>
-      {props.changing && (
-        <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-          Your current subscription changes to this plan. Stripe prorates the difference.
-        </Text>
-      )}
+      {copy.detail && <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>{copy.detail}</Text>}
       {props.error && <Text style={{ color: "#dc2626", fontSize: 13 }}>{props.error}</Text>}
       {props.authUrl && (
         <Pressable style={[s.solidBtn, { backgroundColor: "#0d9488" }]} onPress={props.onAuthenticate}>
@@ -635,7 +641,7 @@ function ConfirmSheetBody(props: {
           onPress={props.onConfirm}
           disabled={props.pending}
         >
-          {props.pending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.solidBtnText}>{`Confirm — $${meta.priceNum.toFixed(2)} CAD/mo`}</Text>}
+          {props.pending ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.solidBtnText}>{copy.confirmLabel}</Text>}
         </Pressable>
       ) : (
         <Pressable style={[s.solidBtn, { backgroundColor: "#0d9488" }]} onPress={props.onAddCard}>

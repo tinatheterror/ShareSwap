@@ -1,3 +1,4 @@
+import { ensureUsableCustomer } from "../stripe-customer.js";
 import sharp from 'sharp';
 import type { Express } from "express";
 import { createServer, type Server } from "http";
@@ -15946,14 +15947,14 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(users.id, req.user.id))
         .limit(1);
 
-      let customerId = userRecord?.stripeCustomerId;
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          email: userRecord?.email || undefined,
-          name: userRecord?.fullName || undefined,
-          metadata: { userId: String(req.user.id) },
-        });
-        customerId = customer.id;
+      // A stored customer that is gone from this Stripe account, deleted, or locked to another currency
+      // would fail the session; replace it with a fresh one.
+      const { customerId, created } = await ensureUsableCustomer(stripe, userRecord?.stripeCustomerId, {
+        email: userRecord?.email || undefined,
+        name: userRecord?.fullName || undefined,
+        metadata: { userId: String(req.user.id) },
+      });
+      if (created) {
         await db.update(users).set({ stripeCustomerId: customerId }).where(eq(users.id, req.user.id));
       }
 
@@ -15994,7 +15995,16 @@ Respond with ONLY the category name, nothing else.`
 
       res.json({ url: session.url });
     } catch (error) {
-      console.error("Checkout session error:", error);
+      const stripeErr = error as { type?: string; code?: string; message?: string; param?: string; statusCode?: number };
+      console.error("Checkout session error:", {
+        type: stripeErr?.type,
+        code: stripeErr?.code,
+        param: stripeErr?.param,
+        statusCode: stripeErr?.statusCode,
+        message: stripeErr?.message,
+        successUrl: successUrl ?? null,
+        cancelUrl: cancelUrl ?? null,
+      });
       res.status(500).json({ message: "Failed to create checkout session" });
     }
   });

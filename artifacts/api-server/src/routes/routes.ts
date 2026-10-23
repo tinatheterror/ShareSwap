@@ -775,7 +775,7 @@ export async function checkAndAwardAchievements(userId: number) {
 // Initialize Stripe - will be loaded from connector
 import { getUncachableStripeClient, getStripePublishableKey } from "../stripe.server";
 import { subscriptionWebhookHandler } from "../subscription-webhook";
-import { subscribeWithSavedCard, confirmSubscriptionPayment, previewPlanChange, dbUpgradeStore } from "../subscription-upgrade";
+import { subscribeWithSavedCard, confirmSubscriptionPayment, previewPlanChange, pendingPlanChange, dbUpgradeStore } from "../subscription-upgrade";
 import { subscriptionReturnHandler, stripeReturnUrl, confirmCheckoutSession, dbConfirmStore } from "../subscription-return";
 
 // Helper to get stripe client (lazy loaded from connector)
@@ -15960,7 +15960,17 @@ Respond with ONLY the category name, nothing else.`
         .from(users)
         .where(eq(users.id, req.user.id))
         .limit(1);
-      res.json(user || { subscriptionTier: 'free' });
+      if (!user) return res.json({ subscriptionTier: 'free' });
+      // A plan change waiting for the end of the period (Pro to Member), read from Stripe; best effort.
+      let pendingChange = null;
+      if ((user as any).stripeSubscriptionId && (user as any).stripeSubscriptionStatus === "active") {
+        try {
+          pendingChange = await pendingPlanChange(await getUncachableStripeClient(), (user as any).stripeSubscriptionId);
+        } catch {
+          pendingChange = null;
+        }
+      }
+      return res.json({ ...user, pendingPlanChange: pendingChange });
     } catch (error) {
       console.error("Subscription status error:", error);
       res.status(500).json({ message: "Failed to get subscription status" });

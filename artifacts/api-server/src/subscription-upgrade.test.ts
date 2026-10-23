@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, afterEach } from "node:test";
-import { confirmSubscriptionPayment, previewPlanChange, subscribeWithSavedCard, type UpgradeStore } from "./subscription-upgrade";
+import { confirmSubscriptionPayment, pendingPlanChange, previewPlanChange, subscribeWithSavedCard, type UpgradeStore } from "./subscription-upgrade";
 import type { CardStore } from "./card-sync";
 
 const warn = console.warn;
@@ -258,4 +258,16 @@ test("after in-app authentication, confirm grants the tier only for the user's o
   assert.equal((await run(sub({ customer: "cus_other" }))).r.status, 403);
   assert.equal((await run(sub({ metadata: { userId: "8", tier: "pro" } }))).r.status, 403);
   assert.equal((await run(sub(), "cs_x")).r.status, 400);
+});
+
+test("pendingPlanChange reports a scheduled downgrade and its date, and nothing otherwise", async () => {
+  const withSchedule = (schedule: unknown) => ({ subscriptions: { retrieve: async () => ({ id: "sub_9", schedule }) } }) as any;
+  const active = { status: "active", phases: [{ start_date: 1000, end_date: 2000 }, { start_date: 2000, metadata: { tier: "member" } }] };
+  assert.deepEqual(await pendingPlanChange(withSchedule(active), "sub_9"), { tier: "member", effectiveAt: new Date(2000 * 1000).toISOString() });
+  assert.equal(await pendingPlanChange(withSchedule(null), "sub_9"), null);
+  assert.equal(await pendingPlanChange(withSchedule({ ...active, status: "released" }), "sub_9"), null);
+  assert.equal(await pendingPlanChange(withSchedule({ ...active, phases: [active.phases[0]] }), "sub_9"), null);
+  assert.equal(await pendingPlanChange(withSchedule(active), null), null);
+  const broken = { subscriptions: { retrieve: async () => { throw new Error("stripe down"); } } } as any;
+  assert.equal(await pendingPlanChange(broken, "sub_9"), null);
 });

@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
-import { planButtonAction, sheetCopy, cardLabel, type PlanPreview } from "@/lib/subscriptionPlan";
+import { planButtonAction, sheetCopy, cardLabel, pendingChangeLabel, type PendingPlanChange, type PlanPreview } from "@/lib/subscriptionPlan";
 
 interface SubStatus {
   subscriptionTier: string;
@@ -29,6 +29,7 @@ interface SubStatus {
   stripeSubscriptionStatus: string | null;
   monthlyBorrowCount: number;
   monthlyBorrowResetAt: string | null;
+  pendingPlanChange?: PendingPlanChange | null;
 }
 
 type Tier = "free" | "member" | "pro";
@@ -247,6 +248,8 @@ export default function SubscriptionScreen() {
   const borrowUsed = subStatus?.monthlyBorrowCount ?? 0;
   const borrowPct = Math.min((borrowUsed / 3) * 100, 100);
 
+  const pendingLabel = pendingChangeLabel(subStatus?.pendingPlanChange);
+
   const otherTiers = (["member", "pro"] as Tier[]).filter((t) => t !== currentTier);
 
   return (
@@ -314,6 +317,12 @@ export default function SubscriptionScreen() {
 
             {/* Billing + usage */}
             <View style={s.infoSection}>
+              {pendingLabel && (
+                <View style={s.pendingBanner}>
+                  <Feather name="clock" size={14} color="#92400e" />
+                  <Text style={s.pendingBannerText}>{pendingLabel}</Text>
+                </View>
+              )}
               {billingDate && (
                 <View style={s.infoRow}>
                   <Text style={[s.infoLabel, { color: colors.mutedForeground }]}>
@@ -521,6 +530,10 @@ export default function SubscriptionScreen() {
                           </Text>
                         </Pressable>
                       </View>
+                    ) : subStatus?.pendingPlanChange?.tier === tier ? (
+                      <View style={[s.ghostBtn, { borderColor: "#fde68a" }]}>
+                        <Text style={[s.ghostBtnText, { color: "#92400e" }]}>{pendingLabel}</Text>
+                      </View>
                     ) : (
                       <Pressable
                         style={({ pressed }) => [
@@ -656,6 +669,8 @@ function ConfirmSheetBody(props: {
 }
 
 const s = StyleSheet.create({
+  pendingBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#fffbeb", borderColor: "#fde68a", borderWidth: 1, borderRadius: 10, padding: 10 },
+  pendingBannerText: { flex: 1, fontSize: 13, color: "#92400e", fontFamily: "Inter_600SemiBold" },
   sheetBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
   sheetTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },

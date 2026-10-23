@@ -33,6 +33,17 @@ export function cardLabel(card: { brand: string; last4: string } | null | undefi
 const cad = (cents: number) => `CA${formatMoneyExact(cents / 100)}`;
 const defaultDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "long", day: "numeric" });
 
+export interface PendingPlanChange {
+  tier: "member" | "pro";
+  effectiveAt: string;
+}
+
+/** "Switching to Member on November 20": shown while a downgrade waits for the end of the paid period. */
+export function pendingChangeLabel(pending: PendingPlanChange | null | undefined, formatDate: (iso: string) => string = defaultDate): string | null {
+  if (!pending) return null;
+  return `Switching to ${PLAN_NAMES[pending.tier]} on ${formatDate(pending.effectiveAt)}`;
+}
+
 export interface SheetCopy {
   title: string;
   /** e.g. "Upgrade to Pro: CA$9.99/month, charged to Visa •••• 4242" */

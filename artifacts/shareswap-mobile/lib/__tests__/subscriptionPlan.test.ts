@@ -1,4 +1,4 @@
-import { cardLabel, planButtonAction, sheetCopy } from "../subscriptionPlan";
+import { cardLabel, pendingChangeLabel, planButtonAction, sheetCopy } from "../subscriptionPlan";
 
 describe("planButtonAction", () => {
   it("opens the in-app confirm sheet for any paid plan the user is not on, whether or not they already pay", () => {
@@ -51,5 +51,15 @@ describe("cardLabel", () => {
   it("names the brand and last four", () => {
     expect(cardLabel({ brand: "amex", last4: "0005" })).toBe("American Express •••• 0005");
     expect(cardLabel(null)).toBeNull();
+  });
+});
+
+describe("pendingChangeLabel", () => {
+  it("names the plan and the date a scheduled downgrade starts", () => {
+    expect(pendingChangeLabel({ tier: "member", effectiveAt: "2026-11-20T00:00:00.000Z" }, () => "November 20")).toBe("Switching to Member on November 20");
+  });
+  it("is empty when nothing is pending", () => {
+    expect(pendingChangeLabel(null)).toBeNull();
+    expect(pendingChangeLabel(undefined)).toBeNull();
   });
 });

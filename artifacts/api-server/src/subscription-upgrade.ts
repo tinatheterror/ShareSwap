@@ -282,6 +282,27 @@ export async function confirmSubscriptionPayment(
   return { status: 200, body: { confirmed: true, tier } };
 }
 
+/** A plan change waiting for the end of the paid period (an active subscription schedule), if there is one. */
+export async function pendingPlanChange(
+  stripe: Pick<Stripe, "subscriptions">,
+  subscriptionId: string | null | undefined,
+): Promise<{ tier: PaidTier; effectiveAt: string } | null> {
+  if (!subscriptionId) return null;
+  try {
+    const sub = await stripe.subscriptions.retrieve(subscriptionId, { expand: ["schedule"] });
+    const schedule = sub.schedule;
+    if (!schedule || typeof schedule === "string" || schedule.status !== "active" || schedule.phases.length < 2) return null;
+    const next = schedule.phases[1];
+    const tier = next.metadata?.tier;
+    if (!isPaidTier(tier)) return null;
+    const startsAt = next.start_date ?? schedule.phases[0].end_date;
+    return startsAt ? { tier, effectiveAt: new Date(startsAt * 1000).toISOString() } : null;
+  } catch (error) {
+    console.warn("[subscription] could not read the pending plan change:", (error as Error)?.message);
+    return null;
+  }
+}
+
 export interface PlanPreview {
   tier: PaidTier;
   currency: string;

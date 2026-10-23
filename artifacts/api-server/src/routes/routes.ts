@@ -1655,7 +1655,7 @@ export async function confirmRentalDeposit({
       if (freeCommissionPeriod) {
         console.log(`🎉 Platform fee waived (first 3 transactions free) — owner receives full $${netAmount.toFixed(2)}`);
       } else {
-        console.log(`💰 Platform fee $${actualPlatformFee.toFixed(2)} (${renterTier === 'pro' ? '2% Pro rate' : '5% standard'}) — owner receives $${netAmount.toFixed(2)}`);
+        console.log(`💰 Platform fee $${actualPlatformFee.toFixed(2)} (${renterTier === 'pro' ? '4% Pro rate' : '5% standard'}) — owner receives $${netAmount.toFixed(2)}`);
       }
 
       // Create held payout record for the owner

@@ -775,7 +775,7 @@ export async function checkAndAwardAchievements(userId: number) {
 // Initialize Stripe - will be loaded from connector
 import { getUncachableStripeClient, getStripePublishableKey } from "../stripe.server";
 import { subscriptionWebhookHandler } from "../subscription-webhook";
-import { subscribeWithSavedCard, confirmSubscriptionPayment, previewPlanChange, pendingPlanChange, keepCurrentPlan, dbUpgradeStore } from "../subscription-upgrade";
+import { subscribeWithSavedCard, confirmSubscriptionPayment, previewPlanChange, syncSubscriptionWithStripe, keepCurrentPlan, dbUpgradeStore } from "../subscription-upgrade";
 import { subscriptionReturnHandler, stripeReturnUrl, confirmCheckoutSession, dbConfirmStore } from "../subscription-return";
 
 // Helper to get stripe client (lazy loaded from connector)
@@ -15961,16 +15961,24 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(users.id, req.user.id))
         .limit(1);
       if (!user) return res.json({ subscriptionTier: 'free' });
-      // A plan change waiting for the end of the period (Pro to Member), read from Stripe; best effort.
-      let pendingChange = null;
-      if ((user as any).stripeSubscriptionId && (user as any).stripeSubscriptionStatus === "active") {
-        try {
-          pendingChange = await pendingPlanChange(await getUncachableStripeClient(), (user as any).stripeSubscriptionId);
-        } catch {
-          pendingChange = null;
-        }
+      // Stripe is the record of the plan: a stored tier or subscription id that disagrees is corrected here (and
+      // logged), which also covers changes made in the billing portal where no webhook reaches this server. If
+      // Stripe cannot be reached the stored values stand. Also reports a downgrade waiting for the period end.
+      let synced = null;
+      try {
+        synced = await syncSubscriptionWithStripe(await getUncachableStripeClient(), dbUpgradeStore, req.user.id);
+      } catch {
+        synced = null;
       }
-      return res.json({ ...user, pendingPlanChange: pendingChange });
+      return res.json({
+        ...user,
+        ...(synced && {
+          subscriptionTier: synced.subscriptionTier,
+          stripeSubscriptionId: synced.stripeSubscriptionId,
+          stripeSubscriptionStatus: synced.stripeSubscriptionStatus,
+        }),
+        pendingPlanChange: synced?.pendingPlanChange ?? null,
+      });
     } catch (error) {
       console.error("Subscription status error:", error);
       res.status(500).json({ message: "Failed to get subscription status" });

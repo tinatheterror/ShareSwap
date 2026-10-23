@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, afterEach } from "node:test";
-import { confirmSubscriptionPayment, keepCurrentPlan, pendingPlanChange, previewPlanChange, subscribeWithSavedCard, type UpgradeStore } from "./subscription-upgrade";
+import { confirmSubscriptionPayment, keepCurrentPlan, previewPlanChange, subscribeWithSavedCard, syncSubscriptionWithStripe, type UpgradeStore } from "./subscription-upgrade";
 import type { CardStore } from "./card-sync";
 
 const warn = console.warn;
@@ -46,6 +46,7 @@ function setup(o: Opts = {}) {
       createPreview: async (params: any) => { if (o.previewError) throw o.previewError; log.previews.push(params); return { amount_due: 321 }; },
     },
     subscriptions: {
+      list: async ({ customer }: any) => ({ data: [...subs.values()].filter((x: any) => x.customer === customer) }),
       retrieve: async (id: string) => { const s = subs.get(id); if (!s) throw Object.assign(new Error("none"), { statusCode: 404 }); return s; },
       create: async (params: any, opts: { idempotencyKey: string }) => {
         if (keys.has(opts.idempotencyKey)) return keys.get(opts.idempotencyKey);
@@ -61,11 +62,15 @@ function setup(o: Opts = {}) {
         keys.set(opts.idempotencyKey, sub);
         return sub;
       },
-      update: async (id: string, params: any) => {
+      // Like Stripe: a repeated idempotency key replays the first response (a snapshot) and changes nothing.
+      update: async (id: string, params: any, opts?: { idempotencyKey?: string }) => {
         if (o.updateError) throw o.updateError;
+        if (opts?.idempotencyKey && keys.has(opts.idempotencyKey)) return keys.get(opts.idempotencyKey);
         log.updated.push({ id, params });
         const s = subs.get(id);
         s.items.data[0].price.id = params.items[0].price;
+        s.items.data[0].price.unit_amount = AMOUNTS[params.items[0].price === "price_pro" ? "pro" : "member"];
+        if (opts?.idempotencyKey) keys.set(opts.idempotencyKey, JSON.parse(JSON.stringify(s)));
         return s;
       },
       cancel: async (id: string) => { log.cancelled.push(id); subs.get(id).status = "canceled"; return subs.get(id); },
@@ -96,7 +101,7 @@ test("success: creates one CAD subscription with the saved card and sets the tie
   assert.equal(params.default_payment_method, "pm_1");
   assert.equal(params.currency, "cad");
   assert.deepEqual(params.items, [{ price: "price_pro" }]);
-  assert.equal(key, "sub:7:pro:none");
+  assert.equal(key, "sub:7:pro:cus_1:0");
   assert.deepEqual(log.store.at(-1), { subscriptionTier: "pro", stripeSubscriptionId: "sub_1", stripeSubscriptionStatus: "active" });
 });
 
@@ -235,7 +240,7 @@ test("a retry after a declined attempt is a new Stripe request, not the cached o
   const first = setup({ createStatus: "incomplete", intentStatus: "requires_payment_method" });
   await subscribeWithSavedCard(first.deps, 7, "member");
   await subscribeWithSavedCard(first.deps, 7, "member");
-  assert.deepEqual(first.log.created.map((c) => c.key), ["sub:7:member:none", "sub:7:member:sub_1"]);
+  assert.deepEqual(first.log.created.map((c) => c.key), ["sub:7:member:cus_1:0", "sub:7:member:cus_1:1"]);
 });
 
 test("invalid tiers are rejected", async () => {
@@ -245,7 +250,7 @@ test("invalid tiers are rejected", async () => {
 });
 
 test("after in-app authentication, confirm grants the tier only for the user's own live subscription", async () => {
-  const sub = (over: any = {}) => ({ id: "sub_1", status: "active", customer: "cus_1", metadata: { userId: "7", tier: "pro" }, ...over });
+  const sub = (over: any = {}) => ({ id: "sub_1", status: "active", customer: "cus_1", metadata: { userId: "7", tier: "member" }, items: { data: [{ price: { id: "price_pro", product: { metadata: { tier: "pro" } } } }] }, ...over });
   const run = async (s: any, id: unknown = "sub_1") => {
     const writes: any[] = [];
     const store: UpgradeStore = { getUser: async () => ({ stripeCustomerId: "cus_1", email: null, fullName: null, stripeSubscriptionId: "sub_1" }), setCustomer: async () => {}, setSubscription: async (_u, f) => void writes.push(f) };
@@ -258,18 +263,6 @@ test("after in-app authentication, confirm grants the tier only for the user's o
   assert.equal((await run(sub({ customer: "cus_other" }))).r.status, 403);
   assert.equal((await run(sub({ metadata: { userId: "8", tier: "pro" } }))).r.status, 403);
   assert.equal((await run(sub(), "cs_x")).r.status, 400);
-});
-
-test("pendingPlanChange reports a scheduled downgrade and its date, and nothing otherwise", async () => {
-  const withSchedule = (schedule: unknown) => ({ subscriptions: { retrieve: async () => ({ id: "sub_9", schedule }) } }) as any;
-  const active = { status: "active", phases: [{ start_date: 1000, end_date: 2000 }, { start_date: 2000, metadata: { tier: "member" } }] };
-  assert.deepEqual(await pendingPlanChange(withSchedule(active), "sub_9"), { tier: "member", effectiveAt: new Date(2000 * 1000).toISOString() });
-  assert.equal(await pendingPlanChange(withSchedule(null), "sub_9"), null);
-  assert.equal(await pendingPlanChange(withSchedule({ ...active, status: "released" }), "sub_9"), null);
-  assert.equal(await pendingPlanChange(withSchedule({ ...active, phases: [active.phases[0]] }), "sub_9"), null);
-  assert.equal(await pendingPlanChange(withSchedule(active), null), null);
-  const broken = { subscriptions: { retrieve: async () => { throw new Error("stripe down"); } } } as any;
-  assert.equal(await pendingPlanChange(broken, "sub_9"), null);
 });
 
 test("keepCurrentPlan releases the user's own pending schedule, and only theirs", async () => {
@@ -287,4 +280,100 @@ test("keepCurrentPlan releases the user's own pending schedule, and only theirs"
   assert.equal(foreign.r.status, 404);
   assert.deepEqual(foreign.released, []);
   assert.equal((await run({}, { stripeCustomerId: "cus_1", stripeSubscriptionId: null })).r.status, 404);
+});
+
+test("BUG: upgrading again after Stripe went back to Member must change Stripe, not replay the first upgrade and mark the user Pro", async () => {
+  const existing = { id: "sub_9", status: "active", customer: "cus_1", metadata: { userId: "7", tier: "member" }, items: { data: [{ id: "si_1", price: { id: "price_member", unit_amount: 499 }, current_period_end: 2000 }] } };
+  const { deps, log, subs } = setup({ existingSub: existing });
+
+  // 1. Member -> Pro works.
+  assert.equal((await subscribeWithSavedCard(deps, 7, "pro")).status, 200);
+  assert.equal(subs.get("sub_9").items.data[0].price.id, "price_pro");
+
+  // 2. The plan goes back to Member in Stripe without ShareSwap's involvement (billing portal, no webhook here).
+  subs.get("sub_9").items.data[0].price = { id: "price_member", unit_amount: 499 };
+
+  // 3. Upgrading to Pro again is a new change. Stripe must really be updated, and the stored tier must match Stripe.
+  const again = await subscribeWithSavedCard(deps, 7, "pro");
+  assert.equal(again.status, 200);
+  assert.equal(subs.get("sub_9").items.data[0].price.id, "price_pro", "Stripe really changed to Pro");
+  assert.equal(log.updated.length, 2, "two real updates, no replay");
+});
+
+test("the tier is only set when Stripe's result shows the requested price", async () => {
+  const existing = { id: "sub_9", status: "active", customer: "cus_1", metadata: { userId: "7", tier: "member" }, items: { data: [{ id: "si_1", price: { id: "price_member", unit_amount: 499 }, current_period_end: 2000 }] } };
+  const { deps, log, subs } = setup({ existingSub: existing });
+  // Stripe answers 200 but the subscription is still on Member (a stale or replayed response).
+  (deps.stripe as any).subscriptions.update = async () => subs.get("sub_9");
+  const r = await subscribeWithSavedCard(deps, 7, "pro");
+  assert.equal(r.status, 502);
+  assert.deepEqual(log.store, [], "nothing stored when Stripe did not make the change");
+});
+
+// ── Sync with Stripe ────────────────────────────────────────────────────────────
+
+function syncSetup(stored: { tier: string; sub: string | null; status: string | null }, stripeSubs: any[] | Error) {
+  const writes: any[] = [];
+  const store: UpgradeStore = {
+    getUser: async () => ({ stripeCustomerId: "cus_1", email: null, fullName: null, stripeSubscriptionId: stored.sub, subscriptionTier: stored.tier, stripeSubscriptionStatus: stored.status }),
+    setCustomer: async () => {},
+    setSubscription: async (_u, f) => void writes.push(f),
+  };
+  let listed = 0;
+  const stripe = { subscriptions: { list: async () => { listed++; if (stripeSubs instanceof Error) throw stripeSubs; return { data: stripeSubs }; } } } as any;
+  return { stripe, store, writes, listed: () => listed };
+}
+const liveSub = (id: string, tier: "member" | "pro", over: any = {}) => ({ id, status: "active", created: 1000, customer: "cus_1", schedule: null, items: { data: [{ price: { id: `price_${tier}`, product: { metadata: { tier } } } }] }, ...over });
+const warns: string[] = [];
+const realWarn2 = console.warn;
+console.warn = (...a: unknown[]) => void warns.push(a.join(" "));
+process.on("exit", () => (console.warn = realWarn2));
+
+test("sync: Stripe says Member while ShareSwap says Pro: Stripe wins, the correction is logged", async () => {
+  warns.length = 0;
+  const { stripe, store, writes } = syncSetup({ tier: "pro", sub: "sub_1", status: "active" }, [liveSub("sub_1", "member")]);
+  const r = await syncSubscriptionWithStripe(stripe, store, 3);
+  assert.deepEqual(writes, [{ subscriptionTier: "member", stripeSubscriptionId: "sub_1", stripeSubscriptionStatus: "active" }]);
+  assert.equal(r!.subscriptionTier, "member");
+  assert.match(warns.join("\n"), /user 3: stored tier=pro .* Stripe says tier=member .* corrected/);
+});
+
+test("sync: matching values are left alone", async () => {
+  const { stripe, store, writes } = syncSetup({ tier: "pro", sub: "sub_1", status: "active" }, [liveSub("sub_1", "pro")]);
+  assert.equal((await syncSubscriptionWithStripe(stripe, store, 3))!.subscriptionTier, "pro");
+  assert.deepEqual(writes, []);
+});
+
+test("sync: a stale subscription id is replaced by the customer's live one; a cancelled one means free", async () => {
+  const adopt = syncSetup({ tier: "member", sub: "sub_old", status: "active" }, [liveSub("sub_new", "pro"), liveSub("sub_old", "member", { status: "canceled" })]);
+  await syncSubscriptionWithStripe(adopt.stripe, adopt.store, 3);
+  assert.deepEqual(adopt.writes, [{ subscriptionTier: "pro", stripeSubscriptionId: "sub_new", stripeSubscriptionStatus: "active" }]);
+
+  const gone = syncSetup({ tier: "pro", sub: "sub_1", status: "active" }, [liveSub("sub_1", "pro", { status: "canceled" })]);
+  const r = await syncSubscriptionWithStripe(gone.stripe, gone.store, 3);
+  assert.deepEqual(gone.writes, [{ subscriptionTier: "free", stripeSubscriptionId: null, stripeSubscriptionStatus: "canceled" }]);
+  assert.equal(r!.subscriptionTier, "free");
+
+  const none = syncSetup({ tier: "pro", sub: null, status: null }, []);
+  await syncSubscriptionWithStripe(none.stripe, none.store, 3);
+  assert.equal(none.writes[0].subscriptionTier, "free", "a Pro tier with no subscription at all in Stripe is not kept");
+});
+
+test("sync: when Stripe cannot be reached the stored values stand and nothing is written", async () => {
+  const { stripe, store, writes } = syncSetup({ tier: "pro", sub: "sub_1", status: "active" }, new Error("network down"));
+  const r = await syncSubscriptionWithStripe(stripe, store, 3);
+  assert.deepEqual(writes, []);
+  assert.deepEqual(r, { subscriptionTier: "pro", stripeSubscriptionId: "sub_1", stripeSubscriptionStatus: "active", pendingPlanChange: null });
+});
+
+test("sync: a free account with no subscription costs no Stripe call; a pending downgrade is reported", async () => {
+  const free = syncSetup({ tier: "free", sub: null, status: null }, []);
+  await syncSubscriptionWithStripe(free.stripe, free.store, 3);
+  assert.equal(free.listed(), 0);
+
+  const schedule = { status: "active", phases: [{ start_date: 1000, end_date: 2000 }, { start_date: 2000, metadata: { tier: "member" } }] };
+  const pending = syncSetup({ tier: "pro", sub: "sub_1", status: "active" }, [liveSub("sub_1", "pro", { schedule })]);
+  const r = await syncSubscriptionWithStripe(pending.stripe, pending.store, 3);
+  assert.deepEqual(r!.pendingPlanChange, { tier: "member", effectiveAt: new Date(2000 * 1000).toISOString() });
+  assert.deepEqual(pending.writes, []);
 });

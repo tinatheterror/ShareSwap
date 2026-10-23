@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { db } from "@workspace/db";
 import { users } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { tierOfSubscription } from "./subscription-upgrade";
 
 export const APP_SCHEME = "shareswap";
 export const RETURN_PATH = "/api/subscription/return";
@@ -138,7 +139,7 @@ export async function confirmCheckoutSession(
   if (typeof sessionId !== "string" || !CHECKOUT_SESSION_ID.test(sessionId)) {
     return { status: 400, body: { message: "Invalid session id" } };
   }
-  const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["subscription"] });
+  const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["subscription.items.data.price.product"] });
 
   const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
   const ownedByMetadata = session.metadata?.userId === String(userId);
@@ -152,15 +153,18 @@ export async function confirmCheckoutSession(
   if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") {
     return { status: 200, body: { confirmed: false, reason: "not_paid" } };
   }
-  const tier = session.metadata?.tier;
-  if (tier !== "member" && tier !== "pro") return { status: 200, body: { confirmed: false, reason: "unknown_tier" } };
-
+  // The tier is what the session's subscription is on now, not what the session recorded when it was created:
+  // an old session must not be able to put a user back on a plan they have since left.
   const subscription = typeof session.subscription === "object" ? session.subscription : null;
-  const subscriptionId = subscription?.id ?? (typeof session.subscription === "string" ? session.subscription : null);
+  const tier = subscription ? tierOfSubscription(subscription) : null;
+  if (!subscription || !tier) return { status: 200, body: { confirmed: false, reason: "unknown_tier" } };
+  if (!["active", "trialing", "past_due"].includes(subscription.status)) {
+    return { status: 200, body: { confirmed: false, reason: subscription.status } };
+  }
   await store.setSubscription(userId, {
     subscriptionTier: tier,
-    stripeSubscriptionId: subscriptionId,
-    stripeSubscriptionStatus: subscription?.status ?? "active",
+    stripeSubscriptionId: subscription.id,
+    stripeSubscriptionStatus: subscription.status,
   });
   return { status: 200, body: { confirmed: true, tier } };
 }

@@ -20,6 +20,8 @@ export interface UpgradeUser {
   email: string | null;
   fullName: string | null;
   stripeSubscriptionId: string | null;
+  subscriptionTier?: string | null;
+  stripeSubscriptionStatus?: string | null;
 }
 
 export interface UpgradeStore {
@@ -39,6 +41,8 @@ export const dbUpgradeStore: UpgradeStore = {
         email: users.email,
         fullName: users.fullName,
         stripeSubscriptionId: users.stripeSubscriptionId,
+        subscriptionTier: users.subscriptionTier,
+        stripeSubscriptionStatus: users.stripeSubscriptionStatus,
       })
       .from(users)
       .where(eq(users.id, userId))
@@ -58,7 +62,18 @@ export type UpgradeOutcome =
   | { status: 402; body: { requiresAction: true; clientSecret: string; subscriptionId: string; hostedInvoiceUrl: string | null; message: string } }
   | { status: 402; body: { code: "PAYMENT_FAILED"; message: string } }
   | { status: 409; body: { code: "CARD_REQUIRED"; reason: "missing" | "stale"; message: string } }
-  | { status: 400 | 404; body: { message: string } };
+  | { status: 400 | 404 | 502; body: { message: string } };
+
+/**
+ * The paid tier a subscription is really on: its current price's product (`metadata.tier`). Subscription metadata
+ * is only what was written at the last call of ours, so it is never used for this. Needs `items.data.price.product`
+ * expanded.
+ */
+export function tierOfSubscription(sub: Stripe.Subscription): PaidTier | null {
+  const product = sub.items.data[0]?.price?.product;
+  const tier = product && typeof product === "object" ? (product as Stripe.Product).metadata?.tier : undefined;
+  return isPaidTier(tier) ? tier : null;
+}
 
 /** The active CAD Price for a tier's product, found by product metadata. No fallback to another currency. */
 export async function findTierPrice(stripe: Pick<Stripe, "products" | "prices">, tier: PaidTier): Promise<{ id: string; unitAmount: number } | null> {
@@ -181,25 +196,29 @@ async function run(deps: { stripe: UpgradeStripe; store: UpgradeStore; cards: Ca
         };
       }
 
+      // No idempotency key: Stripe replays the first response for a repeated key, so a second change to the same
+      // price (after the plan moved elsewhere in between) would report success without changing anything. Setting
+      // a price is naturally repeatable, and double taps are already collapsed by the in-flight lock above.
       let updated: Stripe.Subscription;
       try {
-        updated = await stripe.subscriptions.update(
-          existing.id,
-          {
-            items: [{ id: item.id, price: priceId }],
-            metadata,
-            default_payment_method: card.id,
-            proration_behavior: "always_invoice",
-            payment_behavior: "error_if_incomplete",
-          },
-          { idempotencyKey: `sub-change:${userId}:${existing.id}:${priceId}` },
-        );
+        updated = await stripe.subscriptions.update(existing.id, {
+          items: [{ id: item.id, price: priceId }],
+          metadata,
+          default_payment_method: card.id,
+          proration_behavior: "always_invoice",
+          payment_behavior: "error_if_incomplete",
+        });
       } catch (error) {
         const err = error as { type?: string; message?: string };
         if (err?.type === "StripeCardError") {
           return { status: 402, body: { code: "PAYMENT_FAILED", message: err.message || "Your card was declined. Please try another card." } };
         }
         throw error;
+      }
+      // The stored tier follows what Stripe now says, never the request: the change must show in the result.
+      if (updated.items.data[0]?.price.id !== priceId || !LIVE_STATUSES.has(updated.status)) {
+        console.error(`[subscription] Stripe did not apply the change to ${tier} for user ${userId}: price=${updated.items.data[0]?.price.id} status=${updated.status}`);
+        return { status: 502, body: { message: "We couldn't change your plan. Nothing was charged. Please try again." } };
       }
       await store.setSubscription(userId, { subscriptionTier: tier, stripeSubscriptionId: updated.id, stripeSubscriptionStatus: updated.status });
       return { status: 200, body: { tier, subscriptionId: updated.id, changed: true } };
@@ -213,8 +232,10 @@ async function run(deps: { stripe: UpgradeStripe; store: UpgradeStore; cards: Ca
     }
   }
 
-  // The key includes the subscription we are replacing, so a retry after a cancelled or declined attempt is a
-  // new request to Stripe while a double tap on the same state is the same one.
+  // The key includes how many subscriptions this customer has ever had, so a retry after a cancelled or declined
+  // attempt is a new request to Stripe (Stripe would replay the old one for 24 hours) while a double tap, which sees
+  // the same count, is the same one.
+  const history = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 100 });
   const subscription = await stripe.subscriptions.create(
     {
       customer: customerId,
@@ -226,10 +247,14 @@ async function run(deps: { stripe: UpgradeStripe; store: UpgradeStore; cards: Ca
       expand: ["latest_invoice.confirmation_secret"],
       metadata,
     },
-    { idempotencyKey: `sub:${userId}:${tier}:${user.stripeSubscriptionId ?? "none"}` },
+    { idempotencyKey: `sub:${userId}:${tier}:${customerId}:${history.data.length}` },
   );
 
   if (LIVE_STATUSES.has(subscription.status)) {
+    if (subscription.items.data[0]?.price.id !== priceId) {
+      console.error(`[subscription] new subscription ${subscription.id} is not on the ${tier} price for user ${userId}`);
+      return { status: 502, body: { message: "We couldn't start your subscription. Please try again." } };
+    }
     await store.setSubscription(userId, { subscriptionTier: tier, stripeSubscriptionId: subscription.id, stripeSubscriptionStatus: subscription.status });
     return { status: 200, body: { tier, subscriptionId: subscription.id, changed: true } };
   }
@@ -270,37 +295,16 @@ export async function confirmSubscriptionPayment(
     return { status: 400, body: { message: "Invalid subscription id" } };
   }
   const user = await store.getUser(userId);
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ["items.data.price.product"] });
   const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
   if (!user?.stripeCustomerId || customerId !== user.stripeCustomerId || subscription.metadata?.userId !== String(userId)) {
     return { status: 403, body: { message: "This subscription does not belong to you" } };
   }
-  const tier = subscription.metadata?.tier;
-  if (!isPaidTier(tier)) return { status: 200, body: { confirmed: false, reason: "unknown_tier" } };
+  const tier = tierOfSubscription(subscription);
+  if (!tier) return { status: 200, body: { confirmed: false, reason: "unknown_tier" } };
   if (!LIVE_STATUSES.has(subscription.status)) return { status: 200, body: { confirmed: false, reason: subscription.status } };
   await store.setSubscription(userId, { subscriptionTier: tier, stripeSubscriptionId: subscription.id, stripeSubscriptionStatus: subscription.status });
   return { status: 200, body: { confirmed: true, tier } };
-}
-
-/** A plan change waiting for the end of the paid period (an active subscription schedule), if there is one. */
-export async function pendingPlanChange(
-  stripe: Pick<Stripe, "subscriptions">,
-  subscriptionId: string | null | undefined,
-): Promise<{ tier: PaidTier; effectiveAt: string } | null> {
-  if (!subscriptionId) return null;
-  try {
-    const sub = await stripe.subscriptions.retrieve(subscriptionId, { expand: ["schedule"] });
-    const schedule = sub.schedule;
-    if (!schedule || typeof schedule === "string" || schedule.status !== "active" || schedule.phases.length < 2) return null;
-    const next = schedule.phases[1];
-    const tier = next.metadata?.tier;
-    if (!isPaidTier(tier)) return null;
-    const startsAt = next.start_date ?? schedule.phases[0].end_date;
-    return startsAt ? { tier, effectiveAt: new Date(startsAt * 1000).toISOString() } : null;
-  } catch (error) {
-    console.warn("[subscription] could not read the pending plan change:", (error as Error)?.message);
-    return null;
-  }
 }
 
 /** Drops a plan change waiting for the end of the period ("Keep Pro"). No card needed; nothing is charged. */
@@ -366,5 +370,74 @@ export async function previewPlanChange(
   } catch (error) {
     console.warn("[subscription] plan change preview failed:", (error as Error)?.message);
     return { status: 200, body: { ...base, change: "upgrade", amountDueTodayCents: null } };
+  }
+}
+
+export interface SyncedSubscription {
+  subscriptionTier: string;
+  stripeSubscriptionId: string | null;
+  stripeSubscriptionStatus: string | null;
+  pendingPlanChange: { tier: PaidTier; effectiveAt: string } | null;
+}
+
+const pendingChangeOf = (sub: Stripe.Subscription): SyncedSubscription["pendingPlanChange"] => {
+  const schedule = sub.schedule;
+  if (!schedule || typeof schedule === "string" || schedule.status !== "active" || schedule.phases.length < 2) return null;
+  const next = schedule.phases[1];
+  const tier = next.metadata?.tier;
+  const startsAt = next.start_date ?? schedule.phases[0].end_date;
+  return isPaidTier(tier) && startsAt ? { tier, effectiveAt: new Date(startsAt * 1000).toISOString() } : null;
+};
+
+/**
+ * The stored tier and subscription id, checked against Stripe's live subscription for this customer. When they
+ * differ Stripe wins: the stored values are corrected and the correction is logged. If Stripe cannot be reached
+ * the stored values are returned untouched. Free accounts with no subscription cost no Stripe call.
+ */
+export async function syncSubscriptionWithStripe(
+  stripe: Pick<Stripe, "subscriptions">,
+  store: UpgradeStore,
+  userId: number,
+): Promise<SyncedSubscription | null> {
+  const user = await store.getUser(userId);
+  if (!user) return null;
+  const stored = {
+    subscriptionTier: user.subscriptionTier ?? "free",
+    stripeSubscriptionId: user.stripeSubscriptionId,
+    stripeSubscriptionStatus: user.stripeSubscriptionStatus ?? null,
+  };
+  if (stored.subscriptionTier === "free" && !stored.stripeSubscriptionId) return { ...stored, pendingPlanChange: null };
+  if (!user.stripeCustomerId) return { ...stored, pendingPlanChange: null };
+
+  try {
+    const expand = ["data.items.data.price.product", "data.schedule"];
+    const all = await stripe.subscriptions.list({ customer: user.stripeCustomerId, status: "all", limit: 20, expand });
+    const live = all.data.filter((sub) => LIVE_STATUSES.has(sub.status)).sort((a, b) => b.created - a.created);
+    // Prefer the subscription we already track, else the newest live one.
+    const current = live.find((sub) => sub.id === stored.stripeSubscriptionId) ?? live[0] ?? null;
+
+    const truth = current
+      ? { subscriptionTier: tierOfSubscription(current) ?? "free", stripeSubscriptionId: current.id, stripeSubscriptionStatus: current.status }
+      : {
+          subscriptionTier: "free",
+          stripeSubscriptionId: null as string | null,
+          stripeSubscriptionStatus: all.data.find((sub) => sub.id === stored.stripeSubscriptionId)?.status ?? "canceled",
+        };
+
+    if (
+      truth.subscriptionTier !== stored.subscriptionTier ||
+      truth.stripeSubscriptionId !== stored.stripeSubscriptionId ||
+      truth.stripeSubscriptionStatus !== stored.stripeSubscriptionStatus
+    ) {
+      console.warn(
+        `[subscription-sync] user ${userId}: stored tier=${stored.subscriptionTier} sub=${stored.stripeSubscriptionId} status=${stored.stripeSubscriptionStatus}` +
+          ` -> Stripe says tier=${truth.subscriptionTier} sub=${truth.stripeSubscriptionId} status=${truth.stripeSubscriptionStatus}; corrected`,
+      );
+      await store.setSubscription(userId, truth);
+    }
+    return { ...truth, pendingPlanChange: current ? pendingChangeOf(current) : null };
+  } catch (error) {
+    console.warn(`[subscription-sync] user ${userId}: Stripe unreachable, keeping stored values:`, (error as Error)?.message);
+    return { ...stored, pendingPlanChange: null };
   }
 }

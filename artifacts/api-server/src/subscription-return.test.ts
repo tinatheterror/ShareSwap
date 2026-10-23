@@ -82,7 +82,7 @@ test("return route never redirects to a foreign link and escapes the page", () =
 
 function session(over: Record<string, unknown> = {}) {
   return { id: "cs_test_1", mode: "subscription", status: "complete", payment_status: "paid", customer: "cus_1",
-    metadata: { userId: "7", tier: "pro" }, subscription: { id: "sub_1", status: "active" }, ...over };
+    metadata: { userId: "7", tier: "member" }, subscription: { id: "sub_1", status: "active", items: { data: [{ price: { product: { metadata: { tier: "pro" } } } }] } }, ...over };
 }
 function setup(s: unknown, storedCustomer: string | null = "cus_1") {
   const writes: unknown[] = [];
@@ -102,7 +102,7 @@ test("confirm sets the tier for a paid session that belongs to the user", async 
 });
 
 test("confirm changes nothing for unpaid, incomplete, or non-subscription sessions", async () => {
-  for (const over of [{ payment_status: "unpaid" }, { status: "open" }, { mode: "payment" }, { metadata: { userId: "7", tier: "admin" } }]) {
+  for (const over of [{ payment_status: "unpaid" }, { status: "open" }, { mode: "payment" }, { subscription: { id: "sub_1", status: "active", items: { data: [{ price: { product: { metadata: { tier: "admin" } } } }] } } }, { subscription: { id: "sub_1", status: "canceled", items: { data: [{ price: { product: { metadata: { tier: "pro" } } } }] } } }]) {
     const { stripe, store, writes } = setup(session(over));
     const r = await confirmCheckoutSession(stripe, store, 7, "cs_test_1");
     assert.equal(r.status, 200);
@@ -121,4 +121,12 @@ test("confirm refuses another user's session and malformed ids", async () => {
   for (const bad of [undefined, "", "sub_1", "cs_../x", 5]) {
     assert.equal((await confirmCheckoutSession(stripe, store, 7, bad)).status, 400);
   }
+});
+
+test("confirm takes the tier from the subscription's current plan, not from the session's metadata", async () => {
+  // The session was created for Member, but its subscription has since moved to Pro: confirming must not undo that.
+  const { stripe, store, writes } = setup(session({ metadata: { userId: "7", tier: "member" } }));
+  const r = await confirmCheckoutSession(stripe, store, 7, "cs_test_1");
+  assert.deepEqual(r, { status: 200, body: { confirmed: true, tier: "pro" } });
+  assert.equal((writes[0] as any).subscriptionTier, "pro");
 });

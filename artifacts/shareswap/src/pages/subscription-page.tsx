@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
+import { confirmCheckoutReturn } from "@/lib/checkout-return";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/shared/navbar";
 import { billingRow } from "@/lib/billing-row";
@@ -145,8 +146,10 @@ export default function SubscriptionPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("sub_success") === "true") {
       toast({ title: "Subscription activated!", description: "Your new plan benefits are now active." });
+      const search = window.location.search;
       window.history.replaceState({}, "", "/subscription");
-      queryClient.invalidateQueries({ queryKey: ["/api/subscription/status"] });
+      // Read the session from Stripe now rather than wait for the webhook, then refresh the plan either way.
+      confirmCheckoutReturn(search).then(() => queryClient.invalidateQueries({ queryKey: ["/api/subscription/status"] }));
     } else if (params.get("sub_canceled") === "true") {
       toast({ title: "Checkout canceled", description: "No charges were made." });
       window.history.replaceState({}, "", "/subscription");

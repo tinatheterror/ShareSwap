@@ -104,7 +104,10 @@ export function subscriptionReturnHandler(deps: { getHosts?: () => Set<string> }
   };
 }
 
-export type ConfirmStripe = { checkout: { sessions: Pick<Stripe["checkout"]["sessions"], "retrieve"> } };
+export type ConfirmStripe = {
+  checkout: { sessions: Pick<Stripe["checkout"]["sessions"], "retrieve"> };
+  subscriptions: Pick<Stripe["subscriptions"], "retrieve">;
+};
 
 export interface ConfirmStore {
   getStripeCustomerId(userId: number): Promise<string | null>;
@@ -139,7 +142,8 @@ export async function confirmCheckoutSession(
   if (typeof sessionId !== "string" || !CHECKOUT_SESSION_ID.test(sessionId)) {
     return { status: 400, body: { message: "Invalid session id" } };
   }
-  const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["subscription.items.data.price.product"] });
+  // Stripe allows four levels of expansion, and the product is five below a session, so the subscription is read separately.
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
 
   const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
   const ownedByMetadata = session.metadata?.userId === String(userId);
@@ -155,7 +159,10 @@ export async function confirmCheckoutSession(
   }
   // The tier is what the session's subscription is on now, not what the session recorded when it was created:
   // an old session must not be able to put a user back on a plan they have since left.
-  const subscription = typeof session.subscription === "object" ? session.subscription : null;
+  const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+  const subscription = subscriptionId
+    ? await stripe.subscriptions.retrieve(subscriptionId, { expand: ["items.data.price.product"] })
+    : null;
   const tier = subscription ? tierOfSubscription(subscription) : null;
   if (!subscription || !tier) return { status: 200, body: { confirmed: false, reason: "unknown_tier" } };
   if (!["active", "trialing", "past_due"].includes(subscription.status)) {

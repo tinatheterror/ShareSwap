@@ -11,6 +11,7 @@ import { billingRow } from "@/lib/billing-row";
 import { PendingPlanChangeNotice, type PendingPlanChange } from "@/components/pending-plan-change";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { confirmCheckoutReturn } from "@/lib/checkout-return";
 import { useState, useRef, useCallback, useEffect } from "react";
 import ReactCrop, {
   type Crop,
@@ -239,8 +240,10 @@ export default function ProfilePage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("sub_success") === "true") {
       toast({ title: "Subscription activated!", description: "Welcome! Your new plan benefits are now active." });
+      const search = window.location.search;
       window.history.replaceState({}, "", "/profile");
-      queryClient.invalidateQueries({ queryKey: ["/api/subscription/status"] });
+      // Read the session from Stripe now rather than wait for the webhook, then refresh the plan either way.
+      confirmCheckoutReturn(search).then(() => queryClient.invalidateQueries({ queryKey: ["/api/subscription/status"] }));
     } else if (params.get("sub_canceled") === "true") {
       toast({ title: "Checkout canceled", description: "No charges were made." });
       window.history.replaceState({}, "", "/profile");

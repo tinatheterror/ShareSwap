@@ -86,7 +86,19 @@ function session(over: Record<string, unknown> = {}) {
 }
 function setup(s: unknown, storedCustomer: string | null = "cus_1") {
   const writes: unknown[] = [];
-  const stripe = { checkout: { sessions: { retrieve: async () => s } } } as any;
+  const sub = (s as any).subscription;
+  const stripe = {
+    // Like Stripe, the session names its subscription by id; the subscription is read (and its product expanded) separately.
+    checkout: { sessions: { retrieve: async (_id: string, params?: unknown) => {
+      assert.equal(params, undefined, "the session is read without expansion: the product is too deep to expand from it");
+      return { ...(s as object), subscription: sub?.id ?? null };
+    } } },
+    subscriptions: { retrieve: async (id: string, params: { expand?: string[] }) => {
+      assert.equal(id, sub.id);
+      assert.deepEqual(params.expand, ["items.data.price.product"]);
+      return sub;
+    } },
+  } as any;
   const store: ConfirmStore = {
     getStripeCustomerId: async () => storedCustomer,
     setSubscription: async (userId, fields) => void writes.push({ userId, ...fields }),

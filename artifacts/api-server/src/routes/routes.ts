@@ -785,7 +785,8 @@ export async function checkAndAwardAchievements(userId: number) {
 
 // Initialize Stripe - will be loaded from connector
 import { getUncachableStripeClient, getStripePublishableKey } from "../stripe.server";
-import { subscriptionWebhookHandler } from "../subscription-webhook";
+import { subscriptionWebhookHandler, type SubscriptionWebhookDeps } from "../subscription-webhook";
+import { SUBSCRIPTION_WEBHOOK_PATH, isServerToServerPath } from "../server-to-server-routes";
 import { stripeErrorDetails } from "../stripe-period";
 import { subscribeWithSavedCard, confirmSubscriptionPayment, previewPlanChange, syncSubscriptionWithStripe, keepCurrentPlan, dbUpgradeStore } from "../subscription-upgrade";
 import { subscriptionReturnHandler, stripeReturnUrl, confirmCheckoutSession, dbConfirmStore } from "../subscription-return";
@@ -1860,6 +1861,8 @@ export function registerRoutes(
     onScheduledJobs?: (jobs: ScheduledJobRunners) => void;
     /** Stripe client for request expiry and cancellation; tests inject a fake. Defaults to the real one. */
     stripe?: unknown;
+    /** Stripe client, signing secret and store for the subscription webhook; tests inject fakes. */
+    subscriptionWebhook?: SubscriptionWebhookDeps;
   } = {},
 ): Server {
   const currentTime = () => (options.now ? options.now() : new Date());
@@ -2464,9 +2467,10 @@ export function registerRoutes(
   // Security: Apply CSRF protection to all routes except login/register/csrf-token/referrals
   // CSRF protection automatically applies to POST, PUT, DELETE, PATCH (not GET, HEAD, OPTIONS)
   app.use((req, res, next) => {
-    // Skip CSRF for login, register, csrf-token, and referrals endpoints
+    // Skip CSRF for login, register, csrf-token, and referrals endpoints, and for routes only another
+    // server calls (Stripe's webhook has no cookie or token; it is authenticated by its signature).
     const skipPaths = ['/api/login', '/api/register', '/api/csrf-token', '/api/referrals/generate'];
-    if (skipPaths.includes(req.path)) {
+    if (skipPaths.includes(req.path) || isServerToServerPath(req.path)) {
       return next();
     }
     // Apply CSRF protection to all other routes
@@ -16073,7 +16077,7 @@ Respond with ONLY the category name, nothing else.`
         mode: 'subscription',
         line_items: [{ price: priceId, quantity: 1 }],
         // Stripe only takes http(s); app links are bounced through /api/subscription/return.
-        success_url: stripeReturnUrl({ clientUrl: successUrl, result: "success", baseUrl, fallback: `${baseUrl}/profile?sub_success=true` }),
+        success_url: stripeReturnUrl({ clientUrl: successUrl, result: "success", baseUrl, fallback: `${baseUrl}/profile?sub_success=true&session_id={CHECKOUT_SESSION_ID}` }),
         cancel_url: stripeReturnUrl({ clientUrl: cancelUrl, result: "canceled", baseUrl, fallback: `${baseUrl}/profile?sub_canceled=true` }),
         metadata: { userId: String(req.user.id), tier },
       });
@@ -16181,7 +16185,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Stripe subscription webhook
-  app.post("/api/stripe/subscription-webhook", subscriptionWebhookHandler());
+  app.post(SUBSCRIPTION_WEBHOOK_PATH, subscriptionWebhookHandler(options.subscriptionWebhook));
 
   // Migrate existing users to have handles (runs once at startup)
   (async () => {

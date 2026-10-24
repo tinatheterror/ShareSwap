@@ -7,6 +7,7 @@ import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
 import healthRouter from "./routes/health";
 import { legacyReputationScoreAlias } from "./legacy-reputation-alias";
+import { SUBSCRIPTION_WEBHOOK_PATH, isServerToServerPath } from "./server-to-server-routes";
 
 const app: Express = express();
 
@@ -109,6 +110,8 @@ const generalLimiter = rateLimit({
   max: process.env.NODE_ENV === "production" ? 200 : 10000,
   standardHeaders: true,
   legacyHeaders: false,
+  // Stripe delivers from a few shared addresses; the signature check is what protects the webhook.
+  skip: (req: Request) => isServerToServerPath(req.originalUrl),
   handler: (_req: Request, res: Response) => {
     res.status(429).json({ error: "Too many requests, please try again later." });
   },
@@ -118,7 +121,7 @@ app.use("/api/", generalLimiter);
 
 app.use(cookieParser());
 
-app.use("/api/stripe/subscription-webhook", express.raw({ type: "application/json" }));
+app.use(SUBSCRIPTION_WEBHOOK_PATH, express.raw({ type: "application/json" }));
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: false, limit: "10mb" }));

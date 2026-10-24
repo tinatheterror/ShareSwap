@@ -34,13 +34,8 @@ BASE_PATH = "/mobile/"
 
 [[workflows.workflow]]
 name = ".migration-backup/artifacts/mockup-sandbox: Component Preview Server"
-author = "agent"
 mode = "sequential"
-
-[workflows.workflow.metadata]
-outputType = "webview"
-artifactId = "artifacts/mockup-sandbox"
-isCanvasWorkflow = true
+author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -53,6 +48,11 @@ router = "path"
 [workflows.workflow.tasks.env]
 PORT = "23636"
 BASE_PATH = "/__mockup/"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "artifacts/mockup-sandbox"
+isCanvasWorkflow = true
 
 [[workflows.workflow]]
 name = "artifacts/shareswap: web"
@@ -78,7 +78,7 @@ BASE_PATH = "/"
 [[workflows.workflow]]
 name = "artifacts/api-server: API Server"
 author = "agent"
-mode = "sequential"
+mode = "parallel"
 
 [workflows.workflow.metadata]
 outputType = "webview"
@@ -116,15 +116,6 @@ router = "path"
 [workflows.workflow.tasks.env]
 PORT = "23636"
 BASE_PATH = "/__mockup/"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "browser-return-flow"
 
 [[workflows.workflow]]
 name = "browser-return-flow"

@@ -23,7 +23,7 @@ import { buildExpirySweepOptions } from "./scheduled-job-options";
 
 // Oct 2–5 (the agreed dates) → cutoff Oct 4 23:59:59 in Vancouver (PDT, UTC-7)
 // = 2026-10-05T06:59:59Z. Request dates never move; only the cutoff matters here.
-const CUTOFF = new Date("2026-10-05T06:59:59.000Z");
+const CUTOFF = new Date("2026-10-05T06:59:59.999Z");
 const AT_CUTOFF = CUTOFF;
 const ONE_SECOND_AFTER = new Date(CUTOFF.getTime() + 1_000);
 const ONE_SECOND_BEFORE = new Date(CUTOFF.getTime() - 1_000);
@@ -441,7 +441,7 @@ test("a one-day request's cutoff is the end of its start day, never before it st
     endDate: new Date("2026-10-03T00:00:00.000Z"),
   });
   const stripe = noStripe();
-  const lastSecondOfStartDay = new Date("2026-10-03T06:59:59.000Z");
+  const lastSecondOfStartDay = new Date("2026-10-03T06:59:59.999Z");
   assert.equal((await expireRequestIfDue(id, stripe.deps, lastSecondOfStartDay)).status, "not_due");
   assert.equal((await expireRequestIfDue(id, stripe.deps, new Date("2026-10-03T07:00:00.000Z"))).status, "expired");
 });

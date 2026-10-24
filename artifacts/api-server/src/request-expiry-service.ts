@@ -16,7 +16,7 @@ import {
 } from "./deposit-renewal-service";
 import * as depositCopy from "./deposit-copy";
 import { READ_EXPIRY_OFF, type ExpiryReadPolicy, type ReadCheckSummary } from "./job-switches";
-import { computeHandoffCutoff } from "./request-dates";
+import { computeHandoffCutoff, timezoneForRequest } from "./request-dates";
 import { buildRefundLedgerRows, insertRefundLedger, refundUpfrontCharges, type LedgerRow } from "./request-refunds";
 import { classifyDepositState, expiredReasonFor } from "./deposit-state";
 import * as copy from "./request-expiry-copy";
@@ -126,6 +126,7 @@ export function requestHandoffCutoff(request: CutoffFields): Date | null {
   return computeHandoffCutoff(
     request.counterStartDate || request.startDate,
     request.counterEndDate || request.endDate,
+    timezoneForRequest(request),
   );
 }
 

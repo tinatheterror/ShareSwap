@@ -16,7 +16,7 @@ import { CelebrationAnimation } from "@/components/celebration-animation";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { NOT_CHARGED_UNLESS_CLAIM, formatMoney } from "@/lib/deposit-copy";
-import { formatDisplayName } from "@/lib/utils";
+import { addCalendarDays, formatCalendarDate, formatDisplayName, isCalendarDayPast } from "@/lib/utils";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
 import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmation-modal";
@@ -806,7 +806,7 @@ export default function RequestsPage() {
                               {request.counterStartDate && request.counterEndDate && (
                                 <Badge variant="secondary" className="text-xs">
                                   <Clock className="h-3 w-3 mr-1" />
-                                  {format(new Date(request.counterStartDate), "MMM d")} – {format(new Date(request.counterEndDate), "MMM d")}
+                                  {formatCalendarDate(request.counterStartDate, "MMM d")} – {formatCalendarDate(request.counterEndDate, "MMM d")}
                                 </Badge>
                               )}
                             </div>
@@ -867,7 +867,7 @@ export default function RequestsPage() {
                           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
                             <Clock className="h-4 w-4" />
                             <span>
-                              {format(new Date(request.startDate), "MMM d")} - {format(new Date(request.endDate), "MMM d, yyyy")}
+                              {formatCalendarDate(request.startDate, "MMM d")} - {formatCalendarDate(request.endDate, "MMM d, yyyy")}
                             </span>
                           </div>
                         )}
@@ -956,7 +956,7 @@ export default function RequestsPage() {
                             )}
 
                             {request.status === "IN_PROGRESS" && (() => {
-                              const isOverdue = request.endDate ? new Date() > new Date(request.endDate) : false;
+                              const isOverdue = isCalendarDayPast(request.endDate);
                               const hasPending = !!pendingExtByRequestId[request.id];
                               const hasAccepted = !!acceptedExtByRequestId[request.id];
                               return (
@@ -1163,7 +1163,7 @@ export default function RequestsPage() {
                             )}
 
                             {request.status === "IN_PROGRESS" && (() => {
-                              const isOverdue = request.endDate ? new Date() > new Date(request.endDate) : false;
+                              const isOverdue = isCalendarDayPast(request.endDate);
                               const pendingExt = pendingExtByRequestId[request.id];
                               return (
                                 <>
@@ -1187,7 +1187,7 @@ export default function RequestsPage() {
                                   {pendingExt && (
                                     <div className="w-full mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                                       <p className="text-sm font-medium text-amber-800 mb-1">
-                                        Short extension requested: {pendingExt.message} → {format(new Date(pendingExt.requestedEndDate), "MMM d, yyyy")}
+                                        Short extension requested: {pendingExt.message} → {formatCalendarDate(pendingExt.requestedEndDate, "MMM d, yyyy")}
                                       </p>
                                       <div className="flex gap-2">
                                         <Button size="sm" className="bg-green-600 hover:bg-green-700"
@@ -1466,7 +1466,7 @@ export default function RequestsPage() {
               {extendRequest.endDate && (
                 <div className="bg-gray-50 rounded-lg p-3 text-sm">
                   <span className="text-muted-foreground">Current due date: </span>
-                  <span className="font-medium">{format(new Date(extendRequest.endDate), "MMM d, yyyy")}</span>
+                  <span className="font-medium">{formatCalendarDate(extendRequest.endDate, "MMM d, yyyy")}</span>
                 </div>
               )}
               <div className="space-y-2">
@@ -1488,7 +1488,7 @@ export default function RequestsPage() {
                 </div>
                 {extendDays && extendRequest.endDate && (
                   <p className="text-xs text-muted-foreground pt-1">
-                    New return date: <span className="font-medium text-gray-700">{format(new Date(new Date(extendRequest.endDate).getTime() + extendDays * 86400000), "MMM d, yyyy")}</span>
+                    New return date: <span className="font-medium text-gray-700">{formatCalendarDate(addCalendarDays(extendRequest.endDate, extendDays), "MMM d, yyyy")}</span>
                   </p>
                 )}
               </div>
@@ -1531,7 +1531,7 @@ export default function RequestsPage() {
             <div className="py-3 space-y-3">
               <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
                 <p><span className="text-muted-foreground">Item: </span><span className="font-medium">{renewRequest.item.name}</span></p>
-                <p><span className="text-muted-foreground">Starts: </span><span className="font-medium">{renewRequest.endDate ? format(new Date(renewRequest.endDate), "MMM d, yyyy") : "after return"}</span></p>
+                <p><span className="text-muted-foreground">Starts: </span><span className="font-medium">{renewRequest.endDate ? formatCalendarDate(renewRequest.endDate, "MMM d, yyyy") : "after return"}</span></p>
                 <p><span className="text-muted-foreground">Cost: </span><span className="font-medium">{renewRequest.item.shareCoinPrice || "5"} ShareCoins</span></p>
               </div>
               <p className="text-xs text-muted-foreground">Renewal only starts after this borrow ends. No overlapping periods.</p>

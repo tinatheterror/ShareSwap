@@ -152,8 +152,11 @@ interface SecurityClaim {
 interface Lifecycle {
   requestId: number;
   stage: string;
+  /** The due day as a calendar date (YYYY-MM-DD); format it with fmtCalendarDate. */
   deadline: string | null;
   lateHours: number;
+  /** Calendar days past the due day, counted by the server in the request's time zone (absent on older servers). */
+  daysLate?: number;
   role: "owner" | "borrower";
   actions: string[];
   deposit: {
@@ -236,7 +239,13 @@ function getStatusInfo(status: string): StatusInfo {
 
 const PRIMARY = "#0DCEA1";
 const TERMINAL = ["COMPLETED", "COMPLETED_EARLY", "DECLINED", "CANCELLED", "EXPIRED", "DISPUTED"];
-function formatLateHours(hours: number): string | null {
+function formatLate(details: { daysLate?: number; lateHours: number }): string | null {
+  // The server counts calendar days in the request's zone; hours are only the fallback for older servers.
+  if (typeof details.daysLate === "number") {
+    if (details.daysLate <= 0) return null;
+    return `${details.daysLate} day${details.daysLate === 1 ? "" : "s"}`;
+  }
+  const hours = details.lateHours;
   if (hours <= 0) return null;
   if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"}`;
   const days = Math.floor(hours / 24);
@@ -651,7 +660,7 @@ export default function ChatScreen() {
     // infer an overdue state from the older request status/end-date fields.
     const overdueStage = lifecycleDetails?.stage ?? "";
     const returnDeadline = lifecycleDetails?.deadline ?? null;
-    const lateBy = lifecycleDetails ? formatLateHours(lifecycleDetails.lateHours) : null;
+    const lateBy = lifecycleDetails ? formatLate(lifecycleDetails) : null;
     const claim = lifecycle?.claims?.[0] ?? null;
     const isReturnLifecycle = ["RETURN_DUE", "OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW", "RETURNED_PENDING_REVIEW"].includes(overdueStage);
     const mayOpenClaim = isOwner && !claim && !!lifecycleDetails?.actions.includes("open_claim");
@@ -811,16 +820,18 @@ export default function ChatScreen() {
               <Feather name={overdueStage === "RETURNED_PENDING_REVIEW" ? "check-circle" : "alert-circle"} size={15} color={stageInfo.color} style={{ marginTop: 0.5 }} />
               <Text style={[card.lifecycleText, { color: stageInfo.color, flex: 1 }]}>
                 <Text style={[card.lifecycleTitle, { color: stageInfo.color }]}>{stageInfo.title}: </Text>
-                {isBorrower
-                  ? stageInfo.borrower
-                  : overdueStage === "NON_RETURN_REVIEW" && lateBy
-                    ? `${lateBy} overdue. You may open a claim to report an issue.`
-                    : stageInfo.owner}
+                {overdueStage === "OVERDUE" && lateBy && returnDeadline
+                  ? <Text style={{ fontFamily: "Inter_600SemiBold" }}>{`${lateBy} late · Due ${fmtCalendarDate(returnDeadline)}`}</Text>
+                  : isBorrower
+                    ? stageInfo.borrower
+                    : overdueStage === "NON_RETURN_REVIEW" && lateBy
+                      ? `${lateBy} overdue. You may open a claim to report an issue.`
+                      : stageInfo.owner}
               </Text>
             </View>
-            {returnDeadline && !(overdueStage === "NON_RETURN_REVIEW" && !isBorrower && lateBy) && <Text style={[card.lifecycleText, { color: stageInfo.color, paddingLeft: 21 }]}>Return deadline: {fmtDate(returnDeadline)}{lateBy ? ` · ${lateBy} late` : ""}</Text>}
+            {returnDeadline && !(overdueStage === "NON_RETURN_REVIEW" && !isBorrower && lateBy) && !(overdueStage === "OVERDUE" && lateBy) && <Text style={[card.lifecycleText, { color: stageInfo.color, paddingLeft: 21 }]}>Return deadline: {fmtCalendarDate(returnDeadline)}{lateBy ? ` · ${lateBy} late` : ""}</Text>}
             {overdueStage !== "NON_RETURN_REVIEW" && (
-              <Text style={[card.lifecycleText, { color: stageInfo.color, fontFamily: "Inter_500Medium", paddingLeft: 21 }]}>A late return never automatically charges your deposit.</Text>
+              <Text style={[card.lifecycleText, { color: stageInfo.color, fontFamily: "Inter_500Medium", paddingLeft: 21 }]}>{overdueStage === "OVERDUE" ? (isBorrower ? "Return item or request an extension. The owner can now open a claim, which may charge your deposit." : "You can open a claim for the deposit if the item isn't returned.") : "Your deposit won't be charged automatically."}</Text>
             )}
           </View>
         )}
@@ -879,7 +890,7 @@ export default function ChatScreen() {
                 {isOwner && hasPendingExtension && pendingExtension && (
                   <View style={[card.counterBanner, { backgroundColor: "#fffbeb", borderColor: "#fcd34d" }]}>
                     <Text style={[card.counterBannerTitle, { color: "#92400e" }]}>Extension requested</Text>
-                    <Text style={[card.counterBannerText, { color: "#78350f" }]}>Requested return: {fmtDate(pendingExtension.requestedEndDate)}</Text>
+                    <Text style={[card.counterBannerText, { color: "#78350f" }]}>Requested return: {fmtCalendarDate(pendingExtension.requestedEndDate)}</Text>
                     <View style={[card.btnRow, { marginTop: 5 }]}>
                       <Pressable testID="approve-overdue-extension" style={[card.btn, { flex: 1, backgroundColor: PRIMARY, borderColor: PRIMARY }]} disabled={respondExtensionMutation.isPending} onPress={() => respondExtensionMutation.mutate("accept")}>
                         <Text style={[card.btnLabel, { color: "#fff" }]}>Approve</Text>

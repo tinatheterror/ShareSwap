@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Search, CheckCircle, Unlock, XCircle, ChevronLeft, ChevronRight, DollarSign } from "lucide-react";
 import { format } from "date-fns";
+import { formatCalendarDate } from "@/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";
 
 interface AdminTransaction {
@@ -168,7 +169,7 @@ export default function AdminTransactionsPage() {
                           {tx.depositStatus && <span className="ml-1 font-medium">({tx.depositStatus === "authorized" || tx.depositStatus === "held" ? "temporary hold" : tx.depositStatus === "captured" ? "charged — claim opened" : tx.depositStatus === "released" ? "hold released" : tx.depositStatus === "settled" ? "claim resolved" : tx.depositStatus})</span>}
                         </span>
                       )}
-                      {tx.startDate && <span>{format(new Date(tx.startDate), "MMM d")} – {tx.endDate ? format(new Date(tx.endDate), "MMM d, yyyy") : "?"}</span>}
+                      {tx.startDate && <span>{formatCalendarDate(tx.startDate, "MMM d")} – {tx.endDate ? formatCalendarDate(tx.endDate, "MMM d, yyyy") : "?"}</span>}
                       <span>Created {format(new Date(tx.createdAt), "MMM d, yyyy")}</span>
                     </div>
                   </div>

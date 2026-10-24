@@ -24,7 +24,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
-import { fmtDate } from "@/lib/dateUtils";
+import { fmtCalendarDate, fmtDate } from "@/lib/dateUtils";
 import { useAuth } from "@/context/AuthContext";
 import { borrowTrustDepositQuote } from "@/lib/deposit-calculator";
 import { TrustDepositLine } from "@/components/TrustDepositLine";
@@ -144,7 +144,7 @@ export default function ItemDetailScreen() {
   const cooldownExpiresAt = item?.cooldownExpiresAt ?? null;
   const activeRequestEndDate = item?.activeRequestEndDate ?? null;
   const expectedAvailability = activeRequestEndDate
-    ? fmtDate(activeRequestEndDate, { month: "short", day: "numeric" })
+    ? fmtCalendarDate(activeRequestEndDate, { month: "short", day: "numeric" })
     : null;
 
   // Pending requests — check per type

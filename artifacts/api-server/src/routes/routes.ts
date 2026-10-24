@@ -96,7 +96,17 @@ import { CANCELLABLE_REQUEST_TYPES, cancelBorrowRentRequest } from "../cancel-se
 import { depositMethodRejection } from "../deposit-method-rules";
 import {
   REQUEST_DATES_PASSED_MESSAGE,
+  addCalendarDays,
+  calendarDayInZone,
+  calendarDaysLate,
+  calendarDaysUntil,
+  endOfLocalDay,
   isStartDatePassed,
+  requestCalendarDay,
+  returnDeadlineInstant,
+  returnDueDay,
+  startOfLocalDay,
+  timezoneForRequest,
   validateStartDateNotPast,
 } from "../request-dates";
 import { compactNotificationCopy } from "../notification-copy";
@@ -146,7 +156,6 @@ import {
   awardGiftingPoints, 
   awardFeedbackPoints, 
   TRUST_POINTS,
-  daysLateAgainstDueDate,
   applySeriousOverduePenalty,
   applyCancellationPenalty,
   applyDepositClaimedPenalty,
@@ -190,7 +199,7 @@ export async function getBlockingOverdueBorrow(borrowerId: number, now = new Dat
   return activeBorrows
     .map((borrow) => ({
       ...borrow,
-      daysOverdue: daysOverdueAgainstDueDate(now, borrow.endDate),
+      daysOverdue: daysOverdueAgainstDueDate(now, borrow.endDate, timezoneForRequest(borrow)),
     }))
     .find((borrow) => isBorrowingRestricted(borrow.daysOverdue));
 }
@@ -1020,8 +1029,10 @@ const PRECHECK_AUTHORIZATION_WINDOW_HOURS =
     : 7 * 24;
 
 function requiredDepositProtectionEnd(endDate: Date | null): Date | null {
-  if (!endDate) return null;
-  return new Date(endDate.getTime() + (RETURN_PROCESSING_BUFFER_HOURS + CLAIM_REVIEW_BUFFER_HOURS) * 60 * 60 * 1000);
+  // The hold has to cover the whole due day, so the buffers start at its end, not at UTC midnight.
+  const endOfDueDay = endOfLocalDay(endDate, timezoneForRequest());
+  if (!endOfDueDay) return null;
+  return new Date(endOfDueDay.getTime() + (RETURN_PROCESSING_BUFFER_HOURS + CLAIM_REVIEW_BUFFER_HOURS) * 60 * 60 * 1000);
 }
 
 /** Chat stamp for a placed deposit. depositMode lets clients choose "Temporary hold placed" vs "Refundable deposit charged". */
@@ -1735,11 +1746,10 @@ async function runConfirmedReturnPostEffects(context: ReturnRecoveryContext) {
 
   // Keep existing trust, coin, referral, and achievement behavior on the
   // winning finalization path for both HTTP confirmations and recovery workers.
-  const endDate = request.endDate ? new Date(request.endDate) : null;
   const physicalReturnAt = request.actualReturnAt
     ? new Date(request.actualReturnAt)
     : new Date();
-  const daysLate = daysLateAgainstDueDate(physicalReturnAt, endDate);
+  const daysLate = calendarDaysLate(request.endDate, physicalReturnAt, timezoneForRequest(request));
   try {
     const hadCommunication = !!request.returnDelayNotifiedAt;
     const returnResult = await awardBorrowReturnPoints(
@@ -10692,7 +10702,7 @@ Respond with ONLY the category name, nothing else.`
           .returning();
 
         const dueStr = request.endDate
-          ? new Date(request.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          ? new Date(`${requestCalendarDay(request.endDate)}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
           : "the due date";
         const borrowerName = (req.user as any).displayName || req.user.username || "The borrower";
         const notificationTitle = "Return may still be late";
@@ -10797,8 +10807,8 @@ Respond with ONLY the category name, nothing else.`
           return { status: 500, error: "Return request could not be saved" };
         }
 
-        const endDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
-        const isEarlyReturn = endDate ? new Date() < endDate : false;
+        const endOfDueDay = endOfLocalDay(request.item_requests.endDate, timezoneForRequest(request.item_requests));
+        const isEarlyReturn = endOfDueDay ? new Date() < endOfDueDay : false;
 
         // Returning takes precedence over any unanswered extension, and both
         // the cancellation and status transition commit together.
@@ -11627,8 +11637,11 @@ Respond with ONLY the category name, nothing else.`
       db.select().from(requestLifecycleEvents).where(eq(requestLifecycleEvents.requestId, requestId)).orderBy(asc(requestLifecycleEvents.createdAt)),
     ]);
     const r = request.request;
-    const deadline = r.returnDeadlineAt || r.endDate;
-    const lateHours = deadline ? Math.max(0, Math.floor((Date.now() - new Date(deadline).getTime()) / 3_600_000)) : 0;
+    // The due day as a calendar date, and the hours since it ended in the request's zone.
+    const deadline = returnDueDay(r);
+    const deadlineInstant = returnDeadlineInstant(r);
+    const lateHours = deadlineInstant ? Math.max(0, Math.floor((Date.now() - deadlineInstant.getTime()) / 3_600_000)) : 0;
+    const daysLate = calendarDaysLate(deadline, new Date(), timezoneForRequest(r));
     const role = request.ownerId === req.user.id ? "owner" : "borrower";
     const actions = role === "owner"
       ? ["open_claim", "arrange_return"]
@@ -11638,7 +11651,7 @@ Respond with ONLY the category name, nothing else.`
     }
     res.json({
       lifecycle: {
-        requestId: r.id, stage: r.overdueStage || "ACTIVE", deadline, lateHours,
+        requestId: r.id, stage: r.overdueStage || "ACTIVE", deadline, lateHours, daysLate,
         claimDecisionDeadlineAt: r.claimDecisionDeadlineAt,
         settlementStartDeadlineAt: r.settlementStartDeadlineAt,
         role, actions,
@@ -11686,7 +11699,7 @@ Respond with ONLY the category name, nothing else.`
     try {
       const claim = await db.transaction(async tx => {
         await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);
-        const [row] = await tx.select({ ownerId: items.ownerId, borrowerId: itemRequests.requesterId, deposit: itemRequests.trustDepositAmount, pi: itemRequests.depositPaymentIntentId, depositMethod: itemRequests.depositMethod, depositStatus: itemRequests.depositStatus, depositOperation: itemRequests.depositRenewalStatus, stage: itemRequests.overdueStage, expires: itemRequests.depositAuthorizationExpiresAt })
+        const [row] = await tx.select({ ownerId: items.ownerId, borrowerId: itemRequests.requesterId, deposit: itemRequests.trustDepositAmount, endDate: itemRequests.endDate, returnDeadlineAt: itemRequests.returnDeadlineAt, pi: itemRequests.depositPaymentIntentId, depositMethod: itemRequests.depositMethod, depositStatus: itemRequests.depositStatus, depositOperation: itemRequests.depositRenewalStatus, stage: itemRequests.overdueStage, expires: itemRequests.depositAuthorizationExpiresAt })
           .from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(eq(itemRequests.id, requestId)).limit(1);
         if (!row) throw Object.assign(new Error("Request not found"), { status: 404 });
         if (row.ownerId !== req.user.id) throw Object.assign(new Error("Only the owner can open a claim"), { status: 403 });
@@ -11694,9 +11707,13 @@ Respond with ONLY the category name, nothing else.`
         if (!row.pi || row.depositOperation === "terminal_action" || !["authorized", "held", "disputed", "SECURED_REFUNDABLE", "secured_refundable"].includes(row.depositStatus || ""))
           throw Object.assign(new Error("No deposit hold or charged deposit is available for this request"), { status: 409 });
         const nonReturn = ["non_return", "lost"].includes(claimType);
-        if (nonReturn && !claimAllowedAtStage(claimType, row.stage))
+        // The stored stage only moves when the overdue sweep runs, so read the stage off the deadline now:
+        // the deadline is the end of the due day in the request's zone, and claims open 24 hours after it.
+        const deadlineInstant = returnDeadlineInstant(row);
+        const claimStage = row.stage === "RETURNED_PENDING_REVIEW" || !deadlineInstant ? row.stage : overdueStageAt(deadlineInstant, new Date());
+        if (nonReturn && !claimAllowedAtStage(claimType, claimStage))
           throw Object.assign(new Error("Non-return claims require the item to be at least 24 hours overdue"), { status: 409 });
-        if (!nonReturn && !claimAllowedAtStage(claimType, row.stage))
+        if (!nonReturn && !claimAllowedAtStage(claimType, claimStage))
           throw Object.assign(new Error("Damage/missing claims require return review or the item to be at least 24 hours overdue"), { status: 409 });
         if (requestedAmount > Number(row.deposit || 0)) throw Object.assign(new Error("Claim cannot exceed the security deposit"), { status: 400 });
         const [existing] = await tx.select({ id: securityClaims.id }).from(securityClaims).where(and(eq(securityClaims.requestId, requestId), inArray(securityClaims.status, ["OPEN", "CUSTOMER_RESPONSE_PENDING", "UNDER_REVIEW", "APPROVED", "PROCESSING"]))).limit(1);
@@ -11888,7 +11905,7 @@ Respond with ONLY the category name, nothing else.`
         if (!borrow.endDate) return { status: 400, error: "Borrow has no end date" };
 
         const newEnd = new Date(borrow.endDate);
-        newEnd.setDate(newEnd.getDate() + addDays);
+        newEnd.setUTCDate(newEnd.getUTCDate() + addDays);
 
         // A new request replaces an unanswered request; the row lock ensures
         // that the owner cannot accept the replaced request concurrently.
@@ -12221,10 +12238,11 @@ Respond with ONLY the category name, nothing else.`
       // DB-only reconciliation of actual, previously persisted authorization
       // deadlines. It cannot renew, capture, cancel, refund, or call Stripe.
       await reconcileClaimDeadlines(now);
-      const todayStart = new Date(now);
-      todayStart.setHours(0, 0, 0, 0);
-      const twoDaysFromNow = new Date(now);
-      twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
+      // "Today" and "two days from now" are calendar days in the request zone. Dates are stored as
+      // UTC-midnight timestamps, so the window ends at the UTC midnight of that calendar day.
+      const sweepZone = timezoneForRequest();
+      const todayStart = startOfLocalDay(now, sweepZone)!;
+      const twoDaysFromNow = new Date(`${addCalendarDays(calendarDayInZone(now, sweepZone), 2)}T00:00:00.000Z`);
       const userScope = userId === undefined
         ? sql`TRUE`
         : or(
@@ -12337,12 +12355,14 @@ Respond with ONLY the category name, nothing else.`
         // This sweep has no Stripe dependency and intentionally only records
         // communications/lifecycle state. Financial settlement is reachable
         // solely through an approved claim's explicit settlement endpoint.
-        const nextStage = overdueStageAt(new Date(request.returnDeadlineAt || request.endDate), now, {
+        // The return deadline is the END of the due day in the request's zone (not UTC midnight, which is 5 PM the evening before in Vancouver).
+        const returnDeadline = returnDeadlineInstant(request)!;
+        const nextStage = overdueStageAt(returnDeadline, now, {
           requestType: request.requestType,
           durationDays: request.startDate ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / 86_400_000) : undefined,
         });
         if (nextStage !== (request.overdueStage || "ACTIVE")) {
-          const transitionKey = `overdue-stage-${request.id}-${nextStage}-${new Date(request.returnDeadlineAt || request.endDate).toISOString()}`;
+          const transitionKey = `overdue-stage-${request.id}-${nextStage}-${returnDeadline.toISOString()}`;
           const transitioned = await db.transaction(async tx => {
             await tx.execute(sql`
               SELECT 1 FROM ${itemRequests}
@@ -12366,12 +12386,12 @@ Respond with ONLY the category name, nothing else.`
             if (!updated) return false;
             await tx.insert(requestLifecycleEvents).values({
               requestId: request.id, eventType: `OVERDUE_${nextStage}`, idempotencyKey: transitionKey,
-              details: { from: request.overdueStage || "ACTIVE", to: nextStage, deadline: new Date(request.returnDeadlineAt || request.endDate).toISOString() },
+              details: { from: request.overdueStage || "ACTIVE", to: nextStage, deadline: returnDeadline.toISOString() },
             }).onConflictDoNothing();
             return true;
           });
           if (transitioned && nextStage !== "ACTIVE") {
-            const lateHours = Math.max(0, Math.floor((now.getTime() - new Date(request.endDate).getTime()) / 3_600_000));
+            const lateHours = Math.max(0, Math.floor((now.getTime() - returnDeadline.getTime()) / 3_600_000));
             const stageCopy: Record<string, { title: string; borrowerTitle?: string; ownerTitle?: string; borrower: string; owner: string }> = {
               RETURN_DUE: { title: "Return due", borrowerTitle: "Return Item to Owner", ownerTitle: "Get Your Item Back", borrower: `"${item.name}" is due now. Please arrange return.`, owner: `"${item.name}" is due for return.` },
               OVERDUE_GRACE: { title: "Return overdue", borrowerTitle: "Overdue - Return Item to Owner", ownerTitle: "Overdue - Get Your Item Back", borrower: `"${item.name}" is overdue by ${lateHours} hours. Please arrange return.`, owner: `"${item.name}" has not yet been returned. You may now open a non-return claim.` },
@@ -12387,10 +12407,11 @@ Respond with ONLY the category name, nothing else.`
           }
         }
 
-        const daysOverdue = daysOverdueAgainstDueDate(now, request.endDate);
+        const requestZone = timezoneForRequest(request);
+        const daysOverdue = daysOverdueAgainstDueDate(now, request.endDate, requestZone);
         const daysUntilReturn = daysOverdue > 0
           ? -daysOverdue
-          : Math.ceil((new Date(request.endDate).getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
+          : calendarDaysUntil(request.endDate, now, requestZone) ?? 0;
 
         if (
           request.requestType === "BORROW" &&
@@ -14821,7 +14842,7 @@ Respond with ONLY the category name, nothing else.`
     const formattedActivities = activities.map((activity) => {
       const activityDate = activity.createdAt ?? new Date();
       const daysLate = activity.requestEndDate
-        ? daysOverdueAgainstDueDate(activityDate, new Date(activity.requestEndDate))
+        ? daysOverdueAgainstDueDate(activityDate, activity.requestEndDate, timezoneForRequest())
         : undefined;
 
       return {

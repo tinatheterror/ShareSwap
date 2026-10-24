@@ -8,15 +8,18 @@ import {
   overdueStageAt,
   overdueLevel,
 } from "./overdue-policy.js";
+import { returnDeadlineInstant, timezoneForRequest } from "./request-dates.js";
+
+const ZONE = timezoneForRequest();
 
 const date = (value: string) => new Date(`${value}T12:00:00.000Z`);
 
 test("overdue thresholds use calendar days", () => {
   const now = date("2026-08-24");
-  assert.equal(daysOverdueAgainstDueDate(now, date("2026-08-24")), 0);
-  assert.equal(daysOverdueAgainstDueDate(now, date("2026-08-23")), 1);
-  assert.equal(daysOverdueAgainstDueDate(now, date("2026-08-17")), 7);
-  assert.equal(daysOverdueAgainstDueDate(now, date("2026-08-09")), 15);
+  assert.equal(daysOverdueAgainstDueDate(now, date("2026-08-24"), ZONE), 0);
+  assert.equal(daysOverdueAgainstDueDate(now, date("2026-08-23"), ZONE), 1);
+  assert.equal(daysOverdueAgainstDueDate(now, date("2026-08-17"), ZONE), 7);
+  assert.equal(daysOverdueAgainstDueDate(now, date("2026-08-09"), ZONE), 15);
 });
 
 test("7 days restricts new borrowing and 15 days is serious", () => {
@@ -32,8 +35,8 @@ test("7 days restricts new borrowing and 15 days is serious", () => {
 
 test("an accepted extension becomes the due date for the thresholds", () => {
   const now = date("2026-08-24");
-  assert.equal(daysOverdueAgainstDueDate(now, date("2026-08-17")), 7);
-  assert.equal(daysOverdueAgainstDueDate(now, date("2026-08-20")), 4);
+  assert.equal(daysOverdueAgainstDueDate(now, date("2026-08-17"), ZONE), 7);
+  assert.equal(daysOverdueAgainstDueDate(now, date("2026-08-20"), ZONE), 4);
 });
 
 test("calendar thresholds are not delayed by a daylight-saving transition", () => {
@@ -42,7 +45,7 @@ test("calendar thresholds are not delayed by a daylight-saving transition", () =
   try {
     const dueDate = new Date(2026, 2, 8, 12);
     const sevenDaysLater = new Date(2026, 2, 15, 12);
-    assert.equal(daysOverdueAgainstDueDate(sevenDaysLater, dueDate), 7);
+    assert.equal(daysOverdueAgainstDueDate(sevenDaysLater, dueDate, ZONE), 7);
   } finally {
     process.env.TZ = previousTimeZone;
   }

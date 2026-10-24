@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { format } from "date-fns"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -42,4 +43,46 @@ export function formatUtcCalendarDate(dateString: string | null | undefined): st
     year: "numeric",
     timeZone: "UTC",
   });
+}
+
+/**
+ * Booking and return dates are calendar days. The server stores them as
+ * UTC-midnight timestamps ("2026-10-19T00:00:00.000Z"), so reading one as an
+ * instant shows the day before in the Americas. These helpers read the
+ * calendar day as written (the leading YYYY-MM-DD) and never shift it.
+ */
+const CALENDAR_DAY = /^(\d{4})-(\d{2})-(\d{2})/;
+
+/** The calendar day as a local-midnight Date (safe to pass to date-fns format), or null. */
+export function parseCalendarDay(value: string | Date | null | undefined): Date | null {
+  if (!value) return null;
+  const text = typeof value === "string" ? value : value.toISOString();
+  const match = CALENDAR_DAY.exec(text);
+  if (!match) return null;
+  const [, year, month, day] = match;
+  const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/** Formats a calendar day with a date-fns pattern; "–" when missing or invalid. */
+export function formatCalendarDate(
+  value: string | Date | null | undefined,
+  pattern: string,
+): string {
+  const day = parseCalendarDay(value);
+  return day ? format(day, pattern) : "–";
+}
+
+/** The calendar day n days later (negative: earlier), as a local-midnight Date. */
+export function addCalendarDays(value: string | Date | null | undefined, n: number): Date | null {
+  const day = parseCalendarDay(value);
+  if (!day) return null;
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate() + n);
+}
+
+/** True once the viewer's today is after the given calendar day (the due day itself is not past). */
+export function isCalendarDayPast(value: string | Date | null | undefined, now: Date = new Date()): boolean {
+  const day = parseCalendarDay(value);
+  if (!day) return false;
+  return day < new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }

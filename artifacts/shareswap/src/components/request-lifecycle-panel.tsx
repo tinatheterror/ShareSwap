@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Clock, MessageSquare, RotateCcw, FileWarning, ImagePlus, X } from "lucide-react";
-import { format, formatDistanceToNowStrict } from "date-fns";
+import { format } from "date-fns";
+import { formatCalendarDate } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import { formatMoney } from "@/lib/deposit-copy";
 type Claim = { id: number; claimType: string; reason: string; evidence?: unknown[]; requestedAmount: string; approvedAmount?: string | null; status: string; responseDeadlineAt?: string | null; settlementStatus?: string | null; decisionReason?: string | null };
 type Lifecycle = {
   lifecycle: {
-    requestId: number; stage: string; deadline?: string | null; lateHours: number; role: "owner" | "borrower"; actions: string[];
+    requestId: number; stage: string; /** The due day as a calendar date; the server counts days late in the request's time zone. */ deadline?: string | null; lateHours: number; daysLate: number; role: "owner" | "borrower"; actions: string[];
     deposit: { mode?: string | null; status?: string | null; amount?: string | null; expiresAt?: string | null; protectionReviewRequired?: boolean; phase?: "none" | "hold" | "charged" | "released" | "resolved" | null; chargedAmount?: number | null; refundedAmount?: number | null; retainedAmount?: number | null; cardLast4?: string | null; cardBrand?: string | null };
   }; claims: Claim[]; events: { eventType: string; createdAt: string }[];
 };
@@ -85,7 +86,7 @@ export function RequestLifecyclePanel({ requestId, onContact, onReturn, onExtens
     {stage && <div className={`rounded-lg border p-3 ${stage.tone}`}>
       <p className="flex items-center gap-1.5 text-base font-bold leading-tight"><AlertTriangle className="h-4 w-4 shrink-0" />{stage.title}</p>
       <p className="mt-1.5 text-sm font-medium leading-snug">{stage.description}</p>
-      {lifecycle.deadline && <p className="mt-2 text-xs font-semibold tracking-wide">Return deadline: {format(new Date(lifecycle.deadline), "MMM d, yyyy p")} {lifecycle.lateHours > 0 && `· ${lifecycle.lateHours < 24 ? `${lifecycle.lateHours} hours` : formatDistanceToNowStrict(new Date(lifecycle.deadline))} late`}</p>}
+      {lifecycle.deadline && <p className="mt-2 text-xs font-semibold tracking-wide">Return deadline: {formatCalendarDate(lifecycle.deadline, "MMM d, yyyy")}{lifecycle.daysLate > 0 && ` · ${lifecycle.daysLate} ${lifecycle.daysLate === 1 ? "day" : "days"} late`}</p>}
       <p className="mt-2 border-t border-current/15 pt-2 text-xs font-normal leading-relaxed opacity-75">A late return never automatically charges a security deposit. A deposit is only charged when a claim is opened.</p>
     </div>}
     <DepositStatusCard deposit={lifecycle.deposit} role={lifecycle.role} fallbackRetainedAmount={data.claims.find(c => c.approvedAmount)?.approvedAmount} />

@@ -3,13 +3,19 @@ import { test } from "node:test";
 import {
   DEFAULT_PLATFORM_TIME_ZONE,
   PLATFORM_TIME_ZONE,
+  addCalendarDays,
   calendarDayInZone,
+  calendarDaysLate,
+  calendarDaysUntil,
   computeHandoffCutoff,
-  endOfCalendarDayInZone,
+  endOfLocalDay,
   formatHandoffCutoff,
   formatHandoffCutoffSentence,
   isStartDatePassed,
   requestCalendarDay,
+  returnDeadlineInstant,
+  startOfLocalDay,
+  timezoneForRequest,
   resolveTimeZone,
   validateStartDateNotPast,
 } from "./request-dates.js";
@@ -120,19 +126,19 @@ const iso = (date: Date | null) => date?.toISOString() ?? null;
 const day = (value: string) => new Date(`${value}T00:00:00.000Z`);
 
 test("end of a calendar day is 23:59:59 in the platform zone", () => {
-  assert.equal(iso(endOfCalendarDayInZone("2026-10-05", VAN)), "2026-10-06T06:59:59.000Z"); // PDT
-  assert.equal(iso(endOfCalendarDayInZone("2026-12-05", VAN)), "2026-12-06T07:59:59.000Z"); // PST
-  assert.equal(iso(endOfCalendarDayInZone("2026-10-05", "UTC")), "2026-10-05T23:59:59.000Z");
+  assert.equal(iso(endOfLocalDay("2026-10-05", VAN)), "2026-10-06T06:59:59.999Z"); // PDT
+  assert.equal(iso(endOfLocalDay("2026-12-05", VAN)), "2026-12-06T07:59:59.999Z"); // PST
+  assert.equal(iso(endOfLocalDay("2026-10-05", "UTC")), "2026-10-05T23:59:59.999Z");
 });
 
 test("end of day is still 23:59:59 local on the days the clocks change", () => {
-  assert.equal(iso(endOfCalendarDayInZone("2026-03-08", VAN)), "2026-03-09T06:59:59.000Z"); // spring forward
-  assert.equal(iso(endOfCalendarDayInZone("2026-11-01", VAN)), "2026-11-02T07:59:59.000Z"); // fall back
+  assert.equal(iso(endOfLocalDay("2026-03-08", VAN)), "2026-03-09T06:59:59.999Z"); // spring forward
+  assert.equal(iso(endOfLocalDay("2026-11-01", VAN)), "2026-11-02T07:59:59.999Z"); // fall back
 });
 
 test("an Oct 2–5 request must be handed off by Oct 4 at 11:59 PM", () => {
   const cutoff = computeHandoffCutoff(day("2026-10-02"), day("2026-10-05"), VAN)!;
-  assert.equal(iso(cutoff), "2026-10-05T06:59:59.000Z");
+  assert.equal(iso(cutoff), "2026-10-05T06:59:59.999Z");
   assert.equal(formatHandoffCutoff(cutoff, VAN), "Oct 4, 11:59 PM");
   assert.equal(formatHandoffCutoffSentence(cutoff, VAN), "Oct 4 at 11:59 PM");
   // Oct 4 is the last day to hand off; Oct 5 is too late.
@@ -141,11 +147,11 @@ test("an Oct 2–5 request must be handed off by Oct 4 at 11:59 PM", () => {
 
 test("the cutoff is the later of end − 24h and the end of the start day", () => {
   // One-day request: end − 24h would be the start day's end, so no zero-or-negative window.
-  assert.equal(iso(computeHandoffCutoff(day("2026-10-02"), day("2026-10-03"), VAN)), "2026-10-03T06:59:59.000Z");
+  assert.equal(iso(computeHandoffCutoff(day("2026-10-02"), day("2026-10-03"), VAN)), "2026-10-03T06:59:59.999Z");
   // Same-day request: end − 24h is before the start, so the end of the start day wins.
-  assert.equal(iso(computeHandoffCutoff(day("2026-10-02"), day("2026-10-02"), VAN)), "2026-10-03T06:59:59.000Z");
+  assert.equal(iso(computeHandoffCutoff(day("2026-10-02"), day("2026-10-02"), VAN)), "2026-10-03T06:59:59.999Z");
   // A malformed end before the start never yields a cutoff before the request begins.
-  assert.equal(iso(computeHandoffCutoff(day("2026-10-02"), day("2026-09-20"), VAN)), "2026-10-03T06:59:59.000Z");
+  assert.equal(iso(computeHandoffCutoff(day("2026-10-02"), day("2026-09-20"), VAN)), "2026-10-03T06:59:59.999Z");
 });
 
 test("the cutoff reads 11:59 PM across a DST change instead of drifting an hour", () => {
@@ -167,4 +173,56 @@ test("date-only strings and stored UTC-midnight timestamps give the same cutoff"
     iso(computeHandoffCutoff("2026-10-02", "2026-10-05", VAN)),
     iso(computeHandoffCutoff(day("2026-10-02"), day("2026-10-05"), VAN)),
   );
+});
+
+// ── Date-only deadlines are the END of the local day ─────────────────────────
+
+test("timezoneForRequest is the one place a request's zone comes from", () => {
+  assert.equal(timezoneForRequest({ id: 1 }), PLATFORM_TIME_ZONE);
+  assert.equal(timezoneForRequest(), PLATFORM_TIME_ZONE);
+});
+
+test("a date-only date and its stored UTC-midnight timestamp end at the same local midnight", () => {
+  assert.equal(iso(endOfLocalDay("2026-10-19", VAN)), "2026-10-20T06:59:59.999Z");
+  assert.equal(iso(endOfLocalDay(day("2026-10-19"), VAN)), "2026-10-20T06:59:59.999Z");
+  assert.equal(endOfLocalDay(null, VAN), null);
+  assert.equal(endOfLocalDay("nope", VAN), null);
+});
+
+test("end of day around the Nov 1 clock change keeps reading 23:59:59.999 local", () => {
+  assert.equal(iso(endOfLocalDay("2026-10-31", VAN)), "2026-11-01T06:59:59.999Z"); // PDT, UTC-7
+  assert.equal(iso(endOfLocalDay("2026-11-01", VAN)), "2026-11-02T07:59:59.999Z"); // day of the change, PST after
+  assert.equal(iso(endOfLocalDay("2026-11-02", VAN)), "2026-11-03T07:59:59.999Z"); // PST, UTC-8
+  // The Nov 1 day is 25 hours long; its start is still local midnight.
+  assert.equal(iso(startOfLocalDay("2026-11-01", VAN)), "2026-11-01T07:00:00.000Z");
+  assert.equal(iso(startOfLocalDay("2026-11-02", VAN)), "2026-11-02T08:00:00.000Z");
+});
+
+test("days late are calendar days in the zone, not 24-hour blocks from UTC midnight", () => {
+  const due = day("2026-10-19");
+  // 6 PM on the due day in Vancouver is already Oct 20 in UTC: still on time.
+  assert.equal(calendarDaysLate(due, new Date("2026-10-20T01:00:00Z"), VAN), 0);
+  assert.equal(calendarDaysLate(due, new Date("2026-10-20T06:59:59.999Z"), VAN), 0);
+  // The first instant of Oct 20 in Vancouver is one day late.
+  assert.equal(calendarDaysLate(due, new Date("2026-10-20T07:00:00Z"), VAN), 1);
+  assert.equal(calendarDaysLate(due, new Date("2026-10-24T20:00:00Z"), VAN), 5);
+  assert.equal(calendarDaysLate(null, new Date("2026-10-24T20:00:00Z"), VAN), 0);
+});
+
+test("days late across the Nov 1 clock change do not gain or lose a day", () => {
+  const due = day("2026-10-30");
+  assert.equal(calendarDaysLate(due, new Date("2026-11-01T06:59:59Z"), VAN), 1); // Oct 31, 11:59 PM PDT
+  assert.equal(calendarDaysLate(due, new Date("2026-11-02T07:59:59Z"), VAN), 2); // Nov 1, 11:59 PM PST
+  assert.equal(calendarDaysLate(due, new Date("2026-11-02T08:00:00Z"), VAN), 3); // Nov 2, 12:00 AM PST
+  assert.equal(calendarDaysUntil(day("2026-11-03"), new Date("2026-10-30T19:00:00Z"), VAN), 4);
+  assert.equal(addCalendarDays("2026-10-30", 3), "2026-11-02");
+});
+
+test("the return deadline is the end of the due day, extended by returnDeadlineAt", () => {
+  assert.equal(iso(returnDeadlineInstant({ endDate: day("2026-10-19") })), "2026-10-20T06:59:59.999Z");
+  assert.equal(
+    iso(returnDeadlineInstant({ endDate: day("2026-10-19"), returnDeadlineAt: day("2026-10-22") })),
+    "2026-10-23T06:59:59.999Z",
+  );
+  assert.equal(returnDeadlineInstant({ endDate: null }), null);
 });

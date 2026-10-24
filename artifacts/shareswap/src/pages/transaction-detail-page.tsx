@@ -29,6 +29,7 @@ import {
   Star,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import { formatCalendarDate } from "@/lib/utils";
 import { NOT_CHARGED_UNLESS_CLAIM, formatMoney, holdPendingNotice, holdReleasedBody, phaseFromStatus } from "@/lib/deposit-copy";
 
 interface TransactionDetail {
@@ -442,8 +443,8 @@ export default function TransactionDetailPage() {
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <CalendarDays className="h-3 w-3" />
                     {["IN_PROGRESS", "RETURN_REQUESTED", "COMPLETED", "COMPLETED_EARLY"].includes(tx.status)
-                      ? <>Booked: {format(new Date(tx.startDate), "MMM d")}{tx.endDate ? ` – ${format(new Date(tx.endDate), "MMM d, yyyy")}` : ""}</>
-                      : <>{format(new Date(tx.startDate), "MMM d")}{tx.endDate ? ` – ${format(new Date(tx.endDate), "MMM d, yyyy")}` : ""}</>
+                      ? <>Booked: {formatCalendarDate(tx.startDate, "MMM d")}{tx.endDate ? ` – ${formatCalendarDate(tx.endDate, "MMM d, yyyy")}` : ""}</>
+                      : <>{formatCalendarDate(tx.startDate, "MMM d")}{tx.endDate ? ` – ${formatCalendarDate(tx.endDate, "MMM d, yyyy")}` : ""}</>
                     }
                   </span>
                 )}

@@ -1,3 +1,5 @@
+import { calendarDaysLate } from "./request-dates";
+
 /** Central platform defaults. Callers may overlay an item/category policy. */
 export const OVERDUE_POLICY = {
   graceHours: 24,
@@ -51,9 +53,9 @@ export function claimAllowedAtStage(claimType: string, stage: string | null | un
 }
 
 export type OverdueLevel = "on_time" | "overdue" | "restricted" | "serious";
-function calendarDayOrdinal(value: Date) { return Math.floor(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()) / 86_400_000); }
-export function daysOverdueAgainstDueDate(now: Date, dueDate: Date | null | undefined) {
-  return dueDate ? Math.max(0, calendarDayOrdinal(now) - calendarDayOrdinal(dueDate)) : 0;
+/** Calendar days past the due day, both read in the request's zone (see calendarDaysLate). */
+export function daysOverdueAgainstDueDate(now: Date, dueDate: Date | string | null | undefined, timeZone: string) {
+  return calendarDaysLate(dueDate, now, timeZone);
 }
 export function overdueLevel(days: number): OverdueLevel {
   return days >= OVERDUE_POLICY.SERIOUS_OVERDUE_DAYS ? "serious" : days >= OVERDUE_POLICY.BORROW_RESTRICTION_DAYS ? "restricted" : days > 0 ? "overdue" : "on_time";

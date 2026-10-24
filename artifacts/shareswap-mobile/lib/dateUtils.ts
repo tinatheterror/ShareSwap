@@ -28,6 +28,17 @@ export function fmtCalendarDate(
 }
 
 /**
+ * True once the viewer's today is after the given calendar day (the due day
+ * itself is not past). Reads the day as written, like fmtCalendarDate.
+ */
+export function isCalendarDayPast(d: string | null | undefined, now: Date = new Date()): boolean {
+  const match = d ? /^(\d{4})-(\d{2})-(\d{2})/.exec(d) : null;
+  if (!match) return false;
+  const due = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return due < new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+/**
  * Format a calendar date range. Collapses the end to just the day when both
  * dates fall in the same month and year ("Jun 7–11").
  */

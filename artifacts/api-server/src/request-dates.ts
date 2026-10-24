@@ -27,6 +27,16 @@ export function resolveTimeZone(candidate: string | undefined): string {
 
 export const PLATFORM_TIME_ZONE = resolveTimeZone(process.env.PLATFORM_TIME_ZONE);
 
+/**
+ * The time zone a request's calendar dates (start, end, extended end, handoff
+ * deadline) are read in. This is the ONLY place that picks it; nothing else may
+ * name a zone. It is the platform zone (America/Vancouver) for now; it will
+ * come from the item's region when we expand beyond one.
+ */
+export function timezoneForRequest(_request?: unknown): string {
+  return PLATFORM_TIME_ZONE;
+}
+
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Today's calendar day (YYYY-MM-DD) in the given zone. */
@@ -108,11 +118,12 @@ export function validateStartDateNotPast(
 //
 // A BORROW/RENT request is only fulfillable until its late-handoff cutoff:
 // the later of (end − 24h) and the end of the start day. The "end" of a request
-// is 23:59:59 on its end calendar day in the platform zone, so for Oct 2–5 the
+// is 23:59:59.999 on its end calendar day in the platform zone, so for Oct 2–5 the
 // cutoff is Oct 4 23:59:59 and for a one-day request it is the end of the start
-// day (never before the request even begins).
+// day (never before the request even begins). "End of day" is endOfLocalDay.
 
 const SECOND_MS = 1_000;
+const DAY_MS = 86_400_000;
 
 /** Milliseconds the zone's wall clock is ahead of UTC at the given instant. */
 function zoneOffsetMs(instantMs: number, timeZone: string): number {
@@ -138,23 +149,69 @@ function zoneOffsetMs(instantMs: number, timeZone: string): number {
   return wallAsUtc - Math.floor(instantMs / SECOND_MS) * SECOND_MS;
 }
 
-/** The instant of 23:59:59 on a calendar day (YYYY-MM-DD) in the given zone. */
-export function endOfCalendarDayInZone(
-  day: string,
-  timeZone: string = PLATFORM_TIME_ZONE,
-): Date {
+/**
+ * The last instant (23:59:59.999 local time, DST handled) of the calendar day a
+ * date stands for, in the given zone, or null when the date is missing or
+ * unparseable. A date-only value ("2026-10-19", or its stored UTC-midnight
+ * timestamp) means that whole day: it ends at local midnight, not at UTC
+ * midnight (which is 5 PM the evening before in Vancouver).
+ */
+export function endOfLocalDay(date: unknown, timeZone: string): Date | null {
+  const day = requestCalendarDay(date);
+  if (!day) return null;
   const [year, month, dayOfMonth] = day.split("-").map(Number);
-  const wallAsUtc = Date.UTC(year, month - 1, dayOfMonth, 23, 59, 59);
+  const wallAsUtc = Date.UTC(year, month - 1, dayOfMonth, 23, 59, 59, 999);
   // Two passes settle the offset when the day contains a DST change.
   let instant = wallAsUtc - zoneOffsetMs(wallAsUtc, timeZone);
   instant = wallAsUtc - zoneOffsetMs(instant, timeZone);
   return new Date(instant);
 }
 
-function previousCalendarDay(day: string): string {
+function dayOrdinal(day: string): number {
   const [year, month, dayOfMonth] = day.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, dayOfMonth - 1)).toISOString().slice(0, 10);
+  return Date.UTC(year, month - 1, dayOfMonth) / DAY_MS;
 }
+
+/** The calendar day n days after (negative: before) a YYYY-MM-DD day. */
+export function addCalendarDays(day: string, n: number): string {
+  const [year, month, dayOfMonth] = day.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, dayOfMonth + n)).toISOString().slice(0, 10);
+}
+
+/**
+ * Whole calendar days from today to a date, both read as calendar days in the
+ * given zone (negative once it has passed); null when the date is unusable.
+ * Never counts 24-hour blocks.
+ */
+export function calendarDaysUntil(date: unknown, now: Date, timeZone: string): number | null {
+  const day = requestCalendarDay(date);
+  if (!day) return null;
+  return dayOrdinal(day) - dayOrdinal(calendarDayInZone(now, timeZone));
+}
+
+/** Calendar days past a due date; 0 on or before the due day (see calendarDaysUntil). */
+export function calendarDaysLate(dueDate: unknown, now: Date, timeZone: string): number {
+  return Math.max(0, -(calendarDaysUntil(dueDate, now, timeZone) ?? 0));
+}
+
+/** The first instant (00:00:00.000 local time) of the calendar day a date stands for, or null. */
+export function startOfLocalDay(date: unknown, timeZone: string): Date | null {
+  const day = requestCalendarDay(date);
+  if (!day) return null;
+  return new Date(endOfLocalDay(addCalendarDays(day, -1), timeZone)!.getTime() + 1);
+}
+
+/** The calendar day a request's return is due: the extended date once one was accepted. */
+export function returnDueDay(request: { returnDeadlineAt?: unknown; endDate?: unknown }): string | null {
+  return requestCalendarDay(request.returnDeadlineAt) ?? requestCalendarDay(request.endDate);
+}
+
+/** The instant a request's return deadline passes: the end of its due day in the request's zone. */
+export function returnDeadlineInstant(request: { returnDeadlineAt?: unknown; endDate?: unknown }): Date | null {
+  return endOfLocalDay(returnDueDay(request), timezoneForRequest(request));
+}
+
+const previousCalendarDay = (day: string) => addCalendarDays(day, -1);
 
 /**
  * The last instant a request can still be handed off, or null when its dates
@@ -172,8 +229,8 @@ export function computeHandoffCutoff(
   const endDay = requestCalendarDay(endValue);
   if (!startDay || !endDay) return null;
   const lastDayOfWindow = endDay < startDay ? startDay : endDay;
-  const endMinus24h = endOfCalendarDayInZone(previousCalendarDay(lastDayOfWindow), timeZone);
-  const endOfStartDay = endOfCalendarDayInZone(startDay, timeZone);
+  const endMinus24h = endOfLocalDay(previousCalendarDay(lastDayOfWindow), timeZone)!;
+  const endOfStartDay = endOfLocalDay(startDay, timeZone)!;
   return endMinus24h.getTime() > endOfStartDay.getTime() ? endMinus24h : endOfStartDay;
 }
 

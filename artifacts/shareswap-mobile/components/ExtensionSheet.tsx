@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { fmtDate as fmtDateUtil } from "@/lib/dateUtils";
+import { fmtCalendarDate } from "@/lib/dateUtils";
 
 const PRIMARY = "#0DCEA1";
 
@@ -105,7 +105,7 @@ export default function ExtensionSheet({
             <Text
               style={[styles.dateValue, { color: colors.foreground }]}
             >
-              {fmtDateUtil(currentEndDate)}
+              {fmtCalendarDate(currentEndDate, { month: "short", day: "numeric" })}
             </Text>
           </View>
         )}
@@ -159,7 +159,7 @@ export default function ExtensionSheet({
                 fontFamily: "Inter_600SemiBold",
               }}
             >
-              {fmtDateUtil(newEndDate)}
+              {fmtCalendarDate(newEndDate, { month: "short", day: "numeric" })}
             </Text>
           </Text>
         )}

@@ -8,7 +8,7 @@ import { cancelAction, cancelToast, legacyCancelDialog, type CancelRole } from "
 import { useCancelRequest } from "@/hooks/use-cancel-request";
 import { CancelDialog } from "@/components/cancel-dialog";
 import { apiRequest } from "@/lib/queryClient";
-import { formatDisplayName } from "@/lib/utils";
+import { formatCalendarDate, formatDisplayName, isCalendarDayPast } from "@/lib/utils";
 import { REQUEST_DATES_PASSED_MESSAGE, acceptBlockedByDates } from "@/lib/request-dates";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -2024,7 +2024,7 @@ export function ChatWidget() {
 
                       const extDate = msg.metadata?.requestedEndDate as string | undefined;
                       const extDateFmt = extDate
-                        ? new Date(extDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        ? formatCalendarDate(extDate, "MMM d, yyyy")
                         : null;
                       const eventLabel =
                         et === "request_accepted" ? `✅ ${actor} accepted the request` :
@@ -2045,7 +2045,7 @@ export function ChatWidget() {
                       const extReqDays = msg.metadata?.days as number | undefined;
                       const extReqDate = msg.metadata?.requestedEndDate as string | undefined;
                       const extReqDateFmt = extReqDate
-                        ? new Date(extReqDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        ? formatCalendarDate(extReqDate, "MMM d, yyyy")
                         : null;
                       const isPendingExt = !!(msg.requestId && pendingExtByRequestId[msg.requestId]);
 
@@ -2907,8 +2907,7 @@ export function ChatWidget() {
             requestType={reviewForRequest.requestType as "BORROW" | "RENT" | "SWAP" | "GIFT"}
             wasDisputed={!!reviewForRequest.returnDisputeTriggered}
             wasLate={
-              !!reviewForRequest.endDate &&
-              new Date() > new Date(reviewForRequest.endDate)
+              isCalendarDayPast(reviewForRequest.endDate)
             }
           />
         );

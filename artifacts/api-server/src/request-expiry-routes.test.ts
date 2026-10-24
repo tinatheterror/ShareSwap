@@ -252,7 +252,7 @@ test("redeeming the code after the cutoff says the request expired, not 'invalid
   const body = (await response.json()) as Record<string, unknown>;
   assert.equal(body.error, EXPIRED_MESSAGE);
   assert.equal(body.code, "REQUEST_EXPIRED");
-  assert.equal(body.handoffCutoffAt, "2026-10-05T06:59:59.000Z");
+  assert.equal(body.handoffCutoffAt, "2026-10-05T06:59:59.999Z");
 
   const request = await load(id);
   assert.equal(request.status, "EXPIRED");
@@ -384,7 +384,7 @@ test("an open request shows the exact deadline; reading it after the cutoff show
   const open = (await (await borrower.request("/api/requests")).json()) as any[];
   const before = open.find((r) => r.id === id);
   assert.equal(before.status, "ACCEPTED");
-  assert.equal(before.handoffCutoffAt, "2026-10-05T06:59:59.000Z");
+  assert.equal(before.handoffCutoffAt, "2026-10-05T06:59:59.999Z");
   assert.equal(before.handoffDeadlineLabel, "Hand off by Oct 4, 11:59 PM");
   assert.equal(before.canRequestAgain, false);
 

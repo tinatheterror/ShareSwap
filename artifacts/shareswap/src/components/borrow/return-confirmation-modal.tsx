@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { formatMoney } from "@/lib/money";
+import { isCalendarDayPast } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -108,7 +109,8 @@ export function ReturnConfirmationModal({
 
   const shouldTriggerDispute = !sameCondition && conditionRating <= 2;
   const isRental = requestType === "RENT";
-  const isEarlyReturn = endDate ? new Date() < new Date(endDate) : false;
+  // Early means before the end of the due day (a date-only value), not before UTC midnight.
+  const isEarlyReturn = endDate ? !isCalendarDayPast(endDate) : false;
 
   const initiateReturnMutation = useMutation({
     mutationFn: async () => {

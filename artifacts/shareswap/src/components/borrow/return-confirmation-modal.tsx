@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { formatMoney } from "@/lib/money";
-import { isCalendarDayPast } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +37,8 @@ interface ReturnConfirmationModalProps {
   depositAmount: number;
   userRole: "owner" | "borrower";
   requestType?: "BORROW" | "RENT";
-  endDate?: string | Date | null;
+  /** From the server (the request's own time zone); the due day has not begun yet. */
+  isEarlyReturn?: boolean;
   depositMethod?: string | null;
   onSuccess: () => void;
 }
@@ -63,7 +63,7 @@ export function ReturnConfirmationModal({
   depositAmount,
   userRole,
   requestType = "BORROW",
-  endDate,
+  isEarlyReturn = false,
   depositMethod,
   onSuccess,
 }: ReturnConfirmationModalProps) {
@@ -109,8 +109,6 @@ export function ReturnConfirmationModal({
 
   const shouldTriggerDispute = !sameCondition && conditionRating <= 2;
   const isRental = requestType === "RENT";
-  // Early means before the end of the due day (a date-only value), not before UTC midnight.
-  const isEarlyReturn = endDate ? !isCalendarDayPast(endDate) : false;
 
   const initiateReturnMutation = useMutation({
     mutationFn: async () => {

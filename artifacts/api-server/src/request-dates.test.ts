@@ -14,6 +14,7 @@ import {
   isStartDatePassed,
   requestCalendarDay,
   returnDeadlineInstant,
+  returnTiming,
   startOfLocalDay,
   timezoneForRequest,
   resolveTimeZone,
@@ -225,4 +226,35 @@ test("the return deadline is the end of the due day, extended by returnDeadlineA
     "2026-10-23T06:59:59.999Z",
   );
   assert.equal(returnDeadlineInstant({ endDate: null }), null);
+});
+
+test("returnTiming: 6 PM Vancouver time on the due day is neither overdue nor early", () => {
+  const request = { endDate: day("2026-10-19") };
+  // 6 PM PDT on Oct 19 is already Oct 20 in UTC; a UTC-midnight deadline would call this overdue.
+  assert.deepEqual(returnTiming(request, new Date("2026-10-20T01:00:00Z")), { isOverdue: false, isEarlyReturn: false, daysLate: 0 });
+  assert.deepEqual(returnTiming(request, new Date("2026-10-20T06:59:59.999Z")), { isOverdue: false, isEarlyReturn: false, daysLate: 0 });
+  assert.deepEqual(returnTiming(request, new Date("2026-10-20T07:00:00Z")), { isOverdue: true, isEarlyReturn: false, daysLate: 1 });
+  assert.deepEqual(returnTiming(request, new Date("2026-10-19T06:59:59.999Z")), { isOverdue: false, isEarlyReturn: true, daysLate: 0 });
+  assert.deepEqual(returnTiming(request, new Date("2026-10-19T07:00:00Z")), { isOverdue: false, isEarlyReturn: false, daysLate: 0 });
+});
+
+test("returnTiming measures at the actual return once there is one, and follows an extended due day", () => {
+  const request = { endDate: day("2026-10-19"), actualReturnAt: new Date("2026-10-21T20:00:00Z") };
+  assert.deepEqual(returnTiming(request, new Date("2026-12-01T00:00:00Z")), { isOverdue: true, isEarlyReturn: false, daysLate: 2 });
+  const extended = { endDate: day("2026-10-19"), returnDeadlineAt: day("2026-10-22"), actualReturnAt: new Date("2026-10-21T20:00:00Z") };
+  assert.deepEqual(returnTiming(extended, new Date("2026-12-01T00:00:00Z")), { isOverdue: false, isEarlyReturn: true, daysLate: 0 }); // returned a day before the extended due day
+});
+
+test("returnTiming across the Nov 1 clock change", () => {
+  const request = { endDate: day("2026-10-31") };
+  assert.equal(returnTiming(request, new Date("2026-11-01T06:59:59Z")).isOverdue, false); // Oct 31, 11:59 PM PDT
+  assert.equal(returnTiming(request, new Date("2026-11-01T07:00:00Z")).isOverdue, true); // Nov 1, 12:00 AM PDT
+  const sunday = { endDate: day("2026-11-01") };
+  assert.equal(returnTiming(sunday, new Date("2026-11-02T07:59:59Z")).isOverdue, false); // Nov 1, 11:59 PM PST
+  assert.equal(returnTiming(sunday, new Date("2026-11-02T08:00:00Z")).isOverdue, true);
+  assert.equal(returnTiming(sunday, new Date("2026-11-01T06:59:59Z")).isEarlyReturn, true);
+  assert.equal(returnTiming(sunday, new Date("2026-11-01T07:00:00Z")).isEarlyReturn, false);
+  assert.equal(returnTiming(request, new Date("2026-11-01T07:00:00Z")).daysLate, 1);
+  assert.equal(returnTiming(request, new Date("2026-11-03T07:59:59Z")).daysLate, 2);
+  assert.equal(returnTiming({ endDate: null }, new Date()).isOverdue, false);
 });

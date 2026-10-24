@@ -102,8 +102,10 @@ import {
   calendarDaysUntil,
   endOfLocalDay,
   isStartDatePassed,
+  isStartDateUpcoming,
   requestCalendarDay,
   returnDeadlineInstant,
+  returnTiming,
   returnDueDay,
   startOfLocalDay,
   timezoneForRequest,
@@ -7103,6 +7105,10 @@ Respond with ONLY the category name, nothing else.`
       canRequestAgain: r.status === "EXPIRED" && r.requesterId === req.user.id,
       // Same effective start the accept route checks; clients only display it.
       startDatePassed: isStartDatePassed(r.counterStartDate || r.startDate, listNow),
+      // isOverdue / isEarlyReturn / daysLate in the request's zone; clients show them as sent.
+      ...returnTiming(r, listNow),
+      // The start day is still ahead (a rental's pickup has not come yet); startDatePassed says it is behind.
+      isBeforeStart: isStartDateUpcoming(r, listNow),
       swapOfferedItems: r.requestType === "SWAP"
         ? (r.swapOfferedItemIds ?? []).map(id => offeredItemsMap.get(id)).filter(Boolean)
         : [],
@@ -10807,8 +10813,7 @@ Respond with ONLY the category name, nothing else.`
           return { status: 500, error: "Return request could not be saved" };
         }
 
-        const endOfDueDay = endOfLocalDay(request.item_requests.endDate, timezoneForRequest(request.item_requests));
-        const isEarlyReturn = endOfDueDay ? new Date() < endOfDueDay : false;
+        const isEarlyReturn = returnTiming(request.item_requests, currentTime()).isEarlyReturn;
 
         // Returning takes precedence over any unanswered extension, and both
         // the cancellation and status transition commit together.
@@ -11640,8 +11645,9 @@ Respond with ONLY the category name, nothing else.`
     // The due day as a calendar date, and the hours since it ended in the request's zone.
     const deadline = returnDueDay(r);
     const deadlineInstant = returnDeadlineInstant(r);
-    const lateHours = deadlineInstant ? Math.max(0, Math.floor((Date.now() - deadlineInstant.getTime()) / 3_600_000)) : 0;
-    const daysLate = calendarDaysLate(deadline, new Date(), timezoneForRequest(r));
+    const lateHours = deadlineInstant ? Math.max(0, Math.floor((currentTime().getTime() - deadlineInstant.getTime()) / 3_600_000)) : 0;
+    const lifecycleNow = currentTime();
+    const timing = returnTiming(r, lifecycleNow);
     const role = request.ownerId === req.user.id ? "owner" : "borrower";
     const actions = role === "owner"
       ? ["open_claim", "arrange_return"]
@@ -11651,7 +11657,7 @@ Respond with ONLY the category name, nothing else.`
     }
     res.json({
       lifecycle: {
-        requestId: r.id, stage: r.overdueStage || "ACTIVE", deadline, lateHours, daysLate,
+        requestId: r.id, stage: r.overdueStage || "ACTIVE", deadline, lateHours, ...timing,
         claimDecisionDeadlineAt: r.claimDecisionDeadlineAt,
         settlementStartDeadlineAt: r.settlementStartDeadlineAt,
         role, actions,
@@ -11710,7 +11716,7 @@ Respond with ONLY the category name, nothing else.`
         // The stored stage only moves when the overdue sweep runs, so read the stage off the deadline now:
         // the deadline is the end of the due day in the request's zone, and claims open 24 hours after it.
         const deadlineInstant = returnDeadlineInstant(row);
-        const claimStage = row.stage === "RETURNED_PENDING_REVIEW" || !deadlineInstant ? row.stage : overdueStageAt(deadlineInstant, new Date());
+        const claimStage = row.stage === "RETURNED_PENDING_REVIEW" || !deadlineInstant ? row.stage : overdueStageAt(deadlineInstant, currentTime());
         const nonReturn = ["non_return", "lost"].includes(claimType);
         if (nonReturn && !claimAllowedAtStage(claimType, claimStage))
           throw Object.assign(new Error("Non-return claims require the item to be at least 24 hours overdue"), { status: 409 });

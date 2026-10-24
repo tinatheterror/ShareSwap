@@ -8,7 +8,7 @@ import { cancelAction, cancelToast, legacyCancelDialog, type CancelRole } from "
 import { useCancelRequest } from "@/hooks/use-cancel-request";
 import { CancelDialog } from "@/components/cancel-dialog";
 import { apiRequest } from "@/lib/queryClient";
-import { formatCalendarDate, formatDisplayName, isCalendarDayPast } from "@/lib/utils";
+import { formatCalendarDate, formatDisplayName } from "@/lib/utils";
 import { REQUEST_DATES_PASSED_MESSAGE, acceptBlockedByDates } from "@/lib/request-dates";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -170,6 +170,11 @@ interface ItemRequest {
   status: string;
   message: string;
   startDatePassed?: boolean;
+  /** Server-computed in the request's time zone (GET /api/requests); clients only show them. */
+  isOverdue?: boolean;
+  isEarlyReturn?: boolean;
+  daysLate?: number;
+  isBeforeStart?: boolean;
   // Late-handoff cutoff (ISO instant) and the server-built label, e.g. "Hand off by Oct 4, 11:59 PM".
   handoffCutoffAt?: string | null;
   handoffDeadlineLabel?: string | null;
@@ -2372,10 +2377,9 @@ export function ChatWidget() {
                     const isInPersonDeposit = pr.requestType === "BORROW" && pr.depositMethod === "in_person";
 
                     // For RENT: gate handoff behind the rental start date
-                    const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
                     const rentalStart = pr.requestType === "RENT" && pr.startDate ? parseLocalDate(pr.startDate) : null;
-                    const isBeforeRentalStart = rentalStart && rentalStart > todayMidnight;
-                    const isOverdue = rentalStart && rentalStart < todayMidnight && pr.requestType === "RENT";
+                    const isBeforeRentalStart = !!rentalStart && !!pr.isBeforeStart;
+                    const isOverdue = !!rentalStart && !!pr.startDatePassed && pr.requestType === "RENT";
 
                     if (isBeforeRentalStart) {
                       return (
@@ -2424,9 +2428,7 @@ export function ChatWidget() {
                   }
 
                   if (pr.status === "RETURN_REQUESTED") {
-                    const today = new Date(); today.setHours(0, 0, 0, 0);
-                    const dueDate = pr.endDate ? parseLocalDate(pr.endDate) : null;
-                    const wasEarlyReturn = dueDate ? today < dueDate : false;
+                    const wasEarlyReturn = !!pr.isEarlyReturn;
                     return (
                       <div className="px-3 py-2 border-t border-amber-100 bg-amber-50 space-y-2">
                         <p className="text-xs text-amber-800 font-semibold text-center">
@@ -2450,9 +2452,7 @@ export function ChatWidget() {
 
                   if (pr.status === "IN_PROGRESS") {
                     const wasAutoAdvanced = (pr as any).handoffAutoAdvanced;
-                    const today = new Date(); today.setHours(0, 0, 0, 0);
-                    const dueDate = pr.endDate ? parseLocalDate(pr.endDate) : null;
-                    const isEarlyReturn = dueDate ? today < dueDate : false;
+                    const isEarlyReturn = !!pr.isEarlyReturn;
                     return (
                       <div className="px-3 py-2 border-t border-blue-100 bg-blue-50 space-y-1">
                         <Button className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl"
@@ -2523,10 +2523,9 @@ export function ChatWidget() {
                     const isOwnerInPersonDeposit = pr.requestType === "BORROW" && pr.depositMethod === "in_person";
 
                     // For RENT: gate the handoff code behind the rental start date
-                    const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
                     const rentalStart = pr.requestType === "RENT" && pr.startDate ? parseLocalDate(pr.startDate) : null;
-                    const isBeforeRentalStart = rentalStart && rentalStart > todayMidnight;
-                    const isOverdue = rentalStart && rentalStart < todayMidnight && pr.requestType === "RENT";
+                    const isBeforeRentalStart = !!rentalStart && !!pr.isBeforeStart;
+                    const isOverdue = !!rentalStart && !!pr.startDatePassed && pr.requestType === "RENT";
 
                     if (isBeforeRentalStart) {
                       return (
@@ -2872,7 +2871,7 @@ export function ChatWidget() {
             selectedRequest.requesterId === user?.id ? "borrower" : "owner"
           }
           requestType={selectedRequest.requestType as "BORROW" | "RENT"}
-          endDate={selectedRequest.endDate}
+          isEarlyReturn={selectedRequest.isEarlyReturn}
           depositMethod={selectedRequest.depositMethod}
           onSuccess={() => {
             const isOwner = selectedRequest.requesterId !== user?.id;
@@ -2907,7 +2906,7 @@ export function ChatWidget() {
             requestType={reviewForRequest.requestType as "BORROW" | "RENT" | "SWAP" | "GIFT"}
             wasDisputed={!!reviewForRequest.returnDisputeTriggered}
             wasLate={
-              isCalendarDayPast(reviewForRequest.endDate)
+              !!reviewForRequest.isOverdue
             }
           />
         );

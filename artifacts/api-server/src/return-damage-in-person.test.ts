@@ -262,7 +262,7 @@ test("a damage report on an in-app deposit is unchanged: it still opens a disput
 
 test("the claim route takes missing_parts, and still takes the old missing_components name from older app builds", async () => {
   for (const sent of ["missing_parts", "missing_components"]) {
-    const { id } = await newRequest(hold({ status: "IN_PROGRESS", overdueStage: "OVERDUE" }));
+    const { id } = await newRequest(hold({ status: "IN_PROGRESS", overdueStage: "OVERDUE", endDate: new Date("2026-09-20T00:00:00.000Z") }));
     const response = await owner.post(`/api/requests/${id}/claims`, {
       requestedAmount: 20, reason: "Lens cap missing", claimType: sent, evidence: ["https://example.test/photo.jpg"],
     });
@@ -280,4 +280,49 @@ test("an unknown claim type is still refused", async () => {
   });
   assert.equal(response.status, 400);
   assert.equal((await claimsFor(id)).length, 0);
+});
+
+// ── Date-based flags come from the server, in the request's zone ──────────────
+
+const dayAt = (value: string) => new Date(`${value}T00:00:00.000Z`);
+
+test("the request list and the lifecycle endpoint both send isOverdue / isEarlyReturn / daysLate", async () => {
+  // The route clock is Oct 3, noon in Vancouver.
+  const cases = [
+    { due: "2026-10-02", isOverdue: true, isEarlyReturn: false, daysLate: 1 },
+    { due: "2026-10-03", isOverdue: false, isEarlyReturn: false, daysLate: 0 }, // the due day itself is on time
+    { due: "2026-10-04", isOverdue: false, isEarlyReturn: true, daysLate: 0 },
+  ];
+  const list = (await (await owner.get("/api/requests")).json()) as any[];
+  for (const c of cases) {
+    const { id } = await newRequest(hold({ status: "IN_PROGRESS", startDate: dayAt("2026-09-28"), endDate: dayAt(c.due) }));
+    const lifecycle: any = (await (await owner.get(`/api/requests/${id}/lifecycle`)).json() as any).lifecycle;
+    const expected = { isOverdue: c.isOverdue, isEarlyReturn: c.isEarlyReturn, daysLate: c.daysLate };
+    assert.deepEqual({ isOverdue: lifecycle.isOverdue, isEarlyReturn: lifecycle.isEarlyReturn, daysLate: lifecycle.daysLate }, expected, `lifecycle, due ${c.due}`);
+    assert.equal(lifecycle.deadline, c.due, "the due day is sent as a calendar date");
+    const fresh = (await (await owner.get("/api/requests")).json()) as any[];
+    const row = fresh.find((r) => r.id === id) ?? list.find((r) => r.id === id);
+    assert.ok(row, `request ${id} is in the list`);
+    assert.deepEqual({ isOverdue: row.isOverdue, isEarlyReturn: row.isEarlyReturn, daysLate: row.daysLate }, expected, `list, due ${c.due}`);
+  }
+});
+
+test("the list says whether the start day is still ahead (isBeforeStart) or already behind (startDatePassed)", async () => {
+  // The route clock is Oct 3, noon in Vancouver.
+  const cases = [
+    { start: "2026-10-04", isBeforeStart: true, startDatePassed: false },
+    { start: "2026-10-03", isBeforeStart: false, startDatePassed: false }, // starts today
+    { start: "2026-10-02", isBeforeStart: false, startDatePassed: true },
+  ];
+  const ids = new Map<string, number>();
+  for (const c of cases) {
+    ids.set(c.start, (await newRequest(hold({ status: "IN_PROGRESS", requestType: "RENT", startDate: dayAt(c.start), endDate: dayAt("2026-10-10") }))).id);
+  }
+  const list = (await (await owner.get("/api/requests")).json()) as any[];
+  for (const c of cases) {
+    const row = list.find((r) => r.id === ids.get(c.start));
+    assert.ok(row, `start ${c.start} is in the list`);
+    assert.equal(row.isBeforeStart, c.isBeforeStart, `isBeforeStart, start ${c.start}`);
+    assert.equal(row.startDatePassed, c.startDatePassed, `startDatePassed, start ${c.start}`);
+  }
 });

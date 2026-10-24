@@ -16,7 +16,7 @@ import { CelebrationAnimation } from "@/components/celebration-animation";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { NOT_CHARGED_UNLESS_CLAIM, formatMoney } from "@/lib/deposit-copy";
-import { addCalendarDays, formatCalendarDate, formatDisplayName, isCalendarDayPast } from "@/lib/utils";
+import { addCalendarDays, formatCalendarDate, formatDisplayName } from "@/lib/utils";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
 import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmation-modal";
@@ -41,6 +41,10 @@ interface ItemRequest {
   status: string;
   message: string;
   startDatePassed?: boolean;
+  /** Server-computed in the request's time zone (GET /api/requests); clients only show them. */
+  isOverdue?: boolean;
+  isEarlyReturn?: boolean;
+  daysLate?: number;
   startDate: string | null;
   endDate: string | null;
   createdAt: string;
@@ -956,7 +960,7 @@ export default function RequestsPage() {
                             )}
 
                             {request.status === "IN_PROGRESS" && (() => {
-                              const isOverdue = isCalendarDayPast(request.endDate);
+                              const isOverdue = !!request.isOverdue;
                               const hasPending = !!pendingExtByRequestId[request.id];
                               const hasAccepted = !!acceptedExtByRequestId[request.id];
                               return (
@@ -1163,7 +1167,7 @@ export default function RequestsPage() {
                             )}
 
                             {request.status === "IN_PROGRESS" && (() => {
-                              const isOverdue = isCalendarDayPast(request.endDate);
+                              const isOverdue = !!request.isOverdue;
                               const pendingExt = pendingExtByRequestId[request.id];
                               return (
                                 <>
@@ -1439,7 +1443,7 @@ export default function RequestsPage() {
           depositAmount={parseFloat(selectedRequest.trustDepositAmount || "20")}
           userRole={selectedRequest.requesterId === user?.id ? "borrower" : "owner"}
           requestType={selectedRequest.requestType as "BORROW" | "RENT"}
-          endDate={selectedRequest.endDate}
+          isEarlyReturn={selectedRequest.isEarlyReturn}
           depositMethod={selectedRequest.depositMethod}
           onSuccess={() => {
             setShowReturnModal(false);

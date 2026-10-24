@@ -87,6 +87,11 @@ interface ItemRequest {
   status: string;
   requesterId: number;
   startDatePassed?: boolean;
+  /** Server-computed in the request's time zone (GET /api/requests); clients only show them. */
+  isOverdue?: boolean;
+  isEarlyReturn?: boolean;
+  daysLate?: number;
+  isBeforeStart?: boolean;
   // GET /api/requests: exact late-handoff cutoff + server-built label ("Hand off by Oct 4, 11:59 PM").
   handoffCutoffAt?: string | null;
   handoffDeadlineLabel?: string | null;
@@ -157,6 +162,7 @@ interface Lifecycle {
   lateHours: number;
   /** Calendar days past the due day, counted by the server in the request's time zone (absent on older servers). */
   daysLate?: number;
+  isBeforeStart?: boolean;
   role: "owner" | "borrower";
   actions: string[];
   deposit: {
@@ -1890,7 +1896,7 @@ export default function ChatScreen() {
           depositAmount={request.trustDepositAmount}
           userRole="borrower"
           requestType={request.requestType}
-          endDate={request.endDate}
+          isEarlyReturn={request.isEarlyReturn}
           depositMethod={request.depositMethod}
         />
       )}
@@ -1906,7 +1912,7 @@ export default function ChatScreen() {
           depositAmount={request.trustDepositAmount}
           userRole="owner"
           requestType={request.requestType}
-          endDate={request.endDate}
+          isEarlyReturn={request.isEarlyReturn}
           depositMethod={request.depositMethod}
         />
       )}

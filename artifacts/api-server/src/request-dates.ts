@@ -206,6 +206,46 @@ export function returnDueDay(request: { returnDeadlineAt?: unknown; endDate?: un
   return requestCalendarDay(request.returnDeadlineAt) ?? requestCalendarDay(request.endDate);
 }
 
+/** True when the request's start day (the counter-proposed one if there is one) is still ahead of today in its zone. */
+export function isStartDateUpcoming(
+  request: { startDate?: unknown; counterStartDate?: unknown },
+  now: Date,
+): boolean {
+  const until = calendarDaysUntil(request.counterStartDate || request.startDate, now, timezoneForRequest(request));
+  return until !== null && until > 0;
+}
+
+export interface ReturnTiming {
+  /** The return came (or, if it has not happened yet, now is) after the due day ended. */
+  isOverdue: boolean;
+  /** The return came (or now is) before the due day began. The due day itself is on time, not early. */
+  isEarlyReturn: boolean;
+  /** Calendar days past the due day. */
+  daysLate: number;
+}
+
+/**
+ * The date-based flags clients show, all read in the request's zone. They are measured at the actual
+ * return when there is one, otherwise at `now`, so a returned request keeps saying whether it was late.
+ * Apps display these; they never compare dates against the viewer's own today.
+ */
+export function returnTiming(
+  request: { returnDeadlineAt?: unknown; endDate?: unknown; actualReturnAt?: unknown },
+  now: Date,
+): ReturnTiming {
+  const timeZone = timezoneForRequest(request);
+  const dueDay = returnDueDay(request);
+  const returnedAt = request.actualReturnAt ? new Date(request.actualReturnAt as string | Date) : null;
+  const at = returnedAt && !Number.isNaN(returnedAt.getTime()) ? returnedAt : now;
+  const endOfDueDay = endOfLocalDay(dueDay, timeZone);
+  const startOfDueDay = startOfLocalDay(dueDay, timeZone);
+  return {
+    isOverdue: endOfDueDay ? at.getTime() > endOfDueDay.getTime() : false,
+    isEarlyReturn: startOfDueDay ? at.getTime() < startOfDueDay.getTime() : false,
+    daysLate: calendarDaysLate(dueDay, at, timeZone),
+  };
+}
+
 /** The instant a request's return deadline passes: the end of its due day in the request's zone. */
 export function returnDeadlineInstant(request: { returnDeadlineAt?: unknown; endDate?: unknown }): Date | null {
   return endOfLocalDay(returnDueDay(request), timezoneForRequest(request));

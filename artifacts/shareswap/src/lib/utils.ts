@@ -79,10 +79,3 @@ export function addCalendarDays(value: string | Date | null | undefined, n: numb
   if (!day) return null;
   return new Date(day.getFullYear(), day.getMonth(), day.getDate() + n);
 }
-
-/** True once the viewer's today is after the given calendar day (the due day itself is not past). */
-export function isCalendarDayPast(value: string | Date | null | undefined, now: Date = new Date()): boolean {
-  const day = parseCalendarDay(value);
-  if (!day) return false;
-  return day < new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}

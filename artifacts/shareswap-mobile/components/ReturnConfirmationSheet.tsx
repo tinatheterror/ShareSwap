@@ -20,7 +20,6 @@ import * as ImagePicker from "expo-image-picker";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { isCalendarDayPast } from "@/lib/dateUtils";
 
 interface ReturnConfirmationSheetProps {
   visible: boolean;
@@ -31,7 +30,8 @@ interface ReturnConfirmationSheetProps {
   depositAmount: number | null;
   userRole: "owner" | "borrower";
   requestType?: string;
-  endDate?: string | null;
+  /** From the server (the request's own time zone); the due day has not begun yet. */
+  isEarlyReturn?: boolean;
   depositMethod?: string | null;
 }
 
@@ -51,7 +51,7 @@ export function ReturnConfirmationSheet({
   depositAmount,
   userRole,
   requestType = "BORROW",
-  endDate,
+  isEarlyReturn = false,
   depositMethod,
 }: ReturnConfirmationSheetProps) {
   const colors = useColors();
@@ -84,8 +84,6 @@ export function ReturnConfirmationSheet({
     retry: false,
   });
 
-  // Early means before the end of the due day (a date-only value), not before UTC midnight.
-  const isEarlyReturn = endDate ? !isCalendarDayPast(endDate) : false;
   const isRental = requestType === "RENT";
   const shouldTriggerDispute = !sameCondition && conditionRating <= 2;
 

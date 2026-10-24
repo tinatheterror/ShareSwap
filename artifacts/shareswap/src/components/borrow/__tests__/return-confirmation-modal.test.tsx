@@ -38,7 +38,7 @@ describe("ReturnConfirmationModal", () => {
           depositAmount={20}
           userRole="owner"
           requestType="BORROW"
-          endDate="2026-08-01"
+          isEarlyReturn={false}
           onSuccess={vi.fn()}
         />
       </QueryClientProvider>,
@@ -75,7 +75,7 @@ describe("ReturnConfirmationModal", () => {
           depositAmount={20}
           userRole="owner"
           requestType="BORROW"
-          endDate="2026-08-01"
+          isEarlyReturn={false}
           depositMethod="in_person"
           onSuccess={vi.fn()}
         />
@@ -90,5 +90,32 @@ describe("ReturnConfirmationModal", () => {
         description: reason,
       });
     });
+  });
+
+  it("labels the return early only when the server says so, whatever the viewer's own date is", () => {
+    const renderModal = (isEarlyReturn: boolean) => {
+      const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+      return render(
+        <QueryClientProvider client={queryClient}>
+          <ReturnConfirmationModal
+            isOpen
+            onClose={vi.fn()}
+            requestId={42}
+            itemName="Camping stove"
+            depositAmount={20}
+            userRole="owner"
+            requestType="BORROW"
+            isEarlyReturn={isEarlyReturn}
+            onSuccess={vi.fn()}
+          />
+        </QueryClientProvider>,
+      );
+    };
+    const early = renderModal(true);
+    expect(screen.getByText("Confirm Early Return")).toBeInTheDocument();
+    early.unmount();
+    renderModal(false);
+    expect(screen.queryByText("Confirm Early Return")).not.toBeInTheDocument();
+    expect(screen.getByText("Confirm Item Return")).toBeInTheDocument();
   });
 });

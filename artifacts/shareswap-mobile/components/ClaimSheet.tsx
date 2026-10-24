@@ -7,10 +7,10 @@ import { useColors } from "@/hooks/useColors";
 import { apiRequest } from "@/lib/api";
 import { formatMoney } from "@/lib/depositCopy";
 
-type ClaimType = "damage" | "non_return" | "lost" | "missing_components" | "other";
+type ClaimType = "damage" | "non_return" | "lost" | "missing_parts" | "other";
 const TYPES: { value: ClaimType; label: string }[] = [
   { value: "damage", label: "Damage" }, { value: "non_return", label: "Not returned" },
-  { value: "lost", label: "Lost" }, { value: "missing_components", label: "Missing components" }, { value: "other", label: "Other" },
+  { value: "lost", label: "Lost" }, { value: "missing_parts", label: "Missing parts" }, { value: "other", label: "Other" },
 ];
 
 export function ClaimSheet({ visible, onClose, onSubmit, isPending, depositAmount }: {

@@ -257,3 +257,27 @@ test("a damage report on an in-app deposit is unchanged: it still opens a disput
   assert.notEqual(body.claimNotOpened, true);
   assert.equal(response.status === 200 ? body.disputeOpened : undefined, response.status === 200 ? true : undefined);
 });
+
+// ── Claim type rename: missing_components → missing_parts ─────────────────────
+
+test("the claim route takes missing_parts, and still takes the old missing_components name from older app builds", async () => {
+  for (const sent of ["missing_parts", "missing_components"]) {
+    const { id } = await newRequest(hold({ status: "IN_PROGRESS", overdueStage: "OVERDUE" }));
+    const response = await owner.post(`/api/requests/${id}/claims`, {
+      requestedAmount: 20, reason: "Lens cap missing", claimType: sent, evidence: ["https://example.test/photo.jpg"],
+    });
+    assert.equal(response.status, 201, `${sent} accepted`);
+    const claims = await claimsFor(id);
+    assert.equal(claims.length, 1);
+    assert.equal(claims[0].claimType, "missing_parts", `${sent} is stored under the new name`);
+  }
+});
+
+test("an unknown claim type is still refused", async () => {
+  const { id } = await newRequest(hold({ status: "IN_PROGRESS", overdueStage: "OVERDUE" }));
+  const response = await owner.post(`/api/requests/${id}/claims`, {
+    requestedAmount: 20, reason: "x", claimType: "missing_widgets", evidence: ["https://example.test/photo.jpg"],
+  });
+  assert.equal(response.status, 400);
+  assert.equal((await claimsFor(id)).length, 0);
+});

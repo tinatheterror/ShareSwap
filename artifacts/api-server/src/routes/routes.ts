@@ -11693,8 +11693,9 @@ Respond with ONLY the category name, nothing else.`
     const requestId = Number(req.params.id), requestedAmount = Number(req.body.requestedAmount);
     if (!Number.isFinite(requestedAmount) || requestedAmount <= 0 || typeof req.body.reason !== "string" || !req.body.reason.trim())
       return res.status(400).json({ error: "reason and a positive requestedAmount are required" });
-    const claimType = String(req.body.claimType || "");
-    if (!["damage", "missing_components", "lost", "non_return", "other"].includes(claimType) || !Array.isArray(req.body.evidence) || req.body.evidence.length === 0)
+    // "missing_components" is the old name of "missing_parts"; app builds that predate the rename still send it.
+    const claimType = String(req.body.claimType || "") === "missing_components" ? "missing_parts" : String(req.body.claimType || "");
+    if (!["damage", "missing_parts", "lost", "non_return", "other"].includes(claimType) || !Array.isArray(req.body.evidence) || req.body.evidence.length === 0)
       return res.status(400).json({ error: "An allowlisted claimType and nonempty evidence are required" });
     try {
       const claim = await db.transaction(async tx => {
@@ -11706,11 +11707,11 @@ Respond with ONLY the category name, nothing else.`
         if (row.depositMethod === "in_person") throw Object.assign(new Error(depositCopy.IN_PERSON_DEPOSIT_NO_CLAIM), { status: 409 });
         if (!row.pi || row.depositOperation === "terminal_action" || !["authorized", "held", "disputed", "SECURED_REFUNDABLE", "secured_refundable"].includes(row.depositStatus || ""))
           throw Object.assign(new Error("No deposit hold or charged deposit is available for this request"), { status: 409 });
-        const nonReturn = ["non_return", "lost"].includes(claimType);
         // The stored stage only moves when the overdue sweep runs, so read the stage off the deadline now:
         // the deadline is the end of the due day in the request's zone, and claims open 24 hours after it.
         const deadlineInstant = returnDeadlineInstant(row);
         const claimStage = row.stage === "RETURNED_PENDING_REVIEW" || !deadlineInstant ? row.stage : overdueStageAt(deadlineInstant, new Date());
+        const nonReturn = ["non_return", "lost"].includes(claimType);
         if (nonReturn && !claimAllowedAtStage(claimType, claimStage))
           throw Object.assign(new Error("Non-return claims require the item to be at least 24 hours overdue"), { status: 409 });
         if (!nonReturn && !claimAllowedAtStage(claimType, claimStage))

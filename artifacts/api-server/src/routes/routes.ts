@@ -787,6 +787,7 @@ export async function checkAndAwardAchievements(userId: number) {
 import { getUncachableStripeClient, getStripePublishableKey } from "../stripe.server";
 import { subscriptionWebhookHandler, type SubscriptionWebhookDeps } from "../subscription-webhook";
 import { SUBSCRIPTION_WEBHOOK_PATH, isServerToServerPath } from "../server-to-server-routes";
+import { handoffSweepLimiter } from "../handoff-sweep-limit";
 import { stripeErrorDetails } from "../stripe-period";
 import { subscribeWithSavedCard, confirmSubscriptionPayment, previewPlanChange, syncSubscriptionWithStripe, keepCurrentPlan, dbUpgradeStore } from "../subscription-upgrade";
 import { subscriptionReturnHandler, stripeReturnUrl, confirmCheckoutSession, dbConfirmStore } from "../subscription-return";
@@ -10426,8 +10427,12 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // Auto-advance handoffs that have passed their deadline (called by client-side polling)
-  app.post("/api/requests/check-handoff-deadlines", csrfProtection, async (req, res) => {
+  const requireSignedIn = (req: any, res: any, next: any) =>
+    req.isAuthenticated() ? next() : res.sendStatus(401);
+
+  // Auto-advance handoffs that have passed their deadline (called by client-side polling by signed-in users,
+  // at most once a minute each)
+  app.post("/api/requests/check-handoff-deadlines", csrfProtection, requireSignedIn, handoffSweepLimiter, async (req, res) => {
     try {
       const now = new Date();
 

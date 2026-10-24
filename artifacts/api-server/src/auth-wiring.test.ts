@@ -96,7 +96,7 @@ test("signed out, protected routes answer 401 (reads and writes)", async () => {
     const response = await client.get(path);
     assert.equal(response.status, 401, `GET ${path}`);
   }
-  for (const path of ["/api/subscription/portal", "/api/subscription/checkout", "/api/notifications/check-return-reminders"]) {
+  for (const path of ["/api/subscription/portal", "/api/subscription/checkout", "/api/notifications/check-return-reminders", "/api/requests/check-handoff-deadlines"]) {
     const response = await client.post(path, { tier: "pro" });
     assert.equal(response.status, 401, `POST ${path}`);
   }
@@ -138,4 +138,20 @@ test("the session and passport middleware are each registered once", () => {
   for (const name of ["session", "initialize", "authenticate"]) {
     assert.equal(names.filter((n) => n === name).length, 1, `${name} middleware`);
   }
+});
+
+test("the handoff-deadline sweep needs sign-in and runs once a minute per user", async () => {
+  const signedOut = new Client();
+  await signedOut.fetchCsrfToken();
+  assert.equal((await signedOut.post("/api/requests/check-handoff-deadlines")).status, 401);
+  // A refused signed-out call does not use up anyone's allowance.
+  const client = new Client();
+  assert.equal((await client.post("/api/login", { username: UNIQUE, password: PASSWORD })).status, 200);
+  await client.fetchCsrfToken();
+  const first = await client.post("/api/requests/check-handoff-deadlines");
+  assert.equal(first.status, 200);
+  assert.deepEqual(Object.keys((await first.json()) as object).sort(), ["autoAdvancedCount", "bothSilentCount", "depositExpiredCount", "flaggedCount", "success"]);
+  const second = await client.post("/api/requests/check-handoff-deadlines");
+  assert.equal(second.status, 429);
+  assert.match(((await second.json()) as { error: string }).error, /try again/i);
 });

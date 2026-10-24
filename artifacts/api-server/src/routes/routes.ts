@@ -16230,8 +16230,6 @@ Respond with ONLY the category name, nothing else.`
     }
   })();
 
-  setupAuth(app);
-  
   // Add simplified routes for new features
   addSimplifiedRoutes(app);
 

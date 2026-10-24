@@ -897,6 +897,7 @@ export function ChatWidget() {
 
   const { data: activeExtensions = [] } = useQuery<any[]>({
     queryKey: ["/api/extensions/active"],
+    enabled: !!user,
     refetchInterval: 10000,
   });
   const pendingExtByRequestId = Object.fromEntries(

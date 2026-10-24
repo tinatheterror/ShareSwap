@@ -216,12 +216,14 @@ export default function RequestsPage() {
 
   const { data: requests = [], isLoading } = useQuery<ItemRequest[]>({
     queryKey: ["/api/requests"],
+    enabled: !!user,
     refetchInterval: 8000,
     refetchOnWindowFocus: true,
   });
 
   const { data: activeExtensions = [] } = useQuery<any[]>({
     queryKey: ["/api/extensions/active"],
+    enabled: !!user,
     refetchInterval: 10000,
   });
   const pendingExtByRequestId = Object.fromEntries(activeExtensions.filter(e => e.status === "pending").map((e) => [e.requestId, e]));

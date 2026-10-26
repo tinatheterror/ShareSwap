@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import type * as NotificationsType from "expo-notifications";
 import Constants from "expo-constants";
 import { router } from "expo-router";
@@ -61,7 +62,50 @@ if (isPushAvailable) {
   });
 }
 
-/** Registers for push and POSTs the Expo token to the server. Fire-and-forget. */
+const PRE_PROMPT_SEEN_KEY = "pushPrePromptSeen";
+let _prePromptPending = false;
+const _prePromptListeners = new Set<(pending: boolean) => void>();
+
+function setPrePromptPending(pending: boolean) {
+  _prePromptPending = pending;
+  _prePromptListeners.forEach((listener) => listener(pending));
+}
+
+/** Subscribe to the "explain notifications before the system prompt" request. */
+export function subscribePushPrePrompt(listener: (pending: boolean) => void): () => void {
+  _prePromptListeners.add(listener);
+  listener(_prePromptPending);
+  return () => { _prePromptListeners.delete(listener); };
+}
+
+/** The user dismissed the explanation screen: don't show it again automatically. */
+export async function dismissPushPrePrompt(): Promise<void> {
+  setPrePromptPending(false);
+  try {
+    await AsyncStorage.setItem(PRE_PROMPT_SEEN_KEY, "1");
+  } catch {
+    // Best effort: worst case the explanation is shown again next launch.
+  }
+}
+
+/** The user accepted the explanation: show the system prompt, then register. */
+export async function acceptPushPrePrompt(): Promise<void> {
+  await dismissPushPrePrompt();
+  if (!isPushAvailable) return;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const perms = (await Notifications.requestPermissionsAsync()) as any;
+    if (perms.granted ?? perms.status === "granted") await registerExpoPushToken();
+  } catch (err) {
+    console.error("[push] permission request error:", err);
+  }
+}
+
+/**
+ * Registers for push and POSTs the Expo token to the server. Fire-and-forget.
+ * If permission hasn't been asked yet, this doesn't show the system prompt:
+ * it asks the root layout to show an explanation screen first.
+ */
 export async function registerPushToken(): Promise<void> {
   // Push notifications are not supported on web, or not linked into this build
   if (!isPushAvailable) return;
@@ -79,47 +123,46 @@ export async function registerPushToken(): Promise<void> {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existingPerms = (await Notifications.getPermissionsAsync()) as any;
-    let granted: boolean =
+    const granted: boolean =
       existingPerms.granted ?? existingPerms.status === "granted";
 
     if (!granted) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const newPerms = (await Notifications.requestPermissionsAsync()) as any;
-      granted = newPerms.granted ?? newPerms.status === "granted";
-    }
-
-    if (!granted) {
-      console.log(
-        "[push] Permission not granted — skipping token registration",
-      );
+      // The OS won't show its prompt again, and we only explain once.
+      if (existingPerms.canAskAgain === false) return;
+      if ((await AsyncStorage.getItem(PRE_PROMPT_SEEN_KEY)) === "1") return;
+      setPrePromptPending(true);
       return;
     }
 
-    // Resolve the EAS project ID — required by Expo Push v57+.
-    // Set expo.extra.eas.projectId in app.json (run `eas init` to generate one).
-    const projectId: string | undefined =
-      (Constants.expoConfig?.extra?.eas?.projectId as string | undefined) ??
-      (Constants.easConfig?.projectId as string | undefined);
-
-    if (!projectId) {
-      console.warn(
-        "[push] No EAS project ID found. Set expo.extra.eas.projectId in app.json " +
-          "to enable Expo Push Notifications. Skipping token registration.",
-      );
-      return;
-    }
-
-    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-
-    const token = tokenData.data;
-    if (!token) return;
-
-    // Send to API server
-    await apiRequest("PATCH", "/api/user/push-token", { token });
+    await registerExpoPushToken();
   } catch (err) {
     // Non-fatal — the app still works via polling fallback
     console.error("[push] registerPushToken error:", err);
   }
+}
+
+async function registerExpoPushToken(): Promise<void> {
+  // Resolve the EAS project ID — required by Expo Push v57+.
+  // Set expo.extra.eas.projectId in app.json (run `eas init` to generate one).
+  const projectId: string | undefined =
+    (Constants.expoConfig?.extra?.eas?.projectId as string | undefined) ??
+    (Constants.easConfig?.projectId as string | undefined);
+
+  if (!projectId) {
+    console.warn(
+      "[push] No EAS project ID found. Set expo.extra.eas.projectId in app.json " +
+        "to enable Expo Push Notifications. Skipping token registration.",
+    );
+    return;
+  }
+
+  const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+
+  const token = tokenData.data;
+  if (!token) return;
+
+  // Send to API server
+  await apiRequest("PATCH", "/api/user/push-token", { token });
 }
 
 // Module-level flag: fire at most once per process lifetime (i.e. per app launch).

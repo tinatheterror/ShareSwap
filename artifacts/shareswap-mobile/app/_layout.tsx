@@ -24,6 +24,7 @@ import {
 } from "@/hooks/usePushNotifications";
 import { ShareCoinAnimation } from "@/components/ShareCoinAnimation";
 import { LevelUpBanner } from "@/components/LevelUpBanner";
+import { PushPrePrompt } from "@/components/PushPrePrompt";
 
 if (Platform.OS !== "web") {
   SplashScreen.preventAutoHideAsync();
@@ -59,6 +60,7 @@ function RootLayoutNav() {
       {/* Global trust-score overlays — rendered on top of all screens */}
       <ShareCoinAnimation />
       <LevelUpBanner />
+      <PushPrePrompt />
       <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen

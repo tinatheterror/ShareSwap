@@ -125,13 +125,6 @@ export default function LoginScreen() {
     }
   }
 
-  function handlePhone() {
-    Alert.alert(
-      "Phone sign-in",
-      "Phone number sign-in is coming soon. Please use email or Google.",
-    );
-  }
-
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: "#f1f5f9" }}
@@ -183,22 +176,6 @@ export default function LoginScreen() {
                 <Text style={styles.lastUsedBadgeText}>Last used</Text>
               </View>
             )}
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.phoneBtn,
-              { borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
-            ]}
-            onPress={handlePhone}
-          >
-            <Text
-              style={[styles.phoneBtnText, { color: colors.foreground }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-            >
-              Continue with Phone Number
-            </Text>
           </Pressable>
 
           {!showEmailForm ? (
@@ -412,18 +389,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_500Medium",
     color: "#fff",
-  },
-  phoneBtn: {
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingVertical: 15,
-    paddingHorizontal: 12,
-    alignItems: "center",
-    backgroundColor: "transparent",
-  },
-  phoneBtnText: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
   },
   emailLink: {
     fontSize: 15,

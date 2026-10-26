@@ -116,7 +116,6 @@ export async function registerPushToken(): Promise<void> {
 
     // Send to API server
     await apiRequest("PATCH", "/api/user/push-token", { token });
-    console.log("[push] Token registered:", token);
   } catch (err) {
     // Non-fatal — the app still works via polling fallback
     console.error("[push] registerPushToken error:", err);

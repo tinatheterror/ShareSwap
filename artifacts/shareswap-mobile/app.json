@@ -40,6 +40,14 @@
       "expo-font",
       "expo-web-browser",
       [
+        "expo-image-picker",
+        {
+          "cameraPermission": "ShareSwap uses your camera to photograph items you list and their condition at return.",
+          "photosPermission": "ShareSwap accesses your photo library so you can attach photos of items you list and their condition.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",

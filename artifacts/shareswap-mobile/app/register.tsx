@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { openLegalLink, PRIVACY_URL, TERMS_URL } from "@/lib/legalLinks";
 
 export default function RegisterScreen() {
   const colors = useColors();
@@ -178,6 +179,18 @@ export default function RegisterScreen() {
             )}
           </Pressable>
 
+          <Text style={[styles.consentText, { color: colors.mutedForeground }]}>
+            By creating an account you agree to the{" "}
+            <Text style={styles.consentLink} accessibilityRole="link" onPress={() => openLegalLink(TERMS_URL)}>
+              Terms
+            </Text>{" "}
+            and{" "}
+            <Text style={styles.consentLink} accessibilityRole="link" onPress={() => openLegalLink(PRIVACY_URL)}>
+              Privacy Policy
+            </Text>
+            .
+          </Text>
+
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           {/* Link to login */}
@@ -263,6 +276,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
   },
+  consentText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  consentLink: { textDecorationLine: "underline" },
   divider: { height: 1, width: "100%" },
   switchText: {
     fontSize: 14,

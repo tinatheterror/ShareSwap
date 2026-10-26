@@ -40,6 +40,8 @@ import ScoreHistoryPage from "@/pages/score-history-page";
 import WishlistsPage from "@/pages/wishlists-page";
 import CommunityWishlistsPage from "@/pages/community-wishlists-page";
 import FAQPage from "@/pages/faq-page";
+import PrivacyPage from "@/pages/privacy-page";
+import TermsPage from "@/pages/terms-page";
 import ReferralsPage from "@/pages/referrals-page";
 import MyItemsPage from "@/pages/my-items-page";
 import ShareCoinsInfoPage from "@/pages/sharecoins-info-page";
@@ -101,6 +103,8 @@ function Router() {
       <Route path="/sharecoins-info" component={ShareCoinsInfoPage} />
       <Route path="/help" component={FAQPage} />
       <Route path="/faq" component={FAQPage} />
+      <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/terms" component={TermsPage} />
       <ProtectedRoute path="/referrals" component={ReferralsPage} />
       <ProtectedRoute path="/my-items" component={MyItemsPage} />
       <ProtectedRoute path="/requests" component={RequestsPage} />

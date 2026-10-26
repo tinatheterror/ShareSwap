@@ -22,6 +22,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiRequest } from "@/lib/api";
 import { ApiEnvironmentLabel } from "@/components/ApiEnvironmentLabel";
+import { openLegalLink, PRIVACY_URL, TERMS_URL } from "@/lib/legalLinks";
 
 interface UserProfile {
   id: number;
@@ -518,6 +519,34 @@ export default function SettingsScreen() {
               <Text style={[styles.linkText, { color: colors.mutedForeground }]}>Contact Support</Text>
             </Pressable>
           </View>
+        </View>
+
+        {/* ── Legal ── */}
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeader}>
+            <Feather name="file-text" size={17} color={colors.mutedForeground} />
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Legal</Text>
+          </View>
+
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => openLegalLink(PRIVACY_URL)}
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Privacy Policy</Text>
+            <Feather name="external-link" size={16} color={colors.mutedForeground} />
+          </Pressable>
+
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => openLegalLink(TERMS_URL)}
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Terms of Service</Text>
+            <Feather name="external-link" size={16} color={colors.mutedForeground} />
+          </Pressable>
         </View>
       </ScrollView>
 

@@ -10,6 +10,9 @@ const palettes = {
 };
 
 export function ApiEnvironmentLabel({ baseUrl = BASE_URL }: { baseUrl?: string }) {
+  // Developer diagnostics only: never shown in release builds.
+  if (!__DEV__) return null;
+
   const environment = getApiEnvironment(baseUrl);
   const palette = palettes[environment.kind];
 

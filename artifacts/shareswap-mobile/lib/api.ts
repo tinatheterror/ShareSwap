@@ -1,6 +1,13 @@
 import Constants from "expo-constants";
 
-const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN?.trim();
+if (!API_DOMAIN) {
+  // Fail at startup rather than sending every request to https://undefined.
+  throw new Error(
+    "EXPO_PUBLIC_DOMAIN is not set. Set it in the EAS build profile (eas.json) or the dev environment.",
+  );
+}
+const BASE_URL = `https://${API_DOMAIN}`;
 
 function clientVersionHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};

@@ -54,6 +54,7 @@ import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChang
 import { nonProductionOnly } from "../non-production-gate";
 import { fullVerificationRejection } from "../verification-gate";
 import { computeVerification, getVerificationForUser } from "../verification";
+import { getDeletionEligibility } from "../account-deletion/eligibility";
 import { publicUsername } from "../public-identity";
 import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
@@ -15959,6 +15960,20 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Account deactivation error:", error);
       res.status(500).json({ message: "Failed to deactivate account" });
+    }
+  });
+
+  // Read-only: whether the account could be deleted now, and what stands in the way.
+  app.get("/api/account/deletion-eligibility", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    try {
+      res.set("Cache-Control", "no-store");
+      return res.json(await getDeletionEligibility(req.user.id));
+    } catch (error) {
+      console.error("Deletion eligibility error:", error);
+      return res.status(500).json({ message: "Failed to check whether the account can be deleted" });
     }
   });
 

@@ -54,6 +54,7 @@ import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChang
 import { nonProductionOnly } from "../non-production-gate";
 import { fullVerificationRejection } from "../verification-gate";
 import { computeVerification, getVerificationForUser } from "../verification";
+import { publicUsername } from "../public-identity";
 import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
@@ -5759,7 +5760,7 @@ Respond with ONLY the category name, nothing else.`
     const targetId = parseInt(req.params.id, 10);
     if (isNaN(targetId)) return res.status(400).json({ error: "Invalid user id" });
 
-    const [user] = await db
+    const [userRow] = await db
       .select({
         id: users.id,
         username: users.username,
@@ -5772,11 +5773,14 @@ Respond with ONLY the category name, nothing else.`
         bio: users.bio,
         location: users.location,
         createdAt: users.createdAt,
+        authProvider: users.authProvider,
       })
       .from(users)
       .where(eq(users.id, targetId));
 
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!userRow) return res.status(404).json({ error: "User not found" });
+    const { authProvider: _authProvider, ...userFields } = userRow;
+    const user = { ...userFields, username: publicUsername(userRow) };
 
     // Run all stats queries in parallel
     const [
@@ -6218,6 +6222,9 @@ Respond with ONLY the category name, nothing else.`
           .select({
             id: users.id,
             username: users.username,
+            handle: users.handle,
+            displayName: users.displayName,
+            authProvider: users.authProvider,
           })
           .from(users)
           .where(eq(users.id, partnerId));
@@ -6247,7 +6254,7 @@ Respond with ONLY the category name, nothing else.`
 
         return {
           userId: partnerId,
-          username: otherUser?.username || 'Unknown',
+          username: (otherUser && publicUsername(otherUser)) || 'Unknown',
           lastMessage: data.lastMessage,
           lastMessageTime: data.lastMessageTime,
           unreadCount: data.unreadCount,

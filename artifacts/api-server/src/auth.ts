@@ -450,6 +450,10 @@ export const store = new PostgresStore({
   pruneSessionInterval: 60,
 });
 
+/** Banned and deactivated accounts hold no sessions: every path that signs a user in or resumes a session checks this. */
+export const accountIsBlocked = (user: { accountStatus?: string | null }) =>
+  user.accountStatus === "banned" || user.accountStatus === "deactivated";
+
 export function setupAuth(app: Express) {
   // Enable trust proxy for secure cookies behind reverse proxy
   app.set("trust proxy", 1);
@@ -519,6 +523,9 @@ export function setupAuth(app: Express) {
               .limit(1);
 
             if (existingUser) {
+              if (accountIsBlocked(existingUser)) {
+                return done(null, false, { message: `Account ${existingUser.accountStatus}` });
+              }
               // Clear pending referral code for existing users
               if (req.session) {
                 delete req.session.pendingReferralCode;
@@ -658,7 +665,7 @@ export function setupAuth(app: Express) {
         .where(eq(users.id, id))
         .limit(1);
 
-      if (!user) return done(null, false);
+      if (!user || accountIsBlocked(user)) return done(null, false);
       done(null, user);
     } catch (error) {
       console.error("Deserialization error:", error);
@@ -676,6 +683,12 @@ export function setupAuth(app: Express) {
           return res
             .status(401)
             .json({ message: info?.message || "Authentication failed" });
+        }
+        if ((user as any).accountStatus === "banned") {
+          return res.status(403).json({
+            message: "Account banned",
+            accountStatus: "banned",
+          });
         }
         // Check if account is deactivated
         if ((user as any).accountStatus === "deactivated") {
@@ -981,7 +994,7 @@ export function setupAuth(app: Express) {
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
-      if (!user) {
+      if (!user || accountIsBlocked(user)) {
         return res.status(401).json({ message: "User not found" });
       }
       req.login(user, (err) => {

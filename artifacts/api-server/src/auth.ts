@@ -10,6 +10,7 @@ import { promisify } from "util";
 import {
   users,
   items,
+  userPushTokens,
   referrals,
   insertUserSchema,
   type SelectUser,
@@ -1448,9 +1449,21 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/logout", (req, res, next) => {
+  // Signing out ends push delivery to the device: with a `token` in the body only that device's token goes,
+  // without one (older clients) every token of the account goes, and each device registers again at launch.
+  // A failure here is logged and never blocks the sign-out.
+  app.post("/api/logout", async (req, res, next) => {
     if (!req.user) {
       return res.status(200).json({ success: true });
+    }
+    const userId = req.user.id;
+    const token = typeof req.body?.token === "string" && req.body.token ? req.body.token : null;
+    try {
+      await db
+        .delete(userPushTokens)
+        .where(token ? and(eq(userPushTokens.userId, userId), eq(userPushTokens.token, token)) : eq(userPushTokens.userId, userId));
+    } catch (error) {
+      console.error("[logout] could not remove push tokens:", error);
     }
     req.logout((err) => {
       if (err) return next(err);

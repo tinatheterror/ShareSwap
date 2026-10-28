@@ -53,7 +53,7 @@ afterEach(() => {
 async function signOutAndGetLogoutBody(token: string | null) {
   (getPushTokenForLogout as jest.Mock).mockResolvedValue(token);
   await AsyncStorage.setItem("has_session", "1");
-  const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+  const fetchMock = jest.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
     const url = String(input);
     if (url.includes("/api/csrf-token")) return jsonResponse({ csrfToken: "csrf-test" });
     if (url.includes("/api/logout")) return jsonResponse({ success: true });
@@ -86,7 +86,7 @@ async function signOutAndGetLogoutBody(token: string | null) {
   act(() => tree.unmount());
   queryClient.clear();
   expect(call).toBeDefined();
-  return JSON.parse(String((call![1] as RequestInit).body ?? "{}"));
+  return JSON.parse(String(call![1]?.body ?? "{}"));
 }
 
 describe("mobile logout and push tokens", () => {

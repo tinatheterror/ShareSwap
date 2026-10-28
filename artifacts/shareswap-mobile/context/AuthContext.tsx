@@ -10,7 +10,7 @@ import React, {
 import { AppState, AppStateStatus } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, onSessionExpired, setApiSession } from "@/lib/api";
-import { registerPushToken } from "@/hooks/usePushNotifications";
+import { getPushTokenForLogout, registerPushToken } from "@/hooks/usePushNotifications";
 
 const HAS_SESSION_KEY = "has_session";
 export const LAST_AUTH_METHOD_KEY = "lastAuthMethod";
@@ -241,6 +241,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     // Always clear local state first so the user is signed out immediately
     // even if the server request fails (network error, expired CSRF, etc.).
+    const pushToken = getPushTokenForLogout().catch(() => null);
     setUser(null);
     setSessionExpired(false);
     hadSession.current = false;
@@ -248,8 +249,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiSession(false);
     await AsyncStorage.multiRemove([HAS_SESSION_KEY, LAST_AUTH_METHOD_KEY]);
     queryClient.clear();
-    // Best-effort server-side session teardown.
-    apiPost("/api/logout").catch(() => {});
+    // Best-effort server-side session teardown. The device's push token goes with it, so the server stops
+    // pushing to this device for the account that just signed out.
+    pushToken
+      .then((token) => apiPost("/api/logout", token ? { token } : {}))
+      .catch(() => {});
   }, [queryClient]);
 
   const setUserData = useCallback((data: User) => {

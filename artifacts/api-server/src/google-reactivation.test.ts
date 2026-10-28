@@ -3,7 +3,7 @@ import { after, before, test } from "node:test";
 import { eq, inArray } from "drizzle-orm";
 import passport from "passport";
 import { db, items, pool, users } from "@workspace/db";
-import { REACTIVATE_TOKEN_PREFIX, hashPassword, reactivationRedirect } from "./auth.js";
+import { NATIVE_TOKEN_TTL_MS, REACTIVATE_TOKEN_PREFIX, hashPassword, reactivationRedirect } from "./auth.js";
 import { Client, startApp } from "./auth-test-client.js";
 
 const UNIQUE = `google-reactivate-${Date.now()}`;
@@ -120,6 +120,44 @@ test("a reactivation token is refused for a banned account, an active one, an ex
   const plainToken = `${UNIQUE}-plain`;
   await issue(plain.id, plainToken);
   assert.equal((await refusedPost("/api/auth/google-reactivate", { token: plainToken })).status, 400);
+});
+
+test("a reactivation token is refused for a pending-deletion or deleted account, and leaves the account untouched", async () => {
+  for (const status of ["pending_deletion", "deleted"]) {
+    const user = await makeGoogleUser(status);
+    const token = `${REACTIVATE_TOKEN_PREFIX}${UNIQUE}-${status}`;
+    await issue(user.id, token);
+    const client = new Client(baseUrl);
+    await pool.query("DELETE FROM rate_limit_store WHERE key LIKE 'auth:%'");
+    assert.equal((await client.post("/api/auth/google-reactivate", { token })).status, 400, status);
+    assert.equal((await client.get("/api/user")).status, 401, status);
+    assert.equal((await db.select().from(users).where(eq(users.id, user.id)))[0].accountStatus, status);
+  }
+
+  // The account row is gone altogether: a token that outlived it opens nothing.
+  const gone = await makeGoogleUser("deactivated");
+  const goneToken = `${REACTIVATE_TOKEN_PREFIX}${UNIQUE}-gone`;
+  await issue(gone.id, goneToken);
+  await db.delete(users).where(eq(users.id, gone.id));
+  assert.equal((await refusedPost("/api/auth/google-reactivate", { token: goneToken })).status, 401);
+});
+
+test("Google sign-in offers reactivation only for a deactivated account, not a pending-deletion or deleted one", async () => {
+  for (const status of ["pending_deletion", "deleted"]) {
+    const user = await makeGoogleUser(status);
+    const { info } = await verify(user.googleId!);
+    assert.equal(info?.reactivateUserId, undefined, status);
+  }
+});
+
+test("a token is single-use and short-lived: spent by the first request, even a refused one, and valid for five minutes", async () => {
+  const user = await makeGoogleUser("pending_deletion");
+  const token = `${REACTIVATE_TOKEN_PREFIX}${UNIQUE}-spent`;
+  await issue(user.id, token);
+  assert.equal((await refusedPost("/api/auth/google-reactivate", { token })).status, 400);
+  assert.equal((await pool.query("SELECT 1 FROM native_oauth_tokens WHERE token = $1", [token])).rowCount, 0);
+
+  assert.equal(NATIVE_TOKEN_TTL_MS, 5 * 60 * 1000);
 });
 
 test("a reactivation token cannot sign anyone in through the normal exchange, and is not spent by trying", async () => {

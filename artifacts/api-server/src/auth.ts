@@ -310,10 +310,13 @@ function ensureNativeTokenTable(): Promise<void> {
 /** Tokens that only reactivate a deactivated account carry this prefix, so they can never sign anyone in. */
 export const REACTIVATE_TOKEN_PREFIX = "reactivate-";
 
+/** How long a one-time native token (sign-in or reactivation) can be exchanged. */
+export const NATIVE_TOKEN_TTL_MS = 5 * 60 * 1000;
+
 async function storeNativeToken(userId: number, prefix = ""): Promise<string> {
   await ensureNativeTokenTable();
   const token = `${prefix}${randomBytes(32).toString("hex")}`;
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+  const expiresAt = new Date(Date.now() + NATIVE_TOKEN_TTL_MS);
   await pool.query(
     `INSERT INTO native_oauth_tokens (token, user_id, expires_at) VALUES ($1, $2, $3)`,
     [token, userId, expiresAt],
@@ -464,10 +467,20 @@ export function reactivationRedirect(nativeRedirectUri: string | undefined, toke
   return `${nativeRedirectUri}${nativeRedirectUri.includes("?") ? "&" : "?"}reactivate=1&token=${token}`;
 }
 
-/** Brings a deactivated account back: active again, and its items listed again. */
-async function reactivateAccountRecord(userId: number) {
-  await db.update(users).set({ accountStatus: "active", deactivatedAt: null } as any).where(eq(users.id, userId));
+/**
+ * Brings a deactivated account back: active again, and its items listed again. The status is part of the
+ * update, so an account that was banned or put into pending deletion after it was read stays as it is.
+ * Returns false when nothing was reactivated.
+ */
+async function reactivateAccountRecord(userId: number): Promise<boolean> {
+  const [reactivated] = await db
+    .update(users)
+    .set({ accountStatus: "active", deactivatedAt: null } as any)
+    .where(and(eq(users.id, userId), eq(users.accountStatus, "deactivated")))
+    .returning({ id: users.id });
+  if (!reactivated) return false;
   await db.update(items).set({ isAvailable: true }).where(eq(items.ownerId, userId));
+  return true;
 }
 
 export function setupAuth(app: Express) {
@@ -761,7 +774,9 @@ export function setupAuth(app: Express) {
       if ((user as any).accountStatus !== "deactivated") {
         return res.status(400).json({ message: "Account is not deactivated" });
       }
-      await reactivateAccountRecord(user.id);
+      if (!(await reactivateAccountRecord(user.id))) {
+        return res.status(400).json({ message: "Account is not deactivated" });
+      }
 
       // Login the user
       req.login(
@@ -1067,7 +1082,9 @@ export function setupAuth(app: Express) {
       if (user.accountStatus !== "deactivated") {
         return res.status(400).json({ message: "Account is not deactivated" });
       }
-      await reactivateAccountRecord(user.id);
+      if (!(await reactivateAccountRecord(user.id))) {
+        return res.status(400).json({ message: "Account is not deactivated" });
+      }
       const active = { ...user, accountStatus: "active", deactivatedAt: null } as any;
       return req.login(active, (err) => {
         if (err) return next(err);

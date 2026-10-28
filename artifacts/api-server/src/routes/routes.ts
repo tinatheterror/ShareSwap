@@ -8759,6 +8759,7 @@ Respond with ONLY the category name, nothing else.`
           rentalBalance: users.rentalBalance,
           stripeConnectedAccountId: users.stripeConnectedAccountId,
           email: users.username,
+          deletionRequestedAt: users.deletionRequestedAt,
         })
         .from(users)
         .where(eq(users.id, req.user.id))
@@ -8786,7 +8787,8 @@ Respond with ONLY the category name, nothing else.`
         }
         const cents = Math.round(requestedAmount * 100);
         // The deletion flow offers a balance of $1 to $10 as a withdrawal with the minimum waived, for the whole balance.
-        const waived = req.body.waiveMinimum === true && minimumWaiverApplies(cents, Math.round(parseFloat(user.rentalBalance || "0") * 100));
+        // Only the server's own record of a deletion request grants it; nothing in the request body can.
+        const waived = !!user.deletionRequestedAt && minimumWaiverApplies(cents, Math.round(parseFloat(user.rentalBalance || "0") * 100));
         if (cents < MIN_PAYOUT * 100 && !waived) {
           return res.status(400).json({ error: "Minimum payout amount is $10" });
         }

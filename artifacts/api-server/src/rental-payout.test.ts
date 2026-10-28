@@ -268,3 +268,25 @@ test("validation: invalid and below-minimum amounts reserve nothing", async () =
   assert.equal(await balance(), "30.00");
   assert.equal((await payoutRows()).length, 0);
 });
+
+test("the minimum payout is waived for the whole of a $1 to $10 balance when the deletion flow asks", async () => {
+  await setBalance("4.25");
+  const response = await withdraw({ amount: 4.25, waiveMinimum: true });
+  assert.equal(response.status, 200);
+  assert.equal(transferCalls.length, 1);
+  assert.equal(transferCalls[0].params.amount, 425);
+  assert.equal(await balance(), "0.00");
+  const [row] = await payoutRows();
+  assert.equal(row.netAmount, "4.25");
+});
+
+test("the waiver does not cover a slice of the balance, a balance under $1, or a request that does not ask for it", async () => {
+  await setBalance("4.25");
+  assert.equal((await withdraw({ amount: 3, waiveMinimum: true })).status, 400);
+  assert.equal((await withdraw({ amount: 4.25 })).status, 400);
+  await setBalance("0.75");
+  assert.equal((await withdraw({ amount: 0.75, waiveMinimum: true })).status, 400);
+  assert.equal(transferCalls.length, 0);
+  assert.equal(await balance(), "0.75");
+  assert.equal((await payoutRows()).length, 0);
+});

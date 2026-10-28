@@ -72,16 +72,31 @@ test("an account with nothing open can be deleted", async () => {
     eligible: true,
     blockers: [],
     autoResolve: { requests: 0 },
-    wallet: { available: "0.00", pending: "0.00", forfeitedOnDeletion: "0.00" },
+    wallet: { available: "0.00", pending: "0.00", tier: "none", forfeitedOnDeletion: "0.00", requiresForfeitAcknowledgement: false, withdrawalOffer: null },
     willEnd: { subscription: false },
   });
 });
 
-test("an available balance under the minimum payout is forfeited with a warning, not a blocker", async () => {
-  const user = await makeUser({ rentalBalance: "9.99" });
-  const result = await getDeletionEligibility(user.id);
-  assert.equal(result.eligible, true);
-  assert.equal(result.wallet.forfeitedOnDeletion, "9.99");
+test("$1 up to $10 is offered as a withdrawal with the minimum waived, and is forfeited if declined", async () => {
+  for (const [balance, hasAccount] of [["9.99", true], ["1.00", true], ["5.00", false]] as const) {
+    const user = await makeUser({ rentalBalance: balance, stripeConnectedAccountId: hasAccount ? `acct_${UNIQUE}-${counter}` : null });
+    const { wallet, eligible } = await getDeletionEligibility(user.id);
+    assert.equal(eligible, true, balance);
+    assert.equal(wallet.tier, "offer_withdrawal", balance);
+    assert.deepEqual(wallet.withdrawalOffer, { amount: balance, minimumWaived: true, canWithdraw: hasAccount }, balance);
+    assert.equal(wallet.forfeitedOnDeletion, balance);
+    assert.equal(wallet.requiresForfeitAcknowledgement, false);
+  }
+});
+
+test("under $1 is forfeited, and the person has to acknowledge it", async () => {
+  const user = await makeUser({ rentalBalance: "0.99" });
+  const { wallet, eligible } = await getDeletionEligibility(user.id);
+  assert.equal(eligible, true);
+  assert.equal(wallet.tier, "forfeit");
+  assert.equal(wallet.forfeitedOnDeletion, "0.99");
+  assert.equal(wallet.requiresForfeitAcknowledgement, true);
+  assert.equal(wallet.withdrawalOffer, null);
 });
 
 test("an available balance at the minimum payout must be withdrawn first", async () => {
@@ -89,7 +104,9 @@ test("an available balance at the minimum payout must be withdrawn first", async
   const result = await getDeletionEligibility(user.id);
   assert.equal(result.eligible, false);
   assert.deepEqual(result.blockers, [{ code: "wallet_available", amount: "10.00", message: "Withdraw your available balance first." }]);
+  assert.equal(result.wallet.tier, "blocks");
   assert.equal(result.wallet.forfeitedOnDeletion, "0.00");
+  assert.equal(result.wallet.withdrawalOffer, null);
 });
 
 test("any money held in escrow blocks", async () => {

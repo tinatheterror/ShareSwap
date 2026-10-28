@@ -24,16 +24,33 @@ export const BANNED_EMAIL_BLOCK = {
 } as const;
 
 /**
- * Wallet limits for deleting an account (CAD). The platform pays out from $10 (MIN_PAYOUT in
- * rental-payout-service.ts), so:
- *  - an available balance at or above the minimum must be withdrawn first;
- *  - a smaller available balance cannot be withdrawn, and is forfeited on deletion (shown as a warning);
- *  - any amount held in escrow, or any payout still in flight, blocks deletion until it settles.
+ * Wallet limits for deleting an account (CAD, in dollars). The platform pays out from $10 (MIN_PAYOUT in
+ * rental-payout-service.ts), so what deletion does with the available balance depends on its size:
+ *  - $10 or more: it must be withdrawn first, deletion is blocked until then;
+ *  - $1 up to $10: it is offered as a withdrawal with the minimum waived; declining forfeits it;
+ *  - under $1: it is forfeited, and the person acknowledges that before deleting.
+ * Any amount held in escrow, or any payout still in flight, blocks deletion until it settles.
  */
 export const WALLET_LIMITS = {
   availableBlocksAtOrAbove: 10,
+  withdrawalOfferFrom: 1,
   pendingBlocksAbove: 0,
 } as const;
+
+export type WalletTier = "none" | "forfeit" | "offer_withdrawal" | "blocks";
+
+export function walletTier(availableCents: number): WalletTier {
+  if (availableCents >= WALLET_LIMITS.availableBlocksAtOrAbove * 100) return "blocks";
+  if (availableCents >= WALLET_LIMITS.withdrawalOfferFrom * 100) return "offer_withdrawal";
+  return availableCents > 0 ? "forfeit" : "none";
+}
+
+/**
+ * The minimum payout is waived only for taking the whole of a balance in the offer band, so it cannot be
+ * used to pull small slices out of a wallet that is not being closed.
+ */
+export const minimumWaiverApplies = (requestedCents: number, availableCents: number) =>
+  walletTier(availableCents) === "offer_withdrawal" && requestedCents === availableCents;
 
 /** Request statuses that end a booking. Anything else, including a status added later, blocks deletion. */
 export const TERMINAL_REQUEST_STATUSES = ["COMPLETED", "COMPLETED_EARLY", "CANCELLED", "DECLINED", "REJECTED", "EXPIRED", "DEPOSIT_FAILED"] as const;

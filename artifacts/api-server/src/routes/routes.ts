@@ -55,6 +55,7 @@ import { nonProductionOnly } from "../non-production-gate";
 import { fullVerificationRejection } from "../verification-gate";
 import { computeVerification, getVerificationForUser } from "../verification";
 import { getDeletionEligibility } from "../account-deletion/eligibility";
+import { minimumWaiverApplies } from "../account-deletion/retention";
 import { publicName, publicUsername } from "../public-identity";
 import { usernameScrubMiddleware } from "../username-scrub";
 import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
@@ -8784,7 +8785,9 @@ Respond with ONLY the category name, nothing else.`
           return res.status(400).json({ error: "Invalid payout amount" });
         }
         const cents = Math.round(requestedAmount * 100);
-        if (cents < MIN_PAYOUT * 100) {
+        // The deletion flow offers a balance of $1 to $10 as a withdrawal with the minimum waived, for the whole balance.
+        const waived = req.body.waiveMinimum === true && minimumWaiverApplies(cents, Math.round(parseFloat(user.rentalBalance || "0") * 100));
+        if (cents < MIN_PAYOUT * 100 && !waived) {
           return res.status(400).json({ error: "Minimum payout amount is $10" });
         }
         const reserved = await reservePayout(req.user.id, cents);

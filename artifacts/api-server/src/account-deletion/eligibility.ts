@@ -7,6 +7,8 @@ import {
   TERMINAL_REQUEST_STATUSES,
   UNSETTLED_PAYOUT_STATUSES,
   WALLET_LIMITS,
+  walletTier,
+  type WalletTier,
 } from "./retention";
 
 export type DeletionBlocker = { code: string; message: string; count?: number; amount?: string };
@@ -16,7 +18,17 @@ export type DeletionEligibility = {
   blockers: DeletionBlocker[];
   /** Requests deletion would cancel by itself because nothing has moved for them. */
   autoResolve: { requests: number };
-  wallet: { available: string; pending: string; forfeitedOnDeletion: string };
+  wallet: {
+    available: string;
+    pending: string;
+    tier: WalletTier;
+    /** What is lost if the person deletes without withdrawing (the offer band, declined, or under $1). */
+    forfeitedOnDeletion: string;
+    /** Under $1: the person must acknowledge the forfeit. */
+    requiresForfeitAcknowledgement: boolean;
+    /** $1 up to $10: the balance can be withdrawn in full with the minimum payout waived. */
+    withdrawalOffer: { amount: string; minimumWaived: true; canWithdraw: boolean } | null;
+  };
   /** Things deletion will end without the user doing anything first. */
   willEnd: { subscription: boolean };
 };
@@ -32,6 +44,7 @@ export async function getDeletionEligibility(userId: number): Promise<DeletionEl
       rentalBalance: users.rentalBalance,
       pendingRentalBalance: users.pendingRentalBalance,
       stripeSubscriptionStatus: users.stripeSubscriptionStatus,
+      stripeConnectedAccountId: users.stripeConnectedAccountId,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -90,7 +103,8 @@ export async function getDeletionEligibility(userId: number): Promise<DeletionEl
 
   const availableCents = cents(user.rentalBalance);
   const pendingCents = cents(user.pendingRentalBalance);
-  const withdrawable = availableCents >= WALLET_LIMITS.availableBlocksAtOrAbove * 100;
+  const tier = walletTier(availableCents);
+  const withdrawable = tier === "blocks";
   const pendingBlocks = pendingCents > WALLET_LIMITS.pendingBlocksAbove * 100;
 
   const blockers: DeletionBlocker[] = [];
@@ -124,7 +138,12 @@ export async function getDeletionEligibility(userId: number): Promise<DeletionEl
     wallet: {
       available: dollars(availableCents),
       pending: dollars(pendingCents),
-      forfeitedOnDeletion: withdrawable ? "0.00" : dollars(availableCents),
+      tier,
+      forfeitedOnDeletion: tier === "forfeit" || tier === "offer_withdrawal" ? dollars(availableCents) : "0.00",
+      requiresForfeitAcknowledgement: tier === "forfeit",
+      withdrawalOffer: tier === "offer_withdrawal"
+        ? { amount: dollars(availableCents), minimumWaived: true, canWithdraw: !!user.stripeConnectedAccountId }
+        : null,
     },
     willEnd: { subscription: ACTIVE_SUBSCRIPTION_STATUSES.includes(user.stripeSubscriptionStatus ?? "") },
   };

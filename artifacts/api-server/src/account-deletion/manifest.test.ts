@@ -8,7 +8,7 @@ import * as schema from "@workspace/db";
 import { pool } from "@workspace/db";
 import { MIN_PAYOUT } from "../rental-payout-service.js";
 import { DELETION_MANIFEST, RUNTIME_TABLE_MANIFEST, type TableManifest } from "./manifest.js";
-import { RETENTION_YEARS, WALLET_LIMITS } from "./retention.js";
+import { RETENTION_YEARS, WALLET_LIMITS, minimumWaiverApplies, walletTier } from "./retention.js";
 
 after(() => pool.end());
 
@@ -103,4 +103,24 @@ test("every table the app creates at runtime is in the manifest", () => {
 
 test("the wallet limit for withdrawing first is the platform's minimum payout", () => {
   assert.equal(WALLET_LIMITS.availableBlocksAtOrAbove, MIN_PAYOUT);
+});
+
+test("wallet tiers: $10 blocks, $1 to $10 is offered, under $1 is forfeited, nothing is nothing", () => {
+  assert.equal(walletTier(0), "none");
+  assert.equal(walletTier(1), "forfeit");
+  assert.equal(walletTier(99), "forfeit");
+  assert.equal(walletTier(100), "offer_withdrawal");
+  assert.equal(walletTier(999), "offer_withdrawal");
+  assert.equal(walletTier(1000), "blocks");
+  assert.equal(walletTier(250_000), "blocks");
+});
+
+test("the minimum payout is waived only for the whole of a balance in the offer band", () => {
+  assert.equal(minimumWaiverApplies(500, 500), true);
+  assert.equal(minimumWaiverApplies(100, 100), true);
+  assert.equal(minimumWaiverApplies(999, 999), true);
+  assert.equal(minimumWaiverApplies(300, 500), false, "a slice of the balance");
+  assert.equal(minimumWaiverApplies(99, 99), false, "under $1 is forfeited, not withdrawn");
+  assert.equal(minimumWaiverApplies(1000, 1000), false, "$10 needs no waiver");
+  assert.equal(minimumWaiverApplies(500, 400), false, "more than the balance");
 });

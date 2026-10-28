@@ -18,3 +18,10 @@ export function publicUsername(row: PublicIdentityRow): string | null {
   if (!isEmailAccount(row)) return row.username;
   return row.handle || row.displayName || null;
 }
+
+/**
+ * The name to put in text another user reads (a notification, a push, a chat line): the display name, or a
+ * username that is not an email address. Null when neither exists, so the caller's own fallback applies.
+ */
+export const publicName = (row: { displayName?: string | null; username?: string | null } | null | undefined): string | null =>
+  row?.displayName || (row?.username && !row.username.includes("@") ? row.username : null);

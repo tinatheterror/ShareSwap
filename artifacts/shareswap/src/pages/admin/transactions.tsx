@@ -28,7 +28,6 @@ interface AdminTransaction {
   itemName: string;
   requesterId: number;
   requesterUsername: string | null;
-  requesterEmail: string | null;
   ownerId: number | null;
   ownerUsername: string | null;
 }
@@ -158,7 +157,6 @@ export default function AdminTransactionsPage() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {tx.requesterUsername || `User ${tx.requesterId}`}
-                      {tx.requesterEmail && ` · ${tx.requesterEmail}`}
                       {tx.ownerUsername && ` → ${tx.ownerUsername}`}
                     </p>
                     <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">

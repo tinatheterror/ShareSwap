@@ -55,7 +55,8 @@ import { nonProductionOnly } from "../non-production-gate";
 import { fullVerificationRejection } from "../verification-gate";
 import { computeVerification, getVerificationForUser } from "../verification";
 import { getDeletionEligibility } from "../account-deletion/eligibility";
-import { publicUsername } from "../public-identity";
+import { publicName, publicUsername } from "../public-identity";
+import { usernameScrubMiddleware } from "../username-scrub";
 import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
@@ -1965,6 +1966,7 @@ export function registerRoutes(
     },
   };
   setupAuth(app);
+  app.use(usernameScrubMiddleware);
 
   if (process.env.E2E_TEST_MODE === "true") {
     const ownerReturnFixtures = new Map<
@@ -4662,6 +4664,7 @@ Respond with ONLY the category name, nothing else.`
             columns: {
               id: true,
               username: true,
+              handle: true,
               isVerified: true,
               reputationLevel: true,
               accountStatus: true,
@@ -4754,6 +4757,7 @@ Respond with ONLY the category name, nothing else.`
             columns: {
               id: true,
               username: true,
+              handle: true,
               isVerified: true,
               reputationLevel: true,
               accountStatus: true,
@@ -5150,7 +5154,7 @@ Respond with ONLY the category name, nothing else.`
         .from(users)
         .where(eq(users.id, req.user.id));
 
-      const listerName = lister?.displayName || lister?.username || "A neighbour";
+      const listerName = publicName(lister) || "A neighbour";
 
       // Create notification for the wishlist owner
       await db.insert(notifications).values({
@@ -5617,7 +5621,7 @@ Respond with ONLY the category name, nothing else.`
         photos: itemConditionVerifications.photos,
         status: itemConditionVerifications.status,
         createdAt: itemConditionVerifications.createdAt,
-        verifierName: users.username,
+        verifierName: sql<string>`CASE WHEN position('@' in ${users.username}) > 0 THEN COALESCE(${users.displayName}, ${users.handle}, 'ShareSwap member') ELSE ${users.username} END`,
       })
       .from(itemConditionVerifications)
       .innerJoin(users, eq(users.id, itemConditionVerifications.verifierId))
@@ -6070,6 +6074,7 @@ Respond with ONLY the category name, nothing else.`
           .select({
             id: users.id,
             username: users.username,
+            handle: users.handle,
             displayName: users.displayName,
             profilePhoto: users.profilePhoto,
             isVerified: users.isVerified,
@@ -6137,6 +6142,7 @@ Respond with ONLY the category name, nothing else.`
         requestId: reqData.id,
         partnerId,
         partnerUsername: partner?.username || "Unknown",
+        partnerHandle: partner?.handle || null,
         partnerDisplayName: partner?.displayName || null,
         partnerPhoto: partner?.profilePhoto || null,
         partnerIsVerified: partner?.isVerified || false,
@@ -6538,6 +6544,7 @@ Respond with ONLY the category name, nothing else.`
       .select({
         userId: challengeParticipants.userId,
         username: users.username,
+        handle: users.handle,
         currentScore: challengeParticipants.currentScore,
         currentRank: challengeParticipants.currentRank,
       })
@@ -6805,7 +6812,7 @@ Respond with ONLY the category name, nothing else.`
       .where(eq(users.id, req.user.id))
       .limit(1);
 
-    const requesterName = requester?.displayName || requester?.username || "Someone";
+    const requesterName = publicName(requester) || "Someone";
     const requestTypeLabel = requestType.charAt(0).toUpperCase() + requestType.slice(1).toLowerCase();
 
     // Open the inbox thread with party-specific system summaries. The owner
@@ -6975,6 +6982,7 @@ Respond with ONLY the category name, nothing else.`
         reqIsVerified: users.isVerified,
         reqReputationLevel: users.reputationLevel,
         ownerUsername: sql<string | null>`(SELECT username FROM users WHERE id = ${items.ownerId})`,
+        ownerHandle: sql<string | null>`(SELECT handle FROM users WHERE id = ${items.ownerId})`,
         ownerDisplayName: sql<string | null>`(SELECT display_name FROM users WHERE id = ${items.ownerId})`,
         reviewedByCurrentUser: sql<boolean>`EXISTS (
           SELECT 1
@@ -7079,6 +7087,7 @@ Respond with ONLY the category name, nothing else.`
       },
       owner: {
         username: r.ownerUsername,
+        handle: r.ownerHandle,
         displayName: r.ownerDisplayName,
       },
       reviewedByCurrentUser: r.reviewedByCurrentUser,
@@ -8275,7 +8284,7 @@ Respond with ONLY the category name, nothing else.`
       .from(users)
       .where(eq(users.id, req.user.id))
       .limit(1);
-    const confirmerName = confirmerUser?.displayName || confirmerUser?.username || (role === "giver" ? "The giver" : "The receiver");
+    const confirmerName = publicName(confirmerUser) || (role === "giver" ? "The giver" : "The receiver");
 
     const otherPartyId = role === "giver" ? request.item_requests.requesterId : request.items.ownerId!;
 
@@ -8999,6 +9008,7 @@ Respond with ONLY the category name, nothing else.`
           requester: {
             id: users.id,
             username: users.username,
+            handle: users.handle,
             trustScore: users.trustScore,
           },
         })
@@ -9213,7 +9223,7 @@ Respond with ONLY the category name, nothing else.`
         userId: row.items.ownerId,
         type: "request_withdrawn" as any,
         title: "Offer Withdrawn",
-        message: `${(req.user as any).displayName || req.user.username} withdrew their offer for "${row.items.name}".`,
+        message: `${publicName(req.user) ?? "Someone"} withdrew their offer for "${row.items.name}".`,
         itemId: row.items.id,
         requestId,
       });
@@ -9878,9 +9888,9 @@ Respond with ONLY the category name, nothing else.`
             .from(users)
             .where(eq(users.id, otherPartyId))
             .limit(1);
-          otherName = otherUser?.displayName || otherUser?.username || "the other party";
+          otherName = publicName(otherUser) || "the other party";
         }
-        const confirmerName = confirmerUser?.displayName || confirmerUser?.username || "One party";
+        const confirmerName = publicName(confirmerUser) || "One party";
 
         // One party confirmed — send role-specific confirmation + waiting messages
         await db.insert(messages).values([
@@ -10481,7 +10491,7 @@ Respond with ONLY the category name, nothing else.`
           .from(users)
           .where(eq(users.id, waitingPartyId))
           .limit(1);
-        const waitingName = waitingUser?.displayName || waitingUser?.username || "the other party";
+        const waitingName = publicName(waitingUser) || "the other party";
 
         let reminderContent: string | null = null;
         let newLevel = level;
@@ -10727,7 +10737,7 @@ Respond with ONLY the category name, nothing else.`
         const dueStr = request.endDate
           ? new Date(`${requestCalendarDay(request.endDate)}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
           : "the due date";
-        const borrowerName = (req.user as any).displayName || req.user.username || "The borrower";
+        const borrowerName = publicName(req.user) || "The borrower";
         const notificationTitle = "Return may still be late";
         const notificationMessage = `${borrowerName} let you know they may miss the extended return date of ${dueStr}.`;
         const [delayNotification] = await tx.insert(notifications).values({
@@ -11961,7 +11971,7 @@ Respond with ONLY the category name, nothing else.`
           })
           .where(eq(itemRequests.id, requestId));
 
-        const borrowerName = (req.user as any).displayName || req.user.username || "The borrower";
+        const borrowerName = publicName(req.user) || "The borrower";
         const [extensionNotification] = await tx.insert(notifications).values({
           userId: borrow.ownerId,
           type: "extension_requested",
@@ -12446,7 +12456,7 @@ Respond with ONLY the category name, nothing else.`
             .from(users)
             .where(eq(users.id, request.requesterId))
             .limit(1);
-          const borrowerName = borrower?.displayName || borrower?.username || "the borrower";
+          const borrowerName = publicName(borrower) || "the borrower";
           const serious = isSeriousOverdue(daysOverdue);
           const reminderType = serious
             ? "return_reminder_serious_overdue"
@@ -12495,7 +12505,7 @@ Respond with ONLY the category name, nothing else.`
               reminderType,
               borrowerTitle,
               serious
-                ? `"${item.name}" is seriously overdue. Return it to ${owner.displayName || owner.username} immediately.`
+                ? `"${item.name}" is seriously overdue. Return it to ${publicName(owner) ?? "the owner"} immediately.`
                 : `"${item.name}" is ${daysOverdue} days overdue. Return it now before starting another borrow.`,
             ),
             createReminder(
@@ -12526,7 +12536,7 @@ Respond with ONLY the category name, nothing else.`
             item.id,
             "return_reminder_tomorrow",
             "Return due tomorrow",
-            `"${item.name}" is due back to ${owner.displayName || owner.username} tomorrow.`,
+            `"${item.name}" is due back to ${publicName(owner) ?? "the owner"} tomorrow.`,
           );
         } else if (daysUntilReturn === 0) {
           await createReminder(
@@ -12536,7 +12546,7 @@ Respond with ONLY the category name, nothing else.`
             item.id,
             "return_reminder_today",
             "Return due today",
-            `"${item.name}" must be returned to ${owner.displayName || owner.username} today.`,
+            `"${item.name}" must be returned to ${publicName(owner) ?? "the owner"} today.`,
           );
         } else if (daysOverdue > 0) {
           await createReminder(
@@ -12546,7 +12556,7 @@ Respond with ONLY the category name, nothing else.`
             item.id,
             "return_reminder_overdue",
             `Return overdue by ${daysOverdue}d`,
-            `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? "s" : ""} overdue. Return to ${owner.displayName || owner.username} now.`,
+            `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? "s" : ""} overdue. Return to ${publicName(owner) ?? "the owner"} now.`,
           );
         }
       }
@@ -14436,7 +14446,8 @@ Respond with ONLY the category name, nothing else.`
           itemName: items.name,
           requesterId: itemRequests.requesterId,
           requesterUsername: requester.username,
-          requesterEmail: requester.email,
+          requesterHandle: requester.handle,
+          ownerHandle: owner.handle,
           ownerId: items.ownerId,
           ownerUsername: owner.username,
         }).from(itemRequests)
@@ -14580,7 +14591,7 @@ Respond with ONLY the category name, nothing else.`
       const userRows = userIds.length
         ? await db.select({ id: users.id, displayName: users.displayName, username: users.username }).from(users).where(inArray(users.id, userIds))
         : [];
-      const userMap = Object.fromEntries(userRows.map(u => [u.id, u.displayName || u.username || `User ${u.id}`]));
+      const userMap = Object.fromEntries(userRows.map(u => [u.id, publicName(u) || `User ${u.id}`]));
 
       const result = disputes.map(d => ({
         ...d,
@@ -14889,6 +14900,7 @@ Respond with ONLY the category name, nothing else.`
         reviewer: {
           id: users.id,
           username: users.username,
+          handle: users.handle,
           displayName: users.displayName,
           profilePhoto: users.profilePhoto,
         },
@@ -15104,7 +15116,7 @@ Respond with ONLY the category name, nothing else.`
           : effectivePoints < 0
             ? `New ${rating}-star review (${effectivePoints} trust)`
             : `New ${rating}-star review`;
-        const reviewerName = req.user.displayName || req.user.username;
+        const reviewerName = publicName(req.user) || "A ShareSwap member";
         const reviewLine = comment
           ? `${reviewerName} ${stars}: "${comment.slice(0, 60)}${comment.length > 60 ? '…' : ''}"`
           : `${reviewerName} left you a ${rating}-star review ${stars}`;
@@ -15295,6 +15307,7 @@ Respond with ONLY the category name, nothing else.`
           columns: {
             id: true,
             username: true,
+            handle: true,
             isVerified: true,
             reputationLevel: true,
           }

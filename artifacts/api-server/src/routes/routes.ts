@@ -56,8 +56,8 @@ import { fullVerificationRejection } from "../verification-gate";
 import { computeVerification, getVerificationForUser } from "../verification";
 import { getDeletionEligibility } from "../account-deletion/eligibility";
 import { minimumWaiverApplies } from "../account-deletion/retention";
-import { publicName, publicUsername } from "../public-identity";
-import { usernameScrubMiddleware } from "../username-scrub";
+import { isEmailShaped, publicName, publicUsername } from "../public-identity";
+import { scrubEmailUsernames, usernameScrubMiddleware } from "../username-scrub";
 import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
@@ -2424,6 +2424,11 @@ export function registerRoutes(
 
   // Map of userId → WebSocket connection — shared by REST routes and the WS handler
   const connectedClients = new Map<number, WebSocket>();
+  /** Sends one frame to a connected user, scrubbed the way a response to that user would be. */
+  const sendFrame = (userId: number, frame: Record<string, unknown>) => {
+    const ws = connectedClients.get(userId);
+    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(scrubEmailUsernames(frame, { id: userId, username: null })));
+  };
 
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
@@ -5664,10 +5669,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     // Push to recipient in real-time if they are connected via WebSocket
-    const receiverWs = connectedClients.get(receiverId);
-    if (receiverWs?.readyState === WebSocket.OPEN) {
-      receiverWs.send(JSON.stringify({ type: "new_message", message }));
-    }
+    sendFrame(receiverId, { type: "new_message", message });
 
     // Native push notification so the message arrives even when the app is closed
     sendPushToUser(receiverId, {
@@ -10775,11 +10777,8 @@ Respond with ONLY the category name, nothing else.`
 
       if ("error" in result) return res.status(result.status).json({ error: result.error });
 
-      const ownerWs = connectedClients.get(result.ownerId);
-      if (ownerWs?.readyState === WebSocket.OPEN) {
-        ownerWs.send(JSON.stringify({ type: "new_message", message: result.delayMessage }));
-        ownerWs.send(JSON.stringify({ type: "new_notification", notification: result.delayNotification }));
-      }
+      sendFrame(result.ownerId, { type: "new_message", message: result.delayMessage });
+      sendFrame(result.ownerId, { type: "new_notification", notification: result.delayNotification });
       sendPushToUser(
         result.ownerId,
         {
@@ -10902,10 +10901,7 @@ Respond with ONLY the category name, nothing else.`
 
       // Push via WebSocket so the owner's client immediately invalidates /api/requests
       // and shows the Confirm Return button without waiting for the 20s poll cycle.
-      const ownerWs = connectedClients.get(result.ownerId);
-      if (ownerWs?.readyState === WebSocket.OPEN) {
-        ownerWs.send(JSON.stringify({ type: "new_message", message: result.returnMsg }));
-      }
+      sendFrame(result.ownerId, { type: "new_message", message: result.returnMsg });
 
       res.json({
         success: true,
@@ -12006,11 +12002,8 @@ Respond with ONLY the category name, nothing else.`
 
       if ("error" in result) return res.status(result.status).json({ error: result.error });
 
-      const ownerWs = connectedClients.get(result.borrow.ownerId);
-      if (ownerWs?.readyState === WebSocket.OPEN) {
-        ownerWs.send(JSON.stringify({ type: "new_message", message: result.extensionMessage }));
-        ownerWs.send(JSON.stringify({ type: "new_notification", notification: result.extensionNotification }));
-      }
+      sendFrame(result.borrow.ownerId, { type: "new_message", message: result.extensionMessage });
+      sendFrame(result.borrow.ownerId, { type: "new_notification", notification: result.extensionNotification });
       sendPushToUser(
         result.borrow.ownerId,
         {
@@ -13255,6 +13248,11 @@ Respond with ONLY the category name, nothing else.`
     }
 
     const { fullName, bio, location, phone, displayName, defaultPostalCode } = req.body;
+
+    // The display name is shown to other users, so it cannot be an email address.
+    if (isEmailShaped(displayName)) {
+      return res.status(400).json({ error: "Display name can't be an email address." });
+    }
 
     // Enforce 30-day cooldown on display name changes
     if (displayName !== undefined) {
@@ -15162,10 +15160,7 @@ Respond with ONLY the category name, nothing else.`
     const selectedNegativeTags = cleanedTags.filter((tag) => ["late_return", "issue_reported"].includes(tag));
 
     await runNonCriticalReviewSideEffect("review notification delivery", async () => {
-      const reviewedUserWs = connectedClients.get(reviewedUserId);
-      if (reviewedUserWs?.readyState === WebSocket.OPEN) {
-        reviewedUserWs.send(JSON.stringify({ type: "new_notification", notification: reviewNotif }));
-      }
+      sendFrame(reviewedUserId, { type: "new_notification", notification: reviewNotif });
     });
 
     if (lowReviewPenaltyResult?.wasGracePass) {

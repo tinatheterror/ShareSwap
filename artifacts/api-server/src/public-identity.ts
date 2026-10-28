@@ -25,3 +25,6 @@ export function publicUsername(row: PublicIdentityRow): string | null {
  */
 export const publicName = (row: { displayName?: string | null; username?: string | null } | null | undefined): string | null =>
   row?.displayName || (row?.username && !row.username.includes("@") ? row.username : null);
+
+/** Something@something: what a name field must not hold, since the name is shown to other users. */
+export const isEmailShaped = (value: unknown): boolean => typeof value === "string" && /[^\s@]+@[^\s@]+/.test(value);

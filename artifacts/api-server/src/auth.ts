@@ -23,6 +23,7 @@ import { computeActiveStatus, computeResponseTime } from "./user-stats";
 import { resolveGoogleOAuthCallbackURL } from "./google-oauth-config";
 import { shouldRunBackgroundJobs } from "./background-jobs-gate";
 import { guardedJob } from "./guarded-job";
+import { isEmailShaped } from "./public-identity";
 import { backgroundJobs } from "./background-jobs-registry";
 import { getVerificationForUser, googleEmailIsVerified, verificationRecipient } from "./verification";
 
@@ -383,7 +384,8 @@ async function generateUserCode(firstLetter?: string): Promise<string> {
 
 // Generate display name from Google profile or email
 function generateDisplayName(email?: string, googleName?: string): string {
-  if (googleName) {
+  // A name that is itself an address is not a name: fall through to the email-derived one.
+  if (googleName && !isEmailShaped(googleName)) {
     // Use Google profile name, optionally abbreviate last name
     const parts = googleName.trim().split(" ");
     if (parts.length > 1) {

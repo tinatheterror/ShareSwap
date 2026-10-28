@@ -33,6 +33,17 @@ export class Client {
     return this.send(path, { method: "POST", headers, body: JSON.stringify(body) });
   }
 
+  patch(path: string, body: unknown = {}) {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    if (this.csrfToken) headers["x-csrf-token"] = this.csrfToken;
+    return this.send(path, { method: "PATCH", headers, body: JSON.stringify(body) });
+  }
+
+  /** The session cookies as a Cookie header, for a WebSocket handshake. */
+  cookieHeader() {
+    return [...this.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
+  }
+
   async fetchCsrfToken() {
     this.csrfToken = ((await (await this.get("/api/csrf-token")).json()) as { csrfToken: string }).csrfToken;
   }

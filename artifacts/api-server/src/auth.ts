@@ -307,9 +307,12 @@ function ensureNativeTokenTable(): Promise<void> {
   return _nativeTokenTableReady;
 }
 
-async function storeNativeToken(userId: number): Promise<string> {
+/** Tokens that only reactivate a deactivated account carry this prefix, so they can never sign anyone in. */
+export const REACTIVATE_TOKEN_PREFIX = "reactivate-";
+
+async function storeNativeToken(userId: number, prefix = ""): Promise<string> {
   await ensureNativeTokenTable();
-  const token = randomBytes(32).toString("hex");
+  const token = `${prefix}${randomBytes(32).toString("hex")}`;
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
   await pool.query(
     `INSERT INTO native_oauth_tokens (token, user_id, expires_at) VALUES ($1, $2, $3)`,
@@ -455,6 +458,18 @@ export const store = new PostgresStore({
 export const accountIsBlocked = (user: { accountStatus?: string | null }) =>
   user.accountStatus === "banned" || user.accountStatus === "deactivated";
 
+/** Where the Google callback sends someone whose account is deactivated: back to the app, with a reactivation token. */
+export function reactivationRedirect(nativeRedirectUri: string | undefined, token: string) {
+  if (!nativeRedirectUri) return `/auth?reactivate=google&token=${token}`;
+  return `${nativeRedirectUri}${nativeRedirectUri.includes("?") ? "&" : "?"}reactivate=1&token=${token}`;
+}
+
+/** Brings a deactivated account back: active again, and its items listed again. */
+async function reactivateAccountRecord(userId: number) {
+  await db.update(users).set({ accountStatus: "active", deactivatedAt: null } as any).where(eq(users.id, userId));
+  await db.update(items).set({ isAvailable: true }).where(eq(items.ownerId, userId));
+}
+
 export function setupAuth(app: Express) {
   // Enable trust proxy for secure cookies behind reverse proxy
   app.set("trust proxy", 1);
@@ -524,6 +539,10 @@ export function setupAuth(app: Express) {
               .limit(1);
 
             if (existingUser) {
+              if (existingUser.accountStatus === "deactivated") {
+                // Google has proved who they are, so the callback offers to reactivate instead of refusing.
+                return done(null, false, { message: "Account deactivated", reactivateUserId: existingUser.id });
+              }
               if (accountIsBlocked(existingUser)) {
                 return done(null, false, { message: `Account ${existingUser.accountStatus}` });
               }
@@ -742,20 +761,7 @@ export function setupAuth(app: Express) {
       if ((user as any).accountStatus !== "deactivated") {
         return res.status(400).json({ message: "Account is not deactivated" });
       }
-      // Reactivate the account
-      await db
-        .update(users)
-        .set({
-          accountStatus: "active",
-          deactivatedAt: null,
-        } as any)
-        .where(eq(users.id, user.id));
-
-      // Restore user's items (make them available again)
-      await db
-        .update(items)
-        .set({ isAvailable: true })
-        .where(eq(items.ownerId, user.id));
+      await reactivateAccountRecord(user.id);
 
       // Login the user
       req.login(
@@ -921,13 +927,44 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/auth/google/callback", authLimiter, (req, res, next) => {
-    passport.authenticate("google", {
-      failureRedirect: "/auth",
+    // The state parameter carries the native redirect URI; it is read here (and again below) so a refused
+    // sign-in can still send a native app back to it.
+    const nativeRedirectFromState = () => {
+      const rawState = req.query.state as string | undefined;
+      if (!rawState) return undefined;
+      try {
+        return JSON.parse(Buffer.from(rawState, "base64url").toString())?.nativeRedirectUri as string | undefined;
+      } catch {
+        return undefined;
+      }
+    };
+    passport.authenticate(
+      "google",
       // keepSessionInfo prevents passport 0.6+ from calling
       // req.session.regenerate(), which would destroy nativeRedirectUri
       // stored before the OAuth redirect started.
-      keepSessionInfo: true,
-    } as any)(req, res, async (err: any) => {
+      { keepSessionInfo: true } as any,
+      async (err: any, user: SelectUser | false, info: any) => {
+        if (err) return next(err);
+        if (!user) {
+          if (info?.reactivateUserId) {
+            try {
+              const token = await storeNativeToken(info.reactivateUserId, REACTIVATE_TOKEN_PREFIX);
+              return res.redirect(reactivationRedirect(nativeRedirectFromState(), token));
+            } catch (tokenErr) {
+              return next(tokenErr);
+            }
+          }
+          return res.redirect("/auth");
+        }
+        return req.logIn(user, { keepSessionInfo: true } as any, (loginErr) => {
+          if (loginErr) return next(loginErr);
+          void finishGoogleSignIn();
+        });
+      },
+    )(req, res, next);
+
+    async function finishGoogleSignIn(err?: any) {
       if (err) return next(err);
       // Resolve native redirect URI — prefer state param (session-independent)
       // then fall back to session (legacy / web-initiated flows).
@@ -972,7 +1009,7 @@ export function setupAuth(app: Express) {
       } else {
         res.redirect("/");
       }
-    });
+    }
   });
 
   // Native OAuth token exchange
@@ -984,6 +1021,10 @@ export function setupAuth(app: Express) {
     const token = (req.body?.token as string) || (req.query.token as string);
     if (!token) {
       return res.status(400).json({ message: "Token required" });
+    }
+    // A reactivation token proves a Google identity for one purpose only and is not consumed here.
+    if (token.startsWith(REACTIVATE_TOKEN_PREFIX)) {
+      return res.status(401).json({ message: "Invalid or expired token" });
     }
     const userId = await consumeNativeToken(token);
     if (!userId) {
@@ -1004,6 +1045,37 @@ export function setupAuth(app: Express) {
       });
     } catch (err) {
       next(err);
+    }
+  });
+
+  // Reactivate a deactivated Google account. The one-time token was issued by the Google callback after Google
+  // confirmed the account's owner, so it stands in for the password the reactivation route asks for.
+  app.post("/api/auth/google-reactivate", authLimiter, async (req, res, next) => {
+    const token = req.body?.token;
+    if (typeof token !== "string" || !token.startsWith(REACTIVATE_TOKEN_PREFIX)) {
+      return res.status(400).json({ message: "Token required" });
+    }
+    const userId = await consumeNativeToken(token);
+    if (!userId) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user || user.accountStatus === "banned") {
+        return res.status(401).json({ message: "User not found" });
+      }
+      if (user.accountStatus !== "deactivated") {
+        return res.status(400).json({ message: "Account is not deactivated" });
+      }
+      await reactivateAccountRecord(user.id);
+      const active = { ...user, accountStatus: "active", deactivatedAt: null } as any;
+      return req.login(active, (err) => {
+        if (err) return next(err);
+        res.json({ message: "Account reactivated successfully", user: active });
+      });
+    } catch (error) {
+      console.error("Google reactivation error:", error);
+      return next(error);
     }
   });
 

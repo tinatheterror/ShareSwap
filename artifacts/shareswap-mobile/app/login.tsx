@@ -93,7 +93,26 @@ export default function LoginScreen() {
           // call so the session cookie is set in the right jar.
           const url = result.url;
           const tokenMatch = url.match(/[?&]token=([^&]+)/);
-          if (tokenMatch?.[1]) {
+          if (/[?&]reactivate=1(&|$)/.test(url) && tokenMatch?.[1]) {
+            // Google confirmed the account, but it is deactivated: offer to bring it back.
+            const reactivateToken = tokenMatch[1];
+            const confirmed = await new Promise<boolean>((resolve) =>
+              Alert.alert(
+                "Account deactivated",
+                "Your account is deactivated and your listings are hidden. Reactivate it now?",
+                [
+                  { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+                  { text: "Reactivate", onPress: () => resolve(true) },
+                ],
+                { cancelable: true, onDismiss: () => resolve(false) },
+              ),
+            );
+            if (!confirmed) return;
+            const resp = await apiRequest("POST", "/api/auth/google-reactivate", { token: reactivateToken });
+            const reactivated = await resp.json();
+            if (!reactivated?.user?.id) throw new Error("Unable to reactivate your account. Please try again.");
+            setUserData(reactivated.user);
+          } else if (tokenMatch?.[1]) {
             // Exchange the one-time token for a session cookie via a regular
             // native fetch call. The response body is the user object — we set
             // it directly so the app knows the user is logged in before

@@ -63,6 +63,7 @@ test("password login is refused for a banned account and for a deactivated one, 
   for (const status of ["banned", "deactivated"]) {
     const user = await makeUser(`login-${status}`, { accountStatus: status });
     const client = new Client(baseUrl);
+    await clearLoginLimiter();
     const login = await client.post("/api/login", { username: user.username, password: PASSWORD });
     assert.equal(login.status, 403, status);
     assert.equal(((await login.json()) as { accountStatus: string }).accountStatus, status);
@@ -72,6 +73,7 @@ test("password login is refused for a banned account and for a deactivated one, 
 
 test("a wrong password still answers 401, so a ban is not revealed without the password", async () => {
   const user = await makeUser("wrongpw", { accountStatus: "banned" });
+  await clearLoginLimiter();
   const login = await new Client(baseUrl).post("/api/login", { username: user.username, password: "nope" });
   assert.equal(login.status, 401);
 });

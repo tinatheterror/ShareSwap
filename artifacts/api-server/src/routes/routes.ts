@@ -2474,7 +2474,7 @@ export function registerRoutes(
   app.use((req, res, next) => {
     // Skip CSRF for login, register, csrf-token, and referrals endpoints, and for routes only another
     // server calls (Stripe's webhook has no cookie or token; it is authenticated by its signature).
-    const skipPaths = ['/api/login', '/api/register', '/api/csrf-token', '/api/referrals/generate'];
+    const skipPaths = ['/api/login', '/api/register', '/api/csrf-token', '/api/referrals/generate', '/api/auth/google-reactivate'];
     if (skipPaths.includes(req.path) || isServerToServerPath(req.path)) {
       return next();
     }

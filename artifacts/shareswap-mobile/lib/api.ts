@@ -53,7 +53,7 @@ function checkSessionResponse(res: Response, epoch: number, handlesSession: bool
 }
 
 const AUTH_PATHS = new Set([
-  "/api/login", "/api/register", "/api/logout", "/api/auth/exchange-token",
+  "/api/login", "/api/register", "/api/logout", "/api/auth/exchange-token", "/api/auth/google-reactivate",
   "/api/auth/forgot-password", "/api/auth/reset-password",
   "/api/forgot-password", "/api/reset-password",
 ]);

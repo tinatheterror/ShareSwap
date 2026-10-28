@@ -10446,11 +10446,12 @@ Respond with ONLY the category name, nothing else.`
         const result = mode === "dry-run"
           ? await runHandoffDeadlineSweep(handoffDeadlineDeps, "dry-run", undefined, { now, requestTypes: HANDOFF_SWEEP_REQUEST_TYPES })
           : null;
-        return res.json({
+        res.json({
           success: true, mode,
           autoAdvancedCount: 0, flaggedCount: 0, depositExpiredCount: 0, bothSilentCount: 0,
           ...(result ? { wouldChangeCount: result.candidates.length } : {}),
         });
+        return;
       }
 
       // ── Smart reminders: find AWAITING requests that need a nudge ──

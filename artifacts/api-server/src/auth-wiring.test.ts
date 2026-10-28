@@ -150,7 +150,7 @@ test("the handoff-deadline sweep needs sign-in and runs once a minute per user",
   await client.fetchCsrfToken();
   const first = await client.post("/api/requests/check-handoff-deadlines");
   assert.equal(first.status, 200);
-  assert.deepEqual(Object.keys((await first.json()) as object).sort(), ["autoAdvancedCount", "bothSilentCount", "depositExpiredCount", "flaggedCount", "success"]);
+  assert.deepEqual(Object.keys((await first.json()) as object).sort(), ["autoAdvancedCount", "bothSilentCount", "depositExpiredCount", "flaggedCount", "mode", "success", "wouldChangeCount"]);
   const second = await client.post("/api/requests/check-handoff-deadlines");
   assert.equal(second.status, 429);
   assert.match(((await second.json()) as { error: string }).error, /try again/i);

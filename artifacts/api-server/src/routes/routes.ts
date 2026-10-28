@@ -91,7 +91,7 @@ import { shouldRunBackgroundJobs } from "../background-jobs-gate";
 import { backgroundJobs } from "../background-jobs-registry";
 import { startRequestExpirySweepTimer } from "../request-expiry-timer";
 import { guardedJob } from "../guarded-job";
-import { REQUEST_EXPIRY_JOB, createReadRunRecorder, resolveJobSwitch, resolveReadExpiryPolicy, timerRunRecorder } from "../job-switches";
+import { HANDOFF_DEADLINES_JOB, REQUEST_EXPIRY_JOB, createReadRunRecorder, resolveJobSwitch, resolveReadExpiryPolicy, timerRunRecorder } from "../job-switches";
 import { CANCELLABLE_REQUEST_TYPES, cancelBorrowRentRequest } from "../cancel-service";
 import { depositMethodRejection } from "../deposit-method-rules";
 import {
@@ -10436,6 +10436,23 @@ Respond with ONLY the category name, nothing else.`
     try {
       const now = new Date();
 
+      // Same switch as the server timer: a job_switches row wins, then HANDOFF_DEADLINE_SWEEP_MODE, else dry-run.
+      // A switch that cannot be read acts as off. Only live changes anything (reminders and the both-silent
+      // cancel included); dry-run reports what would change in the log, and SWAP handoffs are never touched.
+      const decision = await resolveJobSwitch(HANDOFF_DEADLINES_JOB, resolveHandoffSweepMode(process.env.HANDOFF_DEADLINE_SWEEP_MODE));
+      if (!decision.ok) console.error(`[handoff-deadlines] could not read the ${HANDOFF_DEADLINES_JOB} switch; the endpoint did nothing: ${decision.error}`);
+      const mode = decision.ok ? decision.mode : "off";
+      if (mode !== "live") {
+        const result = mode === "dry-run"
+          ? await runHandoffDeadlineSweep(handoffDeadlineDeps, "dry-run", undefined, { now, requestTypes: HANDOFF_SWEEP_REQUEST_TYPES })
+          : null;
+        return res.json({
+          success: true, mode,
+          autoAdvancedCount: 0, flaggedCount: 0, depositExpiredCount: 0, bothSilentCount: 0,
+          ...(result ? { wouldChangeCount: result.candidates.length } : {}),
+        });
+      }
+
       // ── Smart reminders: find AWAITING requests that need a nudge ──
       const pendingHandoffs = await db
         .select()
@@ -10444,6 +10461,7 @@ Respond with ONLY the category name, nothing else.`
         .where(
           and(
             eq(itemRequests.status, "AWAITING_HANDOFF_CONFIRM"),
+            inArray(itemRequests.requestType, [...HANDOFF_SWEEP_REQUEST_TYPES]),
             gte(itemRequests.handoffConfirmDeadline, now),
             lt(itemRequests.handoffRemindersLevel, 3)
           )
@@ -10510,7 +10528,7 @@ Respond with ONLY the category name, nothing else.`
         autoAdvancedCount,
         flaggedCount,
         depositExpiredCount,
-      } = await processHandoffDeadlines(handoffDeadlineDeps, { now });
+      } = await processHandoffDeadlines(handoffDeadlineDeps, { now, requestTypes: HANDOFF_SWEEP_REQUEST_TYPES });
 
       // ── Both-silent handoff timeout: AWAITING_HANDOFF_CONFIRM, neither confirmed, 48hrs past start date ──
       const handoffSilentDeadline = new Date(now.getTime() - 48 * 3_600_000);
@@ -10521,6 +10539,7 @@ Respond with ONLY the category name, nothing else.`
         .where(
           and(
             eq(itemRequests.status, "AWAITING_HANDOFF_CONFIRM"),
+            inArray(itemRequests.requestType, [...HANDOFF_SWEEP_REQUEST_TYPES]),
             eq(itemRequests.ownerConfirmedHandoff, false),
             eq(itemRequests.borrowerConfirmedHandoff, false),
             lt(itemRequests.startDate, handoffSilentDeadline)
@@ -10621,7 +10640,7 @@ Respond with ONLY the category name, nothing else.`
         bothSilentCount++;
       }
 
-      res.json({ success: true, autoAdvancedCount, flaggedCount, depositExpiredCount, bothSilentCount });
+      res.json({ success: true, mode, autoAdvancedCount, flaggedCount, depositExpiredCount, bothSilentCount });
     } catch (error: any) {
       console.error("Error checking handoff deadlines:", error);
       res.status(500).json({ error: "Failed to check handoff deadlines" });
@@ -12636,7 +12655,7 @@ Respond with ONLY the category name, nothing else.`
       const handoffSweepMode = resolveHandoffSweepMode(process.env.HANDOFF_DEADLINE_SWEEP_MODE);
       if (handoffSweepMode !== "off") console.log(`[handoff-deadlines] server sweep mode: ${handoffSweepMode}`);
       const runHandoffSweep = guardedJob({
-        name: "handoff-deadlines",
+        name: HANDOFF_DEADLINES_JOB,
         envMode: handoffSweepMode,
         supportsDryRun: true,
         run: async (mode) => {

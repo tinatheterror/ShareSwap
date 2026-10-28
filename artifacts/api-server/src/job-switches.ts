@@ -14,6 +14,9 @@ export const REQUEST_EXPIRY_JOB = "request-expiry";
 /** Expiry attempted while a request is read or redeemed (inbox, request list, handoff guard). */
 export const REQUEST_EXPIRY_ON_READ_JOB = "request-expiry-on-read";
 
+/** The handoff-deadline sweep: the server timer and POST /api/requests/check-handoff-deadlines share this switch. */
+export const HANDOFF_DEADLINES_JOB = "handoff-deadlines";
+
 export type SwitchQuery = (text: string, params: unknown[]) => Promise<{ rows: any[] }>;
 
 const poolQuery: SwitchQuery = async (text, params) => {

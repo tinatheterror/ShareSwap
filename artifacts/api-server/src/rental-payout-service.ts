@@ -1,5 +1,5 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
-import { db, notifications, PLATFORM_CURRENCY, rentalPayouts, users } from "@workspace/db";
+import { and, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
+import { db, itemRequests, items, notifications, PLATFORM_CURRENCY, rentalPayouts, users } from "@workspace/db";
 import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
 
 export type PayoutStripeClient = {
@@ -208,9 +208,60 @@ export async function releaseHeldRentalPayout(args: {
     return net;
   });
   if (released === null) {
-    console.error(`[${logTag}] request ${requestId} has no held rental payout; the owner was not credited (already released, or never held)`);
+    // Reaching here again for a payout that is already released is normal (a retry, a sweep, a second path),
+    // so it is not an error. Only a request that never had a held payout is worth a log line.
+    const [already] = await db.select({ id: rentalPayouts.id }).from(rentalPayouts)
+      .where(and(eq(rentalPayouts.requestId, requestId), eq(rentalPayouts.status, "released"))).limit(1);
+    if (already) console.log(`[${logTag}] request ${requestId}: rental earnings were already released`);
+    else console.error(`[${logTag}] request ${requestId} has no held rental payout; the owner was not credited (never held)`);
     return false;
   }
   console.log(`[${logTag}] Released rental earnings $${released.toFixed(2)} to owner ${ownerId}`);
   return true;
+}
+
+/** Request statuses whose held payout was voided, never to be released. */
+const VOIDED_REQUEST_STATUSES = ["CANCELLED", "DECLINED", "REJECTED", "EXPIRED", "DEPOSIT_FAILED"];
+
+export type StrandedPayout = { requestId: number; ownerId: number; itemId: number; itemName: string };
+
+/**
+ * Held payouts of rentals whose handoff has already happened (handoff_confirmed_at is set by every path that
+ * completes one). Earnings are released at handoff, so a payout still held for such a rental was missed: the
+ * auto-confirm sweep used to skip the release, and a crash between the handoff commit and the release does the same.
+ */
+export async function findStrandedHeldPayouts(options: { onlyRequestIds?: number[] } = {}): Promise<StrandedPayout[]> {
+  if (options.onlyRequestIds && options.onlyRequestIds.length === 0) return [];
+  return db
+    .select({ requestId: rentalPayouts.requestId, ownerId: items.ownerId, itemId: items.id, itemName: items.name })
+    .from(rentalPayouts)
+    .innerJoin(itemRequests, eq(itemRequests.id, rentalPayouts.requestId))
+    .innerJoin(items, eq(items.id, itemRequests.itemId))
+    .where(and(
+      eq(rentalPayouts.status, "held"),
+      eq(itemRequests.requestType, "RENT"),
+      isNotNull(itemRequests.handoffConfirmedAt),
+      notInArray(itemRequests.status, VOIDED_REQUEST_STATUSES),
+      ...(options.onlyRequestIds ? [inArray(rentalPayouts.requestId, options.onlyRequestIds)] : []),
+    )) as Promise<StrandedPayout[]>;
+}
+
+/** Releases every stranded payout. Safe to run any number of times, and alongside the handoff paths. */
+export async function releaseStrandedRentalPayouts(
+  options: { dryRun?: boolean; onlyRequestIds?: number[] } = {},
+): Promise<{ found: number; released: number }> {
+  const stranded = await findStrandedHeldPayouts({ onlyRequestIds: options.onlyRequestIds });
+  if (options.dryRun) {
+    for (const row of stranded) console.log(`[payout-recovery] dry run: would release the held payout of request ${row.requestId} to owner ${row.ownerId}`);
+    return { found: stranded.length, released: 0 };
+  }
+  let released = 0;
+  for (const row of stranded) {
+    try {
+      if (await releaseHeldRentalPayout({ ...row, logTag: "Payout recovery" })) released++;
+    } catch (error) {
+      console.error(`[payout-recovery] could not release the held payout of request ${row.requestId}:`, error);
+    }
+  }
+  return { found: stranded.length, released };
 }

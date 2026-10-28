@@ -54,7 +54,7 @@ import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChang
 import { nonProductionOnly } from "../non-production-gate";
 import { fullVerificationRejection } from "../verification-gate";
 import { computeVerification, getVerificationForUser } from "../verification";
-import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
+import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, releaseStrandedRentalPayouts, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
   getPaymentIntentCaptureBefore,
@@ -12643,7 +12643,10 @@ Respond with ONLY the category name, nothing else.`
           const result = await runHandoffDeadlineSweep(handoffDeadlineDeps, mode, undefined, {
             requestTypes: HANDOFF_SWEEP_REQUEST_TYPES,
           });
-          return `mode=${mode} candidates=${result.candidates.length} autoConfirmed=${result.autoAdvancedCount} flagged=${result.flaggedCount} depositCancelled=${result.depositExpiredCount}`;
+          // Rentals whose handoff happened but whose earnings are still held (missed by an earlier build, or by a
+          // crash between the handoff and the release) are released on the same switch: dry-run only logs them.
+          const recovery = await releaseStrandedRentalPayouts({ dryRun: mode !== "live" });
+          return `mode=${mode} candidates=${result.candidates.length} autoConfirmed=${result.autoAdvancedCount} flagged=${result.flaggedCount} depositCancelled=${result.depositExpiredCount} strandedPayouts=${recovery.found} released=${recovery.released}`;
         },
       });
       void runHandoffSweep();

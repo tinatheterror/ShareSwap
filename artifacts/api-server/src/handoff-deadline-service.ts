@@ -9,6 +9,7 @@ import {
 } from "@workspace/db";
 import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import * as depositCopy from "./deposit-copy";
+import { releaseHeldRentalPayout } from "./rental-payout-service";
 
 // Handoff deadline transitions, shared by the web-polled endpoint
 // (POST /api/requests/check-handoff-deadlines) and the server interval:
@@ -280,6 +281,18 @@ export async function processHandoffDeadlines(
       });
 
       if (!advanced) continue;
+
+      // For RENT: release the owner's held earnings at handoff, like the manual and PIN confirmations do. This
+      // runs after the commit; a failure is logged and the payout-recovery pass releases it later.
+      if (request.item_requests.requestType === "RENT" && request.item_requests.rentalAmount && ownerId2) {
+        try {
+          await releaseHeldRentalPayout({
+            requestId: reqId, ownerId: ownerId2, itemId: request.items.id, itemName, logTag: "Auto-confirm",
+          });
+        } catch (rentalPayoutErr) {
+          console.error("Error releasing rental payment at auto-confirmed handoff:", rentalPayoutErr);
+        }
+      }
 
       // Award coins/milestones for SWAP at auto-confirmed handoff (after the commit,
       // as before: failures there never undo the transition).

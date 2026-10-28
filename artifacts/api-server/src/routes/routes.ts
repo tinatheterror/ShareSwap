@@ -2425,8 +2425,8 @@ export function registerRoutes(
   // Map of userId → WebSocket connection — shared by REST routes and the WS handler
   const connectedClients = new Map<number, WebSocket>();
   /** Sends one frame to a connected user, scrubbed the way a response to that user would be. */
-  const sendFrame = (userId: number, frame: Record<string, unknown>) => {
-    const ws = connectedClients.get(userId);
+  const sendFrame = (userId: number | null, frame: Record<string, unknown>) => {
+    const ws = userId === null ? undefined : connectedClients.get(userId);
     if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(scrubEmailUsernames(frame, { id: userId, username: null })));
   };
 

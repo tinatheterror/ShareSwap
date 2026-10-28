@@ -151,6 +151,16 @@ test("recovery leaves alone a rental still awaiting handoff, and one that was ca
   assert.deepEqual(await wallet(), { available: "0.00", pending: "190.00" });
 });
 
+test("recovery leaves alone a disputed or flagged rental, whose payout an admin decides", async () => {
+  await resetWallet("285.00");
+  const ids: number[] = [];
+  for (const s of ["DISPUTED", "HANDOFF_DISPUTED", "HANDOFF_FLAGGED"]) ids.push((await rental({ status: s, handedOff: true })).requestId);
+  assert.deepEqual(await findStrandedHeldPayouts({ onlyRequestIds: ids }), []);
+  assert.deepEqual(await releaseStrandedRentalPayouts({ onlyRequestIds: ids }), { found: 0, released: 0 });
+  for (const id of ids) assert.equal((await payout(id)).status, "held");
+  assert.deepEqual(await wallet(), { available: "0.00", pending: "285.00" });
+});
+
 test("recovery racing the auto-confirm sweep still credits once", async () => {
   await resetWallet("95.00");
   const { requestId } = await rental();

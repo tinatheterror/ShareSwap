@@ -220,8 +220,14 @@ export async function releaseHeldRentalPayout(args: {
   return true;
 }
 
-/** Request statuses whose held payout was voided, never to be released. */
-const VOIDED_REQUEST_STATUSES = ["CANCELLED", "DECLINED", "REJECTED", "EXPIRED", "DEPOSIT_FAILED"];
+/**
+ * Request statuses whose held payout is not released by the recovery pass: voided ones, and disputed or
+ * flagged ones, where an admin decides who gets the money.
+ */
+export const VOIDED_REQUEST_STATUSES = [
+  "CANCELLED", "DECLINED", "REJECTED", "EXPIRED", "DEPOSIT_FAILED",
+  "DISPUTED", "HANDOFF_DISPUTED", "HANDOFF_FLAGGED",
+];
 
 export type StrandedPayout = { requestId: number; ownerId: number; itemId: number; itemName: string };
 

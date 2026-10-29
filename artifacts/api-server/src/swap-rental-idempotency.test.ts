@@ -258,6 +258,8 @@ test("simultaneous award and penalty retain both changes and lower the saved lev
 
 // ── SWAP — Sequential-retry tests ─────────────────────────────────────────────
 
+const LOCKING_SELECT = /^\s*select\b[\s\S]*\bfor update\b/i;
+
 for (const { initialScore, expectedAwards } of [
   { initialScore: 155, expectedAwards: [40] },
   { initialScore: 310, expectedAwards: [20, 40] },
@@ -318,13 +320,17 @@ for (const { initialScore, expectedAwards } of [
           [pid],
         );
         waitingQueries = rows.map(row => row.query);
-        if (waitingQueries.length === 2) break;
+        // The query text comes from the activity snapshot, but pg_blocking_pids() is read live in the same
+        // statement, so a backend that has just moved on from a non-locking lookup to its FOR UPDATE can be
+        // reported blocked with the lookup's text. Sample again until the statements settle: a path that
+        // really blocks on a stale UPDATE never matches, and still fails at the deadline below.
+        if (waitingQueries.length === 2 && waitingQueries.every(query => LOCKING_SELECT.test(query))) break;
         await new Promise(resolve => setTimeout(resolve, 10));
       } while (Date.now() < deadline);
 
       assert.equal(waitingQueries.length, 2, "both scoring transactions must contend for the borrower row");
       for (const query of waitingQueries) {
-        assert.match(query, /^\s*select\b[\s\S]*\bfor update\b/i,
+        assert.match(query, LOCKING_SELECT,
           "each path must lock before reading the score, not block on a stale UPDATE");
       }
       await blocker.query("COMMIT");

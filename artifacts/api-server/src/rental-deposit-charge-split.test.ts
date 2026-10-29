@@ -210,9 +210,25 @@ async function makeAcceptedRequest() {
 }
 
 async function cleanupRequest(requestId: number, renterId: number) {
-  await db.delete(messages).where(eq(messages.requestId, requestId));
-  await db.delete(rentalPayouts).where(eq(rentalPayouts.requestId, requestId));
+  // Confirming the deposit writes a held payout AND credits the owner's pending balance by its net amount.
+  // Deleting the payout row alone left that credit on the shared owner, so give it back first.
+  const held = await pool.query(
+    `SELECT COALESCE(SUM(net_amount), 0) AS net FROM rental_payouts WHERE request_id = $1 AND status = 'held'`,
+    [requestId],
+  );
+  await pool.query(
+    `UPDATE users SET pending_rental_balance = GREATEST(0, COALESCE(pending_rental_balance, 0) - $1::numeric) WHERE id = $2`,
+    [held.rows[0].net, ownerId],
+  );
+  // Everything below has a no-action foreign key to the request or the renter, so any row left here would
+  // make the deletes fail and strand the fixtures.
+  for (const table of ["messages", "notifications", "request_lifecycle_events", "reputation_activities", "rental_payouts"]) {
+    await pool.query(`DELETE FROM ${table} WHERE request_id = $1`, [requestId]);
+  }
+  await pool.query(`DELETE FROM platform_commissions WHERE transaction_id = $1`, [requestId]);
   await db.delete(itemRequests).where(eq(itemRequests.id, requestId));
+  await pool.query(`DELETE FROM notifications WHERE user_id = $1`, [renterId]);
+  await pool.query(`DELETE FROM reputation_activities WHERE user_id = $1`, [renterId]);
   await db.delete(users).where(eq(users.id, renterId));
 }
 
@@ -248,9 +264,19 @@ before(async () => {
 });
 
 after(async () => {
-  await db.delete(items).where(eq(items.id, itemId));
-  await db.delete(users).where(eq(users.id, ownerId));
-  await pool.end();
+  try {
+    const [owner] = (await pool.query(`SELECT pending_rental_balance AS pending FROM users WHERE id = $1`, [ownerId])).rows;
+    await pool.query(`DELETE FROM notifications WHERE user_id = $1 OR item_id = $2`, [ownerId, itemId]);
+    await pool.query(`DELETE FROM reputation_activities WHERE user_id = $1`, [ownerId]);
+    await db.delete(items).where(eq(items.id, itemId));
+    await db.delete(users).where(eq(users.id, ownerId));
+    const leftover = await pool.query(`SELECT 1 FROM users WHERE id = $1`, [ownerId]);
+    assert.equal(leftover.rowCount, 0, "the shared owner fixture was not deleted");
+    // Checked after the cleanup so a leak still fails the run without stranding the fixtures.
+    assert.equal(Number(owner?.pending ?? 0), 0, "a test left a pending rental balance on the shared owner");
+  } finally {
+    await pool.end();
+  }
 });
 
 // ── 1. create-payment-hold: deposit-only manual-capture hold ────────────────────

@@ -5,6 +5,11 @@ import { Alert } from "react-native";
 import { ReturnConfirmationSheet } from "../ReturnConfirmationSheet";
 import { apiGet, apiPost } from "@/lib/api";
 
+// Everything here is mocked and awaits only microtasks, but the first test also pays for the first render's
+// module loading and transforms: about 0.5 s alone, 15 s with the CPUs saturated or the cache cold, which
+// is what jest's default 5 s timeout hit in a full parallel run. The other tests take milliseconds.
+jest.setTimeout(30000);
+
 const mockPush = jest.fn();
 const mockRecoveryRefetch = jest.fn<Promise<unknown>, []>();
 

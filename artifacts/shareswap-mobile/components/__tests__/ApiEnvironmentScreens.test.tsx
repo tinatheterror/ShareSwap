@@ -17,7 +17,7 @@ jest.mock("@/context/AuthContext", () => ({
   useAuth: () => ({ user: null, login: jest.fn(), setUserData: jest.fn() }),
   LAST_AUTH_METHOD_KEY: "last-auth-method",
 }));
-jest.mock("@/hooks/usePushNotifications", () => ({ registerPushToken: jest.fn() }));
+jest.mock("@/hooks/usePushNotifications", () => ({ registerPushToken: jest.fn(), getPushTokenForLogout: jest.fn().mockResolvedValue(null) }));
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn(), replace: jest.fn() }),
   useLocalSearchParams: () => ({}),

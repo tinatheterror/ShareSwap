@@ -53,6 +53,8 @@ export default function AuthPage() {
   const [fullName, setFullName] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [showReactivate, setShowReactivate] = useState(false);
+  // Set when Google sign-in found a deactivated account: the one-time token that reactivates it.
+  const [googleReactivateToken, setGoogleReactivateToken] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showReferralInput, setShowReferralInput] = useState(false);
   const [isEmbeddedPreview, setIsEmbeddedPreview] = useState(false);
@@ -69,6 +71,13 @@ export default function AuthPage() {
   // Extract referral code from URL and handle verification status
   useEffect(() => {
     const params = new URLSearchParams(searchString);
+    const reactivateToken = params.get("reactivate") === "google" ? params.get("token") : null;
+    if (reactivateToken) {
+      setGoogleReactivateToken(reactivateToken);
+      setShowReactivate(true);
+      // Keep the token out of the address bar and the history.
+      window.history.replaceState(null, "", window.location.pathname);
+    }
     const ref = params.get("ref");
     if (ref) {
       setReferralCode(ref);
@@ -154,6 +163,30 @@ export default function AuthPage() {
         description: error.message,
         variant: "destructive",
       });
+    },
+  });
+
+  const googleReactivateMutation = useMutation({
+    mutationFn: async (token: string) => {
+      const response = await fetch("/api/auth/google-reactivate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || "Reactivation failed. Please sign in with Google again.");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Welcome back!", description: "Your account has been reactivated successfully." });
+      window.location.href = "/";
+    },
+    onError: (error: Error) => {
+      setGoogleReactivateToken(null);
+      setShowReactivate(false);
+      toast({ title: "Reactivation failed", description: error.message, variant: "destructive" });
     },
   });
 
@@ -606,6 +639,7 @@ export default function AuthPage() {
                 className="flex-1"
                 onClick={() => {
                   setShowReactivate(false);
+                  setGoogleReactivateToken(null);
                   setEmail("");
                   setPassword("");
                 }}
@@ -615,12 +649,14 @@ export default function AuthPage() {
               <Button
                 className="flex-1"
                 onClick={() =>
-                  reactivateMutation.mutate({ username: email, password })
+                  googleReactivateToken
+                    ? googleReactivateMutation.mutate(googleReactivateToken)
+                    : reactivateMutation.mutate({ username: email, password })
                 }
-                disabled={reactivateMutation.isPending}
+                disabled={reactivateMutation.isPending || googleReactivateMutation.isPending}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
-                {reactivateMutation.isPending
+                {reactivateMutation.isPending || googleReactivateMutation.isPending
                   ? "Reactivating..."
                   : "Reactivate Account"}
               </Button>

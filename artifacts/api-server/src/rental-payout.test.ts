@@ -94,6 +94,7 @@ beforeEach(async () => {
   transferImpl = async () => ({ id: `tr_${transferCalls.length}` });
   await db.delete(rentalPayouts).where(eq(rentalPayouts.userId, userId));
   await setBalance("0.00");
+  await db.update(users).set({ deletionRequestedAt: null }).where(eq(users.id, userId));
 });
 
 after(async () => {
@@ -266,5 +267,41 @@ test("validation: invalid and below-minimum amounts reserve nothing", async () =
   }
   assert.equal(transferCalls.length, 0);
   assert.equal(await balance(), "30.00");
+  assert.equal((await payoutRows()).length, 0);
+});
+
+async function requestDeletion() {
+  await db.update(users).set({ deletionRequestedAt: new Date() }).where(eq(users.id, userId));
+}
+
+test("the minimum payout is waived for the whole of a $1 to $10 balance once a deletion request exists", async () => {
+  await setBalance("4.25");
+  await requestDeletion();
+  const response = await withdraw({ amount: 4.25 });
+  assert.equal(response.status, 200);
+  assert.equal(transferCalls.length, 1);
+  assert.equal(transferCalls[0].params.amount, 425);
+  assert.equal(await balance(), "0.00");
+  const [row] = await payoutRows();
+  assert.equal(row.netAmount, "4.25");
+});
+
+test("without a deletion request the $10 minimum applies, whatever the request body claims", async () => {
+  await setBalance("4.25");
+  assert.equal((await withdraw({ amount: 4.25 })).status, 400);
+  assert.equal((await withdraw({ amount: 4.25, waiveMinimum: true })).status, 400);
+  assert.equal(transferCalls.length, 0);
+  assert.equal(await balance(), "4.25");
+  assert.equal((await payoutRows()).length, 0);
+});
+
+test("even with a deletion request the waiver does not cover a slice of the balance or a balance under $1", async () => {
+  await requestDeletion();
+  await setBalance("4.25");
+  assert.equal((await withdraw({ amount: 3 })).status, 400);
+  await setBalance("0.75");
+  assert.equal((await withdraw({ amount: 0.75 })).status, 400);
+  assert.equal(transferCalls.length, 0);
+  assert.equal(await balance(), "0.75");
   assert.equal((await payoutRows()).length, 0);
 });

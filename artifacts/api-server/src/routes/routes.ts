@@ -54,6 +54,10 @@ import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChang
 import { nonProductionOnly } from "../non-production-gate";
 import { fullVerificationRejection } from "../verification-gate";
 import { computeVerification, getVerificationForUser } from "../verification";
+import { getDeletionEligibility } from "../account-deletion/eligibility";
+import { minimumWaiverApplies } from "../account-deletion/retention";
+import { isEmailShaped, publicName, publicUsername } from "../public-identity";
+import { scrubEmailUsernames, usernameScrubMiddleware } from "../username-scrub";
 import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, releaseStrandedRentalPayouts, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
@@ -1963,6 +1967,7 @@ export function registerRoutes(
     },
   };
   setupAuth(app);
+  app.use(usernameScrubMiddleware);
 
   if (process.env.E2E_TEST_MODE === "true") {
     const ownerReturnFixtures = new Map<
@@ -2419,6 +2424,11 @@ export function registerRoutes(
 
   // Map of userId → WebSocket connection — shared by REST routes and the WS handler
   const connectedClients = new Map<number, WebSocket>();
+  /** Sends one frame to a connected user, scrubbed the way a response to that user would be. */
+  const sendFrame = (userId: number | null, frame: Record<string, unknown>) => {
+    const ws = userId === null ? undefined : connectedClients.get(userId);
+    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(scrubEmailUsernames(frame, { id: userId, username: null })));
+  };
 
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
@@ -2470,7 +2480,7 @@ export function registerRoutes(
   app.use((req, res, next) => {
     // Skip CSRF for login, register, csrf-token, and referrals endpoints, and for routes only another
     // server calls (Stripe's webhook has no cookie or token; it is authenticated by its signature).
-    const skipPaths = ['/api/login', '/api/register', '/api/csrf-token', '/api/referrals/generate'];
+    const skipPaths = ['/api/login', '/api/register', '/api/csrf-token', '/api/referrals/generate', '/api/auth/google-reactivate'];
     if (skipPaths.includes(req.path) || isServerToServerPath(req.path)) {
       return next();
     }
@@ -4660,6 +4670,7 @@ Respond with ONLY the category name, nothing else.`
             columns: {
               id: true,
               username: true,
+              handle: true,
               isVerified: true,
               reputationLevel: true,
               accountStatus: true,
@@ -4752,6 +4763,7 @@ Respond with ONLY the category name, nothing else.`
             columns: {
               id: true,
               username: true,
+              handle: true,
               isVerified: true,
               reputationLevel: true,
               accountStatus: true,
@@ -5148,7 +5160,7 @@ Respond with ONLY the category name, nothing else.`
         .from(users)
         .where(eq(users.id, req.user.id));
 
-      const listerName = lister?.displayName || lister?.username || "A neighbour";
+      const listerName = publicName(lister) || "A neighbour";
 
       // Create notification for the wishlist owner
       await db.insert(notifications).values({
@@ -5615,7 +5627,7 @@ Respond with ONLY the category name, nothing else.`
         photos: itemConditionVerifications.photos,
         status: itemConditionVerifications.status,
         createdAt: itemConditionVerifications.createdAt,
-        verifierName: users.username,
+        verifierName: sql<string>`CASE WHEN position('@' in ${users.username}) > 0 THEN COALESCE(${users.displayName}, ${users.handle}, 'ShareSwap member') ELSE ${users.username} END`,
       })
       .from(itemConditionVerifications)
       .innerJoin(users, eq(users.id, itemConditionVerifications.verifierId))
@@ -5657,10 +5669,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     // Push to recipient in real-time if they are connected via WebSocket
-    const receiverWs = connectedClients.get(receiverId);
-    if (receiverWs?.readyState === WebSocket.OPEN) {
-      receiverWs.send(JSON.stringify({ type: "new_message", message }));
-    }
+    sendFrame(receiverId, { type: "new_message", message });
 
     // Native push notification so the message arrives even when the app is closed
     sendPushToUser(receiverId, {
@@ -5759,7 +5768,7 @@ Respond with ONLY the category name, nothing else.`
     const targetId = parseInt(req.params.id, 10);
     if (isNaN(targetId)) return res.status(400).json({ error: "Invalid user id" });
 
-    const [user] = await db
+    const [userRow] = await db
       .select({
         id: users.id,
         username: users.username,
@@ -5772,11 +5781,14 @@ Respond with ONLY the category name, nothing else.`
         bio: users.bio,
         location: users.location,
         createdAt: users.createdAt,
+        authProvider: users.authProvider,
       })
       .from(users)
       .where(eq(users.id, targetId));
 
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!userRow) return res.status(404).json({ error: "User not found" });
+    const { authProvider: _authProvider, ...userFields } = userRow;
+    const user = { ...userFields, username: publicUsername(userRow) };
 
     // Run all stats queries in parallel
     const [
@@ -6065,6 +6077,7 @@ Respond with ONLY the category name, nothing else.`
           .select({
             id: users.id,
             username: users.username,
+            handle: users.handle,
             displayName: users.displayName,
             profilePhoto: users.profilePhoto,
             isVerified: users.isVerified,
@@ -6132,6 +6145,7 @@ Respond with ONLY the category name, nothing else.`
         requestId: reqData.id,
         partnerId,
         partnerUsername: partner?.username || "Unknown",
+        partnerHandle: partner?.handle || null,
         partnerDisplayName: partner?.displayName || null,
         partnerPhoto: partner?.profilePhoto || null,
         partnerIsVerified: partner?.isVerified || false,
@@ -6218,6 +6232,9 @@ Respond with ONLY the category name, nothing else.`
           .select({
             id: users.id,
             username: users.username,
+            handle: users.handle,
+            displayName: users.displayName,
+            authProvider: users.authProvider,
           })
           .from(users)
           .where(eq(users.id, partnerId));
@@ -6247,7 +6264,7 @@ Respond with ONLY the category name, nothing else.`
 
         return {
           userId: partnerId,
-          username: otherUser?.username || 'Unknown',
+          username: (otherUser && publicUsername(otherUser)) || 'Unknown',
           lastMessage: data.lastMessage,
           lastMessageTime: data.lastMessageTime,
           unreadCount: data.unreadCount,
@@ -6530,6 +6547,7 @@ Respond with ONLY the category name, nothing else.`
       .select({
         userId: challengeParticipants.userId,
         username: users.username,
+        handle: users.handle,
         currentScore: challengeParticipants.currentScore,
         currentRank: challengeParticipants.currentRank,
       })
@@ -6797,7 +6815,7 @@ Respond with ONLY the category name, nothing else.`
       .where(eq(users.id, req.user.id))
       .limit(1);
 
-    const requesterName = requester?.displayName || requester?.username || "Someone";
+    const requesterName = publicName(requester) || "Someone";
     const requestTypeLabel = requestType.charAt(0).toUpperCase() + requestType.slice(1).toLowerCase();
 
     // Open the inbox thread with party-specific system summaries. The owner
@@ -6967,6 +6985,7 @@ Respond with ONLY the category name, nothing else.`
         reqIsVerified: users.isVerified,
         reqReputationLevel: users.reputationLevel,
         ownerUsername: sql<string | null>`(SELECT username FROM users WHERE id = ${items.ownerId})`,
+        ownerHandle: sql<string | null>`(SELECT handle FROM users WHERE id = ${items.ownerId})`,
         ownerDisplayName: sql<string | null>`(SELECT display_name FROM users WHERE id = ${items.ownerId})`,
         reviewedByCurrentUser: sql<boolean>`EXISTS (
           SELECT 1
@@ -7071,6 +7090,7 @@ Respond with ONLY the category name, nothing else.`
       },
       owner: {
         username: r.ownerUsername,
+        handle: r.ownerHandle,
         displayName: r.ownerDisplayName,
       },
       reviewedByCurrentUser: r.reviewedByCurrentUser,
@@ -8267,7 +8287,7 @@ Respond with ONLY the category name, nothing else.`
       .from(users)
       .where(eq(users.id, req.user.id))
       .limit(1);
-    const confirmerName = confirmerUser?.displayName || confirmerUser?.username || (role === "giver" ? "The giver" : "The receiver");
+    const confirmerName = publicName(confirmerUser) || (role === "giver" ? "The giver" : "The receiver");
 
     const otherPartyId = role === "giver" ? request.item_requests.requesterId : request.items.ownerId!;
 
@@ -8741,6 +8761,7 @@ Respond with ONLY the category name, nothing else.`
           rentalBalance: users.rentalBalance,
           stripeConnectedAccountId: users.stripeConnectedAccountId,
           email: users.username,
+          deletionRequestedAt: users.deletionRequestedAt,
         })
         .from(users)
         .where(eq(users.id, req.user.id))
@@ -8767,7 +8788,10 @@ Respond with ONLY the category name, nothing else.`
           return res.status(400).json({ error: "Invalid payout amount" });
         }
         const cents = Math.round(requestedAmount * 100);
-        if (cents < MIN_PAYOUT * 100) {
+        // The deletion flow offers a balance of $1 to $10 as a withdrawal with the minimum waived, for the whole balance.
+        // Only the server's own record of a deletion request grants it; nothing in the request body can.
+        const waived = !!user.deletionRequestedAt && minimumWaiverApplies(cents, Math.round(parseFloat(user.rentalBalance || "0") * 100));
+        if (cents < MIN_PAYOUT * 100 && !waived) {
           return res.status(400).json({ error: "Minimum payout amount is $10" });
         }
         const reserved = await reservePayout(req.user.id, cents);
@@ -8991,6 +9015,7 @@ Respond with ONLY the category name, nothing else.`
           requester: {
             id: users.id,
             username: users.username,
+            handle: users.handle,
             trustScore: users.trustScore,
           },
         })
@@ -9205,7 +9230,7 @@ Respond with ONLY the category name, nothing else.`
         userId: row.items.ownerId,
         type: "request_withdrawn" as any,
         title: "Offer Withdrawn",
-        message: `${(req.user as any).displayName || req.user.username} withdrew their offer for "${row.items.name}".`,
+        message: `${publicName(req.user) ?? "Someone"} withdrew their offer for "${row.items.name}".`,
         itemId: row.items.id,
         requestId,
       });
@@ -9870,9 +9895,9 @@ Respond with ONLY the category name, nothing else.`
             .from(users)
             .where(eq(users.id, otherPartyId))
             .limit(1);
-          otherName = otherUser?.displayName || otherUser?.username || "the other party";
+          otherName = publicName(otherUser) || "the other party";
         }
-        const confirmerName = confirmerUser?.displayName || confirmerUser?.username || "One party";
+        const confirmerName = publicName(confirmerUser) || "One party";
 
         // One party confirmed — send role-specific confirmation + waiting messages
         await db.insert(messages).values([
@@ -10492,7 +10517,7 @@ Respond with ONLY the category name, nothing else.`
           .from(users)
           .where(eq(users.id, waitingPartyId))
           .limit(1);
-        const waitingName = waitingUser?.displayName || waitingUser?.username || "the other party";
+        const waitingName = publicName(waitingUser) || "the other party";
 
         let reminderContent: string | null = null;
         let newLevel = level;
@@ -10739,7 +10764,7 @@ Respond with ONLY the category name, nothing else.`
         const dueStr = request.endDate
           ? new Date(`${requestCalendarDay(request.endDate)}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
           : "the due date";
-        const borrowerName = (req.user as any).displayName || req.user.username || "The borrower";
+        const borrowerName = publicName(req.user) || "The borrower";
         const notificationTitle = "Return may still be late";
         const notificationMessage = `${borrowerName} let you know they may miss the extended return date of ${dueStr}.`;
         const [delayNotification] = await tx.insert(notifications).values({
@@ -10772,11 +10797,8 @@ Respond with ONLY the category name, nothing else.`
 
       if ("error" in result) return res.status(result.status).json({ error: result.error });
 
-      const ownerWs = connectedClients.get(result.ownerId);
-      if (ownerWs?.readyState === WebSocket.OPEN) {
-        ownerWs.send(JSON.stringify({ type: "new_message", message: result.delayMessage }));
-        ownerWs.send(JSON.stringify({ type: "new_notification", notification: result.delayNotification }));
-      }
+      sendFrame(result.ownerId, { type: "new_message", message: result.delayMessage });
+      sendFrame(result.ownerId, { type: "new_notification", notification: result.delayNotification });
       sendPushToUser(
         result.ownerId,
         {
@@ -10899,10 +10921,7 @@ Respond with ONLY the category name, nothing else.`
 
       // Push via WebSocket so the owner's client immediately invalidates /api/requests
       // and shows the Confirm Return button without waiting for the 20s poll cycle.
-      const ownerWs = connectedClients.get(result.ownerId);
-      if (ownerWs?.readyState === WebSocket.OPEN) {
-        ownerWs.send(JSON.stringify({ type: "new_message", message: result.returnMsg }));
-      }
+      sendFrame(result.ownerId, { type: "new_message", message: result.returnMsg });
 
       res.json({
         success: true,
@@ -11973,7 +11992,7 @@ Respond with ONLY the category name, nothing else.`
           })
           .where(eq(itemRequests.id, requestId));
 
-        const borrowerName = (req.user as any).displayName || req.user.username || "The borrower";
+        const borrowerName = publicName(req.user) || "The borrower";
         const [extensionNotification] = await tx.insert(notifications).values({
           userId: borrow.ownerId,
           type: "extension_requested",
@@ -12003,11 +12022,8 @@ Respond with ONLY the category name, nothing else.`
 
       if ("error" in result) return res.status(result.status).json({ error: result.error });
 
-      const ownerWs = connectedClients.get(result.borrow.ownerId);
-      if (ownerWs?.readyState === WebSocket.OPEN) {
-        ownerWs.send(JSON.stringify({ type: "new_message", message: result.extensionMessage }));
-        ownerWs.send(JSON.stringify({ type: "new_notification", notification: result.extensionNotification }));
-      }
+      sendFrame(result.borrow.ownerId, { type: "new_message", message: result.extensionMessage });
+      sendFrame(result.borrow.ownerId, { type: "new_notification", notification: result.extensionNotification });
       sendPushToUser(
         result.borrow.ownerId,
         {
@@ -12458,7 +12474,7 @@ Respond with ONLY the category name, nothing else.`
             .from(users)
             .where(eq(users.id, request.requesterId))
             .limit(1);
-          const borrowerName = borrower?.displayName || borrower?.username || "the borrower";
+          const borrowerName = publicName(borrower) || "the borrower";
           const serious = isSeriousOverdue(daysOverdue);
           const reminderType = serious
             ? "return_reminder_serious_overdue"
@@ -12507,7 +12523,7 @@ Respond with ONLY the category name, nothing else.`
               reminderType,
               borrowerTitle,
               serious
-                ? `"${item.name}" is seriously overdue. Return it to ${owner.displayName || owner.username} immediately.`
+                ? `"${item.name}" is seriously overdue. Return it to ${publicName(owner) ?? "the owner"} immediately.`
                 : `"${item.name}" is ${daysOverdue} days overdue. Return it now before starting another borrow.`,
             ),
             createReminder(
@@ -12538,7 +12554,7 @@ Respond with ONLY the category name, nothing else.`
             item.id,
             "return_reminder_tomorrow",
             "Return due tomorrow",
-            `"${item.name}" is due back to ${owner.displayName || owner.username} tomorrow.`,
+            `"${item.name}" is due back to ${publicName(owner) ?? "the owner"} tomorrow.`,
           );
         } else if (daysUntilReturn === 0) {
           await createReminder(
@@ -12548,7 +12564,7 @@ Respond with ONLY the category name, nothing else.`
             item.id,
             "return_reminder_today",
             "Return due today",
-            `"${item.name}" must be returned to ${owner.displayName || owner.username} today.`,
+            `"${item.name}" must be returned to ${publicName(owner) ?? "the owner"} today.`,
           );
         } else if (daysOverdue > 0) {
           await createReminder(
@@ -12558,7 +12574,7 @@ Respond with ONLY the category name, nothing else.`
             item.id,
             "return_reminder_overdue",
             `Return overdue by ${daysOverdue}d`,
-            `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? "s" : ""} overdue. Return to ${owner.displayName || owner.username} now.`,
+            `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? "s" : ""} overdue. Return to ${publicName(owner) ?? "the owner"} now.`,
           );
         }
       }
@@ -13255,6 +13271,11 @@ Respond with ONLY the category name, nothing else.`
     }
 
     const { fullName, bio, location, phone, displayName, defaultPostalCode } = req.body;
+
+    // The display name is shown to other users, so it cannot be an email address.
+    if (isEmailShaped(displayName)) {
+      return res.status(400).json({ error: "Display name can't be an email address." });
+    }
 
     // Enforce 30-day cooldown on display name changes
     if (displayName !== undefined) {
@@ -14451,7 +14472,8 @@ Respond with ONLY the category name, nothing else.`
           itemName: items.name,
           requesterId: itemRequests.requesterId,
           requesterUsername: requester.username,
-          requesterEmail: requester.email,
+          requesterHandle: requester.handle,
+          ownerHandle: owner.handle,
           ownerId: items.ownerId,
           ownerUsername: owner.username,
         }).from(itemRequests)
@@ -14595,7 +14617,7 @@ Respond with ONLY the category name, nothing else.`
       const userRows = userIds.length
         ? await db.select({ id: users.id, displayName: users.displayName, username: users.username }).from(users).where(inArray(users.id, userIds))
         : [];
-      const userMap = Object.fromEntries(userRows.map(u => [u.id, u.displayName || u.username || `User ${u.id}`]));
+      const userMap = Object.fromEntries(userRows.map(u => [u.id, publicName(u) || `User ${u.id}`]));
 
       const result = disputes.map(d => ({
         ...d,
@@ -14904,6 +14926,7 @@ Respond with ONLY the category name, nothing else.`
         reviewer: {
           id: users.id,
           username: users.username,
+          handle: users.handle,
           displayName: users.displayName,
           profilePhoto: users.profilePhoto,
         },
@@ -15119,7 +15142,7 @@ Respond with ONLY the category name, nothing else.`
           : effectivePoints < 0
             ? `New ${rating}-star review (${effectivePoints} trust)`
             : `New ${rating}-star review`;
-        const reviewerName = req.user.displayName || req.user.username;
+        const reviewerName = publicName(req.user) || "A ShareSwap member";
         const reviewLine = comment
           ? `${reviewerName} ${stars}: "${comment.slice(0, 60)}${comment.length > 60 ? '…' : ''}"`
           : `${reviewerName} left you a ${rating}-star review ${stars}`;
@@ -15160,10 +15183,7 @@ Respond with ONLY the category name, nothing else.`
     const selectedNegativeTags = cleanedTags.filter((tag) => ["late_return", "issue_reported"].includes(tag));
 
     await runNonCriticalReviewSideEffect("review notification delivery", async () => {
-      const reviewedUserWs = connectedClients.get(reviewedUserId);
-      if (reviewedUserWs?.readyState === WebSocket.OPEN) {
-        reviewedUserWs.send(JSON.stringify({ type: "new_notification", notification: reviewNotif }));
-      }
+      sendFrame(reviewedUserId, { type: "new_notification", notification: reviewNotif });
     });
 
     if (lowReviewPenaltyResult?.wasGracePass) {
@@ -15310,6 +15330,7 @@ Respond with ONLY the category name, nothing else.`
           columns: {
             id: true,
             username: true,
+            handle: true,
             isVerified: true,
             reputationLevel: true,
           }
@@ -15975,6 +15996,20 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Account deactivation error:", error);
       res.status(500).json({ message: "Failed to deactivate account" });
+    }
+  });
+
+  // Read-only: whether the account could be deleted now, and what stands in the way.
+  app.get("/api/account/deletion-eligibility", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    try {
+      res.set("Cache-Control", "no-store");
+      return res.json(await getDeletionEligibility(req.user.id));
+    } catch (error) {
+      console.error("Deletion eligibility error:", error);
+      return res.status(500).json({ message: "Failed to check whether the account can be deleted" });
     }
   });
 

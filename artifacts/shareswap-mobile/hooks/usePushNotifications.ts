@@ -141,12 +141,44 @@ export async function registerPushToken(): Promise<void> {
   }
 }
 
-async function registerExpoPushToken(): Promise<void> {
-  // Resolve the EAS project ID — required by Expo Push v57+.
-  // Set expo.extra.eas.projectId in app.json (run `eas init` to generate one).
-  const projectId: string | undefined =
+/**
+ * The EAS project ID, required by Expo Push v57+.
+ * Set expo.extra.eas.projectId in app.json (run `eas init` to generate one).
+ */
+function expoProjectId(): string | undefined {
+  return (
     (Constants.expoConfig?.extra?.eas?.projectId as string | undefined) ??
-    (Constants.easConfig?.projectId as string | undefined);
+    (Constants.easConfig?.projectId as string | undefined)
+  );
+}
+
+/** How long signing out waits for the device's token before it signs out without naming a device. */
+const LOGOUT_TOKEN_TIMEOUT_MS = 3000;
+
+/**
+ * This device's Expo push token, so the server can stop pushing to it when the user signs out. It never
+ * prompts: null when push is unavailable, not granted, or the token can't be read in time.
+ */
+export async function getPushTokenForLogout(): Promise<string | null> {
+  if (!isPushAvailable) return null;
+  const read = (async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const perms = (await Notifications.getPermissionsAsync()) as any;
+    if (!(perms.granted ?? perms.status === "granted")) return null;
+    const projectId = expoProjectId();
+    if (!projectId) return null;
+    return (await Notifications.getExpoPushTokenAsync({ projectId })).data || null;
+  })();
+  const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), LOGOUT_TOKEN_TIMEOUT_MS));
+  try {
+    return await Promise.race([read, timeout]);
+  } catch {
+    return null;
+  }
+}
+
+async function registerExpoPushToken(): Promise<void> {
+  const projectId = expoProjectId();
 
   if (!projectId) {
     console.warn(

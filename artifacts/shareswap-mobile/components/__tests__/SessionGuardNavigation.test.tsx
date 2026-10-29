@@ -48,6 +48,7 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 
 jest.mock("@/hooks/usePushNotifications", () => ({
   registerPushToken: jest.fn().mockResolvedValue(undefined),
+  getPushTokenForLogout: jest.fn().mockResolvedValue(null),
 }));
 
 jest.mock("@/hooks/useColors", () => ({

@@ -69,7 +69,7 @@ Blocker #2. The flow, as built:
 2. **Grace period, 14 days.** The account stays usable. A banner on Home and Settings (mobile) and on every page (web) shows the date with a Cancel button. A balance of $1 up to $10 can be withdrawn in full with the $10 minimum waived. `POST /api/account/deletion/cancel` undoes it. **Delete now** (`/confirm`) skips the wait.
 3. **Finalize.** The job `account-deletion-finalize` (or Delete now) deletes the account: Stripe subscription, Customer and Connect account first, then one transaction that removes the user's own rows, scrubs their side of shared bookings, anonymises the `users` row (`deleted-<id>` placeholders, display name "Former member"), cancels open bookings nothing has moved for, and tells the other side. Running it twice changes nothing. The deleted account cannot sign in, by password or Google, and its sessions end. A completion email goes out.
 
-Kept after deletion (see `account-deletion/manifest.ts` for every column): payment, payout, refund, commission, subscription and deposit records and the bookings they belong to, without free text; claims; reviews the person wrote (author shown as "Former member", comment removed). Handoff PINs and proof, and the return-dispute photo, stay when the booking has a claim or dispute. Reviews about the person are deleted. A banned person's email is kept only as a keyed hash so they cannot sign up again.
+Kept after deletion (see `account-deletion/manifest.ts` for every column): payment, payout, refund, commission, subscription and deposit records and the bookings they belong to, without free text; claims; reviews the person wrote (author shown as "Former member", comment removed). Handoff PINs and proof, the return-dispute photo and reason, and a rental's return notes stay when the booking has a claim or dispute. Reviews about the person are deleted. A banned person's email is kept only as a keyed hash so they cannot sign up again.
 
 ### Before store submission
 
@@ -77,16 +77,15 @@ Kept after deletion (see `account-deletion/manifest.ts` for every column): payme
 - [ ] **Set `BANNED_EMAIL_HASH_KEY`** in Replit Secrets (see `.env.example`). Without it, deleting a banned account fails on purpose, and sign-up is not checked against banned emails. Never change it after accounts have been deleted, or the stored hashes stop matching.
 - [ ] **Enter `https://shareswap.app/delete-account`** as the account-deletion URL in the Play Console (Data safety). Apple needs nothing beyond the in-app path.
 - [ ] **Check SendGrid sends the two emails** (deletion requested, deletion done). A failed email is logged and never blocks a deletion.
-- [ ] **Run one deletion end to end on a test-mode Stripe account** and check the Customer and Connect account are gone. All automated tests use fake Stripe clients; nothing here has been run against Stripe.
+- [ ] **Run one deletion end to end on a test-mode Stripe account** and check the Customer and Connect account are gone. (A rerun after a failed database step is covered by a test: Stripe's `resource_missing` counts as done.) All automated tests use fake Stripe clients; nothing here has been run against Stripe.
 - [ ] **Add the deletion path to the review notes:** Settings > Delete Account, the 14-day grace period, and Delete now.
 - [ ] If Sign in with Apple (#1) is added, deletion must also revoke the Apple token; it does not yet.
 
 ### Known gaps
 
 - **No retention purge.** The manifest names 7-year (financial, claims) and 2-year (abuse signals) windows, but nothing deletes records when a window ends. Needs its own job before the first window runs out.
-- **Connect accounts with a balance.** Stripe refuses to delete a live Connect account that still holds a balance. That is logged (`could not delete Stripe Connect account acct_...`), the deletion goes on, and the account id stays on the `users` row for staff to settle. It is not retried automatically.
+- **Connect accounts with a balance.** Stripe refuses to delete a live Connect account that still holds a balance. The deletion goes on, and the refusal is recorded in `connect_cleanup_failures` (user id, account id, Stripe's reason, attempts). The admin dashboard lists the unresolved ones, and every live run of the finalize job retries them until Stripe lets go, so the job must be on for the retries (a dry run retries nothing). Staff may need to settle the balance in the Stripe dashboard. The account id stays on the `users` row.
 - **A blocked account waits.** If a booking or claim blocks the deletion when the 14 days end, the account stays pending and the job counts it as `blocked`. The person sees the blocker only if they open Delete now; there is no reminder or admin list yet.
 - **Uploaded files** are removed from the server's uploads folder after the transaction, best effort. Backups and any copy elsewhere are not covered, and evidence photos are kept on purpose.
 - **Free text** in message metadata and in claim records is not scrubbed. Message text the person wrote is.
-- **Judgement calls to confirm:** the owner's written return-dispute reason is scrubbed even when a dispute exists (only PINs, handoff proof and the dispute photo are evidence); `rental_returns.notes` is cleared when either party deletes, because the row does not say who wrote it.
 - **Placeholders** are `deleted-<id>`. Someone could in theory register that exact username; nothing reserves it.

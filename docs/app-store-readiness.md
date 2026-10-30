@@ -8,7 +8,7 @@ Method: static code review only. The app was not run on a device and no EAS buil
 | # | Gap | Evidence | Effort |
 |---|---|---|---|
 | 1 | **No Sign in with Apple.** Google sign-in is offered alongside email. Apple guideline 4.8 requires an equivalent privacy-preserving option on iOS. | `app/login.tsx` has only Google, email and a phone button. | M. Needs `expo-apple-authentication`, server-side identity-token verification, account linking by email and the config plugin. |
-| 2 | **No in-app account deletion.** The Settings "Delete Account" row only opens `mailto:support@shareswap.com`. Apple 5.1.1(v) and Google Play both require deletion to start in the app, and Play also wants a web deletion URL. | `app/settings.tsx:509-517`. The server has only `/api/account/deactivate`, which keeps all data. `deletionRequestedAt` is read in `routes.ts:15969` and never written. | M–L. Needs a delete endpoint, anonymising retained financial and dispute records, handling Stripe customer and Connect accounts, and blocking while a request is active. |
+| 2 | **In-app account deletion: built, not yet live.** Settings > Delete Account (and the web page `https://shareswap.app/delete-account`) starts a 14-day grace period, then the account is deleted. See [Account deletion](#account-deletion) for what shipped and the steps that must be done before submission. | Was: the row only opened `mailto:support@shareswap.com` and `deletionRequestedAt` was never written. Now: `account-deletion/` in the API server, `components/AccountDeletionSheet.tsx` and `DeletionPendingBanner.tsx` in the app, `pages/delete-account-page.tsx` on the web. | Done in code. **Open: turn the finalize job on (it ships off), set `BANNED_EMAIL_HASH_KEY`, enter the web URL in Play Console.** |
 | 3 | **No user-generated-content safeguards.** Apple 1.2 requires a report mechanism, user blocking, filtering and published contact details. The app has none of them. | The schema has no reports or blocks table. There is no report control on item, profile or chat screens. The "Report an issue" in `ClaimSheet` and `HandoffSheet` is a transaction dispute, not a content report. Chat has no filtering. Admin ban exists (`bannedAt`) but nothing feeds it. | L. Needs report and block tables, endpoints, buttons on listing, chat and profile, hiding blocked users' content, an admin review queue, and a commitment to act within 24 hours. |
 | 4 | **No privacy policy or terms anywhere.** Both stores require a privacy policy URL and a link inside the app. Sign-up has no consent step. | A search of the mobile app finds no links. `register.tsx` has no terms or age text. The web app has no `/privacy` or `/terms` route. | S for the links and consent checkbox, plus the legal text itself. |
 | 5 | **API address is never set for EAS builds.** `BASE_URL` is `https://${process.env.EXPO_PUBLIC_DOMAIN}`. `eas.json` has no `env`, so a production build would call `https://undefined`. | `lib/api.ts:3`, `eas.json`. | S. Set `EXPO_PUBLIC_DOMAIN=shareswap.app` per build profile. The code treats `shareswap.app` as the verified production host. |
@@ -59,4 +59,34 @@ Read from the `users` table and the API.
 
 ## Suggested order
 
-Cheap, high-impact first: #5, #7, #8, #9, #4's links, #12. Then #2, #1 and #3, which take longest. Decide #6 early, since it may change the business model on iOS.
+Cheap, high-impact first: #5, #7, #8, #9, #4's links, #12. Then #1 and #3, which take longest (#2 is built; finish its submission steps below). Decide #6 early, since it may change the business model on iOS.
+
+## Account deletion
+
+Blocker #2. The flow, as built:
+
+1. **Request.** Settings > Delete Account (mobile) or `/delete-account` (web, public; it asks for a sign-in first, Google included). The server re-checks eligibility (`GET /api/account/deletion-eligibility`): open bookings that moved money or an item, open claims, deposit settlements in flight, a wallet of $10 or more, money held, or a payout in progress each block it. A balance that would be forfeited needs an acknowledgement. `POST /api/account/deletion/request` then writes `deletionRequestedAt`, sets the account to `pending_deletion`, hides its listings and emails the person's own address with the date and how to cancel.
+2. **Grace period, 14 days.** The account stays usable. A banner on Home and Settings (mobile) and on every page (web) shows the date with a Cancel button. A balance of $1 up to $10 can be withdrawn in full with the $10 minimum waived. `POST /api/account/deletion/cancel` undoes it. **Delete now** (`/confirm`) skips the wait.
+3. **Finalize.** The job `account-deletion-finalize` (or Delete now) deletes the account: Stripe subscription, Customer and Connect account first, then one transaction that removes the user's own rows, scrubs their side of shared bookings, anonymises the `users` row (`deleted-<id>` placeholders, display name "Former member"), cancels open bookings nothing has moved for, and tells the other side. Running it twice changes nothing. The deleted account cannot sign in, by password or Google, and its sessions end. A completion email goes out.
+
+Kept after deletion (see `account-deletion/manifest.ts` for every column): payment, payout, refund, commission, subscription and deposit records and the bookings they belong to, without free text; claims; reviews the person wrote (author shown as "Former member", comment removed). Handoff PINs and proof, and the return-dispute photo, stay when the booking has a claim or dispute. Reviews about the person are deleted. A banned person's email is kept only as a keyed hash so they cannot sign up again.
+
+### Before store submission
+
+- [ ] **Turn the finalize job on.** It ships **off**: with `ACCOUNT_DELETION_FINALIZE_MODE` unset, or no `job_switches` row, nothing deletes accounts when the 14 days end. Accounts that asked to be deleted would then stay pending forever, and a reviewer who tests deletion would see exactly that, which fails review. Set `ACCOUNT_DELETION_FINALIZE_MODE=live`, or insert a `job_switches` row named `account-deletion-finalize` (mode `live`, with `updated_by` and `note`). Run it in `dry-run` first: the job's run record in `scheduled_job_runs` (`timer:account-deletion-finalize`) then lists how many accounts are due, would be deleted and are blocked. The background jobs themselves must be running (`REPLIT_DEPLOYMENT` set, or `BACKGROUND_JOBS=on`).
+- [ ] **Set `BANNED_EMAIL_HASH_KEY`** in Replit Secrets (see `.env.example`). Without it, deleting a banned account fails on purpose, and sign-up is not checked against banned emails. Never change it after accounts have been deleted, or the stored hashes stop matching.
+- [ ] **Enter `https://shareswap.app/delete-account`** as the account-deletion URL in the Play Console (Data safety). Apple needs nothing beyond the in-app path.
+- [ ] **Check SendGrid sends the two emails** (deletion requested, deletion done). A failed email is logged and never blocks a deletion.
+- [ ] **Run one deletion end to end on a test-mode Stripe account** and check the Customer and Connect account are gone. All automated tests use fake Stripe clients; nothing here has been run against Stripe.
+- [ ] **Add the deletion path to the review notes:** Settings > Delete Account, the 14-day grace period, and Delete now.
+- [ ] If Sign in with Apple (#1) is added, deletion must also revoke the Apple token; it does not yet.
+
+### Known gaps
+
+- **No retention purge.** The manifest names 7-year (financial, claims) and 2-year (abuse signals) windows, but nothing deletes records when a window ends. Needs its own job before the first window runs out.
+- **Connect accounts with a balance.** Stripe refuses to delete a live Connect account that still holds a balance. That is logged (`could not delete Stripe Connect account acct_...`), the deletion goes on, and the account id stays on the `users` row for staff to settle. It is not retried automatically.
+- **A blocked account waits.** If a booking or claim blocks the deletion when the 14 days end, the account stays pending and the job counts it as `blocked`. The person sees the blocker only if they open Delete now; there is no reminder or admin list yet.
+- **Uploaded files** are removed from the server's uploads folder after the transaction, best effort. Backups and any copy elsewhere are not covered, and evidence photos are kept on purpose.
+- **Free text** in message metadata and in claim records is not scrubbed. Message text the person wrote is.
+- **Judgement calls to confirm:** the owner's written return-dispute reason is scrubbed even when a dispute exists (only PINs, handoff proof and the dispute photo are evidence); `rental_returns.notes` is cleared when either party deletes, because the row does not say who wrote it.
+- **Placeholders** are `deleted-<id>`. Someone could in theory register that exact username; nothing reserves it.

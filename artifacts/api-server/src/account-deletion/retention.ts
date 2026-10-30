@@ -12,6 +12,13 @@ export const RETENTION_YEARS = {
 
 export type RetentionWindow = keyof typeof RETENTION_YEARS;
 
+/** How long a requested deletion waits before the finalize job deletes the account. The person can cancel until then. */
+export const DELETION_GRACE_DAYS = 14;
+
+/** What the people who saw the deleted account now see in its place. */
+export const DELETED_DISPLAY_NAME = "Former member";
+export const REMOVED_MESSAGE_TEXT = "[Message removed]";
+
 /**
  * The block on a banned person signing up again. Only accounts that were banned leave anything behind: a keyed
  * hash of the email (never the address), kept without an end date. The key is an environment secret, so the

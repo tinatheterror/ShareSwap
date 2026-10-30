@@ -55,6 +55,15 @@ import { nonProductionOnly } from "../non-production-gate";
 import { fullVerificationRejection } from "../verification-gate";
 import { computeVerification, getVerificationForUser } from "../verification";
 import { getDeletionEligibility } from "../account-deletion/eligibility";
+import {
+  DeletionError,
+  cancelDeletion,
+  finalizeDeletion,
+  finalizeDueDeletions,
+  requestDeletion,
+  scheduledFor as deletionScheduledFor,
+  type DeletionDeps,
+} from "../account-deletion/service";
 import { minimumWaiverApplies } from "../account-deletion/retention";
 import { isEmailShaped, publicName, publicUsername } from "../public-identity";
 import { scrubEmailUsernames, usernameScrubMiddleware } from "../username-scrub";
@@ -95,7 +104,7 @@ import { shouldRunBackgroundJobs } from "../background-jobs-gate";
 import { backgroundJobs } from "../background-jobs-registry";
 import { startRequestExpirySweepTimer } from "../request-expiry-timer";
 import { guardedJob } from "../guarded-job";
-import { HANDOFF_DEADLINES_JOB, REQUEST_EXPIRY_JOB, createReadRunRecorder, resolveJobSwitch, resolveReadExpiryPolicy, timerRunRecorder } from "../job-switches";
+import { ACCOUNT_DELETION_JOB, HANDOFF_DEADLINES_JOB, REQUEST_EXPIRY_JOB, resolveAccountDeletionEnvMode, createReadRunRecorder, resolveJobSwitch, resolveReadExpiryPolicy, timerRunRecorder } from "../job-switches";
 import { CANCELLABLE_REQUEST_TYPES, cancelBorrowRentRequest } from "../cancel-service";
 import { depositMethodRejection } from "../deposit-method-rules";
 import {
@@ -1868,6 +1877,8 @@ export function registerRoutes(
     stripe?: unknown;
     /** Stripe client, signing secret and store for the subscription webhook; tests inject fakes. */
     subscriptionWebhook?: SubscriptionWebhookDeps;
+    /** Stripe cleanup, emails and clock for account deletion; tests inject fakes. */
+    accountDeletion?: DeletionDeps;
   } = {},
 ): Server {
   const currentTime = () => (options.now ? options.now() : new Date());
@@ -12683,6 +12694,22 @@ Respond with ONLY the category name, nothing else.`
       });
       void runHandoffSweep();
       backgroundJobs.setInterval(() => void runHandoffSweep(), HANDOFF_SWEEP_INTERVAL_MS);
+
+      // Deletes accounts whose 14-day grace period is over. ACCOUNT_DELETION_FINALIZE_MODE is the default when no
+      // job_switches row exists, and it is off unless set: a dry run only counts what it would delete.
+      const accountDeletionMode = resolveAccountDeletionEnvMode(process.env.ACCOUNT_DELETION_FINALIZE_MODE);
+      if (accountDeletionMode !== "off") console.log(`[account-deletion] finalize job mode: ${accountDeletionMode}`);
+      const runAccountDeletionSweep = guardedJob({
+        name: ACCOUNT_DELETION_JOB,
+        envMode: accountDeletionMode,
+        supportsDryRun: true,
+        run: async (mode) => {
+          const result = await finalizeDueDeletions({ ...deletionDeps(), dryRun: mode !== "live" });
+          return `mode=${mode} due=${result.due} deleted=${result.deleted} wouldDelete=${result.wouldDelete} blocked=${result.blocked} failed=${result.failed}`;
+        },
+      });
+      void runAccountDeletionSweep();
+      backgroundJobs.setInterval(() => void runAccountDeletionSweep(), 60 * 60 * 1000);
     }, 30 * 1000);
   }
 
@@ -14367,8 +14394,9 @@ Respond with ONLY the category name, nothing else.`
   app.post("/api/admin/users/:id/unban", requireAdmin, csrfProtection, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
+      // Someone who had asked to delete their account before the ban goes back to waiting for it.
       await db.update(users).set({
-        accountStatus: "active",
+        accountStatus: sql`CASE WHEN ${users.deletionRequestedAt} IS NOT NULL THEN 'pending_deletion' ELSE 'active' END`,
         bannedAt: null,
         banReason: null,
       }).where(eq(users.id, userId));
@@ -15938,6 +15966,9 @@ Respond with ONLY the category name, nothing else.`
     
     try {
       const userId = req.user.id;
+      if ((req.user as any).accountStatus === "pending_deletion") {
+        return res.status(409).json({ message: "Cancel the deletion of your account first." });
+      }
       
       // Check for active transactions (pending requests) - user is requester or owns the item
       const activeRequests = await db
@@ -16009,6 +16040,50 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  const deletionDeps = (): DeletionDeps => ({ now: options.now, ...options.accountDeletion });
+  const sendDeletionError = (res: import("express").Response, error: unknown, fallback: string) => {
+    if (error instanceof DeletionError) {
+      return res.status(error.status).json({ code: error.code, message: error.message, blockers: error.blockers });
+    }
+    console.error("Account deletion error:", error);
+    return res.status(500).json({ message: fallback });
+  };
+
+  // Starts the grace period (14 days). The account stays usable, so a small balance can still be withdrawn.
+  app.post("/api/account/deletion/request", csrfProtection, async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    try {
+      const state = await requestDeletion(req.user.id, { acknowledgeForfeit: req.body?.acknowledgeForfeit === true }, deletionDeps());
+      return res.json(state);
+    } catch (error) {
+      return sendDeletionError(res, error, "Failed to request the deletion of the account");
+    }
+  });
+
+  app.post("/api/account/deletion/cancel", csrfProtection, async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    try {
+      return res.json(await cancelDeletion(req.user.id));
+    } catch (error) {
+      return sendDeletionError(res, error, "Failed to cancel the deletion of the account");
+    }
+  });
+
+  // Deletes the account now instead of waiting out the grace period. Needs an explicit confirmation in the body.
+  app.post("/api/account/deletion/confirm", csrfProtection, async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    if (req.body?.confirmDeletion !== true) return res.status(400).json({ code: "confirmation_required", message: "Confirmation required" });
+    try {
+      const result = await finalizeDeletion(req.user.id, deletionDeps());
+      return req.logout((logoutError) => {
+        if (logoutError) console.error("Logout error after account deletion:", logoutError);
+        res.json({ status: "deleted", ...result });
+      });
+    } catch (error) {
+      return sendDeletionError(res, error, "Failed to delete the account");
+    }
+  });
+
   // Get account status
   app.get("/api/account/status", async (req, res) => {
     if (!req.user) {
@@ -16026,7 +16101,9 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(users.id, req.user.id))
         .limit(1);
       
-      res.json(user || { accountStatus: 'active' });
+      const requestedAt = (user as any)?.deletionRequestedAt as Date | null | undefined;
+      const scheduled = (user as any)?.accountStatus === "pending_deletion" && requestedAt ? deletionScheduledFor(new Date(requestedAt)) : null;
+      res.json({ ...(user || { accountStatus: 'active' }), deletionScheduledFor: scheduled });
     } catch (error) {
       console.error("Account status error:", error);
       res.status(500).json({ message: "Failed to get account status" });

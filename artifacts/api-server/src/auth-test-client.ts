@@ -49,10 +49,10 @@ export class Client {
   }
 }
 
-export async function startApp() {
+export async function startApp(options: Parameters<typeof registerRoutes>[1] = {}) {
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
-  const server = registerRoutes(app, { startBackgroundJobs: false });
+  const server = registerRoutes(app, { startBackgroundJobs: false, ...options });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
   assert(address && typeof address !== "string");

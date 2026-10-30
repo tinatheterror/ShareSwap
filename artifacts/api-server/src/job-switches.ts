@@ -17,6 +17,14 @@ export const REQUEST_EXPIRY_ON_READ_JOB = "request-expiry-on-read";
 /** The handoff-deadline sweep: the server timer and POST /api/requests/check-handoff-deadlines share this switch. */
 export const HANDOFF_DEADLINES_JOB = "handoff-deadlines";
 
+/** Deletes the accounts whose 14-day deletion grace period is over. Off unless a switch row or the env says otherwise. */
+export const ACCOUNT_DELETION_JOB = "account-deletion-finalize";
+
+/** ACCOUNT_DELETION_FINALIZE_MODE=live|dry-run|off. Unset or unrecognised is off: deleting accounts is never the default. */
+export function resolveAccountDeletionEnvMode(raw: string | undefined): JobMode {
+  return parseSwitchMode(raw?.trim().toLowerCase()) ?? "off";
+}
+
 export type SwitchQuery = (text: string, params: unknown[]) => Promise<{ rows: any[] }>;
 
 const poolQuery: SwitchQuery = async (text, params) => {

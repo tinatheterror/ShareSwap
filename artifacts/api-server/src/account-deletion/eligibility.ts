@@ -38,8 +38,8 @@ const cents = (value: string | null | undefined) => Math.round(parseFloat(value 
 const dollars = (c: number) => (c / 100).toFixed(2);
 
 /** Read-only: it answers whether the account could be deleted now and what stands in the way. */
-export async function getDeletionEligibility(userId: number): Promise<DeletionEligibility> {
-  const [user] = await db
+export async function getDeletionEligibility(userId: number, executor: Pick<typeof db, "select"> = db): Promise<DeletionEligibility> {
+  const [user] = await executor
     .select({
       rentalBalance: users.rentalBalance,
       pendingRentalBalance: users.pendingRentalBalance,
@@ -51,7 +51,7 @@ export async function getDeletionEligibility(userId: number): Promise<DeletionEl
     .limit(1);
   if (!user) throw new Error(`user ${userId} not found`);
 
-  const openRequests = await db
+  const openRequests = await executor
     .select({
       id: itemRequests.id,
       status: itemRequests.status,
@@ -68,7 +68,7 @@ export async function getDeletionEligibility(userId: number): Promise<DeletionEl
 
   const moneyHeld = new Set<number>();
   if (openRequests.length > 0) {
-    const rows = await db
+    const rows = await executor
       .select({ requestId: rentalPayouts.requestId })
       .from(rentalPayouts)
       .where(and(inArray(rentalPayouts.requestId, openRequests.map((r) => r.id)), inArray(rentalPayouts.status, [...UNSETTLED_PAYOUT_STATUSES])));
@@ -79,7 +79,7 @@ export async function getDeletionEligibility(userId: number): Promise<DeletionEl
     !r.depositPaymentIntentId && cents(r.depositCapturedAmount) === 0 && !r.shareCoinsCharged && !moneyHeld.has(r.id);
   const blockingRequests = openRequests.filter((r) => !autoResolvable(r));
 
-  const [{ openClaims }] = await db
+  const [{ openClaims }] = await executor
     .select({ openClaims: sql<number>`count(*)::int` })
     .from(securityClaims)
     .where(and(
@@ -87,7 +87,7 @@ export async function getDeletionEligibility(userId: number): Promise<DeletionEl
       notInArray(securityClaims.status, [...TERMINAL_CLAIM_STATUSES]),
     ));
 
-  const [{ settlementsInFlight }] = await db
+  const [{ settlementsInFlight }] = await executor
     .select({ settlementsInFlight: sql<number>`count(*)::int` })
     .from(depositSettlementOperations)
     .innerJoin(securityClaims, eq(securityClaims.id, depositSettlementOperations.claimId))
@@ -96,7 +96,7 @@ export async function getDeletionEligibility(userId: number): Promise<DeletionEl
       inArray(depositSettlementOperations.status, [...IN_FLIGHT_SETTLEMENT_STATUSES]),
     ));
 
-  const [{ unsettledPayouts }] = await db
+  const [{ unsettledPayouts }] = await executor
     .select({ unsettledPayouts: sql<number>`count(*)::int` })
     .from(rentalPayouts)
     .where(and(eq(rentalPayouts.userId, userId), inArray(rentalPayouts.status, [...UNSETTLED_PAYOUT_STATUSES])));

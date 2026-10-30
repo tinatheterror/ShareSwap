@@ -309,3 +309,80 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
     return false;
   }
 }
+
+const appBaseUrl = () =>
+  process.env.NODE_ENV === 'production' && process.env.CUSTOM_DOMAIN
+    ? `https://${process.env.CUSTOM_DOMAIN}`
+    : process.env.REPLIT_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : process.env.CUSTOM_DOMAIN
+    ? `https://${process.env.CUSTOM_DOMAIN}`
+    : 'http://localhost:5000';
+
+const deletionDate = (date: Date) => date.toLocaleDateString('en-CA', { dateStyle: 'long', timeZone: 'UTC' });
+
+const emailShell = (greeting: string, paragraphs: string[]) => `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #0D9488; margin: 0;">ShareSwap</h1>
+            <p style="color: #64748B; margin-top: 5px;">Share more, own less</p>
+          </div>
+          <h2 style="color: #1E293B;">${greeting}</h2>
+          ${paragraphs.map((p) => `<p style="color: #475569; line-height: 1.6;">${p}</p>`).join('\n          ')}
+          <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
+          <p style="color: #94A3B8; font-size: 12px; text-align: center;">
+            &copy; ${new Date().getFullYear()} ShareSwap. Connect with your neighbours.
+          </p>
+        </div>`;
+
+// Tells the person their account will be deleted on `deleteOn`, and how to cancel. Sent to their own address only.
+export async function sendAccountDeletionRequestedEmail(toEmail: string, deleteOn: Date, displayName?: string) {
+  try {
+    const { client, fromEmail } = await getUncachableSendGridClient();
+    const greeting = `Hi ${displayName || 'there'},`;
+    const date = deletionDate(deleteOn);
+    const cancelUrl = `${appBaseUrl()}/delete-account`;
+    const lines = [
+      `We received a request to delete your ShareSwap account. It will be deleted on <strong>${date}</strong> (UTC).`,
+      `Until then you can change your mind: open the ShareSwap app, go to Settings and tap <strong>Cancel deletion</strong>, or sign in at <a href="${cancelUrl}">${cancelUrl}</a> and cancel there.`,
+      `If you did not ask for this, sign in and cancel the deletion, then change your password.`,
+    ];
+    await client.send({
+      to: toEmail,
+      from: fromEmail,
+      subject: `ShareSwap: your account will be deleted on ${date}`,
+      text: `${greeting}\n\nWe received a request to delete your ShareSwap account. It will be deleted on ${date} (UTC).\n\nUntil then you can change your mind: open the ShareSwap app, go to Settings and tap Cancel deletion, or sign in at ${cancelUrl} and cancel there.\n\nIf you did not ask for this, sign in and cancel the deletion, then change your password.\n\nBest,\nThe ShareSwap Team`,
+      html: emailShell(greeting, lines),
+    });
+    console.log('[SendGrid] Account deletion request email sent');
+    return true;
+  } catch (error) {
+    console.error('[SendGrid] Error sending account deletion request email:', error);
+    return false;
+  }
+}
+
+// Confirms the deletion is done. The address is the one the account was opened with, read before it was erased.
+export async function sendAccountDeletedEmail(toEmail: string, displayName?: string) {
+  try {
+    const { client, fromEmail } = await getUncachableSendGridClient();
+    const greeting = `Hi ${displayName || 'there'},`;
+    const lines = [
+      `Your ShareSwap account has been deleted. Your profile, listings, messages and saved details are gone.`,
+      `Records of payments and of bookings that involved other members are kept for the period the law requires, without your name or contact details.`,
+      `You are welcome to join again at any time.`,
+    ];
+    await client.send({
+      to: toEmail,
+      from: fromEmail,
+      subject: 'Your ShareSwap account has been deleted',
+      text: `${greeting}\n\nYour ShareSwap account has been deleted. Your profile, listings, messages and saved details are gone.\n\nRecords of payments and of bookings that involved other members are kept for the period the law requires, without your name or contact details.\n\nYou are welcome to join again at any time.\n\nBest,\nThe ShareSwap Team`,
+      html: emailShell(greeting, lines),
+    });
+    console.log('[SendGrid] Account deleted email sent');
+    return true;
+  } catch (error) {
+    console.error('[SendGrid] Error sending account deleted email:', error);
+    return false;
+  }
+}

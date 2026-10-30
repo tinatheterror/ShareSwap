@@ -24,6 +24,13 @@ export type TableManifest = {
   retention: RetentionWindow | null;
   note: string;
   userColumns: string[];
+  /** userColumns that, when they hold the deleting user, remove the whole row instead of scrubbing it. */
+  deleteRowsWhere?: string[];
+  /**
+   * Columns of `delete` that are kept instead when the booking is evidence: it has a security claim, or a handoff
+   * or return dispute was raised on it. They stay under the table's retention window.
+   */
+  evidence?: string[];
   keep: string[];
   anonymize: string[];
   delete: string[];
@@ -36,6 +43,15 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     note: "Catalogue of badges; no personal data.",
     userColumns: [],
     keep: ["id", "name", "description", "badge_icon", "badge_color", "points_required", "category", "is_active", "created_at"],
+    anonymize: [],
+    delete: [],
+  },
+  banned_email_hashes: {
+    rows: "retain",
+    retention: null,
+    note: "Keyed hashes of the emails of banned people whose accounts were deleted; kept without an end date so they cannot sign up again. Holds no address.",
+    userColumns: [],
+    keep: ["id", "email_hash", "created_at"],
     anonymize: [],
     delete: [],
   },
@@ -141,8 +157,9 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
   item_requests: {
     rows: "retain",
     retention: "financial",
-    note: "Booking record shared with the counterparty. Free text, proof photos and the handoff PIN of the deleting user's side go; money, dates and status stay.",
+    note: "Booking record shared with the counterparty. Free text of the deleting user's side goes; money, dates and status stay. The handoff PIN and proof, and the return-dispute photo, are evidence when a claim or dispute exists and then stay for the claim window.",
     userColumns: ["requester_id", "counter_proposed_by", "cancelled_by"],
+    evidence: ["handoff_pin", "handoff_proof_owner", "handoff_proof_borrower", "return_dispute_photo_url"],
     keep: ["id", "item_id", "requester_id", "request_type", "status", "start_date", "end_date", "match_score", "delivery_method", "deposit_method", "negotiation_status", "counter_delivery_method", "counter_deposit_method", "counter_start_date", "counter_end_date", "counter_proposed_at", "counter_proposed_by", "terms_accepted_at", "terms_declined_at", "delivery_confirmed", "delivery_confirmed_at", "trust_deposit_amount", "trust_deposit_base_amount", "trust_discount_percentage", "requester_trust_score_snapshot", "deposit_status", "deposit_payment_intent_id", "deposit_authorized_at", "deposit_authorization_expires_at", "deposit_renewal_status", "deposit_renewal_attempted_at", "deposit_renewal_error", "deposit_renewal_count", "deposit_previous_payment_intent_id", "deposit_operation_token", "deposit_operation_type", "deposit_released_at", "deposit_captured_amount", "deposit_captured_at", "deposit_card_brand", "deposit_card_last4", "deposit_refunded_amount", "deposit_retained_amount", "deposit_hold_attempt_id", "deposit_hold_attempt_num", "deposit_mode", "deposit_selection_state", "deposit_selection_reason", "deposit_required_protection_end", "deposit_consent_at", "platform_fee_charge_id", "payment_currency", "share_coin_amount", "share_coins_charged", "share_coins_charged_at", "owner_confirmed_handoff", "owner_confirmed_handoff_at", "borrower_confirmed_handoff", "borrower_confirmed_handoff_at", "owner_denied_handoff", "borrower_denied_handoff", "handoff_confirm_deadline", "handoff_auto_advanced", "handoff_reminders_level", "handoff_confirmed_at", "borrow_period_started_at", "accepted_at", "pin_expires_at", "pin_used", "pin_attempts", "no_pin_used", "confirmation_method", "handoff_dispute_triggered", "handoff_dispute_at", "handoff_proof_deadline", "owner_confirmed_return", "owner_confirmed_return_at", "borrower_confirmed_return", "borrower_confirmed_return_at", "return_confirm_deadline", "return_auto_advanced", "return_condition_ok", "return_dispute_triggered", "is_early_return", "return_requested_at", "return_confirmed_at", "return_condition_rating", "return_delay_notified_at", "actual_handoff_at", "actual_return_at", "overdue_stage", "overdue_stage_changed_at", "return_deadline_at", "claim_decision_deadline_at", "settlement_start_deadline_at", "rental_amount", "rental_processing_fee", "rental_platform_fee", "swap_offered_item_ids", "swap_requested_item_ids", "counter_swap_owner_item_ids", "counter_swap_requester_item_ids", "counter_round", "unarchived_at", "expired_at", "expiry_reminder_sent_at", "expired_reason", "cancelled_at", "cancelled_by", "cancelled_from_status", "cancelled_with_penalty", "cancel_deposit_state", "created_at"],
     anonymize: [],
     delete: ["message", "counter_note", "handoff_pin", "return_dispute_reason", "return_dispute_photo_url", "return_condition_notes", "return_delay_reason", "cancel_reason", "handoff_proof_owner", "handoff_proof_borrower"],
@@ -330,8 +347,9 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
   user_reviews: {
     rows: "retain",
     retention: "financial",
-    note: "Reviews stay for the other party; the author is shown as a deleted user and the free-text comment is scrubbed. Reviews about the deleted user go with them.",
+    note: "Reviews stay for the other party; the author is shown as a former member and the free-text comment is scrubbed. Reviews about the deleted user go with them.",
     userColumns: ["reviewer_id", "reviewed_user_id"],
+    deleteRowsWhere: ["reviewed_user_id"],
     keep: ["id", "reviewer_id", "reviewed_user_id", "rating", "feedback_tags", "transaction_id", "created_at"],
     anonymize: ["comment"],
     delete: [],

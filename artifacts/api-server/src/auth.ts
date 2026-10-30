@@ -25,6 +25,7 @@ import { shouldRunBackgroundJobs } from "./background-jobs-gate";
 import { guardedJob } from "./guarded-job";
 import { isEmailShaped } from "./public-identity";
 import { backgroundJobs } from "./background-jobs-registry";
+import { isBannedEmail } from "./account-deletion/banned-email";
 import { getVerificationForUser, googleEmailIsVerified, verificationRecipient } from "./verification";
 
 // ---------------------------------------------------------------------------
@@ -459,9 +460,9 @@ export const store = new PostgresStore({
   pruneSessionInterval: 60,
 });
 
-/** Banned and deactivated accounts hold no sessions: every path that signs a user in or resumes a session checks this. */
+/** Banned, deactivated and deleted accounts hold no sessions: every path that signs a user in or resumes a session checks this. */
 export const accountIsBlocked = (user: { accountStatus?: string | null }) =>
-  user.accountStatus === "banned" || user.accountStatus === "deactivated";
+  user.accountStatus === "banned" || user.accountStatus === "deactivated" || user.accountStatus === "deleted";
 
 /** Where the Google callback sends someone whose account is deactivated: back to the app, with a reactivation token. */
 export function reactivationRedirect(nativeRedirectUri: string | undefined, token: string) {
@@ -607,6 +608,10 @@ export function setupAuth(app: Express) {
 
             // Create new user from Google profile
             const email = profile.emails?.[0]?.value;
+            // A banned person whose account was deleted cannot come back under the same address.
+            if (await isBannedEmail(email)) {
+              return done(null, false, { message: "Account banned" });
+            }
             let baseUsername =
               email?.split("@")[0] || `google_${profile.id.slice(0, 10)}`;
             let username = baseUsername;
@@ -809,6 +814,10 @@ export function setupAuth(app: Express) {
       const [existingUser] = await getUserByUsername(result.data.username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
+      }
+
+      if (await isBannedEmail(result.data.username)) {
+        return res.status(403).json({ message: "This email address cannot be used to register." });
       }
 
       // Check if a referral code was provided

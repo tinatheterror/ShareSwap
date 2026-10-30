@@ -8,6 +8,7 @@ import * as schema from "@workspace/db";
 import { pool } from "@workspace/db";
 import { MIN_PAYOUT } from "../rental-payout-service.js";
 import { DELETION_MANIFEST, RUNTIME_TABLE_MANIFEST, type TableManifest } from "./manifest.js";
+import { scrubbedColumns } from "./anonymize.js";
 import { RETENTION_YEARS, WALLET_LIMITS, minimumWaiverApplies, walletTier } from "./retention.js";
 
 after(() => pool.end());
@@ -59,7 +60,10 @@ test("a table whose rows are deleted deletes every column", () => {
 test("a column whose name says it is personal is never kept as it is", () => {
   const personal = /email|phone|password|address|photo|latitude|longitude|full_name|id_number|fingerprint|postal|(^|_)pin$/;
   // Columns that match by name but are not personal data. Add one only with the reason.
-  const allowed = new Set<string>([]);
+  const allowed = new Set<string>([
+    // A keyed HMAC-SHA256 of the email, not the address; the key lives in the environment, so the hash cannot be reversed from the database.
+    "banned_email_hashes.email_hash",
+  ]);
   for (const [table, entry] of Object.entries(DELETION_MANIFEST)) {
     for (const column of entry.keep) {
       if (personal.test(column)) assert.ok(allowed.has(`${table}.${column}`), `${table}.${column} looks personal but is kept`);
@@ -123,4 +127,26 @@ test("the minimum payout is waived only for the whole of a balance in the offer 
   assert.equal(minimumWaiverApplies(99, 99), false, "under $1 is forfeited, not withdrawn");
   assert.equal(minimumWaiverApplies(1000, 1000), false, "$10 needs no waiver");
   assert.equal(minimumWaiverApplies(500, 400), false, "more than the balance");
+});
+
+test("evidence columns are delete columns, and deleteRowsWhere names user columns", () => {
+  for (const [table, entry] of Object.entries(DELETION_MANIFEST)) {
+    for (const column of entry.evidence ?? []) assert.ok(entry.delete.includes(column), `${table}.${column} is evidence but is not a delete column`);
+    for (const column of entry.deleteRowsWhere ?? []) assert.ok(entry.userColumns.includes(column), `${table}.${column} removes rows but is not a user column`);
+    if (entry.evidence?.length) assert.ok(entry.retention !== null, `${table} keeps evidence, so it needs a retention window`);
+  }
+});
+
+test("the anonymizer scrubs every delete column of a table whose rows stay, and handles every anonymize column", () => {
+  const scrubbed = scrubbedColumns();
+  for (const [table, entry] of Object.entries(DELETION_MANIFEST)) {
+    if (entry.rows !== "retain" || table === "users") continue;
+    for (const column of entry.delete) assert.ok(scrubbed.get(table)?.has(column), `${table}.${column} is marked delete but no scrub step clears it`);
+  }
+  // The anonymize columns are handled by hand in anonymizeUser; adding one means adding its handling there.
+  const handled: Record<string, string[]> = {
+    messages: ["content"], request_lifecycle_events: ["details"], user_reviews: ["comment"],
+    users: ["username", "handle", "display_name", "referral_code", "account_status"],
+  };
+  for (const [table, entry] of Object.entries(DELETION_MANIFEST)) assert.deepEqual(sorted(entry.anonymize), sorted(handled[table] ?? []), `${table}: anonymize columns without handling`);
 });

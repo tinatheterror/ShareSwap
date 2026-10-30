@@ -150,6 +150,14 @@ export const duplicateReviewRepairAudits = pgTable(
   ],
 );
 
+// Keyed hashes (HMAC-SHA256 of the trimmed, lower-cased email) of banned people whose accounts were deleted, so
+// they cannot sign up again. Never holds an address. See BANNED_EMAIL_BLOCK in the account-deletion retention.
+export const bannedEmailHashes = pgTable("banned_email_hashes", {
+  id: serial("id").primaryKey(),
+  emailHash: text("email_hash").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+})
+
 export const verifications = pgTable("verifications", {
   id: serial("id").primaryKey(),
   userId: serial("user_id").notNull().references(() => users.id),

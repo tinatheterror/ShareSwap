@@ -1,0 +1,45 @@
+diff --git a/dist/cjs.js b/dist/cjs.js
+index 7c36cbdd06cc22c92d590be3f87a08a91ca06b40..fac67104181c526b8dfbad9be877ff3d476d36cc 100644
+--- a/dist/cjs.js
++++ b/dist/cjs.js
+@@ -58,7 +58,9 @@ function getEnumerableOwnPropertySymbols(target) {
+ }
+ 
+ function getKeys(target) {
+-	return Object.keys(target).concat(getEnumerableOwnPropertySymbols(target))
++return Object.keys(target).concat(getEnumerableOwnPropertySymbols(target)).filter(function(key) {
++return key !== '__proto__' && key !== 'constructor' && key !== 'prototype'
++})
+ }
+ 
+ function propertyIsOnObject(object, property) {
+diff --git a/dist/umd.js b/dist/umd.js
+index 4071e7c56ec8e5273fe166f6e723ac460fab8b72..8ec5c81dbe3a30d1112aa0511aca03932dfe4bd4 100644
+--- a/dist/umd.js
++++ b/dist/umd.js
+@@ -62,7 +62,9 @@
+ 	}
+ 
+ 	function getKeys(target) {
+-		return Object.keys(target).concat(getEnumerableOwnPropertySymbols(target))
++return Object.keys(target).concat(getEnumerableOwnPropertySymbols(target)).filter(function(key) {
++return key !== '__proto__' && key !== 'constructor' && key !== 'prototype'
++})
+ 	}
+ 
+ 	function propertyIsOnObject(object, property) {
+diff --git a/index.js b/index.js
+index 77968aed5d456cccc294f60912ef381fa1e52a7b..9e84767c61463df7af23a4bfdf98e5d7e408f564 100644
+--- a/index.js
++++ b/index.js
+@@ -33,7 +33,9 @@ function getEnumerableOwnPropertySymbols(target) {
+ }
+ 
+ function getKeys(target) {
+-	return Object.keys(target).concat(getEnumerableOwnPropertySymbols(target))
++return Object.keys(target).concat(getEnumerableOwnPropertySymbols(target)).filter(function(key) {
++return key !== '__proto__' && key !== 'constructor' && key !== 'prototype'
++})
+ }
+ 
+ function propertyIsOnObject(object, property) {

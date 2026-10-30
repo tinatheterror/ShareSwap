@@ -3,3 +3,6 @@
 
 # No need to store the pnpm store twice.
 .local
+
+# Historical source is retained for reference, not shipped as a second app.
+.migration-backup

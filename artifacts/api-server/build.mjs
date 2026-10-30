@@ -55,6 +55,9 @@ async function buildAll() {
     external: [
       "*.node",
       "@replit/object-storage",
+      // Keep Zod's interdependent entry points in one runtime module graph.
+      // Bundling them can initialize a v4 schema before its constructor exists.
+      "zod",
       "sharp",
       "better-sqlite3",
       "sqlite3",

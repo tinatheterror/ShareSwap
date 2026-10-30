@@ -29,3 +29,4 @@
 - [Historical grace warnings](historical-grace-warnings.md) — older generic warnings may lack penalty-type attribution; repair only from verifiable evidence.
 - [Postgres contention tests](postgres-contention-tests.md) — refresh activity snapshots inside observer transactions and follow indirect blockers when testing row-lock contention.
 - [Claim opens capture model](claim-opens-capture-model.md) — only an opened claim charges the deposit; resolution refunds; all deposit copy lives in deposit-copy.ts.
+- [Dependency runtime checks](dependency-runtime-checks.md) — Expo Doctor/export do not catch watcher incompatibility; test built API startup as well as source imports.

@@ -29,9 +29,9 @@ catalog:
   tailwind-merge: ^3.3.1
   tailwindcss: ^4.1.14
   tsx: 4.22.4
-  vite: ^7.3.2
+  vite: ^7.3.7
   wouter: ^3.3.5
-  zod: ^3.25.76
+  zod: ^4.6.7
 
 minimumReleaseAge: 1440
 
@@ -67,7 +67,12 @@ overrides:
   '@tailwindcss/oxide>@tailwindcss/oxide-linux-x64-musl': '-'
   '@tailwindcss/oxide>@tailwindcss/oxide-win32-arm64-msvc': '-'
   '@tailwindcss/oxide>@tailwindcss/oxide-win32-x64-msvc': '-'
-  esbuild: 0.27.3
+  axios@<1.20.0: ^1.20.0
+  baseline-browser-mapping@<2.11.0: ^2.11.0
+  body-parser@>=2.0.0 <2.4.0: ^2.4.0
+  browserslist@<4.28.7: ^4.28.7
+  decode-uri-component@<0.5.1: ^0.5.1
+  esbuild: 0.28.1
   esbuild>@esbuild/aix-ppc64: '-'
   esbuild>@esbuild/android-arm: '-'
   esbuild>@esbuild/android-arm64: '-'
@@ -93,6 +98,13 @@ overrides:
   esbuild>@esbuild/win32-arm64: '-'
   esbuild>@esbuild/win32-ia32: '-'
   esbuild>@esbuild/win32-x64: '-'
+  fast-copy@>=4.0.0 <4.1.0: ^4.1.0
+  fast-uri@>=3.0.0 <3.1.9: ^3.1.9
+  fast-xml-parser@>=5.0.0 <5.10.1: ^5.10.1
+  follow-redirects@<1.16.1: ^1.16.1
+  handlebars@<4.7.10: ^4.7.10
+  image-size@<2.0.3: ^2.0.3
+  ip-address@<10.7.4: ^10.7.4
   lightningcss>lightningcss-android-arm64: '-'
   lightningcss>lightningcss-darwin-arm64: '-'
   lightningcss>lightningcss-darwin-x64: '-'
@@ -103,6 +115,11 @@ overrides:
   lightningcss>lightningcss-linux-x64-musl: '-'
   lightningcss>lightningcss-win32-arm64-msvc: '-'
   lightningcss>lightningcss-win32-x64-msvc: '-'
+  nanoid@<3.3.18: ^3.3.18
+  postcss-selector-parser@<6.1.5: ^6.1.5
+  postcss@<8.5.23: ^8.5.23
+  proxy-addr@<2.0.8: ^2.0.8
+  qs@<6.16.1: ^6.16.1
   rollup>@rollup/rollup-android-arm-eabi: '-'
   rollup>@rollup/rollup-android-arm64: '-'
   rollup>@rollup/rollup-darwin-arm64: '-'
@@ -127,3 +144,10 @@ overrides:
   rollup>@rollup/rollup-win32-ia32-msvc: '-'
   rollup>@rollup/rollup-win32-x64-gnu: '-'
   rollup>@rollup/rollup-win32-x64-msvc: '-'
+  shell-quote@<1.11.0: ^1.11.0
+  source-map-js@<1.2.2: ^1.2.2
+  uuid@<11.1.1: ^11.1.1
+
+patchedDependencies:
+  deepmerge@4.3.1: patches/deepmerge@4.3.1.patch
+  metro@0.83.3: patches/metro@0.83.3.patch

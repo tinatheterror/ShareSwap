@@ -1,6 +1,6 @@
 /**
  * CounterProposalSheet
- * Matches web requests-page.tsx "Propose New Terms" modal + SwapCounterModal logic.
+ * Matches the web inbox panel's (chat-widget.tsx) "Propose New Terms" modal + SwapCounterModal logic.
  *
  * BORROW  → deposit method (in_app/in_person) + date range
  * RENT    → date range only (no deposit toggle)

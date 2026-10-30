@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { photoUrl } from "@/lib/api";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -23,7 +23,6 @@ import { formatTime } from "@/lib/dateUtils";
 import { useAuth } from "@/context/AuthContext";
 import { NotificationBell } from "@/components/NotificationBell";
 import {
-  BLOCKING_DELETION_FILTER,
   groupThreads,
   hiddenUnread,
   mergeThreads,
@@ -212,30 +211,26 @@ export default function InboxScreen() {
   const qc = useQueryClient();
   const isWeb = Platform.OS === "web";
 
-  const params = useLocalSearchParams<{ filter?: string }>();
-  const blockingOnly = params.filter === BLOCKING_DELETION_FILTER;
-
   const [filter, setFilter] = useState<InboxFilter>("all");
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: activeItems = [], isLoading: loadingActive, refetch: refetchActive } = useQuery<InboxItem[]>({
-    queryKey: blockingOnly ? ["/api/inbox", { filter: BLOCKING_DELETION_FILTER }] : ["/api/inbox"],
-    queryFn: () => apiGet<InboxItem[]>(blockingOnly ? `/api/inbox?filter=${BLOCKING_DELETION_FILTER}` : "/api/inbox"),
+    queryKey: ["/api/inbox"],
+    queryFn: () => apiGet<InboxItem[]>("/api/inbox"),
     enabled: !!user,
   });
 
   // Finished threads are archived, but a completed one can still need a review, so both lists feed the sections.
-  // Nothing archived can block deleting an account, so the blocking filter skips it.
   const { data: archivedItems = [], isLoading: loadingArchived, refetch: refetchArchived } = useQuery<InboxItem[]>({
     queryKey: ["/api/inbox/archived"],
     queryFn: () => apiGet<InboxItem[]>("/api/inbox?archived=true"),
-    enabled: !!user && !blockingOnly,
+    enabled: !!user,
     // Match web's 60 s poll so auto-unarchived threads surface without manual refresh
     refetchInterval: 60_000,
   });
 
-  const isLoading = loadingActive || (!blockingOnly && loadingArchived);
-  const allThreads = mergeThreads(activeItems, blockingOnly ? [] : archivedItems);
+  const isLoading = loadingActive || loadingArchived;
+  const allThreads = mergeThreads(activeItems, archivedItems);
   const grouped = groupThreads(allThreads, filter === "history" ? "all" : filter);
   const sections =
     filter === "history"
@@ -251,7 +246,7 @@ export default function InboxScreen() {
 
   async function handleRefresh() {
     setRefreshing(true);
-    await Promise.all([refetchActive(), blockingOnly ? Promise.resolve() : refetchArchived()]);
+    await Promise.all([refetchActive(), refetchArchived()]);
     setRefreshing(false);
   }
 
@@ -341,17 +336,6 @@ export default function InboxScreen() {
         </ScrollView>
       </View>
 
-      {blockingOnly ? (
-        <View style={styles.blockingBanner} testID="inbox-blocking-banner">
-          <Text style={styles.blockingBannerText}>
-            These requests are blocking you from deleting your account. Finish or cancel each one, then go back to continue.
-          </Text>
-          <Pressable onPress={() => router.replace("/(tabs)/inbox" as never)} testID="inbox-blocking-show-all">
-            <Text style={styles.blockingBannerLink}>Show all requests</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
       {/* Body */}
       {!user ? (
         <View style={styles.centered}>
@@ -368,7 +352,7 @@ export default function InboxScreen() {
         <View style={styles.centered}>
           <Feather name="message-circle" size={48} color={colors.mutedForeground} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            {filter === "history" ? "No history yet" : blockingOnly ? "Nothing is blocking your account" : "Nothing here yet"}
+            {filter === "history" ? "No history yet" : "Nothing here yet"}
           </Text>
           <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
             {filter === "all"
@@ -454,14 +438,6 @@ const styles = StyleSheet.create({
   statusLine: {
     fontSize: 12,
   },
-  blockingBanner: {
-    backgroundColor: "#fffbeb",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 4,
-  },
-  blockingBannerText: { fontSize: 13, color: "#78350f", fontFamily: "Inter_400Regular" },
-  blockingBannerLink: { fontSize: 13, color: "#78350f", textDecorationLine: "underline", fontFamily: "Inter_600SemiBold" },
   filterText: {
     fontSize: 11,
   },

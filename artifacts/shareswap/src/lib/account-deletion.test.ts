@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
 import {
   blockerAction,
-  blockingRequestHref,
   blockingRequestLabel,
+  openRequestConversation,
   WHAT_IS_DELETED,
   canRequestDeletion,
   daysLeft,
@@ -100,19 +100,27 @@ describe("pending state", () => {
 });
 
 describe("blockerAction", () => {
-  test("points to the balance page for money and to requests for open bookings, and nowhere for the rest", () => {
+  test("points to the balance page for money, and nowhere for open bookings (they are listed inline) or the rest", () => {
     expect(blockerAction("wallet_available")?.href).toBe("/my-balance");
-    expect(blockerAction("open_requests")?.href).toBe("/requests?filter=blocking-deletion");
+    expect(blockerAction("open_requests")).toBeNull();
     expect(blockerAction("open_claims")).toBeNull();
   });
 });
 
 describe("blocking requests", () => {
-  const request = { id: 7, itemName: "Camera", requestType: "RENT", status: "IN_PROGRESS", otherPartyId: 3 };
+  const request = { id: 7, itemName: "Camera", requestType: "RENT", status: "IN_PROGRESS", otherPartyId: 3, statusLine: "Return by Nov 3" };
 
-  test("are described by item, type and status, and link to the request", () => {
-    expect(blockingRequestLabel(request)).toBe("Camera - Rental - In progress");
-    expect(blockingRequestHref(request)).toBe("/transactions/7");
+  test("are described by item, type and where the request stands", () => {
+    expect(blockingRequestLabel(request)).toBe("Camera - Rental - Return by Nov 3");
+  });
+
+  test("open the request's conversation in the inbox", () => {
+    const seen: unknown[] = [];
+    const listener = (e: Event) => seen.push((e as CustomEvent).detail);
+    window.addEventListener("open-chat-request", listener);
+    openRequestConversation(7);
+    window.removeEventListener("open-chat-request", listener);
+    expect(seen).toEqual([{ requestId: 7 }]);
   });
 
   test("the deleted list is made of full sentences", () => {

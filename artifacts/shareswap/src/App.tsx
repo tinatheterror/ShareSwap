@@ -9,6 +9,19 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 
 // Redirect component for /register and /join routes to preserve referral code
+/**
+ * There is no Requests page: requests are managed in the inbox panel. An old /requests link lands on the home
+ * page with that panel open.
+ */
+function RequestsRedirect() {
+  useEffect(() => {
+    // Let the inbox panel finish mounting and start listening first.
+    const timer = setTimeout(() => window.dispatchEvent(new Event("open-chat-requests")), 0);
+    return () => clearTimeout(timer);
+  }, []);
+  return <Redirect to="/" />;
+}
+
 function RegisterRedirect() {
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);
@@ -49,7 +62,6 @@ import ShareCoinsInfoPage from "@/pages/sharecoins-info-page";
 import NotificationsPage from "@/pages/notifications-page";
 import ActivityPage from "@/pages/activity-page";
 import TransactionDetailPage from "@/pages/transaction-detail-page";
-import RequestsPage from "@/pages/requests-page";
 import DiscoverNeighboursPage from "@/pages/discover-neighbours-page";
 import SettingsPage from "@/pages/settings-page";
 import PaymentMethodsPage from "@/pages/payment-methods-page";
@@ -125,7 +137,7 @@ function Router() {
       <Route path="/delete-account" component={DeleteAccountPage} />
       <ProtectedRoute path="/referrals" component={ReferralsPage} />
       <ProtectedRoute path="/my-items" component={MyItemsPage} />
-      <ProtectedRoute path="/requests" component={RequestsPage} />
+      <ProtectedRoute path="/requests" component={RequestsRedirect} />
       <ProtectedRoute path="/notifications" component={ActivityPage} />
       <ProtectedRoute path="/activity" component={ActivityPage} />
       <ProtectedRoute path="/transactions/:id" component={TransactionDetailPage} />

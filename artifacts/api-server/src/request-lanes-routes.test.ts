@@ -3,7 +3,7 @@ import { after, before, test } from "node:test";
 import cookieParser from "cookie-parser";
 import express from "express";
 import { inArray } from "drizzle-orm";
-import { db, itemRequests, items, messages, notifications, pool, userReviews, users } from "@workspace/db";
+import { db, extensionRequests, itemRequests, items, messages, notifications, pool, userReviews, users } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { registerRoutes } from "./routes/routes.js";
 
@@ -99,9 +99,11 @@ async function newRequest(overrides: Partial<typeof itemRequests.$inferInsert> =
   return request.id;
 }
 
-type Row = { id: number; lane: { section: string; actionLabel: string | null; statusLine: string; dueDay: string | null } };
-const listRequests = async (client: TestClient, query = "") => (await (await client.request(`/api/requests${query}`)).json()) as Row[];
-const laneOf = (rows: Row[], id: number) => rows.find((r) => r.id === id)?.lane;
+type Lane = { section: string; actionLabel: string | null; statusLine: string; dueDay: string | null };
+type Thread = { requestId: number; lane: Lane };
+const listInbox = async (client: TestClient, archived = false) =>
+  (await (await client.request(`/api/inbox${archived ? "?archived=true" : ""}`)).json()) as Thread[];
+const laneOf = (rows: Thread[], id: number) => rows.find((r) => r.requestId === id)?.lane;
 
 before(async () => {
   const password = await hashPassword(PASSWORD);
@@ -131,6 +133,7 @@ before(async () => {
 after(async () => {
   try {
     if (requestIds.length) {
+      await db.delete(extensionRequests).where(inArray(extensionRequests.requestId, requestIds));
       await db.delete(userReviews).where(inArray(userReviews.transactionId, requestIds));
       await db.delete(messages).where(inArray(messages.requestId, requestIds));
       await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
@@ -145,18 +148,19 @@ after(async () => {
   }
 });
 
-test("GET /api/requests gives each request a section for the person asking", async () => {
+test("GET /api/inbox gives each thread a section for the person asking", async () => {
   const pending = await newRequest();
   const inProgress = await newRequest({ status: "IN_PROGRESS" });
   const overdue = await newRequest({ status: "RETURN_DUE" });
   const cancelled = await newRequest({ status: "CANCELLED" });
 
-  const asOwner = await listRequests(owner);
+  const asOwner = await listInbox(owner);
   assert.equal(laneOf(asOwner, pending)?.section, "action");
   assert.equal(laneOf(asOwner, inProgress)?.section, "in_progress");
-  assert.equal(laneOf(asOwner, cancelled)?.section, "history");
+  // Finished threads are archived, so they come from the archived list.
+  assert.equal(laneOf(await listInbox(owner, true), cancelled)?.section, "history");
 
-  const asBorrower = await listRequests(borrower);
+  const asBorrower = await listInbox(borrower);
   assert.equal(laneOf(asBorrower, pending)?.section, "in_progress");
   assert.match(laneOf(asBorrower, pending)!.statusLine, /^Waiting on .* to respond$/);
   // The test accounts' usernames are not email addresses, but a status line must never carry one.
@@ -173,32 +177,25 @@ test("a completed request asks for a review for 14 days, until the viewer has re
   const reviewed = await newRequest({ status: "COMPLETED", returnConfirmedAt: new Date(NOW.getTime() - 3 * DAY) });
   await db.insert(userReviews).values({ reviewerId: ownerId, reviewedUserId: borrowerId, rating: 5, transactionId: reviewed });
 
-  const asOwner = await listRequests(owner);
+  // Finished threads are archived, so they come from the archived list.
+  const asOwner = await listInbox(owner, true);
   assert.equal(laneOf(asOwner, recent)?.actionLabel, "Leave a review");
   assert.equal(laneOf(asOwner, old)?.section, "history");
   assert.equal(laneOf(asOwner, reviewed)?.section, "history");
   // The borrower has not reviewed it, so it is still theirs to do.
-  assert.equal(laneOf(await listRequests(borrower), reviewed)?.actionLabel, "Leave a review");
+  assert.equal(laneOf(await listInbox(borrower, true), reviewed)?.actionLabel, "Leave a review");
 });
 
-test("?filter=blocking-deletion lists only requests that block deleting the account", async () => {
-  const autoCancelled = await newRequest(); // PENDING, nothing moved: deletion cancels it by itself
-  const blocking = await newRequest({ status: "IN_PROGRESS" });
-  const finished = await newRequest({ status: "COMPLETED", returnConfirmedAt: new Date(NOW.getTime() - 30 * DAY) });
-
-  const ids = (await listRequests(owner, "?filter=blocking-deletion")).map((r) => r.id);
-  assert.ok(ids.includes(blocking));
-  assert.ok(!ids.includes(autoCancelled));
-  assert.ok(!ids.includes(finished));
-  assert.ok((await listRequests(owner)).some((r) => r.id === autoCancelled), "the unfiltered list still has it");
-});
-
-test("GET /api/inbox carries the same section and honours the blocking filter", async () => {
-  const live = await newRequest({ status: "IN_PROGRESS" });
-  const inbox = (await (await borrower.request("/api/inbox")).json()) as Array<{ requestId: number; lane: Row["lane"] }>;
-  assert.equal(inbox.find((t) => t.requestId === live)?.lane.statusLine, "Return by Nov 3");
-
-  const blocking = (await (await borrower.request("/api/inbox?filter=blocking-deletion")).json()) as Array<{ requestId: number }>;
-  assert.ok(blocking.some((t) => t.requestId === live));
-  assert.ok(blocking.every((t) => t.requestId !== requestIds[0]), "the auto-cancelled PENDING request is not listed");
+test("an extension request waits on the owner, and tells the borrower it was sent", async () => {
+  const id = await newRequest({ status: "IN_PROGRESS" });
+  await db.insert(extensionRequests).values({
+    requestId: id,
+    borrowerId,
+    ownerId,
+    requestedEndDate: new Date("2026-11-04T00:00:00.000Z"),
+    previousEndDate: new Date("2026-11-03T00:00:00.000Z"),
+    status: "pending",
+  });
+  assert.equal(laneOf(await listInbox(owner), id)?.actionLabel, "Respond to extension request");
+  assert.match(laneOf(await listInbox(borrower), id)!.statusLine, /extension request sent/);
 });

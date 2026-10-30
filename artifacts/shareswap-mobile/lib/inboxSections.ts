@@ -16,8 +16,6 @@ type Thread = { requestId: number; requestType: string; iAmRequester: boolean; u
 
 export type InboxFilter = "all" | "incoming" | "mine" | "lending" | "renting" | "swapping" | "gifting" | "history";
 
-export const BLOCKING_DELETION_FILTER = "blocking-deletion";
-
 /** A thread from an API that predates lanes counts as in progress. */
 export const sectionOf = (t: Thread): RequestSection => t.lane?.section ?? "in_progress";
 

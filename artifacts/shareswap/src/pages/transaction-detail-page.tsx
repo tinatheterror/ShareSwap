@@ -688,11 +688,14 @@ export default function TransactionDetailPage() {
 
           {/* Footer action */}
           <div className="flex justify-center pt-2 pb-6">
-            <Link href="/requests" className="cursor-pointer">
-              <Button variant="outline" size="sm">
-                View all requests
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.dispatchEvent(new Event("open-chat-requests"))}
+              data-testid="button-open-inbox"
+            >
+              Open inbox
+            </Button>
           </div>
         </div>
       </main>

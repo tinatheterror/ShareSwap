@@ -16,7 +16,7 @@ import {
   WHAT_IS_DELETED,
   WHAT_IS_KEPT,
   blockerAction,
-  blockingRequestHref,
+  openRequestConversation,
   blockingRequestLabel,
   canRequestDeletion,
   deletionDateLabel,
@@ -276,7 +276,7 @@ export default function DeleteAccountPage() {
                             <ul className="mt-1 ml-4 list-disc space-y-0.5" data-testid="delete-account-blocking-requests">
                               {b.requests.map((r) => (
                                 <li key={r.id}>
-                                  <Link href={blockingRequestHref(r)} className="underline">{blockingRequestLabel(r)}</Link>
+                                  <button type="button" className="underline text-left" onClick={() => openRequestConversation(r.id)} data-testid={`delete-account-blocking-request-${r.id}`}>{blockingRequestLabel(r)}</button>
                                 </li>
                               ))}
                             </ul>

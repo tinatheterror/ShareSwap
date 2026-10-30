@@ -68,13 +68,19 @@ describe("the web deletion page, signed in", () => {
       blockers: [{
         code: "open_requests",
         message: "Finish or cancel your open rentals, borrows, swaps and gifts first.",
-        requests: [{ id: 7, itemName: "Camera", requestType: "RENT", status: "IN_PROGRESS", otherPartyId: 3 }],
+        requests: [{ id: 7, itemName: "Camera", requestType: "RENT", status: "IN_PROGRESS", otherPartyId: 3, statusLine: "Return by Nov 3" }],
       }],
     };
     renderPage();
     await screen.findByTestId("delete-account-blockers");
     expect(screen.getByText(/Finish or cancel your open rentals/)).toBeTruthy();
-    expect(screen.getByText("Camera - Rental - In progress").closest("a")?.getAttribute("href")).toBe("/transactions/7");
+    const opened: unknown[] = [];
+    const listener = (e: Event) => opened.push((e as CustomEvent).detail);
+    window.addEventListener("open-chat-request", listener);
+    fireEvent.click(screen.getByText("Camera - Rental - Return by Nov 3"));
+    window.removeEventListener("open-chat-request", listener);
+    expect(opened).toEqual([{ requestId: 7 }]);
+    expect(screen.queryByText("Open your requests")).toBeNull();
     expect((screen.getByTestId("delete-account-continue") as HTMLButtonElement).disabled).toBe(true);
   });
 

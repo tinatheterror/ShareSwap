@@ -99,18 +99,18 @@ describe("pending state", () => {
 });
 
 describe("blockerAction", () => {
-  test("points to the wallet for money and to the blocking-deletion inbox filter for open bookings, and nowhere for the rest", () => {
+  test("points to the wallet for money and nowhere for open bookings (they are listed inline), and nowhere for the rest", () => {
     expect(blockerAction("wallet_available")?.href).toBe("/wallet");
-    expect(blockerAction("open_requests")?.href).toBe("/(tabs)/inbox?filter=blocking-deletion");
+    expect(blockerAction("open_requests")).toBeNull();
     expect(blockerAction("open_claims")).toBeNull();
   });
 });
 
 describe("blocking requests", () => {
-  const request = { id: 7, itemName: "Camera", requestType: "RENT", status: "IN_PROGRESS", otherPartyId: 3 };
+  const request = { id: 7, itemName: "Camera", requestType: "RENT", status: "IN_PROGRESS", otherPartyId: 3, statusLine: "Return by Nov 3" };
 
   test("are described by item, type and status, and link to the conversation", () => {
-    expect(blockingRequestLabel(request)).toBe("Camera - Rental - In progress");
+    expect(blockingRequestLabel(request)).toBe("Camera - Rental - Return by Nov 3");
     expect(blockingRequestHref(request)).toBe("/chat/3?requestId=7");
     expect(blockingRequestHref({ ...request, otherPartyId: null })).toBeNull();
   });

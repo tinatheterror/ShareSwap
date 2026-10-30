@@ -1,15 +1,19 @@
 // What the account-deletion page shows, derived from the server's answers. The server decides everything
 // (eligibility, tiers, the schedule); this only words it. Same wording as the mobile app's lib/accountDeletion.ts.
 
-export type BlockingRequest = { id: number; itemName: string; requestType: string; status: string; otherPartyId: number | null };
+export type BlockingRequest = { id: number; itemName: string; requestType: string; status: string; otherPartyId: number | null; statusLine: string };
 
 const REQUEST_TYPE_LABELS: Record<string, string> = { BORROW: "Borrow", RENT: "Rental", SWAP: "Swap", GIFT: "Gift" };
 
-/** "Camera - Rental - In progress": which request is in the way, as a person reads it. */
+/** "Camera - Rental - Return by Nov 3": which request is in the way and where it stands, as a person reads it. */
 export function blockingRequestLabel(r: BlockingRequest): string {
   const type = REQUEST_TYPE_LABELS[r.requestType] ?? r.requestType.charAt(0) + r.requestType.slice(1).toLowerCase();
-  const status = r.status.replace(/_/g, " ").toLowerCase();
-  return `${r.itemName} - ${type} - ${status.charAt(0).toUpperCase()}${status.slice(1)}`;
+  return `${r.itemName} - ${type} - ${r.statusLine}`;
+}
+
+/** Opens the request's conversation in the inbox, where its actions are. */
+export function openRequestConversation(requestId: number): void {
+  window.dispatchEvent(new CustomEvent("open-chat-request", { detail: { requestId } }));
 }
 
 export type WalletTier = "none" | "forfeit" | "offer_withdrawal" | "blocks";
@@ -64,14 +68,10 @@ export function blockerAction(code: string): { label: string; href: string } | n
     case "wallet_available":
     case "payout_unsettled":
       return { label: "Open your balance", href: "/my-balance" };
-    case "open_requests":
-      return { label: "Open your requests", href: "/requests?filter=blocking-deletion" };
     default:
       return null;
   }
 }
-
-export const blockingRequestHref = (r: BlockingRequest): string => `/transactions/${r.id}`;
 
 export type WalletCopy = { lines: string[]; needsAcknowledgement: boolean; acknowledgement: string | null };
 

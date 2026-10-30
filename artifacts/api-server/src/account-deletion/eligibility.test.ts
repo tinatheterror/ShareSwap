@@ -167,6 +167,17 @@ test("a booking past acceptance blocks even with no money, and an unknown status
   assert.equal(result.autoResolve.requests, 0);
 });
 
+test("each blocking request carries a status line for the person asking", async () => {
+  const user = await makeUser();
+  await makeRequest(user.id, { status: "IN_PROGRESS", endDate: new Date("2026-11-03T00:00:00.000Z") });
+  const result = await getDeletionEligibility(user.id);
+  const [blocking] = result.blockers.find((b) => b.code === "open_requests")!.requests!;
+  assert.equal(blocking.status, "IN_PROGRESS");
+  assert.equal(typeof blocking.statusLine, "string");
+  assert.ok(blocking.statusLine.length > 0);
+  assert.ok(!blocking.statusLine.includes("@"), "never an email address");
+});
+
 test("an open security claim and an unfinished settlement block, as owner or borrower", async () => {
   const user = await makeUser();
   const requestId = await makeRequest(user.id, { status: "COMPLETED" });

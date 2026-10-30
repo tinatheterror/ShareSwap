@@ -1,5 +1,7 @@
 import { and, eq, inArray, notInArray, or, sql } from "drizzle-orm";
 import { db, depositSettlementOperations, itemRequests, items, rentalPayouts, securityClaims, users } from "@workspace/db";
+import { publicName } from "../public-identity";
+import { classifyRequestLane } from "../request-lanes";
 import {
   AUTO_RESOLVABLE_REQUEST_STATUSES,
   IN_FLIGHT_SETTLEMENT_STATUSES,
@@ -11,7 +13,15 @@ import {
   type WalletTier,
 } from "./retention";
 
-export type BlockingRequest = { id: number; itemName: string; requestType: string; status: string; otherPartyId: number | null };
+export type BlockingRequest = {
+  id: number;
+  itemName: string;
+  requestType: string;
+  status: string;
+  otherPartyId: number | null;
+  /** Where the request stands for this person and what it waits on, e.g. "Return by Nov 3". */
+  statusLine: string;
+};
 
 export type DeletionBlocker = { code: string; message: string; count?: number; amount?: string; requests?: BlockingRequest[] };
 
@@ -41,7 +51,7 @@ const dollars = (c: number) => (c / 100).toFixed(2);
 
 /**
  * The open requests that stop a deletion: everything not finished, except PENDING/ACCEPTED requests nothing has
- * moved for, which deletion cancels by itself. The Requests screen's blocking-deletion filter uses this too.
+ * moved for, which deletion cancels by itself.
  */
 export async function findBlockingRequests(
   userId: number,
@@ -58,6 +68,17 @@ export async function findBlockingRequests(
       depositPaymentIntentId: itemRequests.depositPaymentIntentId,
       depositCapturedAmount: itemRequests.depositCapturedAmount,
       shareCoinsCharged: itemRequests.shareCoinsCharged,
+      negotiationStatus: itemRequests.negotiationStatus,
+      counterProposedBy: itemRequests.counterProposedBy,
+      ownerConfirmedHandoff: itemRequests.ownerConfirmedHandoff,
+      borrowerConfirmedHandoff: itemRequests.borrowerConfirmedHandoff,
+      handoffConfirmDeadline: itemRequests.handoffConfirmDeadline,
+      endDate: itemRequests.endDate,
+      returnDeadlineAt: itemRequests.returnDeadlineAt,
+      requesterName: sql<string | null>`(SELECT display_name FROM users WHERE id = ${itemRequests.requesterId})`,
+      requesterUsername: sql<string | null>`(SELECT username FROM users WHERE id = ${itemRequests.requesterId})`,
+      ownerName: sql<string | null>`(SELECT display_name FROM users WHERE id = ${items.ownerId})`,
+      ownerUsername: sql<string | null>`(SELECT username FROM users WHERE id = ${items.ownerId})`,
     })
     .from(itemRequests)
     .innerJoin(items, eq(items.id, itemRequests.itemId))
@@ -81,13 +102,20 @@ export async function findBlockingRequests(
 
   return {
     openRequestCount: openRequests.length,
-    blocking: blockingRequests.map((r) => ({
-      id: r.id,
-      itemName: r.itemName,
-      requestType: r.requestType,
-      status: r.status,
-      otherPartyId: r.requesterId === userId ? r.ownerId : r.requesterId,
-    })),
+    blocking: blockingRequests.map((r) => {
+      const viewerIsRequester = r.requesterId === userId;
+      const otherParty = viewerIsRequester
+        ? publicName({ displayName: r.ownerName, username: r.ownerUsername })
+        : publicName({ displayName: r.requesterName, username: r.requesterUsername });
+      return {
+        id: r.id,
+        itemName: r.itemName,
+        requestType: r.requestType,
+        status: r.status,
+        otherPartyId: viewerIsRequester ? r.ownerId : r.requesterId,
+        statusLine: classifyRequestLane(r, userId, otherParty ?? "the other person", new Date()).statusLine,
+      };
+    }),
   };
 }
 

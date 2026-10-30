@@ -75,14 +75,14 @@ describe("AccountDeletionSheet", () => {
       ...base, eligible: false,
       blockers: [{
         code: "open_requests", count: 1, message: "Finish or cancel your open rentals, borrows, swaps and gifts first.",
-        requests: [{ id: 7, itemName: "Camera", requestType: "RENT", status: "IN_PROGRESS", otherPartyId: 3 }],
+        requests: [{ id: 7, itemName: "Camera", requestType: "RENT", status: "IN_PROGRESS", otherPartyId: 3, statusLine: "Return by Nov 3" }],
       }],
     });
     const { tree } = await render(<AccountDeletionSheet visible onClose={() => {}} />);
     expect(mockApiGet).toHaveBeenCalledWith("/api/account/deletion-eligibility");
     expect(text(tree)).toContain("Finish or cancel your open rentals");
-    expect(text(tree)).toContain("Open your requests");
-    expect(text(tree)).toContain("Camera - Rental - In progress");
+    expect(text(tree)).not.toContain("Open your requests");
+    expect(text(tree)).toContain("Camera - Rental - Return by Nov 3");
     expect(text(tree)).toContain("When your account is deleted:");
     await press(tree, "deletion-blocking-request-7");
     expect(mockPush).toHaveBeenCalledWith("/chat/3?requestId=7");

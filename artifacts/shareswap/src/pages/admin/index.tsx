@@ -20,8 +20,18 @@ const STAT_CARDS = [
   { key: "bannedUsers" as const, label: "Banned Users", icon: ShieldBan, color: "text-red-600", bg: "bg-red-50", href: "/admin/users?status=banned" },
 ];
 
+interface ConnectCleanupFailure {
+  id: number;
+  userId: number;
+  connectedAccountId: string;
+  reason: string;
+  attempts: number;
+  lastAttemptAt: string | null;
+}
+
 export default function AdminDashboardPage() {
   const { data: stats, isLoading } = useQuery<Stats>({ queryKey: ["/api/admin/stats"] });
+  const { data: connectFailures = [] } = useQuery<ConnectCleanupFailure[]>({ queryKey: ["/api/admin/connect-cleanup-failures"] });
 
   return (
     <AdminLayout>
@@ -50,6 +60,27 @@ export default function AdminDashboardPage() {
             </Link>
           ))}
         </div>
+
+        {connectFailures.length > 0 && (
+          <Card className="mt-8 border-amber-200 bg-amber-50/40" data-testid="connect-cleanup-failures">
+            <CardContent className="pt-5">
+              <h2 className="font-semibold text-gray-800 mb-1">Stripe accounts that could not be deleted</h2>
+              <p className="text-sm text-muted-foreground mb-3">
+                These people's accounts were deleted, but Stripe refused to delete their Connect account (usually a balance is left). The deletion job retries each one on every run until Stripe lets go; settle the balance in the Stripe dashboard to clear it.
+              </p>
+              <ul className="space-y-2 text-sm">
+                {connectFailures.map((f) => (
+                  <li key={f.id} className="flex flex-wrap gap-x-4 gap-y-1">
+                    <span className="font-mono">{f.connectedAccountId}</span>
+                    <span className="text-muted-foreground">user #{f.userId}</span>
+                    <span className="text-amber-900">{f.reason}</span>
+                    <span className="text-muted-foreground">{f.attempts} {f.attempts === 1 ? "attempt" : "attempts"}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="mt-8 grid md:grid-cols-2 gap-6">
           <Card>

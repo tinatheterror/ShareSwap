@@ -3,7 +3,7 @@ import { after, before, test } from "node:test";
 import { eq, inArray, or } from "drizzle-orm";
 import passport from "passport";
 import {
-  bannedEmailHashes, db, deliveryArrangements, itemRequests, items, messages, notifications, platformCommissions, pool,
+  bannedEmailHashes, connectCleanupFailures, db, deliveryArrangements, itemRequests, items, messages, notifications, platformCommissions, pool,
   rentalPayouts, rentalReturns, requestLifecycleEvents, securityClaims, shareCoinsTransactions, userPushTokens, userReviews,
   userSubscriptions, users, verifications, wishlistOffers, wishlists,
 } from "@workspace/db";
@@ -11,7 +11,7 @@ import { hashPassword } from "../auth.js";
 import { Client, startApp } from "../auth-test-client.js";
 import { hashBannedEmail, isBannedEmail } from "./banned-email.js";
 import {
-  DeletionError, cancelDeletion, finalizeDeletion, finalizeDueDeletions, requestDeletion, scheduledFor,
+  DeletionError, cancelDeletion, finalizeDeletion, finalizeDueDeletions, requestDeletion, retryConnectFailures, scheduledFor,
   type DeletionDeps, type StripeCleanupTarget,
 } from "./service.js";
 
@@ -85,6 +85,7 @@ after(async () => {
     await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, reqs));
     await db.delete(securityClaims).where(inArray(securityClaims.requestId, reqs));
     await db.delete(deliveryArrangements).where(inArray(deliveryArrangements.requestId, reqs));
+    await db.delete(connectCleanupFailures).where(inArray(connectCleanupFailures.userId, ids));
     await db.delete(rentalReturns).where(inArray(rentalReturns.requestId, reqs));
     await db.delete(rentalPayouts).where(inArray(rentalPayouts.userId, ids));
     await db.delete(messages).where(or(inArray(messages.senderId, ids), inArray(messages.receiverId, ids)));
@@ -470,3 +471,51 @@ test("unbanning someone who had asked to be deleted puts them back to waiting", 
   assert.equal((await userRow(plain.id)).accountStatus, "active");
 });
 
+
+test("a Connect account Stripe refuses is recorded for staff, the deletion goes on, and later runs retry until it works", async () => {
+  const user = await makeUser("connect", { stripeConnectedAccountId: "acct_test_refused" });
+  await pending(user.id);
+  await finalizeDeletion(user.id, deps({ stripeCleanup: async () => ({ connectRefused: "account still has a balance" }) }));
+  assert.equal((await userRow(user.id)).accountStatus, "deleted");
+  const failureRows = () => db.select().from(connectCleanupFailures).where(eq(connectCleanupFailures.userId, user.id));
+  const [recorded] = await failureRows();
+  assert.deepEqual([recorded.connectedAccountId, recorded.reason, recorded.attempts, recorded.resolvedAt], ["acct_test_refused", "account still has a balance", 1, null]);
+
+  // Admins see it.
+  const admin = await makeUser("connect-admin", { isAdmin: true });
+  const client = new Client(baseUrl);
+  assert.equal((await client.post("/api/login", { username: admin.username, password: PASSWORD })).status, 200);
+  const listed = (await (await client.get("/api/admin/connect-cleanup-failures")).json()) as { userId: number; reason: string }[];
+  assert.ok(listed.some((f) => f.userId === user.id && f.reason === "account still has a balance"));
+  const plain = new Client(baseUrl);
+  const regular = await makeUser("connect-regular");
+  assert.equal((await plain.post("/api/login", { username: regular.username, password: PASSWORD })).status, 200);
+  assert.equal((await plain.get("/api/admin/connect-cleanup-failures")).status, 403);
+
+  // A run in which Stripe still refuses keeps it on the list and counts the attempt.
+  const refused = await retryConnectFailures({ deleteConnectAccount: async () => { throw new Error("still has a balance"); } });
+  assert.ok(refused.tried >= 1);
+  const [again] = await failureRows();
+  assert.deepEqual([again.attempts, again.reason, again.resolvedAt], [2, "still has a balance", null]);
+
+  // A later live job run retries it, and Stripe lets go.
+  const asked: string[] = [];
+  const run = await finalizeDueDeletions({ ...deps(), limit: 0, deleteConnectAccount: async (id) => void asked.push(id) });
+  assert.ok(run.connectResolved >= 1);
+  assert.ok(asked.includes("acct_test_refused"));
+  const [done] = await failureRows();
+  assert.ok(done.resolvedAt);
+  assert.equal(done.attempts, 3);
+  assert.ok(!((await (await client.get("/api/admin/connect-cleanup-failures")).json()) as { userId: number }[]).some((f) => f.userId === user.id));
+
+  // Resolved ones are not tried again, and a dry run retries nothing.
+  asked.length = 0;
+  await finalizeDueDeletions({ ...deps(), limit: 0, deleteConnectAccount: async (id) => void asked.push(id) });
+  assert.ok(!asked.includes("acct_test_refused"));
+  const other = await makeUser("connect-dry", { stripeConnectedAccountId: "acct_test_dry" });
+  await pending(other.id);
+  await finalizeDeletion(other.id, deps({ stripeCleanup: async () => ({ connectRefused: "balance" }) }));
+  asked.length = 0;
+  await finalizeDueDeletions({ ...deps(), limit: 0, dryRun: true, deleteConnectAccount: async (id) => void asked.push(id) });
+  assert.deepEqual(asked, []);
+});

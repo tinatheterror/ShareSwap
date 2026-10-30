@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createStripeCleanup, type StripeCleanupClient } from "./stripe-cleanup.js";
+import { createConnectDeleter, createStripeCleanup, type StripeCleanupClient } from "./stripe-cleanup.js";
 
 // Only fake clients here: nothing in this file can reach Stripe, live or test.
 
@@ -45,10 +45,16 @@ test("a failure on the subscription or the Customer stops the deletion", async (
   }
 });
 
-test("a Connect account Stripe will not delete is logged with its id and does not stop the deletion", async () => {
+test("a Connect account Stripe will not delete is reported with its reason and does not stop the deletion", async () => {
   const logged: string[] = [];
   const { client } = fake({ acct: new Error("account still has a balance") });
-  await createStripeCleanup(() => client, (line) => void logged.push(line))(target);
+  const result = await createStripeCleanup(() => client, (line) => void logged.push(line))(target);
+  assert.deepEqual(result, { connectRefused: "account still has a balance" });
   assert.equal(logged.length, 1);
   assert.match(logged[0], /acct_x/);
+});
+
+test("the retry deleter treats an account Stripe no longer has as done, and throws on a refusal", async () => {
+  await createConnectDeleter(() => fake({ acct: missing }).client)("acct_x");
+  await assert.rejects(createConnectDeleter(() => fake({ acct: new Error("still has a balance") }).client)("acct_x"), /still has a balance/);
 });

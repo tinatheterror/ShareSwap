@@ -32,7 +32,7 @@ import multer from "multer";
 import { uploadToStorage } from "../storage";
 import path from "path";
 import * as express from "express";
-import { itemConditionVerifications } from "@workspace/db";
+import { connectCleanupFailures, itemConditionVerifications } from "@workspace/db";
 import { matchCatalog } from "../lib/lib/baby-catalog";
 import { sponsoredGames, gameSessions } from "@workspace/db";
 import { communityChallenges, challengeParticipants } from "@workspace/db";
@@ -64,7 +64,7 @@ import {
   scheduledFor as deletionScheduledFor,
   type DeletionDeps,
 } from "../account-deletion/service";
-import { createStripeCleanup, type StripeCleanupClient } from "../account-deletion/stripe-cleanup";
+import { createConnectDeleter, createStripeCleanup, type StripeCleanupClient } from "../account-deletion/stripe-cleanup";
 import { minimumWaiverApplies } from "../account-deletion/retention";
 import { isEmailShaped, publicName, publicUsername } from "../public-identity";
 import { scrubEmailUsernames, usernameScrubMiddleware } from "../username-scrub";
@@ -12706,13 +12706,28 @@ Respond with ONLY the category name, nothing else.`
         supportsDryRun: true,
         run: async (mode) => {
           const result = await finalizeDueDeletions({ ...deletionDeps(), dryRun: mode !== "live" });
-          return `mode=${mode} due=${result.due} deleted=${result.deleted} wouldDelete=${result.wouldDelete} blocked=${result.blocked} failed=${result.failed}`;
+          return `mode=${mode} due=${result.due} deleted=${result.deleted} wouldDelete=${result.wouldDelete} blocked=${result.blocked} failed=${result.failed} connectRetried=${result.connectTried} connectResolved=${result.connectResolved}`;
         },
       });
       void runAccountDeletionSweep();
       backgroundJobs.setInterval(() => void runAccountDeletionSweep(), 60 * 60 * 1000);
     }, 30 * 1000);
   }
+
+  // Connect accounts Stripe would not delete when their owner's account was deleted; the finalize job retries them.
+  app.get("/api/admin/connect-cleanup-failures", requireAdmin, async (_req, res) => {
+    try {
+      const rows = await db
+        .select()
+        .from(connectCleanupFailures)
+        .where(isNull(connectCleanupFailures.resolvedAt))
+        .orderBy(connectCleanupFailures.createdAt);
+      res.json(rows);
+    } catch (err) {
+      console.error("Admin connect cleanup failures error:", err);
+      res.status(500).json({ message: "Failed to load Stripe cleanup failures" });
+    }
+  });
 
   // Get statistics for public display
   app.get("/api/stats", async (req, res) => {
@@ -16044,6 +16059,7 @@ Respond with ONLY the category name, nothing else.`
   const deletionDeps = (): DeletionDeps => ({
     now: options.now,
     stripeCleanup: createStripeCleanup(async () => (await getUncachableStripeClient()) as unknown as StripeCleanupClient),
+    deleteConnectAccount: createConnectDeleter(async () => (await getUncachableStripeClient()) as unknown as StripeCleanupClient),
     ...options.accountDeletion,
   });
   const sendDeletionError = (res: import("express").Response, error: unknown, fallback: string) => {

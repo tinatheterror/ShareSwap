@@ -64,6 +64,15 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     anonymize: [],
     delete: ["id", "user_id", "challenge_id", "current_score", "current_rank", "reward_claimed", "joined_at"],
   },
+  connect_cleanup_failures: {
+    rows: "retain",
+    retention: null,
+    note: "Work list for staff: Connect accounts Stripe would not delete. Holds an account id and Stripe's reason, no personal data.",
+    userColumns: ["user_id"],
+    keep: ["id", "user_id", "connected_account_id", "reason", "attempts", "created_at", "last_attempt_at", "resolved_at"],
+    anonymize: [],
+    delete: [],
+  },
   community_challenges: {
     rows: "retain",
     retention: null,

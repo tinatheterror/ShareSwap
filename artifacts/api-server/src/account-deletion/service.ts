@@ -1,7 +1,7 @@
 import { unlink } from "node:fs/promises";
 import path from "node:path";
-import { and, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
-import { bannedEmailHashes, db, items, notifications, requestLifecycleEvents, users } from "@workspace/db";
+import { and, eq, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
+import { bannedEmailHashes, connectCleanupFailures, db, items, notifications, requestLifecycleEvents, users } from "@workspace/db";
 import { sendAccountDeletedEmail, sendAccountDeletionRequestedEmail } from "../sendgrid";
 import { publicName } from "../public-identity";
 import { anonymizeUser } from "./anonymize";
@@ -28,11 +28,16 @@ export type StripeCleanupTarget = {
   connectedAccountId: string | null;
 };
 
+/** What stripeCleanup reports back. A Connect refusal does not stop the deletion; it is recorded for staff. */
+export type StripeCleanupResult = { connectRefused?: string };
+
 export type DeletionDeps = {
   now?: () => Date;
   env?: NodeJS.ProcessEnv;
   /** Ends the subscription and removes the Customer and Connect account. Must be safe to repeat. */
-  stripeCleanup?: (target: StripeCleanupTarget) => Promise<void>;
+  stripeCleanup?: (target: StripeCleanupTarget) => Promise<StripeCleanupResult | void>;
+  /** Deletes a Connect account for a retry: resolves when it is gone (or already was), throws when Stripe refuses. */
+  deleteConnectAccount?: (accountId: string) => Promise<void>;
   sendRequestedEmail?: (to: string, deleteOn: Date, name?: string) => Promise<unknown>;
   sendDeletedEmail?: (to: string, name?: string) => Promise<unknown>;
   removeUpload?: (publicPath: string) => Promise<void>;
@@ -163,7 +168,8 @@ export async function finalizeDeletion(userId: number, deps: DeletionDeps = {}):
     subscriptionId: user.stripeSubscriptionId,
     connectedAccountId: user.stripeConnectedAccountId,
   };
-  if (deps.stripeCleanup) await deps.stripeCleanup(target);
+  let connectRefused: string | undefined;
+  if (deps.stripeCleanup) connectRefused = (await deps.stripeCleanup(target))?.connectRefused;
   else if (target.customerId || target.subscriptionId || target.connectedAccountId) {
     throw new DeletionError("stripe_cleanup_unavailable", "Stripe cleanup is not configured, so an account with Stripe data cannot be deleted.", 500);
   }
@@ -220,6 +226,14 @@ export async function finalizeDeletion(userId: number, deps: DeletionDeps = {}):
 
     const { uploads } = await anonymizeUser(tx, userId);
     if (bannedHash) await tx.insert(bannedEmailHashes).values({ emailHash: bannedHash }).onConflictDoNothing();
+    // Stripe would not delete the Connect account: leave a durable note for staff, in the same transaction as the
+    // deletion, and let later finalize runs retry it.
+    if (connectRefused && target.connectedAccountId) {
+      await tx
+        .insert(connectCleanupFailures)
+        .values({ userId, connectedAccountId: target.connectedAccountId, reason: connectRefused })
+        .onConflictDoUpdate({ target: connectCleanupFailures.userId, set: { reason: connectRefused, lastAttemptAt: new Date(), resolvedAt: null } });
+    }
     return { uploads, requestsCancelled: cancelled.length };
   });
 
@@ -248,10 +262,46 @@ async function removeUploadedFile(publicPath: string) {
   }
 }
 
-export type DueSweepResult = { due: number; deleted: number; blocked: number; failed: number; wouldDelete: number };
+export type ConnectRetryResult = { tried: number; resolved: number };
+
+/** Retries the Connect accounts Stripe refused earlier. Each failure stays on the list until Stripe lets go of it. */
+export async function retryConnectFailures(deps: Pick<DeletionDeps, "deleteConnectAccount" | "now"> = {}): Promise<ConnectRetryResult> {
+  const result: ConnectRetryResult = { tried: 0, resolved: 0 };
+  if (!deps.deleteConnectAccount) return result;
+  const open = await db.select().from(connectCleanupFailures).where(isNull(connectCleanupFailures.resolvedAt)).orderBy(connectCleanupFailures.id).limit(100);
+  for (const failure of open) {
+    result.tried++;
+    const at = clock(deps);
+    try {
+      await deps.deleteConnectAccount(failure.connectedAccountId);
+      await db.update(connectCleanupFailures).set({ resolvedAt: at, lastAttemptAt: at, attempts: failure.attempts + 1 }).where(eq(connectCleanupFailures.id, failure.id));
+      result.resolved++;
+    } catch (error) {
+      await db
+        .update(connectCleanupFailures)
+        .set({ reason: error instanceof Error ? error.message : String(error), lastAttemptAt: at, attempts: failure.attempts + 1 })
+        .where(eq(connectCleanupFailures.id, failure.id));
+    }
+  }
+  return result;
+}
+
+export type DueSweepResult = { due: number; deleted: number; blocked: number; failed: number; wouldDelete: number; connectTried: number; connectResolved: number };
 
 /** Accounts whose grace period is over. A banned account that asked to be deleted is deleted too. */
 export async function finalizeDueDeletions(deps: DeletionDeps & { dryRun?: boolean; limit?: number } = {}): Promise<DueSweepResult> {
+  let connectTried = 0;
+  let connectResolved = 0;
+  if (!deps.dryRun) {
+    // Connect accounts Stripe refused on earlier runs are tried again on every live run.
+    try {
+      const retried = await retryConnectFailures(deps);
+      connectTried = retried.tried;
+      connectResolved = retried.resolved;
+    } catch (error) {
+      console.error("[account-deletion] could not retry Connect cleanups:", error instanceof Error ? error.message : error);
+    }
+  }
   const cutoff = new Date(clock(deps).getTime() - DELETION_GRACE_DAYS * DAY_MS);
   const due = await db
     .select({ id: users.id })
@@ -259,7 +309,7 @@ export async function finalizeDueDeletions(deps: DeletionDeps & { dryRun?: boole
     .where(and(isNotNull(users.deletionRequestedAt), lte(users.deletionRequestedAt, cutoff), inArray(users.accountStatus, ["pending_deletion", "banned"])))
     .orderBy(users.deletionRequestedAt)
     .limit(deps.limit ?? 25);
-  const result: DueSweepResult = { due: due.length, deleted: 0, blocked: 0, failed: 0, wouldDelete: 0 };
+  const result: DueSweepResult = { due: due.length, deleted: 0, blocked: 0, failed: 0, wouldDelete: 0, connectTried, connectResolved };
   for (const { id } of due) {
     try {
       if (deps.dryRun) {

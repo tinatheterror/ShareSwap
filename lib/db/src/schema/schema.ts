@@ -158,6 +158,19 @@ export const bannedEmailHashes = pgTable("banned_email_hashes", {
   createdAt: timestamp("created_at").defaultNow(),
 })
 
+// A Stripe Connect account that could not be deleted when its owner's account was deleted (Stripe refuses while the
+// account still holds a balance). Staff see these on the admin dashboard; later finalize runs retry until `resolved_at` is set.
+export const connectCleanupFailures = pgTable("connect_cleanup_failures", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique().references(() => users.id),
+  connectedAccountId: text("connected_account_id").notNull(),
+  reason: text("reason").notNull(),
+  attempts: integer("attempts").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastAttemptAt: timestamp("last_attempt_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+})
+
 export const verifications = pgTable("verifications", {
   id: serial("id").primaryKey(),
   userId: serial("user_id").notNull().references(() => users.id),

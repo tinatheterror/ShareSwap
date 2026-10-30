@@ -1,8 +1,9 @@
-import type { StripeCleanupTarget } from "./service";
+import type { StripeCleanupResult, StripeCleanupTarget } from "./service";
 
 // Ends an account's Stripe footprint before its data is erased: the subscription, then the Customer (which also
 // removes the saved cards), then the Connect account. Every call can be repeated: something Stripe no longer has
-// counts as done, so a retry after a failure in the middle picks up where it stopped.
+// (`resource_missing`, or "already canceled") counts as done, so a retry after a failure in the middle, or after the
+// database step failed, picks up where it stopped and never fails on what an earlier attempt already removed.
 //
 // Pending transfers need no step here. A payout that is still moving money (`held`, `pending_payout`,
 // `manual_review`) already blocks the deletion in getDeletionEligibility, and a transfer to a Connect account is
@@ -16,7 +17,7 @@ export interface StripeCleanupClient {
 }
 
 /** Stripe answers "no such object" with resource_missing; a subscription that already ended says so in its message. */
-function alreadyGone(error: unknown): boolean {
+export function alreadyGone(error: unknown): boolean {
   const e = error as { code?: string; message?: string } | null;
   return e?.code === "resource_missing" || /already (been )?(canceled|cancelled|deleted)/i.test(e?.message ?? "");
 }
@@ -34,12 +35,13 @@ export type StripeCleanupLog = (line: string, error?: unknown) => void;
 /**
  * The subscription and Customer must be gone before the account's data is erased, so a failure there stops the
  * deletion and is retried. The Connect account is different: Stripe refuses to delete a live account that still
- * holds a balance, and waiting on that would keep a person who asked to leave in limbo. A refusal is logged with the
- * account id, which the users row keeps (see the manifest), so staff can settle it; it does not stop the deletion.
+ * holds a balance, and waiting on that would keep a person who asked to leave in limbo. A refusal is returned as
+ * `connectRefused` (Stripe's reason); the caller records it durably for staff and retries it later. It does not stop
+ * the deletion.
  */
 export function createStripeCleanup(getClient: () => Promise<StripeCleanupClient> | StripeCleanupClient, log: StripeCleanupLog = console.error) {
-  return async (target: StripeCleanupTarget): Promise<void> => {
-    if (!target.subscriptionId && !target.customerId && !target.connectedAccountId) return;
+  return async (target: StripeCleanupTarget): Promise<StripeCleanupResult> => {
+    if (!target.subscriptionId && !target.customerId && !target.connectedAccountId) return {};
     const client = await getClient();
     if (target.subscriptionId) await idempotent(() => client.subscriptions.cancel(target.subscriptionId!));
     if (target.customerId) await idempotent(() => client.customers.del(target.customerId!));
@@ -47,8 +49,18 @@ export function createStripeCleanup(getClient: () => Promise<StripeCleanupClient
       try {
         await idempotent(() => client.accounts.del(target.connectedAccountId!));
       } catch (error) {
-        log(`[account-deletion] could not delete Stripe Connect account ${target.connectedAccountId} of user ${target.userId}; the deletion goes on and the account needs follow-up`, error);
+        log(`[account-deletion] Stripe would not delete Connect account ${target.connectedAccountId} of user ${target.userId}; the deletion goes on and the refusal is recorded for follow-up`, error);
+        return { connectRefused: error instanceof Error ? error.message : String(error) };
       }
     }
+    return {};
+  };
+}
+
+/** Deletes one Connect account for a retry. Already gone is success; a refusal throws. */
+export function createConnectDeleter(getClient: () => Promise<StripeCleanupClient> | StripeCleanupClient) {
+  return async (accountId: string): Promise<void> => {
+    const client = await getClient();
+    await idempotent(() => client.accounts.del(accountId));
   };
 }

@@ -10,6 +10,7 @@ import {
 import { hashPassword } from "../auth.js";
 import { Client, startApp } from "../auth-test-client.js";
 import { hashBannedEmail, isBannedEmail } from "./banned-email.js";
+import { createStripeCleanup, type StripeCleanupClient } from "./stripe-cleanup.js";
 import {
   DeletionError, cancelDeletion, finalizeDeletion, finalizeDueDeletions, requestDeletion, retryConnectFailures, scheduledFor,
   type DeletionDeps, type StripeCleanupTarget,
@@ -518,4 +519,45 @@ test("a Connect account Stripe refuses is recorded for staff, the deletion goes 
   asked.length = 0;
   await finalizeDueDeletions({ ...deps(), limit: 0, dryRun: true, deleteConnectAccount: async (id) => void asked.push(id) });
   assert.deepEqual(asked, []);
+});
+
+test("after a failed database step, the rerun treats Stripe's resource_missing as done and the deletion completes", async () => {
+  const user = await makeUser("rerun", { stripeCustomerId: "cus_test_rr", stripeSubscriptionId: "sub_test_rr", stripeConnectedAccountId: "acct_test_rr" });
+  await pending(user.id);
+
+  const calls: string[] = [];
+  const working: StripeCleanupClient = {
+    subscriptions: { cancel: async (id) => void calls.push(`sub:${id}`) },
+    customers: { del: async (id) => void calls.push(`cus:${id}`) },
+    accounts: { del: async (id) => void calls.push(`acct:${id}`) },
+  };
+  // Everything the first attempt removed is gone, so Stripe now answers resource_missing for all three.
+  const gone = Object.assign(new Error("No such object"), { code: "resource_missing" });
+  const missing: StripeCleanupClient = {
+    subscriptions: { cancel: async (id) => { calls.push(`sub:${id}`); throw gone; } },
+    customers: { del: async (id) => { calls.push(`cus:${id}`); throw gone; } },
+    accounts: { del: async (id) => { calls.push(`acct:${id}`); throw gone; } },
+  };
+
+  // Make the database step fail for this user only, after Stripe has been cleaned.
+  await pool.query(`CREATE OR REPLACE FUNCTION test_fail_delete_${user.id}() RETURNS trigger AS $$ BEGIN
+    IF NEW.id = ${user.id} AND NEW.account_status = 'deleted' THEN RAISE EXCEPTION 'database step failed for the test'; END IF; RETURN NEW; END $$ LANGUAGE plpgsql`);
+  await pool.query(`CREATE TRIGGER test_fail_delete_${user.id} BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION test_fail_delete_${user.id}()`);
+  try {
+    await assert.rejects(finalizeDeletion(user.id, deps({ stripeCleanup: createStripeCleanup(() => working) })), (e: any) => /database step failed/.test(String(e.cause?.message ?? e.message)));
+  } finally {
+    await pool.query(`DROP TRIGGER test_fail_delete_${user.id} ON users`);
+    await pool.query(`DROP FUNCTION test_fail_delete_${user.id}()`);
+  }
+  assert.deepEqual(calls, [`sub:sub_test_rr`, `cus:cus_test_rr`, `acct:acct_test_rr`]);
+  const untouched = await userRow(user.id);
+  assert.equal(untouched.accountStatus, "pending_deletion", "the failed attempt changed nothing in the database");
+  assert.equal(untouched.username, user.username);
+
+  calls.length = 0;
+  const result = await finalizeDeletion(user.id, deps({ stripeCleanup: createStripeCleanup(() => missing) }));
+  assert.equal(result.alreadyDeleted, false);
+  assert.deepEqual(calls, [`sub:sub_test_rr`, `cus:cus_test_rr`, `acct:acct_test_rr`], "the rerun asks Stripe about all three again");
+  assert.equal((await userRow(user.id)).accountStatus, "deleted");
+  assert.equal((await db.select().from(connectCleanupFailures).where(eq(connectCleanupFailures.userId, user.id))).length, 0, "an already-gone Connect account is not a failure");
 });

@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { Clock, MapPin, User, CheckCircle, XCircle, Package, Shield, Truck, RotateCcw, HandMetal, ArrowRightLeft, CreditCard, RefreshCw, Gift, AlertTriangle, Star, KeyRound } from "lucide-react";
+import { AlertCircle, Clock, MapPin, User, CheckCircle, XCircle, Package, Shield, Truck, RotateCcw, HandMetal, ArrowRightLeft, CreditCard, RefreshCw, Gift, AlertTriangle, Star, KeyRound } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -25,6 +25,7 @@ import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sh
 import { getStripePromise } from "@/lib/stripe-client";
 import { RequestLifecyclePanel } from "@/components/request-lifecycle-panel";
 import { REQUEST_DATES_PASSED_MESSAGE, acceptBlockedByDates } from "@/lib/request-dates";
+import { BLOCKING_DELETION_FILTER, ROLE_FILTERS, groupRequests, requestsUrlFilter, type RequestLane, type RoleFilter } from "@/lib/request-lanes";
 
 const stripePromise = getStripePromise();
 
@@ -35,6 +36,8 @@ function parseCalendarDate(dateString: string): Date {
 
 interface ItemRequest {
   id: number;
+  /** Which section of the page the request belongs to, decided by the API for this viewer. */
+  lane: RequestLane;
   itemId: number;
   requesterId: number;
   requestType: string;
@@ -183,6 +186,9 @@ export default function RequestsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
+  const blockingOnly = requestsUrlFilter(useSearch()) === BLOCKING_DELETION_FILTER;
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [showHistory, setShowHistory] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [depositClientSecret, setDepositClientSecret] = useState<string | null>(null);
@@ -215,7 +221,17 @@ export default function RequestsPage() {
   // Late-handoff date adjustment state
 
   const { data: requests = [], isLoading } = useQuery<ItemRequest[]>({
-    queryKey: ["/api/requests"],
+    queryKey: blockingOnly ? ["/api/requests", { filter: BLOCKING_DELETION_FILTER }] : ["/api/requests"],
+    // The default query function fetches queryKey[0] only, so the filtered list needs its own URL.
+    ...(blockingOnly
+      ? {
+          queryFn: async () => {
+            const res = await fetch(`/api/requests?filter=${BLOCKING_DELETION_FILTER}`, { credentials: "include" });
+            if (!res.ok) throw new Error("Could not load requests");
+            return res.json();
+          },
+        }
+      : {}),
     enabled: !!user,
     refetchInterval: 8000,
     refetchOnWindowFocus: true,
@@ -534,13 +550,800 @@ export default function RequestsPage() {
     });
   };
 
-  const incomingRequests = requests.filter(
-    (r) => r.item.ownerId === user?.id && r.status === "PENDING"
+  /** Owner side of a PENDING request: accept, decline or counter. */
+  const renderIncomingCard = (request: ItemRequest) => (
+    <Card key={request.id} className="bg-teal-50 border-2 border-teal-200 transition-all">
+      <CardContent className="p-6">
+        <div className="flex gap-4">
+          <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+            {request.item.photos?.[0] ? (
+              <img
+                src={request.item.photos[0]}
+                alt={request.item.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Package className="h-8 w-8 text-gray-400" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1">
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <h3 className="font-semibold text-lg">{request.item.name}</h3>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                  <User className="h-4 w-4" />
+                  {request.requestType === "GIFT" ? (
+                    <span className="text-pink-600 font-medium">
+                      {(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)} would love your {request.item.name}
+                    </span>
+                  ) : (
+                    <span>{(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)} wants to {request.requestType === "GIFT" ? "claim gift" : request.requestType.toLowerCase()}</span>
+                  )}
+                </div>
+              </div>
+              <Badge variant="outline" className={request.requestType === "GIFT" ? "border-pink-400 text-pink-600 bg-pink-50" : ""}>
+                {request.requestType}
+              </Badge>
+            </div>
+
+            {request.message && (
+              <p className="text-sm text-muted-foreground mb-2 italic">
+                "{request.message}"
+              </p>
+            )}
+
+            {request.startDate && request.endDate && (
+              <div className="flex flex-col gap-0.5 mb-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  <span>
+                    {request.status === "IN_PROGRESS" || request.status === "RETURN_REQUESTED"
+                      ? <>Booked: {format(parseCalendarDate(request.counterStartDate || request.startDate), "MMM d")} – {format(parseCalendarDate(request.counterEndDate || request.endDate), "MMM d, yyyy")}</>
+                      : <>{format(parseCalendarDate(request.counterStartDate || request.startDate), "MMM d")} - {format(parseCalendarDate(request.counterEndDate || request.endDate), "MMM d, yyyy")}</>
+                    }
+                  </span>
+                </div>
+                {(request.actualHandoffAt || request.handoffConfirmedAt) && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground ml-6">
+                    Handoff completed: {format(new Date(request.actualHandoffAt || request.handoffConfirmedAt!), "MMM d")}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Show proposed terms - deposit method only for BORROW, delivery for both */}
+            {(request.requestType === "BORROW" || request.requestType === "RENT") && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {request.requestType === "BORROW" && (
+                  <Badge variant="secondary" className="text-xs">
+                    <CreditCard className="h-3 w-3 mr-1" />
+                    Deposit: {request.depositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
+                  </Badge>
+                )}
+              </div>
+            )}
+
+            {/* Show waiting status if counter-proposal is pending */}
+            {request.negotiationStatus === "counter_proposed" && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm font-medium text-amber-800">
+                  <Clock className="h-4 w-4 inline mr-1" />
+                  Waiting for requester to respond to your proposed terms
+                </p>
+                <div className="flex gap-2 mt-2">
+                  {request.requestType === "BORROW" && (
+                    <Badge variant="outline" className="text-xs">
+                      Proposed: {request.counterDepositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Show terms accepted notification */}
+            {request.negotiationStatus === "terms_accepted" && (
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm font-medium text-green-800">
+                  <CheckCircle className="h-4 w-4 inline mr-1" />
+                  Requester accepted your proposed terms. You can now accept the request.
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-4">
+              {request.requestType === "GIFT" ? (
+                <>
+                  <Button
+                    size="sm"
+                    onClick={() => handleAcceptClick(request)}
+                    disabled={acceptBlockedByDates(request)}
+                    className="bg-pink-500 hover:bg-pink-600"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Accept Gift
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => declineMutation.mutate(request.id)}
+                    disabled={declineMutation.isPending}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Decline
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {/* Only show Accept if no counter-proposal is pending */}
+                  {request.negotiationStatus !== "counter_proposed" && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleAcceptClick(request)}
+                      disabled={acceptBlockedByDates(request)}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Accept
+                    </Button>
+                  )}
+                  {/* Only show Counter if no counter-proposal is pending and not a gift */}
+                  {request.negotiationStatus !== "counter_proposed" && request.negotiationStatus !== "terms_accepted" && request.requestType !== "GIFT" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRequestChange(request, "owner")}
+                      className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      Counter
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => declineMutation.mutate(request.id)}
+                    disabled={declineMutation.isPending}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Decline
+                  </Button>
+                </>
+              )}
+            </div>
+            {acceptBlockedByDates(request) && (
+              <p className="text-sm text-amber-700 mt-2">{REQUEST_DATES_PASSED_MESSAGE}</p>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 
-  const myRequests = requests.filter(
-    (r) => r.requesterId === user?.id
+  /** Requester side, any status. */
+  const renderMyRequestCard = (request: ItemRequest) => (
+    <Card key={request.id} className="bg-teal-50 border-2 border-teal-200 transition-all">
+      <CardContent className="p-6">
+        <div className="flex gap-4">
+          <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+            {request.item.photos?.[0] ? (
+              <img
+                src={request.item.photos[0]}
+                alt={request.item.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Package className="h-8 w-8 text-gray-400" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-semibold text-lg">{request.item.name}</h3>
+                <Badge 
+                  variant={request.status === "ACCEPTED" ? "default" : request.status === "DECLINED" || request.status === "CANCELLED" ? "destructive" : "secondary"}
+                  className="mt-2"
+                >
+                  {request.negotiationStatus === "counter_proposed" ? "NEW TERMS PROPOSED" : request.status}
+                </Badge>
+              </div>
+              <Badge variant="outline">
+                {request.requestType}
+              </Badge>
+            </div>
+
+            {/* Counter-proposal notification for requester */}
+            {request.negotiationStatus === "counter_proposed" && request.counterProposedBy !== user?.id && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm font-medium text-amber-800 mb-2">
+                  <RefreshCw className="h-4 w-4 inline mr-1" />
+                  Owner proposed new terms
+                </p>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {request.requestType === "BORROW" && (
+                    <Badge variant="secondary" className="text-xs">
+                      <CreditCard className="h-3 w-3 mr-1" />
+                      Deposit: {request.counterDepositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
+                    </Badge>
+                  )}
+                  {request.counterStartDate && request.counterEndDate && (
+                    <Badge variant="secondary" className="text-xs">
+                      <Clock className="h-3 w-3 mr-1" />
+                      {formatCalendarDate(request.counterStartDate, "MMM d")} – {formatCalendarDate(request.counterEndDate, "MMM d")}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      // Preflight: check if requester can afford BORROW counter terms
+                      if (request.requestType === "BORROW") {
+                        const weeklyPrice = parseFloat(request.item.shareCoinPrice || "0") || 5;
+                        const startD = request.counterStartDate || request.startDate;
+                        const endD = request.counterEndDate || request.endDate;
+                        let days = 0;
+                        if (startD && endD) {
+                          days = Math.max(1, Math.ceil((new Date(endD).getTime() - new Date(startD).getTime()) / 86400000));
+                        }
+                        const cost = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
+                        const balance = Number((user as any)?.shareCoins ?? 0);
+                        if (balance < cost) {
+                          setCounterInsufficientCoins({ required: cost, context: "borrow" });
+                          return;
+                        }
+                      }
+                      respondToCounterMutation.mutate({ requestId: request.id, accept: true });
+                    }}
+                    disabled={respondToCounterMutation.isPending || acceptBlockedByDates(request)}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Accept
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleRequestChange(request, "requester")}
+                    className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Counter
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: false })}
+                    disabled={respondToCounterMutation.isPending}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Decline
+                  </Button>
+                </div>
+                {acceptBlockedByDates(request) && (
+                  <p className="text-sm text-amber-700 mt-2">{REQUEST_DATES_PASSED_MESSAGE}</p>
+                )}
+              </div>
+            )}
+
+            {request.startDate && request.endDate && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                <Clock className="h-4 w-4" />
+                <span>
+                  {formatCalendarDate(request.startDate, "MMM d")} - {formatCalendarDate(request.endDate, "MMM d, yyyy")}
+                </span>
+              </div>
+            )}
+
+            {request.requestType === "GIFT" && request.status === "ACCEPTED" && (
+              <div className="flex gap-2 mt-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+                <div className="flex-1">
+                  <p className="text-sm text-indigo-700 font-medium mb-2">
+                    <KeyRound className="h-4 w-4 inline mr-1" />
+                    Gift accepted! Ask the giver for the handoff code after pickup.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSelectedRequest(request);
+                      setShowHandoffModal(true);
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    <KeyRound className="h-4 w-4 mr-1" />
+                    Enter handoff code
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {request.requestType === "SWAP" && request.status === "ACCEPTED" && (
+              <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                <p className="text-sm text-teal-800 font-medium mb-2">
+                  <CheckCircle className="h-4 w-4 inline mr-1" />
+                  Swap accepted! Arrange the exchange with the owner.
+                </p>
+                <Button
+                  size="sm"
+                  className="bg-teal-600 hover:bg-teal-700"
+                  onClick={() => navigate(`/chat/${request.item.ownerId}`)}
+                >
+                  Open Chat
+                </Button>
+              </div>
+            )}
+
+            {(request.requestType === "BORROW" || request.requestType === "RENT") && (
+              <div className="flex gap-2 mt-3">
+                {request.status === "ACCEPTED" && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSelectedRequest(request);
+                      setShowTrustDepositModal(true);
+                    }}
+                    className="bg-teal-600 hover:bg-teal-700"
+                  >
+                    <Shield className="h-4 w-4 mr-1" />
+                    {request.requestType === "RENT" ? "Pay Rental & Place Deposit Hold" : "Place Deposit Hold"}
+                  </Button>
+                )}
+
+
+                {(request.status === "DEPOSIT_CONFIRMED" || request.status === "AWAITING_HANDOFF_CONFIRM") && (
+                  <>
+                    {/* Show waiting status if borrower already confirmed */}
+                    {request.status === "AWAITING_HANDOFF_CONFIRM" && request.borrowerConfirmedHandoff && (
+                      <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Waiting for owner
+                      </Badge>
+                    )}
+                    {/* Show confirm button if borrower hasn't confirmed yet */}
+                    {!(request.status === "AWAITING_HANDOFF_CONFIRM" && request.borrowerConfirmedHandoff) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setShowHandoffModal(true);
+                        }}
+                      >
+                        <HandMetal className="h-4 w-4 mr-1" />
+                        {request.deliveryMethod === "courier" 
+                          ? "Confirm Received (after delivery)" 
+                          : "Confirm Handoff (together)"}
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                {request.status === "IN_PROGRESS" && (() => {
+                  const isOverdue = !!request.isOverdue;
+                  const hasPending = !!pendingExtByRequestId[request.id];
+                  const hasAccepted = !!acceptedExtByRequestId[request.id];
+                  return (
+                    <div className="flex flex-col gap-2 w-full">
+                      {isOverdue && (
+                        <div className="flex items-center gap-1.5 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
+                          <Clock className="h-3.5 w-3.5" />
+                          This item is overdue. Return it or start a new borrow period.
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => { setSelectedRequest(request); setShowReturnModal(true); }}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-1" />
+                          Return Item
+                        </Button>
+                        {isOverdue ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => { setRenewRequest(request); setShowRenewDialog(true); }}
+                          >
+                            Start new borrow period
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={hasPending || hasAccepted}
+                            onClick={() => { setExtendRequest(request); setExtendDays(null); setShowExtendDialog(true); }}
+                          >
+                            <Clock className="h-4 w-4 mr-1" />
+                            Need a bit more time?
+                          </Button>
+                        )}
+                        {hasAccepted && (
+                         <Button
+                           size="sm"
+                           variant="outline"
+                           className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                           disabled={!!request.returnDelayFollowUpNotifiedAt || notifyDelayMutation.isPending}
+                            type="button"
+                            onClick={() => notifyDelayMutation.mutate(request.id)}
+                         >
+                           <AlertTriangle className="h-4 w-4 mr-1" />
+                           {notifyDelayMutation.isPending ? "Sending…" : "Still running late?"}
+                         </Button>
+                       )}
+                        {hasPending && (
+                          <span className="text-xs text-amber-700 self-center">
+                            Extension pending owner approval
+                          </span>
+                        )}
+                        {hasAccepted && (
+                          <span className="text-xs text-muted-foreground self-center">
+                            Free extension already used
+                          </span>
+                        )}
+                       {request.returnDelayFollowUpNotifiedAt && (
+                          <span className="text-xs text-muted-foreground self-center">
+                            Owner notified that you may still be running late
+                         </span>
+                       )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {request.status === "RETURN_REQUESTED" && (
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                    Awaiting owner confirmation
+                  </Badge>
+                )}
+                {["IN_PROGRESS", "RETURN_REQUESTED", "RETURNED_PENDING_REVIEW", "DISPUTED"].includes(request.status) && (
+                  <RequestLifecyclePanel
+                    requestId={request.id}
+                    onContact={() => window.dispatchEvent(new CustomEvent("open-chat-request", { detail: { requestId: request.id } }))}
+                    onReturn={() => { setSelectedRequest(request); setShowReturnModal(true); }}
+                    onExtension={() => { setExtendRequest(request); setExtendDays(null); setShowExtendDialog(true); }}
+                  />
+                )}
+
+                {request.status === "DISPUTED" && (
+                  <div className="w-full mt-2 space-y-3">
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5 mb-1">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        Damage dispute opened by the owner
+                      </p>
+                      {(request.returnDisputeReason || request.returnConditionNotes) && (
+                        <p className="text-xs text-red-600 mb-2">
+                          "{request.returnDisputeReason || request.returnConditionNotes}"
+                        </p>
+                      )}
+                      {request.returnConditionRating && (
+                        <div className="flex items-center gap-1 mb-2">
+                          {[1,2,3,4,5].map(s => (
+                            <Star key={s} className={`h-3.5 w-3.5 ${s <= request.returnConditionRating! ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+                          ))}
+                          <span className="text-xs text-muted-foreground ml-1">{request.returnConditionRating}/5</span>
+                        </div>
+                      )}
+                      {request.returnDisputePhotoUrl && (
+                        <img
+                          src={request.returnDisputePhotoUrl}
+                          alt="Damage photo"
+                          className="h-24 w-24 object-cover rounded-lg border border-red-200 mb-2"
+                        />
+                      )}
+                      <div className="flex items-start gap-1.5 pt-1 border-t border-red-200">
+                        <Shield className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-red-600">
+                          {request.depositStatus === "captured"
+                            ? `Your ${formatMoney(request.trustDepositAmount, request.paymentCurrency)} security deposit was charged because a claim was opened. It may be refunded depending on the outcome. We'll contact both parties within 24 hours.`
+                            : "Our team is reviewing this claim. We'll contact both parties within 24 hours."}
+                        </p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="text-xs"
+                      onClick={() => navigate(`/messages/${request.item.ownerId}`)}>
+                      Message owner
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
+
+  /** Owner side once the deposit is placed: handoff, return and dispute controls. */
+  const renderActiveLendCard = (request: ItemRequest) => (
+    <Card key={request.id} className="bg-white border-2 border-teal-200">
+      <CardContent className="p-6">
+        <div className="flex gap-4">
+          <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+            {request.item.photos?.[0] ? (
+              <img src={request.item.photos[0]} alt={request.item.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Package className="h-6 w-6 text-gray-400" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-semibold">{request.item.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Borrowed by {(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)}
+                </p>
+              </div>
+              <Badge 
+                variant={request.status === "IN_PROGRESS" ? "default" : "secondary"}
+                className={request.status === "RETURN_REQUESTED" ? "bg-amber-100 text-amber-800" : ""}
+              >
+                {request.status.replace(/_/g, " ")}
+              </Badge>
+            </div>
+
+            <div className="flex gap-2 mt-3">
+              {(request.status === "DEPOSIT_CONFIRMED" || request.status === "AWAITING_HANDOFF_CONFIRM") && (
+                <>
+                  {/* Show waiting status if owner already confirmed */}
+                  {request.status === "AWAITING_HANDOFF_CONFIRM" && request.ownerConfirmedHandoff && (
+                    <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                      <Clock className="h-3 w-3 mr-1" />
+                      Waiting for {request.requestType === "RENT" ? "renter" : request.requestType === "SWAP" ? "swapper" : request.requestType === "GIFT" ? "recipient" : "borrower"}
+                    </Badge>
+                  )}
+                  {/* Owners show the borrower their one-time handoff code.
+                      Handoff completion is recorded when the borrower enters it. */}
+                  {!(request.status === "AWAITING_HANDOFF_CONFIRM" && request.ownerConfirmedHandoff) && (
+                    <Button
+                      size="sm"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setShowHandoffModal(true);
+                      }}
+                    >
+                      <KeyRound className="h-4 w-4 mr-1" />
+                      Show handoff code
+                    </Button>
+                  )}
+                </>
+              )}
+
+              {request.status === "IN_PROGRESS" && (() => {
+                const isOverdue = !!request.isOverdue;
+                const pendingExt = pendingExtByRequestId[request.id];
+                return (
+                  <>
+                    {isOverdue && (
+                      <div className="w-full mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5" /> Item is overdue
+                        </p>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="text-xs"
+                            onClick={() => navigate(`/messages/${request.requesterId}`)}>
+                            Message {request.requestType === "RENT" ? "renter" : "borrower"}
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-xs border-red-300 text-red-600 hover:bg-red-50"
+                            onClick={() => navigate(`/disputes/new?requestId=${request.id}`)}>
+                            Report issue
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {pendingExt && (
+                      <div className="w-full mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-sm font-medium text-amber-800 mb-1">
+                          Short extension requested: {pendingExt.message} → {formatCalendarDate(pendingExt.requestedEndDate, "MMM d, yyyy")}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700"
+                            disabled={respondExtensionMutation.isPending}
+                            onClick={() => respondExtensionMutation.mutate({ requestId: request.id, action: "accept" })}>
+                            <CheckCircle className="h-3.5 w-3.5 mr-1" /> Accept
+                          </Button>
+                          <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50"
+                            disabled={respondExtensionMutation.isPending}
+                            onClick={() => respondExtensionMutation.mutate({ requestId: request.id, action: "decline" })}>
+                            <XCircle className="h-3.5 w-3.5 mr-1" /> Decline
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {request.status === "RETURN_REQUESTED" && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setSelectedRequest(request);
+                    setShowReturnModal(true);
+                  }}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Confirm Return
+                </Button>
+              )}
+              {["IN_PROGRESS", "RETURN_REQUESTED", "RETURNED_PENDING_REVIEW", "DISPUTED"].includes(request.status) && (
+                <RequestLifecyclePanel
+                  requestId={request.id}
+                  onContact={() => window.dispatchEvent(new CustomEvent("open-chat-request", { detail: { requestId: request.id } }))}
+                />
+              )}
+
+              {request.status === "DISPUTED" && (
+                <div className="w-full mt-2 space-y-3">
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5 mb-1">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Your damage report is under review
+                    </p>
+                    {(request.returnDisputeReason || request.returnConditionNotes) && (
+                      <p className="text-xs text-red-600 mb-2">
+                        "{request.returnDisputeReason || request.returnConditionNotes}"
+                      </p>
+                    )}
+                    {request.returnConditionRating && (
+                      <div className="flex items-center gap-1 mb-2">
+                        {[1,2,3,4,5].map(s => (
+                          <Star key={s} className={`h-3.5 w-3.5 ${s <= request.returnConditionRating! ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+                        ))}
+                        <span className="text-xs text-muted-foreground ml-1">{request.returnConditionRating}/5</span>
+                      </div>
+                    )}
+                    {request.returnDisputePhotoUrl && (
+                      <img
+                        src={request.returnDisputePhotoUrl}
+                        alt="Damage evidence"
+                        className="h-24 w-24 object-cover rounded-lg border border-red-200 mb-2"
+                      />
+                    )}
+                    <div className="flex items-start gap-1.5 pt-1 border-t border-red-200">
+                      <Shield className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-red-600">
+                        The deposit is on hold. Our team will review and reach out to both parties within 24 hours.
+                      </p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" className="text-xs"
+                    onClick={() => navigate(`/messages/${request.requesterId}`)}>
+                    Message {request.requestType === "RENT" ? "renter" : "borrower"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  /** Giver side of an accepted gift: show the handoff code. */
+  const renderGiftCard = (request: ItemRequest) => (
+    <Card key={request.id} className="bg-pink-50 border-2 border-pink-200">
+      <CardContent className="p-6">
+        <div className="flex gap-4">
+          <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+            {request.item.photos?.[0] ? (
+              <img src={request.item.photos[0]} alt={request.item.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Gift className="h-6 w-6 text-pink-400" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-semibold">{request.item.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Gifting to {(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)}
+                </p>
+              </div>
+              <Badge className="bg-pink-100 text-pink-700 border-pink-300">
+                GIFT
+              </Badge>
+            </div>
+
+            <div className="flex gap-2 mt-3">
+              <Button
+                size="sm"
+                onClick={() => {
+                  setSelectedRequest(request);
+                  setShowHandoffModal(true);
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                <KeyRound className="h-4 w-4 mr-1" />
+                Show handoff code
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const ACTIVE_LEND_STATUSES = ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_DUE", "OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW", "RETURNED_PENDING_REVIEW", "RETURN_REQUESTED", "DISPUTED"];
+
+  /** Owner side of a request none of the other cards covers (waiting on the borrower, done, cancelled). */
+  const renderSummaryCard = (request: ItemRequest) => (
+    <Card key={request.id} className="bg-white border-2 border-gray-200">
+      <CardContent className="p-4 flex items-center gap-4">
+        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+          {request.item.photos?.[0] ? (
+            <img src={request.item.photos[0]} alt={request.item.name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center"><Package className="h-6 w-6 text-gray-400" /></div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold truncate">{request.item.name}</h3>
+          <p className="text-sm text-muted-foreground">
+            {request.requestType} · {request.requester.displayName || request.requester.username}
+          </p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => navigate(`/transactions/${request.id}`)} data-testid={`button-view-request-${request.id}`}>
+          View details
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  const renderRequestRow = (request: ItemRequest) => {
+    const isOwner = request.item.ownerId === user?.id;
+    const card = !isOwner
+      ? renderMyRequestCard(request)
+      : request.status === "PENDING"
+        ? renderIncomingCard(request)
+        : request.requestType === "GIFT" && request.status === "ACCEPTED"
+          ? renderGiftCard(request)
+          : ACTIVE_LEND_STATUSES.includes(request.status)
+            ? renderActiveLendCard(request)
+            : renderSummaryCard(request);
+    const needsAction = request.lane.section === "action";
+    return (
+      <div key={request.id} data-testid={`request-row-${request.id}`}>
+        <div className="mb-1 flex items-center gap-2 text-sm" data-testid={`request-status-line-${request.id}`}>
+          {needsAction && request.lane.actionLabel && (
+            <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">{request.lane.actionLabel}</Badge>
+          )}
+          <span className={needsAction ? "font-medium text-amber-900" : "text-muted-foreground"}>{request.lane.statusLine}</span>
+        </div>
+        {card}
+      </div>
+    );
+  };
+
+  const renderSection = (title: string, icon: React.ReactNode, rows: ItemRequest[], empty: string, testId: string) => (
+    <section className="mb-10" data-testid={testId}>
+      <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+        {icon}
+        {title} ({rows.length})
+      </h2>
+      {rows.length === 0 ? (
+        <Card className="bg-teal-50 border-teal-200">
+          <CardContent className="p-8 text-center text-muted-foreground">{empty}</CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">{rows.map(renderRequestRow)}</div>
+      )}
+    </section>
+  );
+
+  const grouped = groupRequests(requests, user?.id, roleFilter);
 
   if (isLoading) {
     return (
@@ -560,785 +1363,48 @@ export default function RequestsPage() {
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6 text-teal-800">Item Requests</h1>
 
-        {/* Incoming Requests */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-            <Package className="h-6 w-6 text-primary" />
-            Incoming Requests ({incomingRequests.length})
-          </h2>
-
-          {incomingRequests.length === 0 ? (
-            <Card className="bg-teal-50 border-teal-200">
-              <CardContent className="p-8 text-center text-muted-foreground">
-                No pending requests for your items
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {incomingRequests.map((request) => (
-                <Card key={request.id} className="bg-teal-50 border-2 border-teal-200 transition-all">
-                  <CardContent className="p-6">
-                    <div className="flex gap-4">
-                      <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                        {request.item.photos?.[0] ? (
-                          <img
-                            src={request.item.photos[0]}
-                            alt={request.item.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="h-8 w-8 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="font-semibold text-lg">{request.item.name}</h3>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                              <User className="h-4 w-4" />
-                              {request.requestType === "GIFT" ? (
-                                <span className="text-pink-600 font-medium">
-                                  {(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)} would love your {request.item.name}
-                                </span>
-                              ) : (
-                                <span>{(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)} wants to {request.requestType === "GIFT" ? "claim gift" : request.requestType.toLowerCase()}</span>
-                              )}
-                            </div>
-                          </div>
-                          <Badge variant="outline" className={request.requestType === "GIFT" ? "border-pink-400 text-pink-600 bg-pink-50" : ""}>
-                            {request.requestType}
-                          </Badge>
-                        </div>
-
-                        {request.message && (
-                          <p className="text-sm text-muted-foreground mb-2 italic">
-                            "{request.message}"
-                          </p>
-                        )}
-
-                        {request.startDate && request.endDate && (
-                          <div className="flex flex-col gap-0.5 mb-2">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Clock className="h-4 w-4" />
-                              <span>
-                                {request.status === "IN_PROGRESS" || request.status === "RETURN_REQUESTED"
-                                  ? <>Booked: {format(parseCalendarDate(request.counterStartDate || request.startDate), "MMM d")} – {format(parseCalendarDate(request.counterEndDate || request.endDate), "MMM d, yyyy")}</>
-                                  : <>{format(parseCalendarDate(request.counterStartDate || request.startDate), "MMM d")} - {format(parseCalendarDate(request.counterEndDate || request.endDate), "MMM d, yyyy")}</>
-                                }
-                              </span>
-                            </div>
-                            {(request.actualHandoffAt || request.handoffConfirmedAt) && (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground ml-6">
-                                Handoff completed: {format(new Date(request.actualHandoffAt || request.handoffConfirmedAt!), "MMM d")}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Show proposed terms - deposit method only for BORROW, delivery for both */}
-                        {(request.requestType === "BORROW" || request.requestType === "RENT") && (
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {request.requestType === "BORROW" && (
-                              <Badge variant="secondary" className="text-xs">
-                                <CreditCard className="h-3 w-3 mr-1" />
-                                Deposit: {request.depositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
-                              </Badge>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Show waiting status if counter-proposal is pending */}
-                        {request.negotiationStatus === "counter_proposed" && (
-                          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                            <p className="text-sm font-medium text-amber-800">
-                              <Clock className="h-4 w-4 inline mr-1" />
-                              Waiting for requester to respond to your proposed terms
-                            </p>
-                            <div className="flex gap-2 mt-2">
-                              {request.requestType === "BORROW" && (
-                                <Badge variant="outline" className="text-xs">
-                                  Proposed: {request.counterDepositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Show terms accepted notification */}
-                        {request.negotiationStatus === "terms_accepted" && (
-                          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                            <p className="text-sm font-medium text-green-800">
-                              <CheckCircle className="h-4 w-4 inline mr-1" />
-                              Requester accepted your proposed terms. You can now accept the request.
-                            </p>
-                          </div>
-                        )}
-
-                        <div className="flex gap-2 mt-4">
-                          {request.requestType === "GIFT" ? (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() => handleAcceptClick(request)}
-                                disabled={acceptBlockedByDates(request)}
-                                className="bg-pink-500 hover:bg-pink-600"
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Accept Gift
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => declineMutation.mutate(request.id)}
-                                disabled={declineMutation.isPending}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Decline
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              {/* Only show Accept if no counter-proposal is pending */}
-                              {request.negotiationStatus !== "counter_proposed" && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleAcceptClick(request)}
-                                  disabled={acceptBlockedByDates(request)}
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-1" />
-                                  Accept
-                                </Button>
-                              )}
-                              {/* Only show Counter if no counter-proposal is pending and not a gift */}
-                              {request.negotiationStatus !== "counter_proposed" && request.negotiationStatus !== "terms_accepted" && request.requestType !== "GIFT" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleRequestChange(request, "owner")}
-                                  className="border-amber-500 text-amber-600 hover:bg-amber-50"
-                                >
-                                  <RefreshCw className="h-4 w-4 mr-1" />
-                                  Counter
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => declineMutation.mutate(request.id)}
-                                disabled={declineMutation.isPending}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Decline
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                        {acceptBlockedByDates(request) && (
-                          <p className="text-sm text-amber-700 mt-2">{REQUEST_DATES_PASSED_MESSAGE}</p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* My Requests */}
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">My Requests ({myRequests.length})</h2>
-
-          {myRequests.length === 0 ? (
-            <Card className="bg-teal-50 border-teal-200">
-              <CardContent className="p-8 text-center text-muted-foreground">
-                You haven't made any requests yet
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {myRequests.map((request) => (
-                <Card key={request.id} className="bg-teal-50 border-2 border-teal-200 transition-all">
-                  <CardContent className="p-6">
-                    <div className="flex gap-4">
-                      <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                        {request.item.photos?.[0] ? (
-                          <img
-                            src={request.item.photos[0]}
-                            alt={request.item.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="h-8 w-8 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="font-semibold text-lg">{request.item.name}</h3>
-                            <Badge 
-                              variant={request.status === "ACCEPTED" ? "default" : request.status === "DECLINED" || request.status === "CANCELLED" ? "destructive" : "secondary"}
-                              className="mt-2"
-                            >
-                              {request.negotiationStatus === "counter_proposed" ? "NEW TERMS PROPOSED" : request.status}
-                            </Badge>
-                          </div>
-                          <Badge variant="outline">
-                            {request.requestType}
-                          </Badge>
-                        </div>
-
-                        {/* Counter-proposal notification for requester */}
-                        {request.negotiationStatus === "counter_proposed" && request.counterProposedBy !== user?.id && (
-                          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                            <p className="text-sm font-medium text-amber-800 mb-2">
-                              <RefreshCw className="h-4 w-4 inline mr-1" />
-                              Owner proposed new terms
-                            </p>
-                            <div className="flex flex-wrap gap-2 mb-3">
-                              {request.requestType === "BORROW" && (
-                                <Badge variant="secondary" className="text-xs">
-                                  <CreditCard className="h-3 w-3 mr-1" />
-                                  Deposit: {request.counterDepositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
-                                </Badge>
-                              )}
-                              {request.counterStartDate && request.counterEndDate && (
-                                <Badge variant="secondary" className="text-xs">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  {formatCalendarDate(request.counterStartDate, "MMM d")} – {formatCalendarDate(request.counterEndDate, "MMM d")}
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  // Preflight: check if requester can afford BORROW counter terms
-                                  if (request.requestType === "BORROW") {
-                                    const weeklyPrice = parseFloat(request.item.shareCoinPrice || "0") || 5;
-                                    const startD = request.counterStartDate || request.startDate;
-                                    const endD = request.counterEndDate || request.endDate;
-                                    let days = 0;
-                                    if (startD && endD) {
-                                      days = Math.max(1, Math.ceil((new Date(endD).getTime() - new Date(startD).getTime()) / 86400000));
-                                    }
-                                    const cost = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
-                                    const balance = Number((user as any)?.shareCoins ?? 0);
-                                    if (balance < cost) {
-                                      setCounterInsufficientCoins({ required: cost, context: "borrow" });
-                                      return;
-                                    }
-                                  }
-                                  respondToCounterMutation.mutate({ requestId: request.id, accept: true });
-                                }}
-                                disabled={respondToCounterMutation.isPending || acceptBlockedByDates(request)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Accept
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleRequestChange(request, "requester")}
-                                className="border-amber-500 text-amber-600 hover:bg-amber-50"
-                              >
-                                <RefreshCw className="h-4 w-4 mr-1" />
-                                Counter
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: false })}
-                                disabled={respondToCounterMutation.isPending}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Decline
-                              </Button>
-                            </div>
-                            {acceptBlockedByDates(request) && (
-                              <p className="text-sm text-amber-700 mt-2">{REQUEST_DATES_PASSED_MESSAGE}</p>
-                            )}
-                          </div>
-                        )}
-
-                        {request.startDate && request.endDate && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-                            <Clock className="h-4 w-4" />
-                            <span>
-                              {formatCalendarDate(request.startDate, "MMM d")} - {formatCalendarDate(request.endDate, "MMM d, yyyy")}
-                            </span>
-                          </div>
-                        )}
-
-                        {request.requestType === "GIFT" && request.status === "ACCEPTED" && (
-                          <div className="flex gap-2 mt-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
-                            <div className="flex-1">
-                              <p className="text-sm text-indigo-700 font-medium mb-2">
-                                <KeyRound className="h-4 w-4 inline mr-1" />
-                                Gift accepted! Ask the giver for the handoff code after pickup.
-                              </p>
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setShowHandoffModal(true);
-                                }}
-                                className="bg-indigo-600 hover:bg-indigo-700"
-                              >
-                                <KeyRound className="h-4 w-4 mr-1" />
-                                Enter handoff code
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-
-                        {request.requestType === "SWAP" && request.status === "ACCEPTED" && (
-                          <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
-                            <p className="text-sm text-teal-800 font-medium mb-2">
-                              <CheckCircle className="h-4 w-4 inline mr-1" />
-                              Swap accepted! Arrange the exchange with the owner.
-                            </p>
-                            <Button
-                              size="sm"
-                              className="bg-teal-600 hover:bg-teal-700"
-                              onClick={() => navigate(`/chat/${request.item.ownerId}`)}
-                            >
-                              Open Chat
-                            </Button>
-                          </div>
-                        )}
-
-                        {(request.requestType === "BORROW" || request.requestType === "RENT") && (
-                          <div className="flex gap-2 mt-3">
-                            {request.status === "ACCEPTED" && (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setShowTrustDepositModal(true);
-                                }}
-                                className="bg-teal-600 hover:bg-teal-700"
-                              >
-                                <Shield className="h-4 w-4 mr-1" />
-                                {request.requestType === "RENT" ? "Pay Rental & Place Deposit Hold" : "Place Deposit Hold"}
-                              </Button>
-                            )}
-
-
-                            {(request.status === "DEPOSIT_CONFIRMED" || request.status === "AWAITING_HANDOFF_CONFIRM") && (
-                              <>
-                                {/* Show waiting status if borrower already confirmed */}
-                                {request.status === "AWAITING_HANDOFF_CONFIRM" && request.borrowerConfirmedHandoff && (
-                                  <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Waiting for owner
-                                  </Badge>
-                                )}
-                                {/* Show confirm button if borrower hasn't confirmed yet */}
-                                {!(request.status === "AWAITING_HANDOFF_CONFIRM" && request.borrowerConfirmedHandoff) && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setSelectedRequest(request);
-                                      setShowHandoffModal(true);
-                                    }}
-                                  >
-                                    <HandMetal className="h-4 w-4 mr-1" />
-                                    {request.deliveryMethod === "courier" 
-                                      ? "Confirm Received (after delivery)" 
-                                      : "Confirm Handoff (together)"}
-                                  </Button>
-                                )}
-                              </>
-                            )}
-
-                            {request.status === "IN_PROGRESS" && (() => {
-                              const isOverdue = !!request.isOverdue;
-                              const hasPending = !!pendingExtByRequestId[request.id];
-                              const hasAccepted = !!acceptedExtByRequestId[request.id];
-                              return (
-                                <div className="flex flex-col gap-2 w-full">
-                                  {isOverdue && (
-                                    <div className="flex items-center gap-1.5 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
-                                      <Clock className="h-3.5 w-3.5" />
-                                      This item is overdue. Return it or start a new borrow period.
-                                    </div>
-                                  )}
-                                  <div className="flex flex-wrap gap-2">
-                                    <Button
-                                      size="sm"
-                                      onClick={() => { setSelectedRequest(request); setShowReturnModal(true); }}
-                                      className="bg-blue-600 hover:bg-blue-700"
-                                    >
-                                      <RotateCcw className="h-4 w-4 mr-1" />
-                                      Return Item
-                                    </Button>
-                                    {isOverdue ? (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => { setRenewRequest(request); setShowRenewDialog(true); }}
-                                      >
-                                        Start new borrow period
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        disabled={hasPending || hasAccepted}
-                                        onClick={() => { setExtendRequest(request); setExtendDays(null); setShowExtendDialog(true); }}
-                                      >
-                                        <Clock className="h-4 w-4 mr-1" />
-                                        Need a bit more time?
-                                      </Button>
-                                    )}
-                                    {hasAccepted && (
-                                     <Button
-                                       size="sm"
-                                       variant="outline"
-                                       className="border-amber-300 text-amber-700 hover:bg-amber-50"
-                                       disabled={!!request.returnDelayFollowUpNotifiedAt || notifyDelayMutation.isPending}
-                                        type="button"
-                                        onClick={() => notifyDelayMutation.mutate(request.id)}
-                                     >
-                                       <AlertTriangle className="h-4 w-4 mr-1" />
-                                       {notifyDelayMutation.isPending ? "Sending…" : "Still running late?"}
-                                     </Button>
-                                   )}
-                                    {hasPending && (
-                                      <span className="text-xs text-amber-700 self-center">
-                                        Extension pending owner approval
-                                      </span>
-                                    )}
-                                    {hasAccepted && (
-                                      <span className="text-xs text-muted-foreground self-center">
-                                        Free extension already used
-                                      </span>
-                                    )}
-                                   {request.returnDelayFollowUpNotifiedAt && (
-                                      <span className="text-xs text-muted-foreground self-center">
-                                        Owner notified that you may still be running late
-                                     </span>
-                                   )}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-
-                            {request.status === "RETURN_REQUESTED" && (
-                              <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-                                Awaiting owner confirmation
-                              </Badge>
-                            )}
-                            {["IN_PROGRESS", "RETURN_REQUESTED", "RETURNED_PENDING_REVIEW", "DISPUTED"].includes(request.status) && (
-                              <RequestLifecyclePanel
-                                requestId={request.id}
-                                onContact={() => window.dispatchEvent(new CustomEvent("open-chat-request", { detail: { requestId: request.id } }))}
-                                onReturn={() => { setSelectedRequest(request); setShowReturnModal(true); }}
-                                onExtension={() => { setExtendRequest(request); setExtendDays(null); setShowExtendDialog(true); }}
-                              />
-                            )}
-
-                            {request.status === "DISPUTED" && (
-                              <div className="w-full mt-2 space-y-3">
-                                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                                  <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5 mb-1">
-                                    <AlertTriangle className="h-3.5 w-3.5" />
-                                    Damage dispute opened by the owner
-                                  </p>
-                                  {(request.returnDisputeReason || request.returnConditionNotes) && (
-                                    <p className="text-xs text-red-600 mb-2">
-                                      "{request.returnDisputeReason || request.returnConditionNotes}"
-                                    </p>
-                                  )}
-                                  {request.returnConditionRating && (
-                                    <div className="flex items-center gap-1 mb-2">
-                                      {[1,2,3,4,5].map(s => (
-                                        <Star key={s} className={`h-3.5 w-3.5 ${s <= request.returnConditionRating! ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
-                                      ))}
-                                      <span className="text-xs text-muted-foreground ml-1">{request.returnConditionRating}/5</span>
-                                    </div>
-                                  )}
-                                  {request.returnDisputePhotoUrl && (
-                                    <img
-                                      src={request.returnDisputePhotoUrl}
-                                      alt="Damage photo"
-                                      className="h-24 w-24 object-cover rounded-lg border border-red-200 mb-2"
-                                    />
-                                  )}
-                                  <div className="flex items-start gap-1.5 pt-1 border-t border-red-200">
-                                    <Shield className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
-                                    <p className="text-xs text-red-600">
-                                      {request.depositStatus === "captured"
-                                        ? `Your ${formatMoney(request.trustDepositAmount, request.paymentCurrency)} security deposit was charged because a claim was opened. It may be refunded depending on the outcome. We'll contact both parties within 24 hours.`
-                                        : "Our team is reviewing this claim. We'll contact both parties within 24 hours."}
-                                    </p>
-                                  </div>
-                                </div>
-                                <Button size="sm" variant="outline" className="text-xs"
-                                  onClick={() => navigate(`/messages/${request.item.ownerId}`)}>
-                                  Message owner
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Active Transactions as Owner */}
-        {requests.filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_DUE", "OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW", "RETURNED_PENDING_REVIEW", "RETURN_REQUESTED", "DISPUTED"].includes(r.status)).length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-              <Package className="h-6 w-6 text-teal-600" />
-              Active Lends
-            </h2>
-            <div className="space-y-4">
-              {requests
-                .filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_DUE", "OVERDUE_GRACE", "OVERDUE", "SERIOUSLY_OVERDUE", "NON_RETURN_REVIEW", "RETURNED_PENDING_REVIEW", "RETURN_REQUESTED", "DISPUTED"].includes(r.status))
-                .map((request) => (
-                  <Card key={request.id} className="bg-white border-2 border-teal-200">
-                    <CardContent className="p-6">
-                      <div className="flex gap-4">
-                        <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                          {request.item.photos?.[0] ? (
-                            <img src={request.item.photos[0]} alt={request.item.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Package className="h-6 w-6 text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="font-semibold">{request.item.name}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                Borrowed by {(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)}
-                              </p>
-                            </div>
-                            <Badge 
-                              variant={request.status === "IN_PROGRESS" ? "default" : "secondary"}
-                              className={request.status === "RETURN_REQUESTED" ? "bg-amber-100 text-amber-800" : ""}
-                            >
-                              {request.status.replace(/_/g, " ")}
-                            </Badge>
-                          </div>
-
-                          <div className="flex gap-2 mt-3">
-                            {(request.status === "DEPOSIT_CONFIRMED" || request.status === "AWAITING_HANDOFF_CONFIRM") && (
-                              <>
-                                {/* Show waiting status if owner already confirmed */}
-                                {request.status === "AWAITING_HANDOFF_CONFIRM" && request.ownerConfirmedHandoff && (
-                                  <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Waiting for {request.requestType === "RENT" ? "renter" : request.requestType === "SWAP" ? "swapper" : request.requestType === "GIFT" ? "recipient" : "borrower"}
-                                  </Badge>
-                                )}
-                                {/* Owners show the borrower their one-time handoff code.
-                                    Handoff completion is recorded when the borrower enters it. */}
-                                {!(request.status === "AWAITING_HANDOFF_CONFIRM" && request.ownerConfirmedHandoff) && (
-                                  <Button
-                                    size="sm"
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                                    onClick={() => {
-                                      setSelectedRequest(request);
-                                      setShowHandoffModal(true);
-                                    }}
-                                  >
-                                    <KeyRound className="h-4 w-4 mr-1" />
-                                    Show handoff code
-                                  </Button>
-                                )}
-                              </>
-                            )}
-
-                            {request.status === "IN_PROGRESS" && (() => {
-                              const isOverdue = !!request.isOverdue;
-                              const pendingExt = pendingExtByRequestId[request.id];
-                              return (
-                                <>
-                                  {isOverdue && (
-                                    <div className="w-full mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                                      <p className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-1.5">
-                                        <Clock className="h-3.5 w-3.5" /> Item is overdue
-                                      </p>
-                                      <div className="flex gap-2">
-                                        <Button size="sm" variant="outline" className="text-xs"
-                                          onClick={() => navigate(`/messages/${request.requesterId}`)}>
-                                          Message {request.requestType === "RENT" ? "renter" : "borrower"}
-                                        </Button>
-                                        <Button size="sm" variant="outline" className="text-xs border-red-300 text-red-600 hover:bg-red-50"
-                                          onClick={() => navigate(`/disputes/new?requestId=${request.id}`)}>
-                                          Report issue
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )}
-                                  {pendingExt && (
-                                    <div className="w-full mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                      <p className="text-sm font-medium text-amber-800 mb-1">
-                                        Short extension requested: {pendingExt.message} → {formatCalendarDate(pendingExt.requestedEndDate, "MMM d, yyyy")}
-                                      </p>
-                                      <div className="flex gap-2">
-                                        <Button size="sm" className="bg-green-600 hover:bg-green-700"
-                                          disabled={respondExtensionMutation.isPending}
-                                          onClick={() => respondExtensionMutation.mutate({ requestId: request.id, action: "accept" })}>
-                                          <CheckCircle className="h-3.5 w-3.5 mr-1" /> Accept
-                                        </Button>
-                                        <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50"
-                                          disabled={respondExtensionMutation.isPending}
-                                          onClick={() => respondExtensionMutation.mutate({ requestId: request.id, action: "decline" })}>
-                                          <XCircle className="h-3.5 w-3.5 mr-1" /> Decline
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </>
-                              );
-                            })()}
-
-                            {request.status === "RETURN_REQUESTED" && (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setShowReturnModal(true);
-                                }}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Confirm Return
-                              </Button>
-                            )}
-                            {["IN_PROGRESS", "RETURN_REQUESTED", "RETURNED_PENDING_REVIEW", "DISPUTED"].includes(request.status) && (
-                              <RequestLifecyclePanel
-                                requestId={request.id}
-                                onContact={() => window.dispatchEvent(new CustomEvent("open-chat-request", { detail: { requestId: request.id } }))}
-                              />
-                            )}
-
-                            {request.status === "DISPUTED" && (
-                              <div className="w-full mt-2 space-y-3">
-                                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                                  <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5 mb-1">
-                                    <AlertTriangle className="h-3.5 w-3.5" />
-                                    Your damage report is under review
-                                  </p>
-                                  {(request.returnDisputeReason || request.returnConditionNotes) && (
-                                    <p className="text-xs text-red-600 mb-2">
-                                      "{request.returnDisputeReason || request.returnConditionNotes}"
-                                    </p>
-                                  )}
-                                  {request.returnConditionRating && (
-                                    <div className="flex items-center gap-1 mb-2">
-                                      {[1,2,3,4,5].map(s => (
-                                        <Star key={s} className={`h-3.5 w-3.5 ${s <= request.returnConditionRating! ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
-                                      ))}
-                                      <span className="text-xs text-muted-foreground ml-1">{request.returnConditionRating}/5</span>
-                                    </div>
-                                  )}
-                                  {request.returnDisputePhotoUrl && (
-                                    <img
-                                      src={request.returnDisputePhotoUrl}
-                                      alt="Damage evidence"
-                                      className="h-24 w-24 object-cover rounded-lg border border-red-200 mb-2"
-                                    />
-                                  )}
-                                  <div className="flex items-start gap-1.5 pt-1 border-t border-red-200">
-                                    <Shield className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
-                                    <p className="text-xs text-red-600">
-                                      The deposit is on hold. Our team will review and reach out to both parties within 24 hours.
-                                    </p>
-                                  </div>
-                                </div>
-                                <Button size="sm" variant="outline" className="text-xs"
-                                  onClick={() => navigate(`/messages/${request.requesterId}`)}>
-                                  Message {request.requestType === "RENT" ? "renter" : "borrower"}
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+        {blockingOnly && (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" data-testid="requests-blocking-banner">
+            <p className="font-medium">These requests are blocking you from deleting your account.</p>
+            <p className="mt-1">Finish or cancel each one, then go back to continue deleting your account.</p>
+            <div className="mt-2 flex gap-4">
+              <Link href="/delete-account" className="underline" data-testid="requests-blocking-back">Back to delete account</Link>
+              <Link href="/requests" className="underline" data-testid="requests-blocking-show-all">Show all requests</Link>
             </div>
           </div>
         )}
 
-        {/* Active Gifts as Giver */}
-        {requests.filter(r => r.item.ownerId === user?.id && r.requestType === "GIFT" && r.status === "ACCEPTED").length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-              <Gift className="h-6 w-6 text-pink-500" />
-              Active Gifts
-            </h2>
-            <div className="space-y-4">
-              {requests
-                .filter(r => r.item.ownerId === user?.id && r.requestType === "GIFT" && r.status === "ACCEPTED")
-                .map((request) => (
-                  <Card key={request.id} className="bg-pink-50 border-2 border-pink-200">
-                    <CardContent className="p-6">
-                      <div className="flex gap-4">
-                        <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                          {request.item.photos?.[0] ? (
-                            <img src={request.item.photos[0]} alt={request.item.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Gift className="h-6 w-6 text-pink-400" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="font-semibold">{request.item.name}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                Gifting to {(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)}
-                              </p>
-                            </div>
-                            <Badge className="bg-pink-100 text-pink-700 border-pink-300">
-                              GIFT
-                            </Badge>
-                          </div>
-
-                          <div className="flex gap-2 mt-3">
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setSelectedRequest(request);
-                                setShowHandoffModal(true);
-                              }}
-                              className="bg-indigo-600 hover:bg-indigo-700"
-                            >
-                              <KeyRound className="h-4 w-4 mr-1" />
-                              Show handoff code
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-            </div>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex gap-2" role="group" aria-label="Show requests">
+            {ROLE_FILTERS.map((f) => (
+              <Button
+                key={f.key}
+                size="sm"
+                variant={roleFilter === f.key ? "default" : "outline"}
+                onClick={() => setRoleFilter(f.key)}
+                data-testid={`requests-role-${f.key}`}
+              >
+                {f.label}
+              </Button>
+            ))}
           </div>
+          <div className="flex gap-2" role="tablist" aria-label="Active or history">
+            <Button size="sm" role="tab" aria-selected={!showHistory} variant={!showHistory ? "default" : "outline"} onClick={() => setShowHistory(false)} data-testid="requests-tab-active">
+              Active ({grouped.action.length + grouped.inProgress.length})
+            </Button>
+            <Button size="sm" role="tab" aria-selected={showHistory} variant={showHistory ? "default" : "outline"} onClick={() => setShowHistory(true)} data-testid="requests-tab-history">
+              History ({grouped.history.length})
+            </Button>
+          </div>
+        </div>
+
+        {showHistory ? (
+          renderSection("History", <Clock className="h-6 w-6 text-gray-500" />, grouped.history, "Nothing in your history yet", "requests-section-history")
+        ) : (
+          <>
+            {renderSection("Needs your action", <AlertCircle className="h-6 w-6 text-amber-600" />, grouped.action, "Nothing needs your action right now", "requests-section-action")}
+            {renderSection("In progress", <Package className="h-6 w-6 text-teal-600" />, grouped.inProgress, "Nothing in progress", "requests-section-in-progress")}
+          </>
         )}
       </div>
 

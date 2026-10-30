@@ -54,7 +54,9 @@ import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChang
 import { nonProductionOnly } from "../non-production-gate";
 import { fullVerificationRejection } from "../verification-gate";
 import { computeVerification, getVerificationForUser } from "../verification";
-import { getDeletionEligibility } from "../account-deletion/eligibility";
+import { findBlockingRequests, getDeletionEligibility } from "../account-deletion/eligibility";
+import { classifyRequestLane, deriveCompletedAt } from "../request-lanes";
+import { pendingExtensionRequestIds, reviewedRequestIds } from "../request-lane-data";
 import {
   DeletionError,
   cancelDeletion,
@@ -5922,7 +5924,7 @@ Respond with ONLY the category name, nothing else.`
 
 
     // --- Gather all item requests involving this user ---
-    const allRequests = await db
+    const allRequestsRaw = await db
       .select({
         id: itemRequests.id,
         requesterId: itemRequests.requesterId,
@@ -5936,6 +5938,18 @@ Respond with ONLY the category name, nothing else.`
         unarchivedAt: itemRequests.unarchivedAt,
         expiredAt: itemRequests.expiredAt,
         createdAt: itemRequests.createdAt,
+        endDate: itemRequests.endDate,
+        returnDeadlineAt: itemRequests.returnDeadlineAt,
+        counterProposedBy: itemRequests.counterProposedBy,
+        ownerConfirmedHandoff: itemRequests.ownerConfirmedHandoff,
+        borrowerConfirmedHandoff: itemRequests.borrowerConfirmedHandoff,
+        handoffConfirmDeadline: itemRequests.handoffConfirmDeadline,
+        returnConfirmedAt: itemRequests.returnConfirmedAt,
+        actualReturnAt: itemRequests.actualReturnAt,
+        ownerConfirmedReturnAt: itemRequests.ownerConfirmedReturnAt,
+        depositReleasedAt: itemRequests.depositReleasedAt,
+        handoffConfirmedAt: itemRequests.handoffConfirmedAt,
+        actualHandoffAt: itemRequests.actualHandoffAt,
       })
       .from(itemRequests)
       .innerJoin(items, eq(itemRequests.itemId, items.id))
@@ -5946,6 +5960,15 @@ Respond with ONLY the category name, nothing else.`
         )
       )
       .orderBy(desc(itemRequests.createdAt));
+
+    // ?filter=blocking-deletion: only the requests that stop this account being deleted.
+    const blockingIds = req.query.filter === "blocking-deletion"
+      ? new Set((await findBlockingRequests(userId)).blocking.map((b) => b.id))
+      : null;
+    const allRequests = blockingIds ? allRequestsRaw.filter((r) => blockingIds.has(r.id)) : allRequestsRaw;
+    const pendingExtensions = await pendingExtensionRequestIds(allRequests.map((r) => r.id));
+    const reviewedIds = await reviewedRequestIds(userId, allRequests.map((r) => r.id));
+    const laneNow = currentTime();
 
     if (allRequests.length === 0) {
       return res.json([]);
@@ -6173,6 +6196,17 @@ Respond with ONLY the category name, nothing else.`
         itemPhoto: (reqData.itemPhotos as string[] | null)?.[0] ?? null,
         iAmRequester: reqData.requesterId === userId,
         isArchived: isEffectivelyArchived(reqData, threadUnreadCount(reqData.id)),
+        lane: classifyRequestLane(
+          {
+            ...reqData,
+            completedAt: deriveCompletedAt(reqData),
+            reviewedByViewer: reviewedIds.has(reqData.id),
+            pendingExtension: pendingExtensions.has(reqData.id),
+          },
+          userId,
+          publicName(partner) ?? "the other person",
+          laneNow,
+        ),
       };
     });
 
@@ -6995,6 +7029,10 @@ Respond with ONLY the category name, nothing else.`
         ownerUsername: sql<string | null>`(SELECT username FROM users WHERE id = ${items.ownerId})`,
         ownerHandle: sql<string | null>`(SELECT handle FROM users WHERE id = ${items.ownerId})`,
         ownerDisplayName: sql<string | null>`(SELECT display_name FROM users WHERE id = ${items.ownerId})`,
+        returnDeadlineAt: itemRequests.returnDeadlineAt,
+        returnConfirmedAt: itemRequests.returnConfirmedAt,
+        ownerConfirmedReturnAt: itemRequests.ownerConfirmedReturnAt,
+        depositReleasedAt: itemRequests.depositReleasedAt,
         reviewedByCurrentUser: sql<boolean>`EXISTS (
           SELECT 1
           FROM ${userReviews}
@@ -7013,7 +7051,14 @@ Respond with ONLY the category name, nothing else.`
       )
       .orderBy(desc(itemRequests.createdAt));
 
-    const requests = rawRows.map((r) => ({
+    // ?filter=blocking-deletion: only the requests that stop this account being deleted.
+    const blockingFilter = req.query.filter === "blocking-deletion";
+    const blockingIds = blockingFilter ? new Set((await findBlockingRequests(req.user.id)).blocking.map((b) => b.id)) : null;
+    const visibleRows = blockingIds ? rawRows.filter((r) => blockingIds.has(r.id)) : rawRows;
+    const pendingExtensions = await pendingExtensionRequestIds(visibleRows.map((r) => r.id));
+    const laneNow = currentTime();
+
+    const requests = visibleRows.map((r) => ({
       id: r.id,
       itemId: r.itemId,
       requesterId: r.requesterId,
@@ -7102,6 +7147,29 @@ Respond with ONLY the category name, nothing else.`
         displayName: r.ownerDisplayName,
       },
       reviewedByCurrentUser: r.reviewedByCurrentUser,
+      lane: classifyRequestLane(
+        {
+          status: r.status,
+          requestType: r.requestType,
+          requesterId: r.requesterId,
+          ownerId: r.itemOwnerId,
+          negotiationStatus: r.negotiationStatus,
+          counterProposedBy: r.counterProposedBy,
+          ownerConfirmedHandoff: r.ownerConfirmedHandoff,
+          borrowerConfirmedHandoff: r.borrowerConfirmedHandoff,
+          handoffConfirmDeadline: r.handoffConfirmDeadline,
+          endDate: r.endDate,
+          returnDeadlineAt: r.returnDeadlineAt,
+          completedAt: deriveCompletedAt(r),
+          reviewedByViewer: r.reviewedByCurrentUser,
+          pendingExtension: pendingExtensions.has(r.id),
+        },
+        req.user.id,
+        r.itemOwnerId === req.user.id
+          ? publicName({ displayName: r.reqDisplayName, username: r.reqUsername }) ?? "the requester"
+          : publicName({ displayName: r.ownerDisplayName, username: r.ownerUsername }) ?? "the owner",
+        laneNow,
+      ),
     }));
 
     // Enrich SWAP requests with offered item details (original + counter items)

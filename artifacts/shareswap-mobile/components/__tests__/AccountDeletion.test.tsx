@@ -81,7 +81,7 @@ describe("AccountDeletionSheet", () => {
     const { tree } = await render(<AccountDeletionSheet visible onClose={() => {}} />);
     expect(mockApiGet).toHaveBeenCalledWith("/api/account/deletion-eligibility");
     expect(text(tree)).toContain("Finish or cancel your open rentals");
-    expect(text(tree)).toContain("Open transactions");
+    expect(text(tree)).toContain("Open your requests");
     expect(text(tree)).toContain("Camera - Rental - In progress");
     expect(text(tree)).toContain("When your account is deleted:");
     await press(tree, "deletion-blocking-request-7");

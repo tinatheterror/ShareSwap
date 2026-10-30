@@ -102,7 +102,7 @@ describe("pending state", () => {
 describe("blockerAction", () => {
   test("points to the balance page for money and to requests for open bookings, and nowhere for the rest", () => {
     expect(blockerAction("wallet_available")?.href).toBe("/my-balance");
-    expect(blockerAction("open_requests")?.href).toBe("/requests");
+    expect(blockerAction("open_requests")?.href).toBe("/requests?filter=blocking-deletion");
     expect(blockerAction("open_claims")).toBeNull();
   });
 });

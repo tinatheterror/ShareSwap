@@ -99,9 +99,9 @@ describe("pending state", () => {
 });
 
 describe("blockerAction", () => {
-  test("points to the wallet for money and to transactions for open bookings, and nowhere for the rest", () => {
+  test("points to the wallet for money and to the blocking-deletion inbox filter for open bookings, and nowhere for the rest", () => {
     expect(blockerAction("wallet_available")?.href).toBe("/wallet");
-    expect(blockerAction("open_requests")?.href).toBe("/transactions");
+    expect(blockerAction("open_requests")?.href).toBe("/(tabs)/inbox?filter=blocking-deletion");
     expect(blockerAction("open_claims")).toBeNull();
   });
 });

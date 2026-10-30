@@ -65,7 +65,7 @@ export function blockerAction(code: string): { label: string; href: string } | n
     case "payout_unsettled":
       return { label: "Open your balance", href: "/my-balance" };
     case "open_requests":
-      return { label: "Open your requests", href: "/requests" };
+      return { label: "Open your requests", href: "/requests?filter=blocking-deletion" };
     default:
       return null;
   }

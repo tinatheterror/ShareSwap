@@ -39,20 +39,14 @@ const ACTIVE_SUBSCRIPTION_STATUSES = ["active", "trialing", "past_due"];
 const cents = (value: string | null | undefined) => Math.round(parseFloat(value || "0") * 100);
 const dollars = (c: number) => (c / 100).toFixed(2);
 
-/** Read-only: it answers whether the account could be deleted now and what stands in the way. */
-export async function getDeletionEligibility(userId: number, executor: Pick<typeof db, "select"> = db): Promise<DeletionEligibility> {
-  const [user] = await executor
-    .select({
-      rentalBalance: users.rentalBalance,
-      pendingRentalBalance: users.pendingRentalBalance,
-      stripeSubscriptionStatus: users.stripeSubscriptionStatus,
-      stripeConnectedAccountId: users.stripeConnectedAccountId,
-    })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  if (!user) throw new Error(`user ${userId} not found`);
-
+/**
+ * The open requests that stop a deletion: everything not finished, except PENDING/ACCEPTED requests nothing has
+ * moved for, which deletion cancels by itself. The Requests screen's blocking-deletion filter uses this too.
+ */
+export async function findBlockingRequests(
+  userId: number,
+  executor: Pick<typeof db, "select"> = db,
+): Promise<{ openRequestCount: number; blocking: BlockingRequest[] }> {
   const openRequests = await executor
     .select({
       id: itemRequests.id,
@@ -84,6 +78,34 @@ export async function getDeletionEligibility(userId: number, executor: Pick<type
     (AUTO_RESOLVABLE_REQUEST_STATUSES as readonly string[]).includes(r.status) &&
     !r.depositPaymentIntentId && cents(r.depositCapturedAmount) === 0 && !r.shareCoinsCharged && !moneyHeld.has(r.id);
   const blockingRequests = openRequests.filter((r) => !autoResolvable(r));
+
+  return {
+    openRequestCount: openRequests.length,
+    blocking: blockingRequests.map((r) => ({
+      id: r.id,
+      itemName: r.itemName,
+      requestType: r.requestType,
+      status: r.status,
+      otherPartyId: r.requesterId === userId ? r.ownerId : r.requesterId,
+    })),
+  };
+}
+
+/** Read-only: it answers whether the account could be deleted now and what stands in the way. */
+export async function getDeletionEligibility(userId: number, executor: Pick<typeof db, "select"> = db): Promise<DeletionEligibility> {
+  const [user] = await executor
+    .select({
+      rentalBalance: users.rentalBalance,
+      pendingRentalBalance: users.pendingRentalBalance,
+      stripeSubscriptionStatus: users.stripeSubscriptionStatus,
+      stripeConnectedAccountId: users.stripeConnectedAccountId,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!user) throw new Error(`user ${userId} not found`);
+
+  const { openRequestCount, blocking: blockingRequests } = await findBlockingRequests(userId, executor);
 
   const [{ openClaims }] = await executor
     .select({ openClaims: sql<number>`count(*)::int` })
@@ -118,13 +140,7 @@ export async function getDeletionEligibility(userId: number, executor: Pick<type
     blockers.push({
       code: "open_requests",
       count: blockingRequests.length,
-      requests: blockingRequests.map((r) => ({
-        id: r.id,
-        itemName: r.itemName,
-        requestType: r.requestType,
-        status: r.status,
-        otherPartyId: r.requesterId === userId ? r.ownerId : r.requesterId,
-      })),
+      requests: blockingRequests,
       message: "Finish or cancel your open rentals, borrows, swaps and gifts first.",
     });
   }
@@ -147,7 +163,7 @@ export async function getDeletionEligibility(userId: number, executor: Pick<type
   return {
     eligible: blockers.length === 0,
     blockers,
-    autoResolve: { requests: openRequests.length - blockingRequests.length },
+    autoResolve: { requests: openRequestCount - blockingRequests.length },
     wallet: {
       available: dollars(availableCents),
       pending: dollars(pendingCents),

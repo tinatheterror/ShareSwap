@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect, useSearch, useLocation } from "wouter";
+import { rememberReturnTo } from "@/lib/return-to";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -67,6 +68,11 @@ export default function AuthPage() {
   useEffect(() => {
     setIsEmbeddedPreview(isEmbeddedBrowser(window));
   }, []);
+
+  // A page that asked for a sign-in ("/auth?returnTo=/delete-account") gets the person back after it.
+  useEffect(() => {
+    rememberReturnTo(searchString);
+  }, [searchString]);
 
   // Extract referral code from URL and handle verification status
   useEffect(() => {

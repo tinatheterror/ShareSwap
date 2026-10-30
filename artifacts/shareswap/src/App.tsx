@@ -1,5 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Switch, Route, Redirect, useSearch, Router as WouterRouter } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, Redirect, useSearch, useLocation, Router as WouterRouter } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "./hooks/use-auth";
@@ -55,6 +56,9 @@ import PaymentMethodsPage from "@/pages/payment-methods-page";
 import MyBalancePage from "@/pages/my-balance-page";
 import SubscriptionPage from "@/pages/subscription-page";
 import ResetPasswordPage from "@/pages/reset-password-page";
+import DeleteAccountPage from "@/pages/delete-account-page";
+import { DeletionPendingBanner } from "@/components/deletion-pending-banner";
+import { takeReturnTo } from "@/lib/return-to";
 import { VerificationNudge } from "@/components/verification-nudge";
 import { BackgroundPolling } from "@/components/background-polling";
 import { LocationSetupWrapper } from "@/components/location-setup-wrapper";
@@ -67,6 +71,19 @@ function AdminRoute({ path, component: Component }: { path: string; component: (
   if (!user) return <Route path={path}><Redirect to="/auth" /></Route>;
   if (!(user as any).isAdmin) return <Route path={path}><Redirect to="/" /></Route>;
   return <Route path={path}><Component /></Route>;
+}
+
+// After signing in (by password, or by Google, which leaves the site and comes back), go to the page the person was
+// sent from, if it was one of ours: the deletion page asks for a sign-in and then needs them back on it.
+function ReturnAfterSignIn() {
+  const { user } = useAuth();
+  const [location, navigate] = useLocation();
+  useEffect(() => {
+    if (!user) return;
+    const path = takeReturnTo();
+    if (path && path !== location) navigate(path);
+  }, [user, location, navigate]);
+  return null;
 }
 
 function Router() {
@@ -105,6 +122,7 @@ function Router() {
       <Route path="/faq" component={FAQPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />
+      <Route path="/delete-account" component={DeleteAccountPage} />
       <ProtectedRoute path="/referrals" component={ReferralsPage} />
       <ProtectedRoute path="/my-items" component={MyItemsPage} />
       <ProtectedRoute path="/requests" component={RequestsPage} />
@@ -127,6 +145,8 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <AuthProvider>
+            <ReturnAfterSignIn />
+            <DeletionPendingBanner />
             <Router />
             <ChatWidget />
             <LocationSetupWrapper />

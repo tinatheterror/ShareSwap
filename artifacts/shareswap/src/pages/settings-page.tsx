@@ -31,7 +31,6 @@ import {
   Shield,
   AlertTriangle,
   UserX,
-  Mail,
   User,
   Phone,
   ChevronRight,
@@ -506,29 +505,17 @@ export default function SettingsPage() {
                   Delete Account
                 </p>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Permanently delete your account and data.
+                  Permanently delete your account and data. You have 14 days to change your mind.
                 </p>
               </div>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="text-gray-400 hover:text-gray-600"
-                onClick={() => {
-                  toast({
-                    title: "Contact Support",
-                    description: (
-                      <div className="flex items-center gap-2 mt-1">
-                        <Mail className="h-4 w-4" />
-                        <span>
-                          Please email support@shareswap.com to request account
-                          deletion.
-                        </span>
-                      </div>
-                    ),
-                  });
-                }}
+                className="text-red-700 border-red-300"
+                onClick={() => navigate("/delete-account")}
+                data-testid="settings-delete-account"
               >
-                Contact Support
+                Delete
               </Button>
             </div>
           </CardContent>

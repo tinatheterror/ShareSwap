@@ -67,7 +67,6 @@ import {
 } from "@stripe/react-stripe-js";
 import { getStripePromise } from "@/lib/stripe-client";
 import { RequestLifecyclePanel } from "@/components/request-lifecycle-panel";
-import { groupThreads, hiddenUnread, mergeThreads, sectionOf, type InboxFilter, type RequestLane } from "@/lib/inbox-sections";
 import {
   claimOpenedExplainer, claimOpenedHeadline, CLAIM_OPENED_REFUND_NOTE, CLAIM_OPENED_TITLE, CLAIM_RESOLVED_PREVIOUSLY_CHARGED,
   EVENT_ICONS, claimOpenedChargedLine, claimOpenedOwnerLine, depositConfirmedStampLabel, depositReleasedStampLabel, toAmount,
@@ -108,8 +107,6 @@ type InboxItem = {
   itemPhoto: string | null;
   iAmRequester: boolean;
   isArchived: boolean;
-  /** Which section the thread belongs to for this person, decided by the API. */
-  lane?: RequestLane;
 };
 
 type PublicProfile = {
@@ -234,7 +231,14 @@ interface ItemRequest {
   };
 }
 
-type MessageFilter = InboxFilter;
+type MessageFilter =
+  | "all"
+  | "lending"
+  | "renting"
+  | "swapping"
+  | "gifting"
+  | "unread"
+  | "archived";
 
 function DepositPaymentForm({
   clientSecret,
@@ -503,12 +507,11 @@ export function ChatWidget() {
     refetchInterval: 30_000,
   });
 
-  // Archived inbox — completed / cancelled / declined threads. A completed one can still need a review, so
-  // it feeds the sections too.
+  // Archived inbox — completed / cancelled / declined threads
   const { data: archivedInboxItems = [], isLoading: isLoadingArchived } = useQuery<InboxItem[]>({
     queryKey: ["/api/inbox", "archived"],
     queryFn: () => fetch("/api/inbox?archived=true", { credentials: "include" }).then(r => r.json()),
-    enabled: !!user,
+    enabled: !!user && messageFilter === "archived",
     refetchInterval: 60_000,
   });
 
@@ -1074,18 +1077,25 @@ export function ChatWidget() {
     }
   };
 
-  // Active and archived threads together, grouped by what the person needs to do.
-  const allInboxThreads = mergeThreads(inboxItems, archivedInboxItems);
-  const groupedInbox = groupThreads(allInboxThreads, messageFilter);
-  const inboxSections =
-    messageFilter === "history"
-      ? [{ key: "history", title: "History", rows: groupedInbox.history }]
-      : [
-          { key: "action", title: "Needs your action", rows: groupedInbox.action },
-          { key: "in_progress", title: "In progress", rows: groupedInbox.inProgress },
-        ].filter((section) => section.rows.length > 0);
-  const hasInboxRows = inboxSections.some((section) => section.rows.length > 0);
-  const historyUnread = hiddenUnread(allInboxThreads);
+  // Filter inbox items based on active pill
+  // The source list depends on the active filter tab
+  const baseInboxItems = messageFilter === "archived" ? archivedInboxItems : inboxItems;
+
+  const filteredInboxItems = baseInboxItems.filter((item) => {
+    if (messageFilter === "all" || messageFilter === "archived") return true;
+    if (messageFilter === "unread") {
+      const needsAction =
+        item.unreadCount > 0 ||
+        (item.requestStatus === "PENDING" && !item.iAmRequester) ||
+        (item.requestNegotiationStatus === "counter_proposed");
+      return needsAction;
+    }
+    if (messageFilter === "lending") return item.requestType === "BORROW";
+    if (messageFilter === "renting") return item.requestType === "RENT";
+    if (messageFilter === "swapping") return item.requestType === "SWAP";
+    if (messageFilter === "gifting") return item.requestType === "GIFT";
+    return true;
+  });
 
   const openConversationWithPartner = (partnerId: number, requestId: number, unreadCount: number) => {
     setSelectedConversation(partnerId);
@@ -1643,114 +1653,6 @@ export function ChatWidget() {
     );
   };
 
-  const renderInboxRow = (item: InboxItem) => {
-    const partnerName = formatDisplayName(item.partnerDisplayName || item.partnerUsername);
-    const initials = getPartnerInitials(item.partnerDisplayName, item.partnerUsername);
-    const activeStatus = getActiveStatus(item.partnerLastActiveAt);
-    const needsAction = item.lane
-      ? sectionOf(item) === "action"
-      : !item.isArchived &&
-        ((item.requestStatus === "PENDING" && !item.iAmRequester) ||
-        item.requestNegotiationStatus === "counter_proposed");
-    const isActive = activeStatus?.label === "Active now";
-    const activityTime = new Date(item.lastActivityTime);
-    const now = new Date();
-    const isToday = activityTime.toDateString() === now.toDateString();
-    const timeLabel = isToday
-      ? activityTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-      : activityTime.toLocaleDateString([], { month: "short", day: "numeric" });
-
-    return (
-      <button
-        key={item.requestId}
-        onClick={() => openConversationWithPartner(item.partnerId, item.requestId, item.unreadCount)}
-        className={`w-full px-3 py-2.5 text-left transition-colors ${item.requestStatus === "AWAITING_HANDOFF_CONFIRM" ? "" : "hover:bg-purple-50"} ${needsAction ? "bg-amber-50/60 hover:bg-amber-50" : ""}`}
-      >
-        <div className="flex items-start gap-2.5">
-          {/* Avatar */}
-          <div className="relative flex-shrink-0">
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
-              {item.partnerPhoto ? (
-                <img src={item.partnerPhoto} alt={partnerName} className="w-full h-full object-cover" />
-              ) : (
-                <span>{initials}</span>
-              )}
-            </div>
-            {isActive && (
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
-            )}
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            {/* Row 1: name + time */}
-            <div className="flex items-center justify-between gap-1">
-              <div className="flex items-center gap-1 min-w-0">
-                <span className={`text-sm font-semibold truncate ${item.unreadCount > 0 || needsAction ? "text-gray-900" : "text-gray-700"}`}>
-                  {partnerName}
-                </span>
-                {item.partnerIsVerified && (
-                  <BadgeCheck className="h-5 w-5 fill-[#0DCEA1] stroke-white flex-shrink-0" />
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                {(item.unreadCount > 0) && (
-                  <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white rounded-full font-medium">
-                    {item.unreadCount}
-                  </span>
-                )}
-                {needsAction && item.unreadCount === 0 && (
-                  <span className="inline-flex items-center justify-center h-4 min-w-4 px-1.5 text-[10px] bg-amber-500 text-white rounded-full font-medium">
-                    !
-                  </span>
-                )}
-                <span className="text-[10px] text-muted-foreground">{timeLabel}</span>
-              </div>
-            </div>
-
-            {/* Row 2: item name */}
-            <div className="-mt-0.5 mb-0.5">
-              <span className="text-[11px] font-semibold italic text-gray-700 truncate leading-none">{item.itemName}</span>
-            </div>
-
-            {/* Row 2b: where the request stands and what it waits on */}
-            {item.lane && (
-              <p
-                className={`text-xs truncate ${needsAction ? "text-amber-700 font-medium" : "text-muted-foreground"}`}
-                data-testid={`inbox-status-line-${item.requestId}`}
-              >
-                {needsAction && item.lane.actionLabel ? `${item.lane.actionLabel} · ` : ""}
-                {item.lane.statusLine}
-              </p>
-            )}
-
-            {/* Row 3: preview (a request-only thread is already described by the status line) */}
-            {!(item.lane && item.previewType === "request") && (
-            <p className={`text-xs truncate ${item.unreadCount > 0 ? "text-gray-800 font-medium" : "text-muted-foreground"}`}>
-              {item.previewType === "request" && item.requestStatus ? (
-                <span className={`${needsAction ? "text-amber-700" : ""}`}>
-                  {getRequestStatusLabel(item.requestStatus, item.requestNegotiationStatus, item.iAmRequester, item)}
-                </span>
-              ) : (
-                <>
-                  {item.previewSentByMe != null && (
-                    <span className="text-gray-500 font-normal">
-                      {item.previewSentByMe
-                        ? "You: "
-                        : `${(item.partnerDisplayName || item.partnerUsername).split(" ")[0]}: `}
-                    </span>
-                  )}
-                  {item.preview}
-                </>
-              )}
-            </p>
-            )}
-          </div>
-        </div>
-      </button>
-    );
-  };
-
   return (
     <div className={isOpen ? "fixed bottom-0 left-0 right-0 sm:bottom-4 sm:left-auto sm:right-4 z-50" : "fixed bottom-4 right-4 z-50"}>
       {!isOpen ? (
@@ -1793,27 +1695,22 @@ export function ChatWidget() {
               <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b">
                 {[
                   { key: "all", label: "All" },
-                  { key: "incoming", label: "Incoming" },
-                  { key: "mine", label: "Mine" },
                   { key: "lending", label: "Lend" },
                   { key: "renting", label: "Rent" },
                   { key: "swapping", label: "Swap" },
                   { key: "gifting", label: "Gift" },
-                  { key: "history", label: "History" },
+                  { key: "archived", label: "Archive" },
                 ].map((tab) => (
                   <button
                     key={tab.key}
                     onClick={() => setMessageFilter(tab.key as MessageFilter)}
                     className={`px-2.5 py-1 rounded-full text-xs flex items-center gap-1 ${
                       messageFilter === tab.key
-                        ? tab.key === "history" ? "bg-gray-500 text-white" : "bg-gray-800 text-white"
+                        ? tab.key === "archived" ? "bg-gray-500 text-white" : "bg-gray-800 text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
                     {tab.label}
-                    {tab.key === "history" && historyUnread > 0 && (
-                      <span className="text-[10px]">({historyUnread})</span>
-                    )}
                     {tab.key === "unread" && actionCount > 0 && (
                       <span className={`inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] rounded-full ${messageFilter === "unread" ? "bg-white/20" : "bg-amber-500 text-white"}`}>
                         {actionCount}
@@ -1825,25 +1722,110 @@ export function ChatWidget() {
 
               {/* Inbox list — one entry per request */}
               <ScrollArea className="flex-1">
-                {(isLoadingInbox || isLoadingArchived) ? (
+                {(messageFilter === "archived" ? isLoadingArchived : isLoadingInbox) ? (
                   <div className="flex items-center justify-center p-8">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
-                ) : !hasInboxRows ? (
+                ) : filteredInboxItems.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
                     <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">{messageFilter === "history" ? "No history yet" : "Nothing here yet"}</p>
+                    <p className="text-sm">{messageFilter === "archived" ? "No archived chats" : "Nothing here yet"}</p>
                   </div>
                 ) : (
-                  <div>
-                    {inboxSections.map((section) => (
-                      <div key={section.key} data-testid={`inbox-section-${section.key}`}>
-                        <p className="px-3 pt-3 pb-1 text-xs font-semibold text-gray-700">
-                          {section.title} ({section.rows.length})
-                        </p>
-                        <div className="divide-y">{section.rows.map(renderInboxRow)}</div>
-                      </div>
-                    ))}
+                  <div className="divide-y">
+                    {filteredInboxItems.map((item) => {
+                      const partnerName = formatDisplayName(item.partnerDisplayName || item.partnerUsername);
+                      const initials = getPartnerInitials(item.partnerDisplayName, item.partnerUsername);
+                      const activeStatus = getActiveStatus(item.partnerLastActiveAt);
+                      const needsAction =
+                        !item.isArchived &&
+                        ((item.requestStatus === "PENDING" && !item.iAmRequester) ||
+                        item.requestNegotiationStatus === "counter_proposed");
+                      const isActive = activeStatus?.label === "Active now";
+                      const activityTime = new Date(item.lastActivityTime);
+                      const now = new Date();
+                      const isToday = activityTime.toDateString() === now.toDateString();
+                      const timeLabel = isToday
+                        ? activityTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        : activityTime.toLocaleDateString([], { month: "short", day: "numeric" });
+
+                      return (
+                        <button
+                          key={item.requestId}
+                          onClick={() => openConversationWithPartner(item.partnerId, item.requestId, item.unreadCount)}
+                          className={`w-full px-3 py-2.5 text-left transition-colors ${item.requestStatus === "AWAITING_HANDOFF_CONFIRM" ? "" : "hover:bg-purple-50"} ${needsAction ? "bg-amber-50/60 hover:bg-amber-50" : ""}`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            {/* Avatar */}
+                            <div className="relative flex-shrink-0">
+                              <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+                                {item.partnerPhoto ? (
+                                  <img src={item.partnerPhoto} alt={partnerName} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span>{initials}</span>
+                                )}
+                              </div>
+                              {isActive && (
+                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
+                              )}
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              {/* Row 1: name + time */}
+                              <div className="flex items-center justify-between gap-1">
+                                <div className="flex items-center gap-1 min-w-0">
+                                  <span className={`text-sm font-semibold truncate ${item.unreadCount > 0 || needsAction ? "text-gray-900" : "text-gray-700"}`}>
+                                    {partnerName}
+                                  </span>
+                                  {item.partnerIsVerified && (
+                                    <BadgeCheck className="h-5 w-5 fill-[#0DCEA1] stroke-white flex-shrink-0" />
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  {(item.unreadCount > 0) && (
+                                    <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white rounded-full font-medium">
+                                      {item.unreadCount}
+                                    </span>
+                                  )}
+                                  {needsAction && item.unreadCount === 0 && (
+                                    <span className="inline-flex items-center justify-center h-4 min-w-4 px-1.5 text-[10px] bg-amber-500 text-white rounded-full font-medium">
+                                      !
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-muted-foreground">{timeLabel}</span>
+                                </div>
+                              </div>
+
+                              {/* Row 2: item name */}
+                              <div className="-mt-0.5 mb-0.5">
+                                <span className="text-[11px] font-semibold italic text-gray-700 truncate leading-none">{item.itemName}</span>
+                              </div>
+
+                              {/* Row 3: preview */}
+                              <p className={`text-xs truncate ${item.unreadCount > 0 ? "text-gray-800 font-medium" : "text-muted-foreground"}`}>
+                                {item.previewType === "request" && item.requestStatus ? (
+                                  <span className={`${needsAction ? "text-amber-700" : ""}`}>
+                                    {getRequestStatusLabel(item.requestStatus, item.requestNegotiationStatus, item.iAmRequester, item)}
+                                  </span>
+                                ) : (
+                                  <>
+                                    {item.previewSentByMe != null && (
+                                      <span className="text-gray-500 font-normal">
+                                        {item.previewSentByMe
+                                          ? "You: "
+                                          : `${(item.partnerDisplayName || item.partnerUsername).split(" ")[0]}: `}
+                                      </span>
+                                    )}
+                                    {item.preview}
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </ScrollArea>

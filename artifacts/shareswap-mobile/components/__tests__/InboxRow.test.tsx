@@ -243,23 +243,3 @@ describe("InboxRow — unread / needs-action state", () => {
     expect(JSON.stringify(tree)).toContain("You: Sure!");
   });
 });
-
-describe("InboxRow — request status line", () => {
-  const lane = (section: "action" | "in_progress" | "history", statusLine: string, actionLabel: string | null = null) =>
-    ({ section, statusLine, actionLabel, dueDay: null });
-
-  it("shows what the request is waiting on", () => {
-    const tree = JSON.stringify(renderRow({ ...BASE_ITEM, lane: lane("in_progress", "Return by Nov 3") }).toJSON());
-    expect(tree).toContain("Return by Nov 3");
-  });
-
-  it("leads with the action when the person has something to do", () => {
-    const tree = JSON.stringify(renderRow({ ...BASE_ITEM, lane: lane("action", "Sam sent a counter-offer", "Respond to counter-offer") }).toJSON());
-    expect(tree).toContain("Respond to counter-offer");
-    expect(tree).toContain("Sam sent a counter-offer");
-  });
-
-  it("shows no status line for an API that sends no lane", () => {
-    expect(JSON.stringify(renderRow(BASE_ITEM).toJSON())).not.toContain("inbox-status-line");
-  });
-});

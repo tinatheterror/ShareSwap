@@ -11,7 +11,6 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  SectionList,
   StyleSheet,
   Text,
   View,
@@ -22,13 +21,6 @@ import { apiGet, apiRequest } from "@/lib/api";
 import { formatTime } from "@/lib/dateUtils";
 import { useAuth } from "@/context/AuthContext";
 import { NotificationBell } from "@/components/NotificationBell";
-import {
-  groupThreads,
-  hiddenUnread,
-  mergeThreads,
-  type InboxFilter,
-  type RequestLane,
-} from "@/lib/inboxSections";
 
 export interface InboxItem {
   requestId: number;
@@ -52,31 +44,29 @@ export interface InboxItem {
   itemPhoto: string | null;
   iAmRequester: boolean;
   isArchived: boolean;
-  /** Which section the thread belongs to for this person; absent from an API that predates lanes. */
-  lane?: RequestLane;
 }
 
-const FILTERS: { key: InboxFilter; label: string }[] = [
+type FilterKey = "all" | "lending" | "renting" | "swapping" | "gifting" | "archived";
+
+const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "incoming", label: "Incoming" },
-  { key: "mine", label: "Mine" },
   { key: "lending", label: "Lend" },
   { key: "renting", label: "Rent" },
   { key: "swapping", label: "Swap" },
   { key: "gifting", label: "Gift" },
-  { key: "history", label: "History" },
+  { key: "archived", label: "Archive" },
 ];
+
 
 export function InboxRow({ item, onPress }: { item: InboxItem; onPress: () => void }) {
   const colors = useColors();
   const partnerName = item.partnerDisplayName || item.partnerUsername;
   const initials = partnerName.charAt(0).toUpperCase();
   const isUnread = item.unreadCount > 0;
-  const needsAction = item.lane
-    ? item.lane.section === "action"
-    : !item.isArchived &&
-      ((item.requestStatus === "PENDING" && !item.iAmRequester) ||
-        item.requestNegotiationStatus === "counter_proposed");
+  const needsAction =
+    !item.isArchived &&
+    ((item.requestStatus === "PENDING" && !item.iAmRequester) ||
+      item.requestNegotiationStatus === "counter_proposed");
 
   const previewText =
     item.previewType === "message"
@@ -168,21 +158,6 @@ export function InboxRow({ item, onPress }: { item: InboxItem; onPress: () => vo
           {item.itemName}
         </Text>
 
-        {/* Row 2b: where the request stands, and what it waits on */}
-        {item.lane ? (
-          <Text
-            testID={`inbox-status-line-${item.requestId}`}
-            style={[
-              styles.statusLine,
-              { color: needsAction ? "#b45309" : colors.mutedForeground, fontFamily: needsAction ? "Inter_600SemiBold" : "Inter_400Regular" },
-            ]}
-            numberOfLines={1}
-          >
-            {needsAction && item.lane.actionLabel ? `${item.lane.actionLabel} · ` : ""}
-            {item.lane.statusLine}
-          </Text>
-        ) : null}
-
         {/* Row 3: message preview */}
         <Text
           style={[
@@ -211,8 +186,10 @@ export default function InboxScreen() {
   const qc = useQueryClient();
   const isWeb = Platform.OS === "web";
 
-  const [filter, setFilter] = useState<InboxFilter>("all");
+  const [filter, setFilter] = useState<FilterKey>("all");
   const [refreshing, setRefreshing] = useState(false);
+
+  const isArchiveFilter = filter === "archived";
 
   const { data: activeItems = [], isLoading: loadingActive, refetch: refetchActive } = useQuery<InboxItem[]>({
     queryKey: ["/api/inbox"],
@@ -220,33 +197,31 @@ export default function InboxScreen() {
     enabled: !!user,
   });
 
-  // Finished threads are archived, but a completed one can still need a review, so both lists feed the sections.
   const { data: archivedItems = [], isLoading: loadingArchived, refetch: refetchArchived } = useQuery<InboxItem[]>({
     queryKey: ["/api/inbox/archived"],
     queryFn: () => apiGet<InboxItem[]>("/api/inbox?archived=true"),
-    enabled: !!user,
+    enabled: !!user && isArchiveFilter,
     // Match web's 60 s poll so auto-unarchived threads surface without manual refresh
     refetchInterval: 60_000,
   });
 
-  const isLoading = loadingActive || loadingArchived;
-  const allThreads = mergeThreads(activeItems, archivedItems);
-  const grouped = groupThreads(allThreads, filter === "history" ? "all" : filter);
-  const sections =
-    filter === "history"
-      ? [{ key: "history", title: "History", data: grouped.history }]
-      : [
-          { key: "action", title: "Needs your action", data: grouped.action },
-          { key: "in_progress", title: "In progress", data: grouped.inProgress },
-        ].filter((s) => s.data.length > 0);
-  const hasRows = sections.some((s) => s.data.length > 0);
-  const historyUnread = hiddenUnread(allThreads);
+  const isLoading = isArchiveFilter ? loadingArchived : loadingActive;
+  const baseItems = isArchiveFilter ? archivedItems : activeItems;
+
+  const filteredItems = baseItems.filter((item) => {
+    if (filter === "all" || filter === "archived") return true;
+    if (filter === "lending") return item.requestType === "BORROW";
+    if (filter === "renting") return item.requestType === "RENT";
+    if (filter === "swapping") return item.requestType === "SWAP";
+    if (filter === "gifting") return item.requestType === "GIFT";
+    return true;
+  });
 
   const totalUnread = activeItems.reduce((s, i) => s + i.unreadCount, 0);
 
   async function handleRefresh() {
     setRefreshing(true);
-    await Promise.all([refetchActive(), refetchArchived()]);
+    await (isArchiveFilter ? refetchArchived() : refetchActive());
     setRefreshing(false);
   }
 
@@ -298,7 +273,7 @@ export default function InboxScreen() {
         >
           {FILTERS.map((f) => {
             const active = filter === f.key;
-            const isArchive = f.key === "history";
+            const isArchive = f.key === "archived";
             return (
               <Pressable
                 key={f.key}
@@ -328,7 +303,7 @@ export default function InboxScreen() {
                     },
                   ]}
                 >
-                  {f.key === "history" && historyUnread > 0 ? `${f.label} (${historyUnread})` : f.label}
+                  {f.label}
                 </Text>
               </Pressable>
             );
@@ -348,11 +323,11 @@ export default function InboxScreen() {
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : !hasRows ? (
+      ) : filteredItems.length === 0 ? (
         <View style={styles.centered}>
           <Feather name="message-circle" size={48} color={colors.mutedForeground} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            {filter === "history" ? "No history yet" : "Nothing here yet"}
+            {filter === "archived" ? "No archived chats" : "Nothing here yet"}
           </Text>
           <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
             {filter === "all"
@@ -361,14 +336,9 @@ export default function InboxScreen() {
           </Text>
         </View>
       ) : (
-        <SectionList
-          sections={sections}
+        <FlatList
+          data={filteredItems}
           keyExtractor={(item) => item.requestId.toString()}
-          renderSectionHeader={({ section }) => (
-            <Text style={[styles.sectionHeader, { color: colors.foreground, backgroundColor: colors.background }]}>
-              {section.title} ({section.data.length})
-            </Text>
-          )}
           renderItem={({ item }) => (
             <InboxRow item={item} onPress={() => handleOpen(item)} />
           )}
@@ -427,16 +397,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
-  },
-  sectionHeader: {
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 6,
-  },
-  statusLine: {
-    fontSize: 12,
   },
   filterText: {
     fontSize: 11,

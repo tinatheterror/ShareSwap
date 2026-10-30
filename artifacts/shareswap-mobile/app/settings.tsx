@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Linking,
   Modal,
   Platform,
   Pressable,
@@ -22,7 +21,10 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiRequest } from "@/lib/api";
 import { ApiEnvironmentLabel } from "@/components/ApiEnvironmentLabel";
-import { openLegalLink, PRIVACY_URL, TERMS_URL } from "@/lib/legalLinks";
+import { AccountDeletionSheet } from "@/components/AccountDeletionSheet";
+import { DeletionPendingBanner } from "@/components/DeletionPendingBanner";
+import { isDeletionPending } from "@/lib/accountDeletion";
+import { DELETE_ACCOUNT_URL, openLegalLink, PRIVACY_URL, TERMS_URL } from "@/lib/legalLinks";
 
 interface UserProfile {
   id: number;
@@ -34,6 +36,7 @@ interface UserProfile {
 
 interface AccountStatus {
   accountStatus?: string;
+  deletionScheduledFor?: string | null;
 }
 
 type NotifCategory = "messages" | "requests" | "payments" | "achievements" | "sharecoins" | "return_deadlines";
@@ -62,6 +65,9 @@ export default function SettingsScreen() {
   // deactivate modal
   const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
+
+  // delete-account sheet
+  const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
 
   // password modal
   const [pwdModalVisible, setPwdModalVisible] = useState(false);
@@ -224,18 +230,9 @@ export default function SettingsScreen() {
     setDeactivateModalOpen(true);
   };
 
-  // Contact Support: open mail client (mirrors web toast with email address)
-  const handleContactSupport = () => {
-    Linking.openURL("mailto:support@shareswap.com").catch(() => {
-      Alert.alert(
-        "Contact Support",
-        "Please email support@shareswap.com to request account deletion."
-      );
-    });
-  };
-
   const statusLabel = accountStatus?.accountStatus ?? "active";
   const isActive = statusLabel === "active" || !statusLabel;
+  const deletionPending = isDeletionPending(accountStatus);
   const isOAuthUser = !!(profile?.authProvider && profile.authProvider !== "local");
 
   // ── notification summary ──────────────────────────────────────────────────
@@ -311,6 +308,7 @@ export default function SettingsScreen() {
         </View>
 
         <ApiEnvironmentLabel />
+        <DeletionPendingBanner />
 
         {/* ── Contact ── */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -509,14 +507,23 @@ export default function SettingsScreen() {
             <View style={styles.actionText}>
               <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Delete Account</Text>
               <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                Permanently delete your{"\n"}account and data.
+                Permanently delete your account and data. You have 14 days to change your mind.{"\n"}Or do it on the web:
               </Text>
+              <Pressable accessibilityRole="link" onPress={() => openLegalLink(DELETE_ACCOUNT_URL)}>
+                <Text style={[styles.linkText, { color: "#0d9488" }]}>shareswap.app/delete-account</Text>
+              </Pressable>
             </View>
             <Pressable
-              onPress={handleContactSupport}
-              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => setDeleteSheetOpen(true)}
+              disabled={deletionPending}
+              testID="delete-account-row"
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.outlineBtn,
+                { borderColor: "#fca5a5", backgroundColor: colors.background, opacity: pressed || deletionPending ? 0.5 : 1 },
+              ]}
             >
-              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>Contact Support</Text>
+              <Text style={[styles.outlineBtnText, { color: "#dc2626" }]}>{deletionPending ? "Requested" : "Delete"}</Text>
             </Pressable>
           </View>
         </View>
@@ -549,6 +556,8 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      <AccountDeletionSheet visible={deleteSheetOpen} onClose={() => setDeleteSheetOpen(false)} />
 
       {/* ── Deactivate Confirm Modal ── */}
       <Modal

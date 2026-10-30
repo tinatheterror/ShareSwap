@@ -25,6 +25,7 @@ import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost, photoUrl } from "@/lib/api";
 import { NotificationBell } from "@/components/NotificationBell";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
+import { DeletionPendingBanner } from "@/components/DeletionPendingBanner";
 import { VerificationNudge } from "@/components/VerificationNudge";
 
 const rentalRateIcon = require("../../assets/icons/rental-rate.png");
@@ -607,6 +608,11 @@ export default function HomeScreen() {
 
       {/* ── Email verification banner ── */}
       <EmailVerificationBanner />
+
+      {/* ── Account deletion pending: the date and a way to cancel ── */}
+      <View style={{ paddingHorizontal: 16 }}>
+        <DeletionPendingBanner />
+      </View>
 
       {/* ── Identity verification nudge (one-time, dismissible) ── */}
       <VerificationNudge />

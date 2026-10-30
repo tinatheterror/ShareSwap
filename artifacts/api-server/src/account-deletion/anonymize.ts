@@ -41,6 +41,12 @@ function emptyValue(table: string, column: string): SQL {
 const assignments = (table: string, columns: string[]) =>
   sql.join(columns.map((c) => sql`${sql.identifier(c)} = ${emptyValue(table, c)}`), sql`, `);
 
+/** A booking is evidence when it has a security claim or a handoff or return dispute was raised on it. */
+const evidenceOf = (alias: string) => {
+  const a = sql.raw(alias);
+  return sql`(COALESCE(${a}.handoff_dispute_triggered, false) OR COALESCE(${a}.return_dispute_triggered, false) OR EXISTS (SELECT 1 FROM security_claims c WHERE c.request_id = ${a}.id))`;
+};
+
 export type ScrubStep = {
   table: string;
   /** Columns emptied by this step. */
@@ -61,7 +67,7 @@ export function scrubSteps(userId: number): ScrubStep[] {
   const U = sql`${userId}`;
   const REQ = sql`t.requester_id = ${U}`;
   const OWN = sql`i.owner_id = ${U}`;
-  const EVIDENCE = sql`(COALESCE(t.handoff_dispute_triggered, false) OR COALESCE(t.return_dispute_triggered, false) OR EXISTS (SELECT 1 FROM security_claims c WHERE c.request_id = t.id))`;
+  const EVIDENCE = evidenceOf("t");
   const request = (columns: string[], condition: SQL): ScrubStep => ({
     table: "item_requests",
     columns,
@@ -80,11 +86,11 @@ export function scrubSteps(userId: number): ScrubStep[] {
     request(["counter_note"], sql`t.counter_proposed_by = ${U}`),
     // The cancellation the deletion itself makes carries a system code, not free text, and stays.
     request(["cancel_reason"], sql`t.cancelled_by = ${U} AND t.cancel_reason IS DISTINCT FROM 'account_deleted'`),
-    request(["return_condition_notes", "return_dispute_reason"], OWN),
+    request(["return_condition_notes"], OWN),
     // Evidence: kept when the booking has a claim or a dispute.
     request(["handoff_pin"], sql`(${REQ} OR ${OWN}) AND NOT ${EVIDENCE}`),
     request(["handoff_proof_borrower"], sql`${REQ} AND NOT ${EVIDENCE}`),
-    request(["handoff_proof_owner", "return_dispute_photo_url"], sql`${OWN} AND NOT ${EVIDENCE}`),
+    request(["handoff_proof_owner", "return_dispute_photo_url", "return_dispute_reason"], sql`${OWN} AND NOT ${EVIDENCE}`),
     // delivery_arrangements: the requester's address, the owner's pickup address, and what no one needs once it is over.
     delivery(["delivery_address"], sql`r.requester_id = ${U}`),
     delivery(["pickup_address"], sql`i.owner_id = ${U}`),
@@ -97,8 +103,13 @@ export function scrubSteps(userId: number): ScrubStep[] {
       extraSet: sql`is_deleted = true, is_available = false`,
       where: sql`t.owner_id = ${U}`,
     },
-    // The notes of a return do not say who wrote them, so either party's deletion clears them.
-    { table: "rental_returns", columns: ["notes"], where: sql`t.renter_id = ${U} OR t.owner_id = ${U}` },
+    // The notes of a return do not say who wrote them, so either party's deletion clears them, unless the rental has a
+    // claim or a dispute: then they are evidence.
+    {
+      table: "rental_returns",
+      columns: ["notes"],
+      where: sql`(t.renter_id = ${U} OR t.owner_id = ${U}) AND NOT EXISTS (SELECT 1 FROM item_requests e WHERE e.id = t.request_id AND ${evidenceOf("e")})`,
+    },
     { table: "referrals", columns: ["referrer_device_fingerprint"], where: sql`t.referrer_id = ${U}` },
     { table: "referrals", columns: ["referred_device_fingerprint"], where: sql`t.referred_user_id = ${U}` },
   ];

@@ -4,7 +4,7 @@ import { eq, inArray, or } from "drizzle-orm";
 import passport from "passport";
 import {
   bannedEmailHashes, db, deliveryArrangements, itemRequests, items, messages, notifications, platformCommissions, pool,
-  rentalPayouts, requestLifecycleEvents, securityClaims, shareCoinsTransactions, userPushTokens, userReviews,
+  rentalPayouts, rentalReturns, requestLifecycleEvents, securityClaims, shareCoinsTransactions, userPushTokens, userReviews,
   userSubscriptions, users, verifications, wishlistOffers, wishlists,
 } from "@workspace/db";
 import { hashPassword } from "../auth.js";
@@ -85,6 +85,7 @@ after(async () => {
     await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, reqs));
     await db.delete(securityClaims).where(inArray(securityClaims.requestId, reqs));
     await db.delete(deliveryArrangements).where(inArray(deliveryArrangements.requestId, reqs));
+    await db.delete(rentalReturns).where(inArray(rentalReturns.requestId, reqs));
     await db.delete(rentalPayouts).where(inArray(rentalPayouts.userId, ids));
     await db.delete(messages).where(or(inArray(messages.senderId, ids), inArray(messages.receiverId, ids)));
     await db.delete(notifications).where(inArray(notifications.userId, ids));
@@ -193,10 +194,13 @@ test("finalize anonymises the account, keeps the books, scrubs only the deleting
   const asBorrower = await makeRequest(otherItem.id, subject.id, { message: "hello from S", returnConditionNotes: "O's notes", handoffPin: "1234", cancelReason: null });
   await db.insert(deliveryArrangements).values({ requestId: asBorrower.id, deliveryType: "delivery", deliveryAddress: "S's door", pickupAddress: "O's door", specialInstructions: "ring twice" } as any);
   // O borrowed from S: O's message stays, S's return notes go; one booking has a dispute, one a claim, one neither.
-  const plain = await makeRequest(subjectItem.id, other.id, { message: "O asks", returnConditionNotes: "S's notes", handoffPin: "1111", handoffProofOwner: "S plain proof" });
+  const plain = await makeRequest(subjectItem.id, other.id, { message: "O asks", returnConditionNotes: "S's notes", handoffPin: "1111", handoffProofOwner: "S plain proof", returnDisputeReason: "S plain reason" });
   const disputed = await makeRequest(subjectItem.id, other.id, { returnDisputeTriggered: true, returnDisputePhotoUrl: "/uploads/evidence.jpg", returnDisputeReason: "S's reason", handoffPin: "9999", handoffProofOwner: "S dispute proof" });
   const claimed = await makeRequest(subjectItem.id, other.id, { handoffPin: "7777", handoffProofOwner: "S claim proof" });
   await db.insert(securityClaims).values({ requestId: claimed.id, ownerId: subject.id, borrowerId: other.id, claimType: "DAMAGE", reason: "damaged", requestedAmount: "20.00", status: "CLOSED" } as any);
+  for (const [request, notes] of [[plain, "plain return notes"], [disputed, "disputed return notes"], [claimed, "claimed return notes"]] as const) {
+    await db.insert(rentalReturns).values({ requestId: request.id, itemId: subjectItem.id, renterId: other.id, ownerId: subject.id, notes } as any);
+  }
   await db.insert(requestLifecycleEvents).values({ requestId: plain.id, eventType: "request_note", actorId: subject.id, idempotencyKey: `${UNIQUE}-ev`, details: { message: "free text", itemName: "Drill", nested: { note: "n", amount: 5 } } } as any);
 
   await db.insert(messages).values([
@@ -272,7 +276,12 @@ test("finalize anonymises the account, keeps the books, scrubs only the deleting
     assert.equal(evidence.handoffProofOwner, proof);
   }
   assert.equal((await requestRow(disputed.id)).returnDisputePhotoUrl, "/uploads/evidence.jpg");
-  assert.equal((await requestRow(disputed.id)).returnDisputeReason, null, "the written reason is not evidence");
+  assert.equal((await requestRow(disputed.id)).returnDisputeReason, "S's reason", "the dispute reason is evidence, like the photo");
+  assert.equal(plainRow.returnDisputeReason, null, "without a dispute or claim it is just text");
+  const returnNotes = async (id: number) => (await db.select().from(rentalReturns).where(eq(rentalReturns.requestId, id)))[0].notes;
+  assert.equal(await returnNotes(plain.id), null, "return notes are cleared when nothing is disputed");
+  assert.equal(await returnNotes(disputed.id), "disputed return notes", "kept as evidence of a dispute");
+  assert.equal(await returnNotes(claimed.id), "claimed return notes", "kept as evidence of a claim");
   assert.ok(!uploadsRemoved.includes("/uploads/evidence.jpg"), "an evidence photo is not deleted from disk");
 
   // Lifecycle details lose free text; the books stay; the items are soft-deleted and emptied.

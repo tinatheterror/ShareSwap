@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 import {
   blockerAction,
+  blockingRequestHref,
+  blockingRequestLabel,
+  WHAT_IS_DELETED,
   canRequestDeletion,
   daysLeft,
   isDeletionPending,
@@ -101,5 +104,18 @@ describe("blockerAction", () => {
     expect(blockerAction("wallet_available")?.href).toBe("/my-balance");
     expect(blockerAction("open_requests")?.href).toBe("/requests");
     expect(blockerAction("open_claims")).toBeNull();
+  });
+});
+
+describe("blocking requests", () => {
+  const request = { id: 7, itemName: "Camera", requestType: "RENT", status: "IN_PROGRESS", otherPartyId: 3 };
+
+  test("are described by item, type and status, and link to the request", () => {
+    expect(blockingRequestLabel(request)).toBe("Camera - Rental - In progress");
+    expect(blockingRequestHref(request)).toBe("/transactions/7");
+  });
+
+  test("the deleted list is made of full sentences", () => {
+    for (const line of WHAT_IS_DELETED) expect(line).toMatch(/\.$/);
   });
 });

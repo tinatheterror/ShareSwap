@@ -11,7 +11,9 @@ import {
   type WalletTier,
 } from "./retention";
 
-export type DeletionBlocker = { code: string; message: string; count?: number; amount?: string };
+export type BlockingRequest = { id: number; itemName: string; requestType: string; status: string; otherPartyId: number | null };
+
+export type DeletionBlocker = { code: string; message: string; count?: number; amount?: string; requests?: BlockingRequest[] };
 
 export type DeletionEligibility = {
   eligible: boolean;
@@ -55,6 +57,10 @@ export async function getDeletionEligibility(userId: number, executor: Pick<type
     .select({
       id: itemRequests.id,
       status: itemRequests.status,
+      requestType: itemRequests.requestType,
+      requesterId: itemRequests.requesterId,
+      itemName: items.name,
+      ownerId: items.ownerId,
       depositPaymentIntentId: itemRequests.depositPaymentIntentId,
       depositCapturedAmount: itemRequests.depositCapturedAmount,
       shareCoinsCharged: itemRequests.shareCoinsCharged,
@@ -112,6 +118,13 @@ export async function getDeletionEligibility(userId: number, executor: Pick<type
     blockers.push({
       code: "open_requests",
       count: blockingRequests.length,
+      requests: blockingRequests.map((r) => ({
+        id: r.id,
+        itemName: r.itemName,
+        requestType: r.requestType,
+        status: r.status,
+        otherPartyId: r.requesterId === userId ? r.ownerId : r.requesterId,
+      })),
       message: "Finish or cancel your open rentals, borrows, swaps and gifts first.",
     });
   }

@@ -11,9 +11,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   GRACE_DAYS,
+  DELETED_HEADING,
+  DELETION_INTRO,
   WHAT_IS_DELETED,
   WHAT_IS_KEPT,
   blockerAction,
+  blockingRequestHref,
+  blockingRequestLabel,
   canRequestDeletion,
   deletionDateLabel,
   isDeletionPending,
@@ -46,12 +50,13 @@ function WhatHappens({ extra }: { extra?: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-1.5 text-sm text-red-900">
       <p className="font-semibold">What happens</p>
+      <p>{DELETION_INTRO}</p>
+      <p className="pt-1 font-medium">{DELETED_HEADING}</p>
       <ul className="list-disc pl-5 space-y-1">
-        <li>Your account is scheduled for deletion in {GRACE_DAYS} days. You can cancel any time before that.</li>
         {WHAT_IS_DELETED.map((item) => <li key={item}>{item}</li>)}
         {extra}
       </ul>
-      <p className="pt-2 text-blue-900">{WHAT_IS_KEPT}</p>
+      <p className="pt-2">{WHAT_IS_KEPT}</p>
     </div>
   );
 }
@@ -251,7 +256,7 @@ export default function DeleteAccountPage() {
                   <>
                     {eligibility.willEnd.subscription ? <li>Your subscription ends.</li> : null}
                     {eligibility.autoResolve.requests > 0 ? (
-                      <li>{eligibility.autoResolve.requests} open {eligibility.autoResolve.requests === 1 ? "request" : "requests"} with nothing paid will be cancelled.</li>
+                      <li>{eligibility.autoResolve.requests} open {eligibility.autoResolve.requests === 1 ? "request" : "requests"} with nothing paid are cancelled.</li>
                     ) : null}
                   </>
                 }
@@ -267,6 +272,15 @@ export default function DeleteAccountPage() {
                         <li key={b.code}>
                           {b.message}{b.amount ? ` ($${b.amount})` : ""}{" "}
                           {action ? <Link href={action.href} className="underline">{action.label}</Link> : null}
+                          {b.requests?.length ? (
+                            <ul className="mt-1 ml-4 list-disc space-y-0.5" data-testid="delete-account-blocking-requests">
+                              {b.requests.map((r) => (
+                                <li key={r.id}>
+                                  <Link href={blockingRequestHref(r)} className="underline">{blockingRequestLabel(r)}</Link>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
                         </li>
                       );
                     })}

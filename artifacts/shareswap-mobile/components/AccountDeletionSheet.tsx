@@ -8,9 +8,13 @@ import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost } from "@/lib/api";
 import {
   GRACE_DAYS,
+  DELETED_HEADING,
+  DELETION_INTRO,
   WHAT_IS_DELETED,
   WHAT_IS_KEPT,
   blockerAction,
+  blockingRequestHref,
+  blockingRequestLabel,
   canRequestDeletion,
   walletCopy,
   type DeletionEligibility,
@@ -96,11 +100,12 @@ export function AccountDeletionSheet({ visible, onClose }: { visible: boolean; o
             <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
               <View style={styles.box}>
                 <Text style={styles.boxTitle}>What happens</Text>
-                <Text style={styles.boxItem}>• Your account is scheduled for deletion in {GRACE_DAYS} days. You can cancel any time before that.</Text>
+                <Text style={styles.boxItem}>{DELETION_INTRO}</Text>
+                <Text style={[styles.boxItem, styles.boxHeading]}>{DELETED_HEADING}</Text>
                 {WHAT_IS_DELETED.map((item) => <Text key={item} style={styles.boxItem}>• {item}</Text>)}
                 {eligibility.willEnd.subscription ? <Text style={styles.boxItem}>• Your subscription ends.</Text> : null}
                 {eligibility.autoResolve.requests > 0 ? (
-                  <Text style={styles.boxItem}>• {eligibility.autoResolve.requests} open {eligibility.autoResolve.requests === 1 ? "request" : "requests"} with nothing paid will be cancelled.</Text>
+                  <Text style={styles.boxItem}>• {eligibility.autoResolve.requests} open {eligibility.autoResolve.requests === 1 ? "request" : "requests"} with nothing paid are cancelled.</Text>
                 ) : null}
               </View>
               <View style={[styles.box, styles.keptBox]}>
@@ -120,6 +125,16 @@ export function AccountDeletionSheet({ visible, onClose }: { visible: boolean; o
                             <Text style={styles.link}>{action.label}</Text>
                           </Pressable>
                         ) : null}
+                        {b.requests?.map((r) => {
+                          const href = blockingRequestHref(r);
+                          return href ? (
+                            <Pressable key={r.id} testID={`deletion-blocking-request-${r.id}`} onPress={() => { onClose(); router.push(href as never); }}>
+                              <Text style={styles.link}>{blockingRequestLabel(r)}</Text>
+                            </Pressable>
+                          ) : (
+                            <Text key={r.id} style={[styles.boxItem, { color: "#92400e" }]}>{blockingRequestLabel(r)}</Text>
+                          );
+                        })}
                       </View>
                     );
                   })}
@@ -188,6 +203,7 @@ const styles = StyleSheet.create({
   errorBox: { gap: 8, paddingVertical: 16 },
   box: { gap: 4, borderWidth: 1, borderColor: "#fecaca", backgroundColor: "#fef2f2", borderRadius: 10, padding: 12, marginBottom: 10 },
   boxTitle: { fontSize: 13, color: "#991b1b", fontFamily: "Inter_700Bold" },
+  boxHeading: { fontFamily: "Inter_600SemiBold", marginTop: 4 },
   boxItem: { fontSize: 13, lineHeight: 18, color: "#7f1d1d", fontFamily: "Inter_400Regular" },
   keptBox: { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" },
   blockBox: { backgroundColor: "#fffbeb", borderColor: "#fde68a" },

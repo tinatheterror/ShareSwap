@@ -51,6 +51,8 @@ describe("the web deletion page, signed out", () => {
     renderPage();
     expect(screen.getByTestId("delete-account-signed-out")).toBeTruthy();
     expect(screen.getByText(/scheduled for deletion in 14 days/)).toBeTruthy();
+    expect(screen.getByText("When your account is deleted:")).toBeTruthy();
+    expect(screen.getByText("Reviews about you are deleted. Reviews you wrote stay, shown as 'Former member'.")).toBeTruthy();
     expect(screen.getByTestId("delete-account-sign-in").getAttribute("href")).toBe("/auth?returnTo=%2Fdelete-account");
     expect(mocks.apiRequest).not.toHaveBeenCalled();
   });
@@ -60,10 +62,19 @@ describe("the web deletion page, signed in", () => {
   beforeEach(() => { mocks.user = { id: 1 }; });
 
   it("shows what blocks the deletion and cannot continue", async () => {
-    mocks.data["/api/account/deletion-eligibility"] = { ...base, eligible: false, blockers: [{ code: "open_requests", message: "Finish or cancel your open rentals, borrows, swaps and gifts first." }] };
+    mocks.data["/api/account/deletion-eligibility"] = {
+      ...base,
+      eligible: false,
+      blockers: [{
+        code: "open_requests",
+        message: "Finish or cancel your open rentals, borrows, swaps and gifts first.",
+        requests: [{ id: 7, itemName: "Camera", requestType: "RENT", status: "IN_PROGRESS", otherPartyId: 3 }],
+      }],
+    };
     renderPage();
     await screen.findByTestId("delete-account-blockers");
     expect(screen.getByText(/Finish or cancel your open rentals/)).toBeTruthy();
+    expect(screen.getByText("Camera - Rental - In progress").closest("a")?.getAttribute("href")).toBe("/transactions/7");
     expect((screen.getByTestId("delete-account-continue") as HTMLButtonElement).disabled).toBe(true);
   });
 

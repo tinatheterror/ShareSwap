@@ -1,5 +1,8 @@
 import {
   blockerAction,
+  blockingRequestHref,
+  blockingRequestLabel,
+  WHAT_IS_DELETED,
   canRequestDeletion,
   daysLeft,
   isDeletionPending,
@@ -100,5 +103,19 @@ describe("blockerAction", () => {
     expect(blockerAction("wallet_available")?.href).toBe("/wallet");
     expect(blockerAction("open_requests")?.href).toBe("/transactions");
     expect(blockerAction("open_claims")).toBeNull();
+  });
+});
+
+describe("blocking requests", () => {
+  const request = { id: 7, itemName: "Camera", requestType: "RENT", status: "IN_PROGRESS", otherPartyId: 3 };
+
+  test("are described by item, type and status, and link to the conversation", () => {
+    expect(blockingRequestLabel(request)).toBe("Camera - Rental - In progress");
+    expect(blockingRequestHref(request)).toBe("/chat/3?requestId=7");
+    expect(blockingRequestHref({ ...request, otherPartyId: null })).toBeNull();
+  });
+
+  test("the deleted list is made of full sentences", () => {
+    for (const line of WHAT_IS_DELETED) expect(line).toMatch(/\.$/);
   });
 });

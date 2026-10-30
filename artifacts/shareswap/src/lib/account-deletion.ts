@@ -1,9 +1,20 @@
 // What the account-deletion page shows, derived from the server's answers. The server decides everything
 // (eligibility, tiers, the schedule); this only words it. Same wording as the mobile app's lib/accountDeletion.ts.
 
+export type BlockingRequest = { id: number; itemName: string; requestType: string; status: string; otherPartyId: number | null };
+
+const REQUEST_TYPE_LABELS: Record<string, string> = { BORROW: "Borrow", RENT: "Rental", SWAP: "Swap", GIFT: "Gift" };
+
+/** "Camera - Rental - In progress": which request is in the way, as a person reads it. */
+export function blockingRequestLabel(r: BlockingRequest): string {
+  const type = REQUEST_TYPE_LABELS[r.requestType] ?? r.requestType.charAt(0) + r.requestType.slice(1).toLowerCase();
+  const status = r.status.replace(/_/g, " ").toLowerCase();
+  return `${r.itemName} - ${type} - ${status.charAt(0).toUpperCase()}${status.slice(1)}`;
+}
+
 export type WalletTier = "none" | "forfeit" | "offer_withdrawal" | "blocks";
 
-export type DeletionBlocker = { code: string; message: string; count?: number; amount?: string };
+export type DeletionBlocker = { code: string; message: string; count?: number; amount?: string; requests?: BlockingRequest[] };
 
 export type DeletionEligibility = {
   eligible: boolean;
@@ -60,6 +71,8 @@ export function blockerAction(code: string): { label: string; href: string } | n
   }
 }
 
+export const blockingRequestHref = (r: BlockingRequest): string => `/transactions/${r.id}`;
+
 export type WalletCopy = { lines: string[]; needsAcknowledgement: boolean; acknowledgement: string | null };
 
 /** The wallet part of the review step. Tiers: none, forfeit (under $1), offer_withdrawal ($1 up to $10), blocks ($10 or more). */
@@ -94,10 +107,14 @@ export function canRequestDeletion(eligibility: DeletionEligibility | undefined,
   return walletCopy(eligibility.wallet).needsAcknowledgement ? forfeitAcknowledged : true;
 }
 
+export const DELETION_INTRO = `Your account is scheduled for deletion in ${GRACE_DAYS} days. You can cancel any time before that.`;
+
+export const DELETED_HEADING = "When your account is deleted:";
+
 export const WHAT_IS_DELETED = [
-  "Your profile, photos, listings, wishlists and saved cards",
-  "Your messages, and the ShareCoins in your account",
-  "Reviews about you; the reviews you wrote stay and show a Former member",
+  "Your profile, photos, listings, wishlists and saved cards are deleted.",
+  "Your messages and the ShareCoins in your account are deleted.",
+  "Reviews about you are deleted. Reviews you wrote stay, shown as 'Former member'.",
 ];
 
 export const WHAT_IS_KEPT =

@@ -64,6 +64,7 @@ import {
   scheduledFor as deletionScheduledFor,
   type DeletionDeps,
 } from "../account-deletion/service";
+import { createStripeCleanup, type StripeCleanupClient } from "../account-deletion/stripe-cleanup";
 import { minimumWaiverApplies } from "../account-deletion/retention";
 import { isEmailShaped, publicName, publicUsername } from "../public-identity";
 import { scrubEmailUsernames, usernameScrubMiddleware } from "../username-scrub";
@@ -16040,7 +16041,11 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  const deletionDeps = (): DeletionDeps => ({ now: options.now, ...options.accountDeletion });
+  const deletionDeps = (): DeletionDeps => ({
+    now: options.now,
+    stripeCleanup: createStripeCleanup(async () => (await getUncachableStripeClient()) as unknown as StripeCleanupClient),
+    ...options.accountDeletion,
+  });
   const sendDeletionError = (res: import("express").Response, error: unknown, fallback: string) => {
     if (error instanceof DeletionError) {
       return res.status(error.status).json({ code: error.code, message: error.message, blockers: error.blockers });

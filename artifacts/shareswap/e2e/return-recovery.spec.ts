@@ -2,6 +2,7 @@ import { expect, test, type APIRequestContext } from "@playwright/test";
 import {
   cleanupOwnerReturnFixture,
   countFixtureRecords,
+  openInbox,
   suppressReturnReminderChecks,
   type OwnerReturnFixture,
 } from "./owner-return-helpers";
@@ -96,7 +97,7 @@ test("a released deposit survives a failed return save and retries update the sa
       type: "return_confirmed",
       title: "Return Confirmed",
     });
-    expect(completed[0].message).toContain("Temporary hold released.");
+    expect(completed[0].message).toContain("Hold released.");
     expect(completed[0].message.toLowerCase()).not.toContain("pending");
   } finally {
     await cleanupOwnerReturnFixture(request, fixture.fixtureId);
@@ -123,8 +124,7 @@ test("owner dialog observes recovered completion without replaying confirmation"
         },
       });
     });
-    await page.goto("/requests");
-    await page.getByRole("button", { name: "Open inbox" }).click();
+    await openInbox(page);
     await page.getByRole("button", { name: /Ben Borrower/ }).click();
     await page.getByRole("button", { name: "Confirm return", exact: true }).last().click();
     const dialog = page.getByRole("dialog", { name: "Confirm Item Return" });

@@ -69,7 +69,8 @@ export function scrubEmailUsernames<T>(value: T, viewer: Viewer): T {
   return (copy ?? value) as T;
 }
 
-const exempt = (path: string) => path === "/api/admin/users" || path.startsWith("/api/admin/users/");
+// The e2e fixture routes (registered only in E2E_TEST_MODE) hand back the login names the specs sign in with.
+const exempt = (path: string) => path === "/api/admin/users" || path.startsWith("/api/admin/users/") || path.startsWith("/api/e2e/");
 
 export function usernameScrubMiddleware(req: Request, res: Response, next: NextFunction) {
   if (!req.path.startsWith("/api") || exempt(req.path)) return next();

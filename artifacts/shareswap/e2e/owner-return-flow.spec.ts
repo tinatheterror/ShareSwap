@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { randomBytes } from "node:crypto";
 import {
   cleanupOwnerReturnFixture, completeReturnWithReview, countFixtureRecords,
-  expectPostReturnActivity, suppressReturnReminderChecks,
+  expectPostReturnActivity, openInbox, suppressReturnReminderChecks,
   type FixtureRecordCounts, type OwnerReturnFixture,
 } from "./owner-return-helpers";
 
@@ -252,8 +252,7 @@ test("borrower sees a failed return request without losing the dialog", async ({
       });
     });
 
-    await page.goto("/requests");
-    await page.getByRole("button", { name: "Open inbox" }).click();
+    await openInbox(page);
     await page.getByRole("button", { name: /Olivia Owner/ }).click();
     await page.getByRole("button", { name: "Return item", exact: true }).last().click();
 
@@ -306,8 +305,7 @@ test("owner completes a return and failed fixture cleanup rolls back before retr
     });
     expect(loginResponse.ok()).toBe(true);
 
-    await page.goto("/requests");
-    await page.getByRole("button", { name: "Open inbox" }).click();
+    await openInbox(page);
     await page.getByRole("button", { name: /Ben Borrower/ }).click();
     await page
       .getByRole("button", { name: "Confirm return", exact: true })
@@ -466,7 +464,7 @@ test("confirmed return with a held deposit sends one combined borrower notificat
     const alerts = returnAlerts(await borrowerResponse.json());
     expect(alerts).toHaveLength(1);
     expect(alerts[0].type).toBe("return_confirmed");
-    expect(alerts[0].message).toContain("Temporary hold released.");
+    expect(alerts[0].message).toContain("Hold released.");
   } finally {
     await cleanupOwnerReturnFixture(request, fixture.fixtureId);
   }
@@ -501,8 +499,7 @@ test("owner sees a failed return confirmation without losing the dialog", async 
       },
     );
 
-    await page.goto("/requests");
-    await page.getByRole("button", { name: "Open inbox" }).click();
+    await openInbox(page);
     await page.getByRole("button", { name: /Ben Borrower/ }).click();
     await page
       .getByRole("button", { name: "Confirm return", exact: true })

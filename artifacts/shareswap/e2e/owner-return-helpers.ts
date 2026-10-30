@@ -70,11 +70,18 @@ export function expectPostReturnActivity(counts: FixtureRecordCounts) {
   expect(counts.notifications).toBeGreaterThan(0);
 }
 
+/** The inbox is a panel on the home page (there is no inbox route): load the page, skip the first-visit tour, open the panel. */
+export async function openInbox(page: Page) {
+  await page.goto("/");
+  const skipTour = page.getByRole("button", { name: "Skip tutorial" });
+  if (await skipTour.isVisible({ timeout: 5_000 }).catch(() => false)) await skipTour.click();
+  await page.getByRole("button", { name: "Open inbox" }).click();
+}
+
 export async function completeReturnWithReview(page: Page, fixture: OwnerReturnFixture) {
   const login = await page.request.post("/api/login", { data: fixture.owner });
   expect(login.ok()).toBe(true);
-  await page.goto("/requests");
-  await page.getByRole("button", { name: "Open inbox" }).click();
+  await openInbox(page);
   await page.getByRole("button", { name: /Ben Borrower/ }).click();
   await page.getByRole("button", { name: "Confirm return", exact: true }).last().click();
   const returnDialog = page.getByRole("dialog", { name: "Confirm Item Return" });

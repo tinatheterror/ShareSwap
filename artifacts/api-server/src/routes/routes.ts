@@ -5574,13 +5574,9 @@ Respond with ONLY the category name, nothing else.`
   // Item condition verification endpoints
   app.post(
     "/api/items/:itemId/verify-condition",
+    requireAdmin,
     upload.array("photos"),
     async (req, res) => {
-      if (!req.isAuthenticated()) {
-        return res.sendStatus(401);
-      }
-
-      // TODO: Add admin check here
       const itemId = parseInt(req.params.itemId);
       const files = req.files as Express.Multer.File[];
       const photoUrls = files

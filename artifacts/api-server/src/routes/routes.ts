@@ -14322,7 +14322,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // ── Admin: Shared auth guard ──
-  function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (!(req.user as any).isAdmin) return res.status(403).json({ message: "Admin access required" });
     next();

@@ -31,6 +31,12 @@ test("a real badge award refreshes a mounted wallet and the API preserves the re
     await expect(page.locator("main").getByText(`${Math.round(initialCoins)} ShareCoins`, { exact: true })).toBeVisible();
     // Wait for the bell's first notification response before awarding a badge,
     // so this verifies a subsequent poll, not a fresh login/reload.
+    // A fresh test database has no achievements: seed the one this needs (a no-op where it exists).
+    await pool.query(
+      `INSERT INTO achievements (name, description, badge_icon, badge_color, category)
+       VALUES ('rising_star', 'Completed 20 exchanges', 'star', 'gold', 'milestone')
+       ON CONFLICT (name) DO NOTHING`,
+    );
     const { rows: [badge] } = await pool.query("SELECT id FROM achievements WHERE name = $1 LIMIT 1", ["rising_star"]);
     expect(badge).toBeTruthy();
     const description = "Completed 20 exchanges — an exchange veteran neighbours rely on.";

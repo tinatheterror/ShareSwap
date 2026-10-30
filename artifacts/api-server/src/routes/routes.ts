@@ -70,6 +70,7 @@ import { createConnectDeleter, createStripeCleanup, type StripeCleanupClient } f
 import { minimumWaiverApplies } from "../account-deletion/retention";
 import { isEmailShaped, publicName, publicUsername } from "../public-identity";
 import { scrubEmailUsernames, usernameScrubMiddleware } from "../username-scrub";
+import { e2eTestModeEnabled } from "../e2e-mode";
 import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, releaseStrandedRentalPayouts, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
@@ -1983,7 +1984,7 @@ export function registerRoutes(
   setupAuth(app);
   app.use(usernameScrubMiddleware);
 
-  if (process.env.E2E_TEST_MODE === "true") {
+  if (e2eTestModeEnabled()) {
     const ownerReturnFixtures = new Map<
       string,
       { requestId: number; itemId: number; userIds: number[] }
@@ -10895,7 +10896,7 @@ Respond with ONLY the category name, nothing else.`
           return { status: 400, error: "Request is not in progress" };
         }
         if (
-          process.env.E2E_TEST_MODE === "true" &&
+          e2eTestModeEnabled() &&
           req.get("x-e2e-simulate-failure") === "borrower-return-request"
         ) {
           return { status: 500, error: "Return request could not be saved" };
@@ -11034,7 +11035,7 @@ Respond with ONLY the category name, nothing else.`
       }
       if (
         request.item_requests.status === "RETURN_REQUESTED" &&
-        process.env.E2E_TEST_MODE === "true" &&
+        e2eTestModeEnabled() &&
         req.get("x-e2e-simulate-failure") === "owner-return-confirmation"
       ) {
         return res.status(500).json({ error: "Return could not be saved" });
@@ -11137,7 +11138,8 @@ Respond with ONLY the category name, nothing else.`
           type: "dispute_opened",
           title: "Dispute Opened",
           message: depositCopy.disputeOpenedNotice(request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name),
-          link: `/requests`,
+          requestId: request.item_requests.id,
+          itemId: request.items.id,
         });
 
         // System message scoped to the request thread
@@ -11166,7 +11168,7 @@ Respond with ONLY the category name, nothing else.`
         sameCondition,
         stripeClient: stripe as any,
         onCompleted: runConfirmedReturnPostEffects,
-        beforeFinalization: process.env.E2E_TEST_MODE === "true" &&
+        beforeFinalization: e2eTestModeEnabled() &&
           req.get("x-e2e-simulate-failure") === "owner-return-finalization"
           ? () => { throw new Error("Simulated owner return finalization failure"); }
           : undefined,
@@ -12683,7 +12685,7 @@ Respond with ONLY the category name, nothing else.`
   });
   if (
     options.startBackgroundJobs !== false &&
-    process.env.E2E_TEST_MODE !== "true" &&
+    !e2eTestModeEnabled() &&
     // Only in a deployment or with BACKGROUND_JOBS=on: these act on the database DATABASE_URL names.
     shouldRunBackgroundJobs(process.env)
   ) {

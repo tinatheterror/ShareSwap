@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 // The rules under test are the daylight-saving rules of the platform zone, and
 // the tz database a runtime ships decides what those are: since 2026e,
@@ -265,8 +267,28 @@ test("returnTiming across the Nov 1 clock change", () => {
   assert.equal(returnTiming({ endDate: null }, new Date("2026-11-03T12:00:00Z")).isOverdue, false);
 });
 
-test("the boot line names the zone, its offset now, and the tz database", () => {
-  const line = timeZoneBootLine(PACIFIC, { node: "24.0.0", tz: "2026e" }, new Date("2026-12-05T12:00:00Z"));
-  assert.equal(line, "[request-dates] platform zone America/Los_Angeles (GMT-08:00 now); node 24.0.0, tz database 2026e");
-  assert.match(timeZoneBootLine(), /tz database \S+$/);
+test("the boot line names the zone, its offset now, the tz database, and any tz files override", () => {
+  const winter = new Date("2026-12-05T12:00:00Z");
+  assert.equal(
+    timeZoneBootLine(PACIFIC, { node: "24.0.0", tz: "2026e" }, winter, {}),
+    "[request-dates] platform zone America/Los_Angeles (GMT-08:00 now); node 24.0.0, tz database 2026e",
+  );
+  assert.match(
+    timeZoneBootLine(PACIFIC, { node: "24.0.0", tz: "2026a" }, winter, { ICU_TIMEZONE_FILES_DIR: "tzdata/2026e" }),
+    /tz database 2026a; tz files from tzdata\/2026e$/,
+  );
+  assert.match(timeZoneBootLine(), /tz database \S+/);
+});
+
+test("the committed tz files load and carry the 2026e rules", () => {
+  const dir = fileURLToPath(new URL("../tzdata/2026e", import.meta.url));
+  const probe =
+    'const f=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Vancouver",timeZoneName:"longOffset"});' +
+    'console.log(process.versions.tz+" "+f.format(new Date("2026-12-05T12:00:00Z")))';
+  const run = spawnSync(process.execPath, ["-e", probe], {
+    env: { ...process.env, ICU_TIMEZONE_FILES_DIR: dir },
+    encoding: "utf8",
+  });
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout.trim(), /^2026e .*GMT-07:00$/);
 });

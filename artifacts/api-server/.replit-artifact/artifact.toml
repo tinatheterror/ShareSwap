@@ -27,6 +27,9 @@ args = ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
 [services.production.run.env]
 PORT = "8080"
 NODE_ENV = "production"
+# Newer tz rules than the Nix Node build ships (America/Vancouver stays on UTC-07:00 from Nov 2026).
+# The path is relative to the repo root, where the run command above starts.
+ICU_TIMEZONE_FILES_DIR = "artifacts/api-server/tzdata/2026e"
 
 [services.production.health.startup]
 path = "/api/healthz"

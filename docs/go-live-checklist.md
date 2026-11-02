@@ -28,6 +28,7 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 ### Fixes
 
 - [ ] Timezone: production runs tz 2026a; ship 2026e+ ICU tz files via ICU_TIMEZONE_FILES_DIR and confirm the [request-dates] boot line
+  - Shipped in `artifacts/api-server/tzdata/2026e` (see its README) and set in `start` and `artifact.toml`. Still to do: publish, then check the first production log shows `tz database 2026e` and `tz files from artifacts/api-server/tzdata/2026e`. If it still says 2026a, the path is wrong.
 - [ ] Healthchecks on /ws and /storage returned 500 at boot; confirm startup timing only, or add a /health endpoint
 - [ ] Postgres SSL warning: set sslmode=verify-full on DATABASE_URL
 - [ ] Replace url.parse() usage (DEP0169)

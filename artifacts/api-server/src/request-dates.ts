@@ -28,20 +28,24 @@ export function resolveTimeZone(candidate: string | undefined): string {
 export const PLATFORM_TIME_ZONE = resolveTimeZone(process.env.PLATFORM_TIME_ZONE);
 
 /**
- * One boot line naming the platform zone, its offset right now, and the tz database this runtime ships.
- * Zone rules come from that database (2026e, for one, stops America/Vancouver falling back), so a
- * deployment on an older one reads every calendar-day deadline an hour differently from a newer one.
+ * One boot line naming the platform zone, its offset now, and the tz database behind it. Zone rules come
+ * from that database (2026e, for one, stops America/Vancouver falling back), so a deployment on an older
+ * one reads every calendar-day deadline an hour differently from a newer one. ICU_TIMEZONE_FILES_DIR swaps
+ * in newer files, and a wrong directory silently keeps the built-in ones, so check that the version here
+ * is the one you shipped, not just that the directory is named.
  */
 export function timeZoneBootLine(
   zone: string = PLATFORM_TIME_ZONE,
   versions: { node?: string; tz?: string } = process.versions,
   now: Date = new Date(),
+  env: { ICU_TIMEZONE_FILES_DIR?: string } = process.env,
 ): string {
   const offset =
     new Intl.DateTimeFormat("en-CA", { timeZone: zone, timeZoneName: "longOffset" })
       .formatToParts(now)
       .find((p) => p.type === "timeZoneName")?.value ?? "unknown";
-  return `[request-dates] platform zone ${zone} (${offset} now); node ${versions.node ?? "unknown"}, tz database ${versions.tz ?? "unknown"}`;
+  const files = env.ICU_TIMEZONE_FILES_DIR ? `; tz files from ${env.ICU_TIMEZONE_FILES_DIR}` : "";
+  return `[request-dates] platform zone ${zone} (${offset} now); node ${versions.node ?? "unknown"}, tz database ${versions.tz ?? "unknown"}${files}`;
 }
 
 /**

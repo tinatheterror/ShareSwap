@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
+// The rules under test are the daylight-saving rules of the platform zone, and
+// the tz database a runtime ships decides what those are: since 2026e,
+// America/Vancouver stays on UTC-07:00 all year, while 2026a (Replit) still
+// falls back on Nov 1. Pin a zone whose rules are fixed and read the module
+// after setting it, so the suite means the same thing on every machine.
+const PACIFIC = "America/Los_Angeles";
+process.env.PLATFORM_TIME_ZONE = PACIFIC;
+const {
   DEFAULT_PLATFORM_TIME_ZONE,
   PLATFORM_TIME_ZONE,
   addCalendarDays,
@@ -19,77 +26,75 @@ import {
   timezoneForRequest,
   resolveTimeZone,
   validateStartDateNotPast,
-} from "./request-dates.js";
+} = await import("./request-dates.js");
 
-const VAN = "America/Vancouver";
+
 
 test("the default platform time zone is America/Vancouver", () => {
   assert.equal(DEFAULT_PLATFORM_TIME_ZONE, "America/Vancouver");
   assert.equal(resolveTimeZone(undefined), "America/Vancouver");
-  if (!process.env.PLATFORM_TIME_ZONE) {
-    assert.equal(PLATFORM_TIME_ZONE, "America/Vancouver");
-    // Without an explicit zone argument the default is used: Oct 4, 23:59:59 PDT.
-    assert.equal(isStartDatePassed("2026-10-04", new Date("2026-10-05T06:59:59Z")), false);
-    assert.equal(isStartDatePassed("2026-10-04", new Date("2026-10-05T07:00:00Z")), true);
-  }
+  // The platform zone is the pinned one above; without an explicit zone argument it is used: Oct 4, 23:59:59 PDT.
+  assert.equal(PLATFORM_TIME_ZONE, PACIFIC);
+  assert.equal(isStartDatePassed("2026-10-04", new Date("2026-10-05T06:59:59Z")), false);
+  assert.equal(isStartDatePassed("2026-10-04", new Date("2026-10-05T07:00:00Z")), true);
 });
 
 test("calendarDayInZone follows the zone, not UTC", () => {
   // 23:59:59 PDT on Oct 4 is already Oct 5 in UTC.
-  assert.equal(calendarDayInZone(new Date("2026-10-05T06:59:59Z"), VAN), "2026-10-04");
-  assert.equal(calendarDayInZone(new Date("2026-10-05T07:00:00Z"), VAN), "2026-10-05");
+  assert.equal(calendarDayInZone(new Date("2026-10-05T06:59:59Z"), PACIFIC), "2026-10-04");
+  assert.equal(calendarDayInZone(new Date("2026-10-05T07:00:00Z"), PACIFIC), "2026-10-05");
 });
 
 test("a request on its own start day stays acceptable until that day ends in the platform zone", () => {
   // Oct 4, 20:30 PDT. UTC already says Oct 5, so a UTC comparison would wrongly reject.
   const eveningBeforeUtcMidnight = new Date("2026-10-05T03:30:00Z");
-  assert.equal(isStartDatePassed("2026-10-04", eveningBeforeUtcMidnight, VAN), false);
+  assert.equal(isStartDatePassed("2026-10-04", eveningBeforeUtcMidnight, PACIFIC), false);
 
   // Last second of Oct 4 in Vancouver.
-  assert.equal(isStartDatePassed("2026-10-04", new Date("2026-10-05T06:59:59Z"), VAN), false);
+  assert.equal(isStartDatePassed("2026-10-04", new Date("2026-10-05T06:59:59Z"), PACIFIC), false);
   // First second of Oct 5 in Vancouver: Oct 4 has passed, Oct 5 has not.
-  assert.equal(isStartDatePassed("2026-10-04", new Date("2026-10-05T07:00:00Z"), VAN), true);
-  assert.equal(isStartDatePassed("2026-10-05", new Date("2026-10-05T07:00:00Z"), VAN), false);
+  assert.equal(isStartDatePassed("2026-10-04", new Date("2026-10-05T07:00:00Z"), PACIFIC), true);
+  assert.equal(isStartDatePassed("2026-10-05", new Date("2026-10-05T07:00:00Z"), PACIFIC), false);
 });
 
 test("stored UTC-midnight dates keep their calendar day regardless of the zone offset", () => {
   const stored = new Date("2026-10-05T00:00:00.000Z");
   assert.equal(requestCalendarDay(stored), "2026-10-05");
   // Oct 4, 21:00 PDT: the stored Oct 5 start has not passed.
-  assert.equal(isStartDatePassed(stored, new Date("2026-10-05T04:00:00Z"), VAN), false);
+  assert.equal(isStartDatePassed(stored, new Date("2026-10-05T04:00:00Z"), PACIFIC), false);
   // Oct 5, 00:00 PDT: still its own start day.
-  assert.equal(isStartDatePassed(stored, new Date("2026-10-05T07:00:00Z"), VAN), false);
+  assert.equal(isStartDatePassed(stored, new Date("2026-10-05T07:00:00Z"), PACIFIC), false);
   // Oct 6, 00:00 PDT: passed.
-  assert.equal(isStartDatePassed(stored, new Date("2026-10-06T07:00:00Z"), VAN), true);
+  assert.equal(isStartDatePassed(stored, new Date("2026-10-06T07:00:00Z"), PACIFIC), true);
 });
 
 test("fall-back DST day boundary is local midnight, not a fixed UTC offset", () => {
   // Clocks fall back on 2026-11-01; midnight on Nov 2 is 08:00Z (PST, UTC-8).
-  assert.equal(calendarDayInZone(new Date("2026-11-02T07:59:59Z"), VAN), "2026-11-01");
-  assert.equal(calendarDayInZone(new Date("2026-11-02T08:00:00Z"), VAN), "2026-11-02");
-  assert.equal(isStartDatePassed("2026-11-01", new Date("2026-11-02T07:59:59Z"), VAN), false);
-  assert.equal(isStartDatePassed("2026-11-01", new Date("2026-11-02T08:00:00Z"), VAN), true);
+  assert.equal(calendarDayInZone(new Date("2026-11-02T07:59:59Z"), PACIFIC), "2026-11-01");
+  assert.equal(calendarDayInZone(new Date("2026-11-02T08:00:00Z"), PACIFIC), "2026-11-02");
+  assert.equal(isStartDatePassed("2026-11-01", new Date("2026-11-02T07:59:59Z"), PACIFIC), false);
+  assert.equal(isStartDatePassed("2026-11-01", new Date("2026-11-02T08:00:00Z"), PACIFIC), true);
 });
 
 test("spring-forward DST day boundary is local midnight", () => {
   // Clocks spring forward on 2027-03-14; midnight on Mar 15 is 07:00Z (PDT, UTC-7).
-  assert.equal(isStartDatePassed("2027-03-14", new Date("2027-03-15T06:59:59Z"), VAN), false);
-  assert.equal(isStartDatePassed("2027-03-14", new Date("2027-03-15T07:00:00Z"), VAN), true);
+  assert.equal(isStartDatePassed("2027-03-14", new Date("2027-03-15T06:59:59Z"), PACIFIC), false);
+  assert.equal(isStartDatePassed("2027-03-14", new Date("2027-03-15T07:00:00Z"), PACIFIC), true);
 });
 
 test("the same instant can fall on different days in different zones", () => {
   const instant = new Date("2026-10-05T10:00:00Z");
-  assert.equal(calendarDayInZone(instant, VAN), "2026-10-05");
+  assert.equal(calendarDayInZone(instant, PACIFIC), "2026-10-05");
   assert.equal(calendarDayInZone(instant, "Pacific/Auckland"), "2026-10-05");
   assert.equal(calendarDayInZone(new Date("2026-10-05T14:00:00Z"), "Pacific/Auckland"), "2026-10-06");
   assert.equal(isStartDatePassed("2026-10-05", new Date("2026-10-05T14:00:00Z"), "Pacific/Auckland"), true);
-  assert.equal(isStartDatePassed("2026-10-05", new Date("2026-10-05T14:00:00Z"), VAN), false);
+  assert.equal(isStartDatePassed("2026-10-05", new Date("2026-10-05T14:00:00Z"), PACIFIC), false);
 });
 
 test("missing or unparseable start dates are never treated as passed", () => {
   const now = new Date("2026-10-05T12:00:00Z");
   for (const value of [null, undefined, "", "not-a-date", "2026-02-30", 12345, {}]) {
-    assert.equal(isStartDatePassed(value, now, VAN), false, String(value));
+    assert.equal(isStartDatePassed(value, now, PACIFIC), false, String(value));
   }
   assert.equal(requestCalendarDay("2026-02-30"), null);
   assert.equal(requestCalendarDay("not-a-date"), null);
@@ -102,11 +107,11 @@ test("full timestamps use their UTC day, matching how date-only values are store
 
 test("validateStartDateNotPast accepts today and later, rejects earlier days", () => {
   const now = new Date("2026-10-05T12:00:00Z");
-  assert.deepEqual(validateStartDateNotPast("2026-10-05", now, VAN), { valid: true });
-  assert.deepEqual(validateStartDateNotPast("2026-10-06", now, VAN), { valid: true });
-  assert.deepEqual(validateStartDateNotPast(undefined, now, VAN), { valid: true });
+  assert.deepEqual(validateStartDateNotPast("2026-10-05", now, PACIFIC), { valid: true });
+  assert.deepEqual(validateStartDateNotPast("2026-10-06", now, PACIFIC), { valid: true });
+  assert.deepEqual(validateStartDateNotPast(undefined, now, PACIFIC), { valid: true });
 
-  const rejected = validateStartDateNotPast("2026-10-04", now, VAN);
+  const rejected = validateStartDateNotPast("2026-10-04", now, PACIFIC);
   assert.equal(rejected.valid, false);
   if (!rejected.valid) {
     assert.equal(rejected.code, "START_DATE_IN_PAST");
@@ -127,52 +132,52 @@ const iso = (date: Date | null) => date?.toISOString() ?? null;
 const day = (value: string) => new Date(`${value}T00:00:00.000Z`);
 
 test("end of a calendar day is 23:59:59 in the platform zone", () => {
-  assert.equal(iso(endOfLocalDay("2026-10-05", VAN)), "2026-10-06T06:59:59.999Z"); // PDT
-  assert.equal(iso(endOfLocalDay("2026-12-05", VAN)), "2026-12-06T07:59:59.999Z"); // PST
+  assert.equal(iso(endOfLocalDay("2026-10-05", PACIFIC)), "2026-10-06T06:59:59.999Z"); // PDT
+  assert.equal(iso(endOfLocalDay("2026-12-05", PACIFIC)), "2026-12-06T07:59:59.999Z"); // PST
   assert.equal(iso(endOfLocalDay("2026-10-05", "UTC")), "2026-10-05T23:59:59.999Z");
 });
 
 test("end of day is still 23:59:59 local on the days the clocks change", () => {
-  assert.equal(iso(endOfLocalDay("2026-03-08", VAN)), "2026-03-09T06:59:59.999Z"); // spring forward
-  assert.equal(iso(endOfLocalDay("2026-11-01", VAN)), "2026-11-02T07:59:59.999Z"); // fall back
+  assert.equal(iso(endOfLocalDay("2026-03-08", PACIFIC)), "2026-03-09T06:59:59.999Z"); // spring forward
+  assert.equal(iso(endOfLocalDay("2026-11-01", PACIFIC)), "2026-11-02T07:59:59.999Z"); // fall back
 });
 
 test("an Oct 2–5 request must be handed off by Oct 4 at 11:59 PM", () => {
-  const cutoff = computeHandoffCutoff(day("2026-10-02"), day("2026-10-05"), VAN)!;
+  const cutoff = computeHandoffCutoff(day("2026-10-02"), day("2026-10-05"), PACIFIC)!;
   assert.equal(iso(cutoff), "2026-10-05T06:59:59.999Z");
-  assert.equal(formatHandoffCutoff(cutoff, VAN), "Oct 4, 11:59 PM");
-  assert.equal(formatHandoffCutoffSentence(cutoff, VAN), "Oct 4 at 11:59 PM");
+  assert.equal(formatHandoffCutoff(cutoff, PACIFIC), "Oct 4, 11:59 PM");
+  assert.equal(formatHandoffCutoffSentence(cutoff, PACIFIC), "Oct 4 at 11:59 PM");
   // Oct 4 is the last day to hand off; Oct 5 is too late.
-  assert.equal(calendarDayInZone(cutoff, VAN), "2026-10-04");
+  assert.equal(calendarDayInZone(cutoff, PACIFIC), "2026-10-04");
 });
 
 test("the cutoff is the later of end − 24h and the end of the start day", () => {
   // One-day request: end − 24h would be the start day's end, so no zero-or-negative window.
-  assert.equal(iso(computeHandoffCutoff(day("2026-10-02"), day("2026-10-03"), VAN)), "2026-10-03T06:59:59.999Z");
+  assert.equal(iso(computeHandoffCutoff(day("2026-10-02"), day("2026-10-03"), PACIFIC)), "2026-10-03T06:59:59.999Z");
   // Same-day request: end − 24h is before the start, so the end of the start day wins.
-  assert.equal(iso(computeHandoffCutoff(day("2026-10-02"), day("2026-10-02"), VAN)), "2026-10-03T06:59:59.999Z");
+  assert.equal(iso(computeHandoffCutoff(day("2026-10-02"), day("2026-10-02"), PACIFIC)), "2026-10-03T06:59:59.999Z");
   // A malformed end before the start never yields a cutoff before the request begins.
-  assert.equal(iso(computeHandoffCutoff(day("2026-10-02"), day("2026-09-20"), VAN)), "2026-10-03T06:59:59.999Z");
+  assert.equal(iso(computeHandoffCutoff(day("2026-10-02"), day("2026-09-20"), PACIFIC)), "2026-10-03T06:59:59.999Z");
 });
 
 test("the cutoff reads 11:59 PM across a DST change instead of drifting an hour", () => {
   // Fall back is Nov 1 2026; the night before the Nov 2 end is Nov 1, 11:59 PM PST.
-  const cutoff = computeHandoffCutoff(day("2026-10-30"), day("2026-11-02"), VAN)!;
-  assert.equal(formatHandoffCutoff(cutoff, VAN), "Nov 1, 11:59 PM");
-  const spring = computeHandoffCutoff(day("2026-03-07"), day("2026-03-09"), VAN)!;
-  assert.equal(formatHandoffCutoff(spring, VAN), "Mar 8, 11:59 PM");
+  const cutoff = computeHandoffCutoff(day("2026-10-30"), day("2026-11-02"), PACIFIC)!;
+  assert.equal(formatHandoffCutoff(cutoff, PACIFIC), "Nov 1, 11:59 PM");
+  const spring = computeHandoffCutoff(day("2026-03-07"), day("2026-03-09"), PACIFIC)!;
+  assert.equal(formatHandoffCutoff(spring, PACIFIC), "Mar 8, 11:59 PM");
 });
 
 test("requests without usable dates have no cutoff", () => {
-  assert.equal(computeHandoffCutoff(null, day("2026-10-05"), VAN), null);
-  assert.equal(computeHandoffCutoff(day("2026-10-02"), undefined, VAN), null);
-  assert.equal(computeHandoffCutoff("not a date", "also not", VAN), null);
+  assert.equal(computeHandoffCutoff(null, day("2026-10-05"), PACIFIC), null);
+  assert.equal(computeHandoffCutoff(day("2026-10-02"), undefined, PACIFIC), null);
+  assert.equal(computeHandoffCutoff("not a date", "also not", PACIFIC), null);
 });
 
 test("date-only strings and stored UTC-midnight timestamps give the same cutoff", () => {
   assert.equal(
-    iso(computeHandoffCutoff("2026-10-02", "2026-10-05", VAN)),
-    iso(computeHandoffCutoff(day("2026-10-02"), day("2026-10-05"), VAN)),
+    iso(computeHandoffCutoff("2026-10-02", "2026-10-05", PACIFIC)),
+    iso(computeHandoffCutoff(day("2026-10-02"), day("2026-10-05"), PACIFIC)),
   );
 });
 
@@ -184,38 +189,38 @@ test("timezoneForRequest is the one place a request's zone comes from", () => {
 });
 
 test("a date-only date and its stored UTC-midnight timestamp end at the same local midnight", () => {
-  assert.equal(iso(endOfLocalDay("2026-10-19", VAN)), "2026-10-20T06:59:59.999Z");
-  assert.equal(iso(endOfLocalDay(day("2026-10-19"), VAN)), "2026-10-20T06:59:59.999Z");
-  assert.equal(endOfLocalDay(null, VAN), null);
-  assert.equal(endOfLocalDay("nope", VAN), null);
+  assert.equal(iso(endOfLocalDay("2026-10-19", PACIFIC)), "2026-10-20T06:59:59.999Z");
+  assert.equal(iso(endOfLocalDay(day("2026-10-19"), PACIFIC)), "2026-10-20T06:59:59.999Z");
+  assert.equal(endOfLocalDay(null, PACIFIC), null);
+  assert.equal(endOfLocalDay("nope", PACIFIC), null);
 });
 
 test("end of day around the Nov 1 clock change keeps reading 23:59:59.999 local", () => {
-  assert.equal(iso(endOfLocalDay("2026-10-31", VAN)), "2026-11-01T06:59:59.999Z"); // PDT, UTC-7
-  assert.equal(iso(endOfLocalDay("2026-11-01", VAN)), "2026-11-02T07:59:59.999Z"); // day of the change, PST after
-  assert.equal(iso(endOfLocalDay("2026-11-02", VAN)), "2026-11-03T07:59:59.999Z"); // PST, UTC-8
+  assert.equal(iso(endOfLocalDay("2026-10-31", PACIFIC)), "2026-11-01T06:59:59.999Z"); // PDT, UTC-7
+  assert.equal(iso(endOfLocalDay("2026-11-01", PACIFIC)), "2026-11-02T07:59:59.999Z"); // day of the change, PST after
+  assert.equal(iso(endOfLocalDay("2026-11-02", PACIFIC)), "2026-11-03T07:59:59.999Z"); // PST, UTC-8
   // The Nov 1 day is 25 hours long; its start is still local midnight.
-  assert.equal(iso(startOfLocalDay("2026-11-01", VAN)), "2026-11-01T07:00:00.000Z");
-  assert.equal(iso(startOfLocalDay("2026-11-02", VAN)), "2026-11-02T08:00:00.000Z");
+  assert.equal(iso(startOfLocalDay("2026-11-01", PACIFIC)), "2026-11-01T07:00:00.000Z");
+  assert.equal(iso(startOfLocalDay("2026-11-02", PACIFIC)), "2026-11-02T08:00:00.000Z");
 });
 
 test("days late are calendar days in the zone, not 24-hour blocks from UTC midnight", () => {
   const due = day("2026-10-19");
   // 6 PM on the due day in Vancouver is already Oct 20 in UTC: still on time.
-  assert.equal(calendarDaysLate(due, new Date("2026-10-20T01:00:00Z"), VAN), 0);
-  assert.equal(calendarDaysLate(due, new Date("2026-10-20T06:59:59.999Z"), VAN), 0);
+  assert.equal(calendarDaysLate(due, new Date("2026-10-20T01:00:00Z"), PACIFIC), 0);
+  assert.equal(calendarDaysLate(due, new Date("2026-10-20T06:59:59.999Z"), PACIFIC), 0);
   // The first instant of Oct 20 in Vancouver is one day late.
-  assert.equal(calendarDaysLate(due, new Date("2026-10-20T07:00:00Z"), VAN), 1);
-  assert.equal(calendarDaysLate(due, new Date("2026-10-24T20:00:00Z"), VAN), 5);
-  assert.equal(calendarDaysLate(null, new Date("2026-10-24T20:00:00Z"), VAN), 0);
+  assert.equal(calendarDaysLate(due, new Date("2026-10-20T07:00:00Z"), PACIFIC), 1);
+  assert.equal(calendarDaysLate(due, new Date("2026-10-24T20:00:00Z"), PACIFIC), 5);
+  assert.equal(calendarDaysLate(null, new Date("2026-10-24T20:00:00Z"), PACIFIC), 0);
 });
 
 test("days late across the Nov 1 clock change do not gain or lose a day", () => {
   const due = day("2026-10-30");
-  assert.equal(calendarDaysLate(due, new Date("2026-11-01T06:59:59Z"), VAN), 1); // Oct 31, 11:59 PM PDT
-  assert.equal(calendarDaysLate(due, new Date("2026-11-02T07:59:59Z"), VAN), 2); // Nov 1, 11:59 PM PST
-  assert.equal(calendarDaysLate(due, new Date("2026-11-02T08:00:00Z"), VAN), 3); // Nov 2, 12:00 AM PST
-  assert.equal(calendarDaysUntil(day("2026-11-03"), new Date("2026-10-30T19:00:00Z"), VAN), 4);
+  assert.equal(calendarDaysLate(due, new Date("2026-11-01T06:59:59Z"), PACIFIC), 1); // Oct 31, 11:59 PM PDT
+  assert.equal(calendarDaysLate(due, new Date("2026-11-02T07:59:59Z"), PACIFIC), 2); // Nov 1, 11:59 PM PST
+  assert.equal(calendarDaysLate(due, new Date("2026-11-02T08:00:00Z"), PACIFIC), 3); // Nov 2, 12:00 AM PST
+  assert.equal(calendarDaysUntil(day("2026-11-03"), new Date("2026-10-30T19:00:00Z"), PACIFIC), 4);
   assert.equal(addCalendarDays("2026-10-30", 3), "2026-11-02");
 });
 
@@ -228,7 +233,7 @@ test("the return deadline is the end of the due day, extended by returnDeadlineA
   assert.equal(returnDeadlineInstant({ endDate: null }), null);
 });
 
-test("returnTiming: 6 PM Vancouver time on the due day is neither overdue nor early", () => {
+test("returnTiming: 6 PM Pacific time on the due day is neither overdue nor early", () => {
   const request = { endDate: day("2026-10-19") };
   // 6 PM PDT on Oct 19 is already Oct 20 in UTC; a UTC-midnight deadline would call this overdue.
   assert.deepEqual(returnTiming(request, new Date("2026-10-20T01:00:00Z")), { isOverdue: false, isEarlyReturn: false, daysLate: 0 });
@@ -256,5 +261,5 @@ test("returnTiming across the Nov 1 clock change", () => {
   assert.equal(returnTiming(sunday, new Date("2026-11-01T07:00:00Z")).isEarlyReturn, false);
   assert.equal(returnTiming(request, new Date("2026-11-01T07:00:00Z")).daysLate, 1);
   assert.equal(returnTiming(request, new Date("2026-11-03T07:59:59Z")).daysLate, 2);
-  assert.equal(returnTiming({ endDate: null }, new Date()).isOverdue, false);
+  assert.equal(returnTiming({ endDate: null }, new Date("2026-11-03T12:00:00Z")).isOverdue, false);
 });

@@ -16,7 +16,7 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 
 - [ ] Content safeguards (#3): report, block, moderation queue, zero-tolerance terms (Apple 1.2)
 - [ ] Sign in with Apple (#1): required because Google sign-in is offered
-- [ ] Subscriptions vs In-App Purchase (#6): decide and record
+- [x] Subscriptions vs In-App Purchase (#6): decided on Stripe subscriptions, not In-App Purchase. Member and Pro only change limits and fees on physical services, so the App Review notes below must say so.
 - [ ] Raw server errors reaching users (#10)
 - [ ] eas.json submit config and Android FCM (#11, #12)
 - [ ] Icon and splash placeholders (#14)

@@ -685,6 +685,7 @@ export const wishlists = pgTable("wishlists", {
   urgency: text("urgency").default("normal"), // 'low', 'normal', 'high', 'urgent'
   isActive: boolean("is_active").default(true),
   isPrivate: boolean("is_private").default(false), // Hide requester identity until they send a request
+  hiddenAt: timestamp("hidden_at"), // a moderator hid it; unlike is_active the owner cannot turn it back on
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -35,6 +35,7 @@ import BorrowPage from "@/pages/borrow-page";
 import LendPage from "@/pages/lend-page";
 import VerifyItemsPage from "@/pages/admin/verify-items";
 import AdminDisputesPage from "@/pages/admin/disputes";
+import AdminReportsPage from "@/pages/admin/reports";
 import AdminDashboardPage from "@/pages/admin/index";
 import AdminUsersPage from "@/pages/admin/users";
 import AdminItemsPage from "@/pages/admin/items";
@@ -115,6 +116,7 @@ function Router() {
       <AdminRoute path="/admin/items" component={AdminItemsPage} />
       <AdminRoute path="/admin/transactions" component={AdminTransactionsPage} />
       <AdminRoute path="/admin/disputes" component={AdminDisputesPage} />
+      <AdminRoute path="/admin/reports" component={AdminReportsPage} />
       <AdminRoute path="/admin/verify-items" component={VerifyItemsPage} />
       <ProtectedRoute path="/wallet" component={WalletPage} />
       <ProtectedRoute path="/games" component={GamesPage} />

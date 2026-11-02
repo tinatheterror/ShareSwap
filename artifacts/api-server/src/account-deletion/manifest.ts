@@ -434,7 +434,7 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     userColumns: ["user_id"],
     keep: [],
     anonymize: [],
-    delete: ["id", "user_id", "item_name", "description", "category", "need_type", "max_share_coin_price", "max_dollar_price", "preferred_location", "needed_date", "return_date", "urgency", "is_active", "is_private", "created_at"],
+    delete: ["id", "user_id", "item_name", "description", "category", "need_type", "max_share_coin_price", "max_dollar_price", "preferred_location", "needed_date", "return_date", "urgency", "is_active", "is_private", "hidden_at", "created_at"],
   },
 };
 

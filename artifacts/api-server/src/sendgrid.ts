@@ -386,3 +386,40 @@ export async function sendAccountDeletedEmail(toEmail: string, displayName?: str
     return false;
   }
 }
+
+// Tells the moderation inbox that a report is waiting in the queue. Carries the reason and a short excerpt, never the
+// reporter's identity.
+export async function sendModerationAlertEmail(
+  toEmail: string,
+  report: { id: number; targetType: string; reason: string; details?: string | null },
+) {
+  try {
+    const { client, fromEmail } = await getUncachableSendGridClient();
+    const baseUrl = process.env.NODE_ENV === 'production' && process.env.CUSTOM_DOMAIN
+      ? `https://${process.env.CUSTOM_DOMAIN}`
+      : process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : process.env.CUSTOM_DOMAIN
+      ? `https://${process.env.CUSTOM_DOMAIN}`
+      : 'http://localhost:5000';
+    const excerpt = report.details ? report.details.slice(0, 200) : null;
+    const lines = [
+      `A ${report.targetType} was reported as ${report.reason}.`,
+      ...(excerpt ? [`Reporter's note: ${excerpt}`] : []),
+      `Review it in the queue: ${baseUrl}/admin/reports`,
+      `Reports should be acted on within 24 hours.`,
+    ];
+    await client.send({
+      to: toEmail,
+      from: fromEmail,
+      subject: `ShareSwap report #${report.id}: ${report.targetType} (${report.reason})`,
+      text: lines.join('\n\n'),
+      html: emailShell('Moderation report', lines),
+    });
+    console.log('[SendGrid] Moderation alert sent');
+    return true;
+  } catch (error) {
+    console.error('[SendGrid] Error sending moderation alert:', error);
+    return false;
+  }
+}

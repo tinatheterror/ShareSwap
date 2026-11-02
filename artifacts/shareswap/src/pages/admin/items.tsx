@@ -18,6 +18,8 @@ interface AdminItem {
   category: string | null;
   conditionRating: number;
   isAvailable: boolean;
+  moderationStatus: "visible" | "removed";
+  moderationNote: string | null;
   isLendable: boolean;
   isRentable: boolean;
   isGift: boolean;
@@ -71,6 +73,15 @@ export default function AdminItemsPage() {
     onError: () => toast({ title: "Failed to remove item", variant: "destructive" }),
   });
 
+  const restoreMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/admin/items/${id}/restore`).then(r => r.json()),
+    onSuccess: () => {
+      toast({ title: "Removal lifted", description: "The listing stays unavailable until its owner relists it." });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/items"] });
+    },
+    onError: () => toast({ title: "Failed to restore item", variant: "destructive" }),
+  });
+
   return (
     <AdminLayout>
       <div className="max-w-5xl mx-auto">
@@ -116,7 +127,7 @@ export default function AdminItemsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm">{item.name}</span>
-                      {!item.isAvailable && <Badge className="bg-gray-100 text-gray-600 text-xs">Unavailable</Badge>}
+                      {item.moderationStatus === "removed" ? <Badge className="bg-red-100 text-red-800 text-xs">Removed by moderator</Badge> : !item.isAvailable && <Badge className="bg-gray-100 text-gray-600 text-xs">Unavailable</Badge>}
                       {itemTypeBadges(item)}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -130,16 +141,28 @@ export default function AdminItemsPage() {
                       <span>#{item.id} · Listed {format(new Date(item.createdAt), "MMM d, yyyy")}</span>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-red-700 border-red-200 hover:bg-red-50 flex-shrink-0"
-                    onClick={() => setRemoveTarget(item)}
-                    disabled={!item.isAvailable}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                    Remove
-                  </Button>
+                  {item.moderationStatus === "removed" ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-shrink-0"
+                      onClick={() => restoreMutation.mutate(item.id)}
+                      disabled={restoreMutation.isPending}
+                      data-testid={`button-restore-item-${item.id}`}
+                    >
+                      Restore
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-red-700 border-red-200 hover:bg-red-50 flex-shrink-0"
+                      onClick={() => setRemoveTarget(item)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                      Remove
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

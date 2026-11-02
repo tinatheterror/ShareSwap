@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/admin-layout";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, Package, ArrowLeftRight, AlertTriangle, ShieldBan } from "lucide-react";
+import { Users, Package, ArrowLeftRight, AlertTriangle, ShieldBan, Flag } from "lucide-react";
 import { Link } from "wouter";
 
 interface Stats {
@@ -10,6 +10,7 @@ interface Stats {
   totalTransactions: number;
   openDisputes: number;
   bannedUsers: number;
+  openReports?: number;
 }
 
 const STAT_CARDS = [
@@ -17,6 +18,7 @@ const STAT_CARDS = [
   { key: "totalItems" as const, label: "Total Items", icon: Package, color: "text-teal-600", bg: "bg-teal-50", href: "/admin/items" },
   { key: "totalTransactions" as const, label: "Transactions", icon: ArrowLeftRight, color: "text-purple-600", bg: "bg-purple-50", href: "/admin/transactions" },
   { key: "openDisputes" as const, label: "Open Disputes", icon: AlertTriangle, color: "text-amber-600", bg: "bg-amber-50", href: "/admin/disputes" },
+  { key: "openReports" as const, label: "Open Reports", icon: Flag, color: "text-red-600", bg: "bg-red-50", href: "/admin/reports" },
   { key: "bannedUsers" as const, label: "Banned Users", icon: ShieldBan, color: "text-red-600", bg: "bg-red-50", href: "/admin/users?status=banned" },
 ];
 
@@ -41,7 +43,7 @@ export default function AdminDashboardPage() {
           <p className="text-sm text-muted-foreground mt-0.5">Platform overview at a glance</p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {STAT_CARDS.map(({ key, label, icon: Icon, color, bg, href }) => (
             <Link key={key} href={href}>
               <a className="block">

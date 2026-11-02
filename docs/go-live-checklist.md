@@ -11,6 +11,7 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 - [ ] Switch account-deletion finalize job on in production
 - [ ] Review handoff-deadlines dry-run output, then switch the sweep to live
 - [ ] Switch Stripe to live keys (and the other Stripe live-mode items below)
+- [ ] MODERATION_EMAIL set to moderation@shareswap.app in Replit Secrets (the address is configuration, not code). Without it the boot log warns "MODERATION_EMAIL is not set" and reports are queued but nobody is emailed. After setting it, file a test report and confirm the email arrives; someone must read that inbox and work /admin/reports daily (Apple expects action within 24 hours)
 
 ### App Store / Play blockers
 

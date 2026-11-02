@@ -30,6 +30,10 @@ import { WebSocket, WebSocketServer } from "ws";
 import { connectedClients } from "../ws-registry";
 import { accountIsPubliclyVisible, accountVisibleSql, blockedBetweenSql, publiclyVisibleItem, usersAreBlocked } from "../content-visibility";
 import { blockUser, listBlockedUsers, unblockUser } from "../blocks-service";
+import { createReport, listReports, reportQueueStats, resolveReport } from "../reports-service";
+import { reportLimiter } from "../report-limit";
+import { moderationEmail } from "../moderation-config";
+import { sendModerationAlertEmail } from "../sendgrid";
 import { MAX_MESSAGE_LENGTH, messageLimiter } from "../message-limit";
 import { publicUserGuard } from "../public-user-guard";
 import { banUser, removeItem, restoreItem, unbanUser } from "../moderation-service";
@@ -695,7 +699,7 @@ export async function checkAndAwardAchievements(userId: number) {
         sql`item_requests.created_at >= ${sevenDaysAgo}`,
       )),
       // Reviews received
-      executor.select({ cnt: sql<number>`count(*)` }).from(userReviews).where(eq(userReviews.reviewedUserId, userId)),
+      executor.select({ cnt: sql<number>`count(*)` }).from(userReviews).where(and(eq(userReviews.reviewedUserId, userId), isNull(userReviews.hiddenAt))),
       // Urgent wishlist requests helped
       executor.select({ cnt: sql<number>`count(*)` }).from(itemRequests)
         .innerJoin(items, eq(items.id, itemRequests.itemId))
@@ -4937,6 +4941,7 @@ Respond with ONLY the category name, nothing else.`
         .innerJoin(users, eq(users.id, wishlists.userId))
         .where(and(
           eq(wishlists.isActive, true),
+          isNull(wishlists.hiddenAt),
           ne(wishlists.userId, (req.user as any).id),
           accountVisibleSql(wishlists.userId),
           sql`NOT ${blockedBetweenSql((req.user as any).id, wishlists.userId)}`,
@@ -5235,7 +5240,7 @@ Respond with ONLY the category name, nothing else.`
       const [target] = await db
         .select({ userId: wishlists.userId })
         .from(wishlists)
-        .where(and(eq(wishlists.id, parseInt(wishlistId)), accountVisibleSql(wishlists.userId)))
+        .where(and(eq(wishlists.id, parseInt(wishlistId)), isNull(wishlists.hiddenAt), accountVisibleSql(wishlists.userId)))
         .limit(1);
       if (!target || (target.userId !== null && await usersAreBlocked(req.user.id, target.userId))) {
         return res.status(404).json({ error: "Wishlist not found" });
@@ -5791,10 +5796,52 @@ Respond with ONLY the category name, nothing else.`
     const chatMessages = await db
       .select()
       .from(messages)
-      .where(and(whereClause, sql`NOT (${messages.messageType} = 'text' AND ${blockedBetweenSql(req.user.id, partnerId)})`))
+      .where(and(whereClause, sql`NOT (${messages.messageType} = 'text' AND ${blockedBetweenSql(req.user.id, partnerId)})`, isNull(messages.hiddenAt)))
       .orderBy(messages.createdAt);
 
     res.json(chatMessages);
+  });
+
+  // ── Reports. A user flags a profile, listing, message, review or wishlist post; moderators work the queue. ──
+  app.post("/api/reports", csrfProtection, reportLimiter, async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const body = req.body ?? {};
+    const result = await createReport({
+      reporterId: req.user.id,
+      targetType: body.targetType,
+      targetId: body.targetId,
+      reason: body.reason,
+      details: body.details,
+      onCreated: async (report) => {
+        const to = moderationEmail();
+        if (to) await sendModerationAlertEmail(to, report);
+      },
+    });
+    if (!result.ok) return res.status(result.status).json({ error: result.error });
+    return res.status(result.report.alreadyReported ? 200 : 201).json({ id: result.report.id, status: result.report.status, alreadyReported: result.report.alreadyReported });
+  });
+
+  app.get("/api/admin/reports", requireAdmin, async (req, res) => {
+    try {
+      return res.json(await listReports({ status: req.query.status, page: req.query.page }));
+    } catch (err) {
+      console.error("Admin reports error:", err);
+      return res.status(500).json({ message: "Failed to fetch reports" });
+    }
+  });
+
+  app.post("/api/admin/reports/:id/resolve", requireAdmin, csrfProtection, async (req, res) => {
+    try {
+      const reportId = Number.parseInt(String(req.params.id), 10);
+      if (!Number.isSafeInteger(reportId)) return res.status(400).json({ message: "Invalid report id" });
+      const { action, note } = (req.body ?? {}) as { action?: unknown; note?: unknown };
+      const result = await resolveReport({ adminId: (req.user as { id: number }).id, reportId, action, note });
+      if (!result.ok) return res.status(result.status).json({ message: result.error });
+      return res.json({ success: true, resolvedReportIds: result.resolvedReportIds });
+    } catch (err) {
+      console.error("Admin resolve report error:", err);
+      return res.status(500).json({ message: "Failed to resolve report" });
+    }
   });
 
   // ── Blocks. Either side's block hides each from the other everywhere (see content-visibility.ts). ──
@@ -5912,7 +5959,7 @@ Respond with ONLY the category name, nothing else.`
       lateTaggedTransactions,
       last10ReviewsReceived,
     ] = await Promise.all([
-      db.select({ rating: userReviews.rating }).from(userReviews).where(eq(userReviews.reviewedUserId, targetId)),
+      db.select({ rating: userReviews.rating }).from(userReviews).where(and(eq(userReviews.reviewedUserId, targetId), isNull(userReviews.hiddenAt))),
       db.select({ count: sql<number>`count(*)` })
         .from(itemRequests)
         .innerJoin(items, eq(itemRequests.itemId, items.id))
@@ -5945,13 +5992,14 @@ Respond with ONLY the category name, nothing else.`
         .from(userReviews)
         .where(and(
           eq(userReviews.reviewedUserId, targetId),
+          isNull(userReviews.hiddenAt),
           sql`'late_return' = ANY(${userReviews.feedbackTags})`,
           isNotNull(userReviews.transactionId),
         )),
       // Last 10 reviews received — for "Frequently late" flag
       db.select({ feedbackTags: userReviews.feedbackTags })
         .from(userReviews)
-        .where(eq(userReviews.reviewedUserId, targetId))
+        .where(and(eq(userReviews.reviewedUserId, targetId), isNull(userReviews.hiddenAt)))
         .orderBy(desc(userReviews.createdAt))
         .limit(10),
     ]);
@@ -6336,6 +6384,7 @@ Respond with ONLY the category name, nothing else.`
           ),
           // Text across a block is hidden for both sides; system events of a request still in flight stay.
           sql`NOT (${messages.messageType} = 'text' AND ${blockedBetweenSql(messages.senderId, messages.receiverId)})`,
+          isNull(messages.hiddenAt),
         )
       )
       .orderBy(desc(messages.createdAt));
@@ -13036,7 +13085,7 @@ Respond with ONLY the category name, nothing else.`
       const [reviewsReceivedCount] = await db
         .select({ count: sql<number>`count(*)` })
         .from(userReviews)
-        .where(eq(userReviews.reviewedUserId, userId));
+        .where(and(eq(userReviews.reviewedUserId, userId), isNull(userReviews.hiddenAt)));
 
       // Count items listed by user
       const [itemsListedCount] = await db
@@ -13390,7 +13439,7 @@ Respond with ONLY the category name, nothing else.`
         computeResponseTime(uid),
         db.select({ avg: sql<number>`avg(${userReviews.rating})`, cnt: sql<number>`count(*)` })
           .from(userReviews)
-          .where(eq(userReviews.reviewedUserId, uid)),
+          .where(and(eq(userReviews.reviewedUserId, uid), isNull(userReviews.hiddenAt))),
       ]);
 
       const completedShares = Number(completedSharesResult[0]?.count ?? 0);
@@ -14465,14 +14514,15 @@ Respond with ONLY the category name, nothing else.`
   // ── Admin: Dashboard stats ──
   app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
     try {
-      const [[{ totalUsers }], [{ totalItems }], [{ totalTransactions }], [{ openDisputes }], [{ bannedUsers }]] = await Promise.all([
+      const [[{ totalUsers }], [{ totalItems }], [{ totalTransactions }], [{ openDisputes }], [{ bannedUsers }], queue] = await Promise.all([
         db.select({ totalUsers: sql<number>`count(*)::int` }).from(users),
         db.select({ totalItems: sql<number>`count(*)::int` }).from(items),
         db.select({ totalTransactions: sql<number>`count(*)::int` }).from(itemRequests),
         db.select({ openDisputes: sql<number>`count(*)::int` }).from(itemRequests).where(eq(itemRequests.status, "DISPUTED")),
         db.select({ bannedUsers: sql<number>`count(*)::int` }).from(users).where(eq(users.accountStatus, "banned")),
+        reportQueueStats(),
       ]);
-      res.json({ totalUsers, totalItems, totalTransactions, openDisputes, bannedUsers });
+      res.json({ totalUsers, totalItems, totalTransactions, openDisputes, bannedUsers, ...queue });
     } catch (err) {
       console.error("Admin stats error:", err);
       res.status(500).json({ message: "Failed to fetch stats" });
@@ -15124,7 +15174,7 @@ Respond with ONLY the category name, nothing else.`
       })
       .from(userReviews)
       .innerJoin(users, eq(users.id, userReviews.reviewerId))
-      .where(eq(userReviews.reviewedUserId, userId))
+      .where(and(eq(userReviews.reviewedUserId, userId), isNull(userReviews.hiddenAt)))
       .orderBy(desc(userReviews.createdAt))
       .limit(5);
 
@@ -15457,7 +15507,7 @@ Respond with ONLY the category name, nothing else.`
         rating: userReviews.rating,
       })
       .from(userReviews)
-      .where(eq(userReviews.reviewedUserId, user.id));
+      .where(and(eq(userReviews.reviewedUserId, user.id), isNull(userReviews.hiddenAt)));
 
     const averageRating = reviews.length > 0
       ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
@@ -15581,7 +15631,7 @@ Respond with ONLY the category name, nothing else.`
       })
       .from(userReviews)
       .innerJoin(users, eq(users.id, userReviews.reviewerId))
-      .where(eq(userReviews.reviewedUserId, user.id))
+      .where(and(eq(userReviews.reviewedUserId, user.id), isNull(userReviews.hiddenAt)))
       .orderBy(desc(userReviews.createdAt));
 
     res.json(reviews);

@@ -196,6 +196,22 @@ export async function ensureContentSafeguards() {
   }
 }
 
+const WISHLIST_HIDDEN_AT_FILE = "lib/db/scripts/0013_wishlist_hidden_at.sql";
+
+/** wishlists.hidden_at (0013): the wishlist feed filters on it, so a missing column would fail the feed. */
+export async function ensureWishlistHiddenAt() {
+  const { rows } = await pool.query(
+    `SELECT EXISTS (SELECT 1 FROM information_schema.columns
+                     WHERE table_schema = current_schema() AND table_name = 'wishlists' AND column_name = 'hidden_at') AS present`,
+  );
+  if (rows[0]?.present === true) return;
+  try {
+    await runMigrationFile(WISHLIST_HIDDEN_AT_FILE);
+  } catch (err) {
+    if ((err as { code?: string }).code !== "42701") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -203,6 +219,7 @@ export async function applyStartupMigrations() {
   await ensureCancellationRecord();
   await ensurePaymentCurrencyColumn();
   await ensureContentSafeguards();
+  await ensureWishlistHiddenAt();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
   await ensureJobSwitchesAttributionConstraint();

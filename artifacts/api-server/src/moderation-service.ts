@@ -21,7 +21,7 @@ export async function endUserSessions(userId: number) {
   closeUserConnection(userId, "Account banned");
 }
 
-export async function banUser(args: { adminId: number; userId: number; reason?: string | null }): Promise<ModerationResult> {
+export async function banUser(args: { adminId: number; userId: number; reason?: string | null; reportId?: number }): Promise<ModerationResult> {
   if (args.adminId === args.userId) return { ok: false, status: 400, error: "You cannot ban yourself" };
   const reason = args.reason?.trim() || "Banned by admin";
   const changed = await db.transaction(async (tx) => {
@@ -31,7 +31,7 @@ export async function banUser(args: { adminId: number; userId: number; reason?: 
       .where(eq(users.id, args.userId))
       .returning({ id: users.id });
     if (updated.length === 0) return false;
-    await tx.insert(moderationActions).values({ adminId: args.adminId, action: "ban_user", targetType: "user", targetId: args.userId, note: reason });
+    await tx.insert(moderationActions).values({ adminId: args.adminId, action: "ban_user", targetType: "user", targetId: args.userId, reportId: args.reportId ?? null, note: reason });
     return true;
   });
   if (!changed) return { ok: false, status: 404, error: "User not found" };
@@ -59,7 +59,7 @@ export async function unbanUser(args: { adminId: number; userId: number }): Prom
 }
 
 /** Takes a listing down. Unlike an owner's delete or unlist, the owner cannot put it back. */
-export async function removeItem(args: { adminId: number; itemId: number; note?: string | null }): Promise<ModerationResult> {
+export async function removeItem(args: { adminId: number; itemId: number; note?: string | null; reportId?: number }): Promise<ModerationResult> {
   const note = args.note?.trim() || null;
   const changed = await db.transaction(async (tx) => {
     const updated = await tx
@@ -68,7 +68,7 @@ export async function removeItem(args: { adminId: number; itemId: number; note?:
       .where(eq(items.id, args.itemId))
       .returning({ id: items.id });
     if (updated.length === 0) return false;
-    await tx.insert(moderationActions).values({ adminId: args.adminId, action: "remove_item", targetType: "item", targetId: args.itemId, note });
+    await tx.insert(moderationActions).values({ adminId: args.adminId, action: "remove_item", targetType: "item", targetId: args.itemId, reportId: args.reportId ?? null, note });
     return true;
   });
   return changed ? { ok: true } : { ok: false, status: 404, error: "Item not found" };

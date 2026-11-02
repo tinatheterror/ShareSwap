@@ -7,6 +7,7 @@ import {
   Package,
   ArrowLeftRight,
   AlertTriangle,
+  Flag,
   CheckSquare,
   Shield,
   LogOut,
@@ -22,6 +23,7 @@ const NAV = [
   { href: "/admin/items", label: "Items", icon: Package },
   { href: "/admin/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/admin/disputes", label: "Disputes", icon: AlertTriangle },
+  { href: "/admin/reports", label: "Reports", icon: Flag },
   { href: "/admin/verify-items", label: "Verify Items", icon: CheckSquare },
 ];
 

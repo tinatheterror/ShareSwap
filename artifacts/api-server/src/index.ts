@@ -8,6 +8,7 @@ import { startRateLimitCleanup } from "./auth";
 import { applyStartupMigrations } from "./startup-migrations";
 import { logStripeStartup } from "./stripe.server";
 import { requireSubscriptionWebhookSecret } from "./subscription-webhook";
+import { moderationEmail } from "./moderation-config";
 import { timeZoneBootLine } from "./request-dates";
 import { backgroundJobsBootLine } from "./background-jobs-gate";
 import { backgroundJobs } from "./background-jobs-registry";
@@ -29,6 +30,9 @@ if (Number.isNaN(port) || port <= 0) {
 async function start() {
   // First, so it is in the log even when a later step stops the boot.
   logger.info(timeZoneBootLine());
+  if (!moderationEmail()) {
+    logger.warn("[moderation] MODERATION_EMAIL is not set: reports are stored and queued, but nobody is emailed about them");
+  }
 
   // Apply idempotent SQL before any route or background worker can access new
   // columns. This also covers deployed instances where drizzle-kit is absent.

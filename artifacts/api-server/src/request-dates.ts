@@ -28,6 +28,23 @@ export function resolveTimeZone(candidate: string | undefined): string {
 export const PLATFORM_TIME_ZONE = resolveTimeZone(process.env.PLATFORM_TIME_ZONE);
 
 /**
+ * One boot line naming the platform zone, its offset right now, and the tz database this runtime ships.
+ * Zone rules come from that database (2026e, for one, stops America/Vancouver falling back), so a
+ * deployment on an older one reads every calendar-day deadline an hour differently from a newer one.
+ */
+export function timeZoneBootLine(
+  zone: string = PLATFORM_TIME_ZONE,
+  versions: { node?: string; tz?: string } = process.versions,
+  now: Date = new Date(),
+): string {
+  const offset =
+    new Intl.DateTimeFormat("en-CA", { timeZone: zone, timeZoneName: "longOffset" })
+      .formatToParts(now)
+      .find((p) => p.type === "timeZoneName")?.value ?? "unknown";
+  return `[request-dates] platform zone ${zone} (${offset} now); node ${versions.node ?? "unknown"}, tz database ${versions.tz ?? "unknown"}`;
+}
+
+/**
  * The time zone a request's calendar dates (start, end, extended end, handoff
  * deadline) are read in. This is the ONLY place that picks it; nothing else may
  * name a zone. It is the platform zone (America/Vancouver) for now; it will

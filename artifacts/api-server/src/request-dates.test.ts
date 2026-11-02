@@ -25,6 +25,7 @@ const {
   startOfLocalDay,
   timezoneForRequest,
   resolveTimeZone,
+  timeZoneBootLine,
   validateStartDateNotPast,
 } = await import("./request-dates.js");
 
@@ -262,4 +263,10 @@ test("returnTiming across the Nov 1 clock change", () => {
   assert.equal(returnTiming(request, new Date("2026-11-01T07:00:00Z")).daysLate, 1);
   assert.equal(returnTiming(request, new Date("2026-11-03T07:59:59Z")).daysLate, 2);
   assert.equal(returnTiming({ endDate: null }, new Date("2026-11-03T12:00:00Z")).isOverdue, false);
+});
+
+test("the boot line names the zone, its offset now, and the tz database", () => {
+  const line = timeZoneBootLine(PACIFIC, { node: "24.0.0", tz: "2026e" }, new Date("2026-12-05T12:00:00Z"));
+  assert.equal(line, "[request-dates] platform zone America/Los_Angeles (GMT-08:00 now); node 24.0.0, tz database 2026e");
+  assert.match(timeZoneBootLine(), /tz database \S+$/);
 });

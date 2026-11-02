@@ -47,7 +47,8 @@ test("calendar thresholds are not delayed by a daylight-saving transition", () =
     const sevenDaysLater = new Date(2026, 2, 15, 12);
     assert.equal(daysOverdueAgainstDueDate(sevenDaysLater, dueDate, ZONE), 7);
   } finally {
-    process.env.TZ = previousTimeZone;
+    if (previousTimeZone === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTimeZone;
   }
 });
 test("claims open from 24 hours overdue (overdue grace) onward", () => {

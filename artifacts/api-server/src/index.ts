@@ -8,6 +8,7 @@ import { startRateLimitCleanup } from "./auth";
 import { applyStartupMigrations } from "./startup-migrations";
 import { logStripeStartup } from "./stripe.server";
 import { requireSubscriptionWebhookSecret } from "./subscription-webhook";
+import { timeZoneBootLine } from "./request-dates";
 import { backgroundJobsBootLine } from "./background-jobs-gate";
 import { backgroundJobs } from "./background-jobs-registry";
 import { installShutdownHandlers } from "./shutdown";
@@ -26,6 +27,9 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 async function start() {
+  // First, so it is in the log even when a later step stops the boot.
+  logger.info(timeZoneBootLine());
+
   // Apply idempotent SQL before any route or background worker can access new
   // columns. This also covers deployed instances where drizzle-kit is absent.
   await applyStartupMigrations();

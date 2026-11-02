@@ -70,8 +70,12 @@ const pending = async (id: number) => {
 };
 
 const previousKey = process.env.BANNED_EMAIL_HASH_KEY;
+// The Google strategy is only registered when these are set; the sign-in test reads it back.
+const previousGoogle = { id: process.env.GOOGLE_CLIENT_ID, secret: process.env.GOOGLE_CLIENT_SECRET };
 before(async () => {
   process.env.BANNED_EMAIL_HASH_KEY = KEY;
+  process.env.GOOGLE_CLIENT_ID = "test-client-id.apps.googleusercontent.com";
+  process.env.GOOGLE_CLIENT_SECRET = "test-client-secret";
   ({ baseUrl, close: closeServer } = await startApp({ accountDeletion: deps() }));
   await pool.query("DELETE FROM rate_limit_store WHERE key LIKE 'auth:%'");
 });
@@ -107,6 +111,10 @@ after(async () => {
   } finally {
     if (previousKey === undefined) delete process.env.BANNED_EMAIL_HASH_KEY;
     else process.env.BANNED_EMAIL_HASH_KEY = previousKey;
+    for (const [name, value] of [["GOOGLE_CLIENT_ID", previousGoogle.id], ["GOOGLE_CLIENT_SECRET", previousGoogle.secret]] as const) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
     await closeServer?.();
     await pool.end();
   }

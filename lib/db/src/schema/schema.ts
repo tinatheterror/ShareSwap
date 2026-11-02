@@ -114,6 +114,7 @@ export const userReviews = pgTable(
     comment: text("comment"),
     feedbackTags: text("feedback_tags").array(), // ['reliable', 'on_time', 'as_described']
     transactionId: integer("transaction_id").references(() => itemRequests.id),
+    hiddenAt: timestamp("hidden_at"), // moderator hid it from public profiles
     createdAt: timestamp("created_at").defaultNow(),
   },
   (t) => [
@@ -220,6 +221,10 @@ export const items = pgTable("items", {
   swapDesiredItem: text("swap_desired_item"),
   swapNotifyOnMatch: boolean("swap_notify_on_match").default(false),
   listingExpiresAt: timestamp("listing_expires_at"),
+  // Set by a moderator, never by the owner: unlike is_deleted / is_available the owner cannot relist it.
+  moderationStatus: text("moderation_status").notNull().default("visible"), // 'visible' | 'removed'
+  moderationNote: text("moderation_note"),
+  moderatedAt: timestamp("moderated_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -251,6 +256,7 @@ export const messages = pgTable("messages", {
   messageType: text("message_type").default("text").notNull(), // 'text' | 'event'
   metadata: jsonb("metadata"), // for event messages: { eventType, deliveryMethod, depositMethod, startDate, endDate, ... }
   requestId: integer("request_id").references(() => itemRequests.id),
+  hiddenAt: timestamp("hidden_at"), // moderator hid it from the recipient; kept as evidence
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   senderCreatedIdx: index("messages_sender_created_idx").on(table.senderId, table.createdAt),
@@ -906,6 +912,57 @@ export type SelectVerification = typeof verifications.$inferSelect;
 
 export const insertMessageSchema = createInsertSchema(messages);
 export const selectMessageSchema = createSelectSchema(messages);
+// ── Content safeguards ──
+
+// One row per (blocker, blocked). Either direction hides each from the other.
+export const userBlocks = pgTable("user_blocks", {
+  id: serial("id").primaryKey(),
+  blockerId: integer("blocker_id").notNull().references(() => users.id),
+  blockedId: integer("blocked_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  pairUidx: uniqueIndex("user_blocks_pair_uidx").on(table.blockerId, table.blockedId),
+  blockedIdx: index("user_blocks_blocked_idx").on(table.blockedId),
+}));
+
+export const CONTENT_REPORT_TARGET_TYPES = ["user", "item", "message", "review", "wishlist"] as const;
+export const CONTENT_REPORT_REASONS = ["spam", "harassment", "hate", "sexual", "violence", "illegal", "scam", "other"] as const;
+
+export const contentReports = pgTable("content_reports", {
+  id: serial("id").primaryKey(),
+  reporterId: integer("reporter_id").references(() => users.id),
+  targetType: text("target_type").notNull(), // CONTENT_REPORT_TARGET_TYPES
+  targetId: integer("target_id").notNull(),
+  targetUserId: integer("target_user_id").references(() => users.id), // the author, so the queue can group by person
+  reason: text("reason").notNull(), // CONTENT_REPORT_REASONS
+  details: text("details"),
+  snapshot: jsonb("snapshot"), // the text / photo URLs at report time: content can be edited or deleted afterwards
+  status: text("status").notNull().default("open"), // 'open' | 'actioned' | 'dismissed'
+  resolvedBy: integer("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  resolutionNote: text("resolution_note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  statusCreatedIdx: index("content_reports_status_created_idx").on(table.status, table.createdAt),
+  targetUserIdx: index("content_reports_target_user_idx").on(table.targetUserId),
+  // One open report per reporter and target, so repeating a report is idempotent.
+  openUidx: uniqueIndex("content_reports_open_uidx").on(table.reporterId, table.targetType, table.targetId).where(sql`status = 'open'`),
+}));
+
+// Audit log of every moderator action.
+export const moderationActions = pgTable("moderation_actions", {
+  id: serial("id").primaryKey(),
+  adminId: integer("admin_id").references(() => users.id),
+  action: text("action").notNull(), // 'remove_item' | 'restore_item' | 'hide_review' | 'hide_message' | 'warn_user' | 'ban_user' | 'unban_user' | 'dismiss_report'
+  targetType: text("target_type").notNull(),
+  targetId: integer("target_id").notNull(),
+  reportId: integer("report_id").references(() => contentReports.id),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  targetIdx: index("moderation_actions_target_idx").on(table.targetType, table.targetId),
+}));
+
 export type InsertMessage = typeof messages.$inferInsert;
 export type SelectMessage = typeof messages.$inferSelect;
 

@@ -172,12 +172,37 @@ export async function ensurePaymentCurrencyColumn() {
   }
 }
 
+const CONTENT_SAFEGUARDS_FILE = "lib/db/scripts/0012_content_safeguards.sql";
+
+/**
+ * Moderation columns and the blocks / reports / audit tables (0012). Item queries filter on
+ * items.moderation_status, so a missing column would fail them all; the file is idempotent and only runs
+ * when the column or one of the tables is absent.
+ */
+export async function ensureContentSafeguards() {
+  const { rows } = await pool.query(
+    `SELECT EXISTS (SELECT 1 FROM information_schema.columns
+                     WHERE table_schema = current_schema() AND table_name = 'items' AND column_name = 'moderation_status') AS column_present,
+            to_regclass('user_blocks') IS NOT NULL AND to_regclass('content_reports') IS NOT NULL
+              AND to_regclass('moderation_actions') IS NOT NULL AS tables_present`,
+  );
+  if (rows[0]?.column_present === true && rows[0]?.tables_present === true) return;
+  try {
+    await runMigrationFile(CONTENT_SAFEGUARDS_FILE);
+  } catch (err) {
+    // Two processes running it at once: 42P07 duplicate_table, 42701 duplicate_column, 23505 on pg_type's unique index.
+    const code = (err as { code?: string }).code;
+    if (code !== "42P07" && code !== "42701" && code !== "23505") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
   }
   await ensureCancellationRecord();
   await ensurePaymentCurrencyColumn();
+  await ensureContentSafeguards();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
   await ensureJobSwitchesAttributionConstraint();

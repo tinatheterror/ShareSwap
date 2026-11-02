@@ -1,6 +1,7 @@
 import { db } from "@workspace/db";
 import { users, items, itemRequests, shareCoinsTransactions, swapMatches, locationAlerts } from "@workspace/db";
 import { eq, desc, and, or, inArray, sql } from "drizzle-orm";
+import { publiclyVisibleItem } from "./content-visibility";
 
 interface RecommendationScore {
   itemId: number;
@@ -130,6 +131,7 @@ export class RecommendationEngine {
       .where(
         and(
           eq(items.isAvailable, true),
+          publiclyVisibleItem(),
           sql`${items.ownerId} != ${userId}`
         )
       );
@@ -220,7 +222,7 @@ export class RecommendationEngine {
     const recommendedItems = await db
       .select()
       .from(items)
-      .where(inArray(items.id, itemIds));
+      .where(and(inArray(items.id, itemIds), publiclyVisibleItem()));
 
     // Combine items with their scores and reasons
     return recommendedItems.map(item => {
@@ -262,6 +264,7 @@ export class RecommendationEngine {
         and(
           eq(items.isSwappable, true),
           eq(items.isAvailable, true),
+          publiclyVisibleItem(),
           sql`${items.ownerId} = ${request.item_requests.requesterId}` // Items owned by the requester
         )
       );
@@ -337,7 +340,7 @@ export class RecommendationEngine {
     const [item] = await db
       .select()
       .from(items)
-      .where(eq(items.id, itemId))
+      .where(and(eq(items.id, itemId), publiclyVisibleItem()))
       .limit(1);
 
     if (!item || !item.latitude || !item.longitude) return;
@@ -384,6 +387,7 @@ export class RecommendationEngine {
       .where(
         and(
           eq(items.isAvailable, true),
+          publiclyVisibleItem(),
           sql`${items.ownerId} != ${userId}`
         )
       );

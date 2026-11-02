@@ -106,6 +106,7 @@ after(async () => {
     await db.delete(itemRequests).where(inArray(itemRequests.id, reqs));
     if (itemIds.length) await db.delete(items).where(inArray(items.id, itemIds));
     if (hashes.length) await db.delete(bannedEmailHashes).where(inArray(bannedEmailHashes.emailHash, hashes));
+    await pool.query("DELETE FROM moderation_actions WHERE admin_id = ANY($1)", [ids]);
     await db.delete(users).where(inArray(users.id, ids));
     await pool.query("DELETE FROM rate_limit_store WHERE key LIKE 'auth:%'");
   } finally {

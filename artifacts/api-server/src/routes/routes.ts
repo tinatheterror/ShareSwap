@@ -5,7 +5,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import * as uberDirect from "../uber-direct";
 import { randomBytes } from "crypto";
-import { setupAuth, hashPassword, comparePasswords } from "../auth";
+import { setupAuth, hashPassword, comparePasswords, accountIsBlocked } from "../auth";
 import { trustDepositDiscountPercent } from "../trust-deposit-discount";
 import {
   clientVersionOf,
@@ -27,6 +27,10 @@ import {
 import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull, isNotNull, inArray, notInArray, ilike } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { WebSocket, WebSocketServer } from "ws";
+import { connectedClients } from "../ws-registry";
+import { publiclyVisibleItem } from "../content-visibility";
+import { publicUserGuard } from "../public-user-guard";
+import { banUser, removeItem, restoreItem, unbanUser } from "../moderation-service";
 import { log } from "../vite";
 import multer from "multer";
 import { uploadToStorage } from "../storage";
@@ -2438,7 +2442,6 @@ export function registerRoutes(
   }
 
   // Map of userId → WebSocket connection — shared by REST routes and the WS handler
-  const connectedClients = new Map<number, WebSocket>();
   /** Sends one frame to a connected user, scrubbed the way a response to that user would be. */
   const sendFrame = (userId: number | null, frame: Record<string, unknown>) => {
     const ws = userId === null ? undefined : connectedClients.get(userId);
@@ -4485,6 +4488,9 @@ Respond with ONLY the category name, nothing else.`
       if (existingItem.ownerId !== req.user.id) {
         return res.status(403).json({ error: "You can only edit your own items" });
       }
+      if (existingItem.moderationStatus === "removed") {
+        return res.status(403).json({ error: "This listing was removed by our moderators and cannot be edited." });
+      }
 
       // Handle photos
       let photoUrls: string[] = existingItem.photos || [];
@@ -4647,6 +4653,7 @@ Respond with ONLY the category name, nothing else.`
       let whereConditions = [
         eq(items.isAvailable, true),
         eq(items.isDeleted, false),
+        publiclyVisibleItem(),
         sql`${items.latitude} IS NOT NULL`,
         sql`${items.longitude} IS NOT NULL`,
         sql`${items.latitude}::numeric >= ${bbox.minLat}`,
@@ -4754,6 +4761,7 @@ Respond with ONLY the category name, nothing else.`
           )`
         )!,
         eq(items.isDeleted, false),
+        publiclyVisibleItem(),
         eq(items.isSwapped, false),
         // Exclude expired listings (null = no expiry, for legacy items)
         or(isNull(items.listingExpiresAt), gte(items.listingExpiresAt, now))!,
@@ -4984,7 +4992,7 @@ Respond with ONLY the category name, nothing else.`
       const { itemId } = req.body;
       if (!itemId) return res.status(400).json({ error: "itemId is required" });
 
-      const [found] = await db.select().from(items).where(eq(items.id, Number(itemId))).limit(1);
+      const [found] = await db.select().from(items).where(and(eq(items.id, Number(itemId)), publiclyVisibleItem())).limit(1);
       if (!found) return res.status(404).json({ error: "Item not found" });
 
       const [newWishlist] = await db
@@ -5163,7 +5171,7 @@ Respond with ONLY the category name, nothing else.`
       const [item] = await db
         .select()
         .from(items)
-        .where(eq(items.id, itemId));
+        .where(and(eq(items.id, itemId), publiclyVisibleItem()));
 
       if (!item) {
         return res.status(404).json({ error: "Item not found" });
@@ -5314,9 +5322,10 @@ Respond with ONLY the category name, nothing else.`
     if (isNaN(itemId)) return res.status(400).json({ error: "Invalid item ID" });
 
     try {
-      const [item] = await db.select({ ownerId: items.ownerId }).from(items).where(eq(items.id, itemId)).limit(1);
+      const [item] = await db.select({ ownerId: items.ownerId, moderationStatus: items.moderationStatus }).from(items).where(eq(items.id, itemId)).limit(1);
       if (!item) return res.status(404).json({ error: "Item not found" });
       if (item.ownerId !== req.user.id) return res.status(403).json({ error: "Not your item" });
+      if (item.moderationStatus === "removed") return res.status(403).json({ error: "This listing was removed by our moderators and cannot be relisted." });
 
       const { availableToDate } = req.body as { availableToDate?: string };
       const newExpiry = availableToDate
@@ -5340,6 +5349,9 @@ Respond with ONLY the category name, nothing else.`
     if (isNaN(itemId)) return res.status(400).json({ error: "Invalid item ID" });
 
     try {
+      const [visibleItem] = await db.select({ id: items.id }).from(items).where(and(eq(items.id, itemId), publiclyVisibleItem())).limit(1);
+      if (!visibleItem) return res.status(404).json({ error: "Item not found" });
+
       const activeStatuses = [
         "ACCEPTED",
         "DEPOSIT_CONFIRMED",
@@ -5386,10 +5398,10 @@ Respond with ONLY the category name, nothing else.`
         })
         .filter(Boolean);
 
-      res.json(result);
+      return res.json(result);
     } catch (err) {
       console.error("Error fetching booked dates:", err);
-      res.status(500).json({ error: "Failed to fetch booked dates" });
+      return res.status(500).json({ error: "Failed to fetch booked dates" });
     }
   });
 
@@ -5458,6 +5470,12 @@ Respond with ONLY the category name, nothing else.`
 
     if (!itemWithOwner) {
       return res.status(404).send("Item not found");
+    }
+
+    // A listing a moderator removed, or whose owner is banned, is gone for everyone but its owner.
+    if (itemWithOwner.ownerId !== req.user.id) {
+      const [visible] = await db.select({ id: items.id }).from(items).where(and(eq(items.id, itemId), publiclyVisibleItem())).limit(1);
+      if (!visible) return res.status(404).send("Item not found");
     }
 
     // Attach isCurrentlyOut — true when item is committed to a neighbour (ACCEPTED or physically out)
@@ -5551,6 +5569,7 @@ Respond with ONLY the category name, nothing else.`
           eq(itemAvailabilitySubscribers.userId, req.user.id),
           eq(items.isAvailable, false),
           eq(items.isDeleted, false),
+          publiclyVisibleItem(),
         )
       );
     res.json(rows);
@@ -5775,6 +5794,8 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Public profile for any user (for chat headers, trust info)
+  app.use("/api/users", publicUserGuard());
+
   app.get("/api/users/:id/public-profile", async (req, res) => {
     const targetId = parseInt(req.params.id, 10);
     if (isNaN(targetId)) return res.status(400).json({ error: "Invalid user id" });
@@ -6745,6 +6766,7 @@ Respond with ONLY the category name, nothing else.`
         and(
           eq(items.id, itemId),
           eq(items.isAvailable, true),
+          publiclyVisibleItem(),
           // Check if the requested type is available
           or(
             and(eq(items.isLendable, true), eq(requestType, "BORROW")),
@@ -12766,7 +12788,8 @@ Respond with ONLY the category name, nothing else.`
       // Get total count of shared items
       const [itemsCount] = await db
         .select({ count: sql<number>`count(*)` })
-        .from(items);
+        .from(items)
+        .where(publiclyVisibleItem());
 
       // Get total users count
       const [usersCount] = await db
@@ -14424,32 +14447,29 @@ Respond with ONLY the category name, nothing else.`
   // ── Admin: Ban user ──
   app.post("/api/admin/users/:id/ban", requireAdmin, csrfProtection, async (req, res) => {
     try {
-      const userId = parseInt(req.params.id);
+      const userId = Number.parseInt(String(req.params.id), 10);
+      if (!Number.isSafeInteger(userId)) return res.status(400).json({ message: "Invalid user id" });
       const { reason } = req.body as { reason?: string };
-      await db.update(users).set({
-        accountStatus: "banned",
-        bannedAt: new Date(),
-        banReason: reason || "Banned by admin",
-      }).where(eq(users.id, userId));
-      res.json({ success: true });
+      const result = await banUser({ adminId: (req.user as { id: number }).id, userId, reason });
+      if (!result.ok) return res.status(result.status).json({ message: result.error });
+      return res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ message: "Failed to ban user" });
+      console.error("Admin ban error:", err);
+      return res.status(500).json({ message: "Failed to ban user" });
     }
   });
 
   // ── Admin: Unban user ──
   app.post("/api/admin/users/:id/unban", requireAdmin, csrfProtection, async (req, res) => {
     try {
-      const userId = parseInt(req.params.id);
-      // Someone who had asked to delete their account before the ban goes back to waiting for it.
-      await db.update(users).set({
-        accountStatus: sql`CASE WHEN ${users.deletionRequestedAt} IS NOT NULL THEN 'pending_deletion' ELSE 'active' END`,
-        bannedAt: null,
-        banReason: null,
-      }).where(eq(users.id, userId));
-      res.json({ success: true });
+      const userId = Number.parseInt(String(req.params.id), 10);
+      if (!Number.isSafeInteger(userId)) return res.status(400).json({ message: "Invalid user id" });
+      const result = await unbanUser({ adminId: (req.user as { id: number }).id, userId });
+      if (!result.ok) return res.status(result.status).json({ message: result.error });
+      return res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ message: "Failed to unban user" });
+      console.error("Admin unban error:", err);
+      return res.status(500).json({ message: "Failed to unban user" });
     }
   });
 
@@ -14470,6 +14490,8 @@ Respond with ONLY the category name, nothing else.`
           category: items.category,
           conditionRating: items.conditionRating,
           isAvailable: items.isAvailable,
+          moderationStatus: items.moderationStatus,
+          moderationNote: items.moderationNote,
           isLendable: items.isLendable,
           isRentable: items.isRentable,
           isGift: items.isGift,
@@ -14495,14 +14517,32 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // ── Admin: Remove item (soft delete) ──
+  // ── Admin: Remove item (moderation). The owner cannot relist it; restore lifts the removal. ──
   app.post("/api/admin/items/:id/remove", requireAdmin, csrfProtection, async (req, res) => {
     try {
-      const itemId = parseInt(req.params.id);
-      await db.update(items).set({ isAvailable: false }).where(eq(items.id, itemId));
-      res.json({ success: true });
+      const itemId = Number.parseInt(String(req.params.id), 10);
+      if (!Number.isSafeInteger(itemId)) return res.status(400).json({ message: "Invalid item id" });
+      const { note } = req.body as { note?: string };
+      const result = await removeItem({ adminId: (req.user as { id: number }).id, itemId, note });
+      if (!result.ok) return res.status(result.status).json({ message: result.error });
+      return res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ message: "Failed to remove item" });
+      console.error("Admin remove item error:", err);
+      return res.status(500).json({ message: "Failed to remove item" });
+    }
+  });
+
+  app.post("/api/admin/items/:id/restore", requireAdmin, csrfProtection, async (req, res) => {
+    try {
+      const itemId = Number.parseInt(String(req.params.id), 10);
+      if (!Number.isSafeInteger(itemId)) return res.status(400).json({ message: "Invalid item id" });
+      const { note } = req.body as { note?: string };
+      const result = await restoreItem({ adminId: (req.user as { id: number }).id, itemId, note });
+      if (!result.ok) return res.status(result.status).json({ message: result.error });
+      return res.json({ success: true });
+    } catch (err) {
+      console.error("Admin restore item error:", err);
+      return res.status(500).json({ message: "Failed to restore item" });
     }
   });
 
@@ -15821,6 +15861,13 @@ Respond with ONLY the category name, nothing else.`
       return;
     }
     
+    const [wsUser] = await db.select({ accountStatus: users.accountStatus }).from(users).where(eq(users.id, userId)).limit(1);
+    if (!wsUser || accountIsBlocked(wsUser)) {
+      ws.send(JSON.stringify({ type: "auth_error", message: "Authentication failed - please log in" }));
+      ws.close(1008, "Unauthorized");
+      return;
+    }
+
     console.log(`✅ WebSocket authenticated for user ${userId}`);
     connectedClients.set(userId, ws);
     

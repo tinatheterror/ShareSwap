@@ -110,6 +110,9 @@ export function scrubSteps(userId: number): ScrubStep[] {
       columns: ["notes"],
       where: sql`(t.renter_id = ${U} OR t.owner_id = ${U}) AND NOT EXISTS (SELECT 1 FROM item_requests e WHERE e.id = t.request_id AND ${evidenceOf("e")})`,
     },
+    // Reports: the reporter's own words, and the copy of the reported content when its author is the one leaving.
+    { table: "content_reports", columns: ["details"], where: sql`t.reporter_id = ${U}` },
+    { table: "content_reports", columns: ["snapshot"], where: sql`t.target_user_id = ${U}` },
     { table: "referrals", columns: ["referrer_device_fingerprint"], where: sql`t.referrer_id = ${U}` },
     { table: "referrals", columns: ["referred_device_fingerprint"], where: sql`t.referred_user_id = ${U}` },
   ];

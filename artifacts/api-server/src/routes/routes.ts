@@ -35,6 +35,7 @@ import { reportLimiter } from "../report-limit";
 import { moderationEmail } from "../moderation-config";
 import { sendModerationAlertEmail } from "../sendgrid";
 import { MAX_MESSAGE_LENGTH, messageLimiter } from "../message-limit";
+import { rejectDisallowedText } from "../content-policy";
 import { publicUserGuard } from "../public-user-guard";
 import { banUser, removeItem, restoreItem, unbanUser } from "../moderation-service";
 import { log } from "../vite";
@@ -4162,6 +4163,8 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Item description is required" });
       }
 
+      if (rejectDisallowedText(res, { name: req.body.name, description: req.body.description, brand: req.body.brand, swapDesiredItem: req.body.swapDesiredItem })) return;
+
       // Handle photos from SmartScan or manual upload
       let photoUrls: string[] = [];
       const wasSmartScanned = req.body.wasSmartScanned === "true";
@@ -4497,6 +4500,7 @@ Respond with ONLY the category name, nothing else.`
       if (existingItem.moderationStatus === "removed") {
         return res.status(403).json({ error: "This listing was removed by our moderators and cannot be edited." });
       }
+      if (rejectDisallowedText(res, { name: req.body.name, description: req.body.description, brand: req.body.brand, swapDesiredItem: req.body.swapDesiredItem })) return;
 
       // Handle photos
       let photoUrls: string[] = existingItem.photos || [];
@@ -5032,6 +5036,7 @@ Respond with ONLY the category name, nothing else.`
       if (!itemName) {
         return res.status(400).json({ error: "Item name is required" });
       }
+      if (rejectDisallowedText(res, { itemName, description, preferredLocation })) return;
 
       const [newWishlist] = await db
         .insert(wishlists)
@@ -5077,6 +5082,8 @@ Respond with ONLY the category name, nothing else.`
       }
 
       const { itemName, description, category, needType, maxShareCoinPrice, maxDollarPrice, preferredLocation, neededDate, returnDate, urgency, isPrivate } = req.body;
+
+      if (rejectDisallowedText(res, { itemName, description, preferredLocation })) return;
 
       const [updated] = await db
         .update(wishlists)
@@ -5711,6 +5718,7 @@ Respond with ONLY the category name, nothing else.`
     if (content.length > MAX_MESSAGE_LENGTH) {
       return res.status(400).json({ error: `A message can be at most ${MAX_MESSAGE_LENGTH} characters` });
     }
+    if (rejectDisallowedText(res, { content })) return;
     const hasRequestId = body.requestId !== undefined && body.requestId !== null && body.requestId !== "";
     const parsedRequestId = hasRequestId ? Number(body.requestId) : null;
     if (hasRequestId && (!Number.isSafeInteger(parsedRequestId) || (parsedRequestId as number) <= 0)) {
@@ -6807,6 +6815,8 @@ Respond with ONLY the category name, nothing else.`
     const itemId = parseInt(req.params.itemId);
     const { requestType, message, startDate, endDate, deliveryMethod, depositMethod, swapOfferedItemIds, swapRequestedItemIds } = req.body;
 
+    if (rejectDisallowedText(res, { message })) return;
+
     if (requestType === "BORROW") {
       const period = validateBorrowPeriod(startDate, endDate);
       if (!period.valid) {
@@ -7749,6 +7759,8 @@ Respond with ONLY the category name, nothing else.`
     const requestId = parseInt(req.params.requestId);
     const { deliveryMethod, depositMethod, startDate, endDate,
             swapOwnerItemIds, swapRequesterItemIds, counterNote } = req.body;
+
+    if (rejectDisallowedText(res, { counterNote })) return;
 
     // Load the request with item — user must be owner or requester
     const [request] = await db
@@ -13498,6 +13510,7 @@ Respond with ONLY the category name, nothing else.`
     if (isEmailShaped(displayName)) {
       return res.status(400).json({ error: "Display name can't be an email address." });
     }
+    if (rejectDisallowedText(res, { fullName, bio, displayName, location })) return;
 
     // Enforce 30-day cooldown on display name changes
     if (displayName !== undefined) {
@@ -15194,6 +15207,7 @@ Respond with ONLY the category name, nothing else.`
     if (await usersAreBlocked(req.user.id, reviewedUserId)) {
       return res.status(403).json({ error: "You can't review this user." });
     }
+    if (rejectDisallowedText(res, { comment })) return;
 
     // Verify the transaction exists and involves both users
     const [transaction] = await db

@@ -24,6 +24,7 @@ import { resolveGoogleOAuthCallbackURL } from "./google-oauth-config";
 import { shouldRunBackgroundJobs } from "./background-jobs-gate";
 import { guardedJob } from "./guarded-job";
 import { isEmailShaped } from "./public-identity";
+import { rejectDisallowedText } from "./content-policy";
 import { backgroundJobs } from "./background-jobs-registry";
 import { isBannedEmail } from "./account-deletion/banned-email";
 import { getVerificationForUser, googleEmailIsVerified, verificationRecipient } from "./verification";
@@ -810,6 +811,8 @@ export function setupAuth(app: Express) {
         const error = fromZodError(result.error);
         return res.status(400).json({ message: error.toString() });
       }
+
+      if (rejectDisallowedText(res, { fullName: req.body.fullName })) return;
 
       const [existingUser] = await getUserByUsername(result.data.username);
       if (existingUser) {

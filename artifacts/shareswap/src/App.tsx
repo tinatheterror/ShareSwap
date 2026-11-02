@@ -36,6 +36,8 @@ import LendPage from "@/pages/lend-page";
 import VerifyItemsPage from "@/pages/admin/verify-items";
 import AdminDisputesPage from "@/pages/admin/disputes";
 import AdminReportsPage from "@/pages/admin/reports";
+import CommunityGuidelinesPage from "@/pages/community-guidelines-page";
+import { TermsGate } from "@/components/terms-gate";
 import AdminDashboardPage from "@/pages/admin/index";
 import AdminUsersPage from "@/pages/admin/users";
 import AdminItemsPage from "@/pages/admin/items";
@@ -136,6 +138,7 @@ function Router() {
       <Route path="/faq" component={FAQPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />
+      <Route path="/community-guidelines" component={CommunityGuidelinesPage} />
       <Route path="/delete-account" component={DeleteAccountPage} />
       <ProtectedRoute path="/referrals" component={ReferralsPage} />
       <ProtectedRoute path="/my-items" component={MyItemsPage} />
@@ -161,6 +164,7 @@ function App() {
           <AuthProvider>
             <ReturnAfterSignIn />
             <DeletionPendingBanner />
+            <TermsGate />
             <Router />
             <ChatWidget />
             <LocationSetupWrapper />

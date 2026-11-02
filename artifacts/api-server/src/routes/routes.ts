@@ -36,6 +36,7 @@ import { moderationEmail } from "../moderation-config";
 import { sendModerationAlertEmail } from "../sendgrid";
 import { MAX_MESSAGE_LENGTH, messageLimiter } from "../message-limit";
 import { rejectDisallowedText } from "../content-policy";
+import { TERMS_VERSION } from "../legal-config";
 import { publicUserGuard } from "../public-user-guard";
 import { banUser, removeItem, restoreItem, unbanUser } from "../moderation-service";
 import { log } from "../vite";
@@ -2253,6 +2254,9 @@ export function registerRoutes(
                 isVerified: true,
                 hasCompletedLocationSetup: true,
                 shareCoins: "20",
+                // Already agreed to the current Terms, so the acceptance screen does not cover the page under test.
+                termsAcceptedAt: new Date(),
+                termsVersion: TERMS_VERSION,
               },
               {
                 username: borrowerUsername,
@@ -2262,6 +2266,9 @@ export function registerRoutes(
                 isVerified: true,
                 hasCompletedLocationSetup: true,
                 shareCoins: "20",
+                // Already agreed to the current Terms, so the acceptance screen does not cover the page under test.
+                termsAcceptedAt: new Date(),
+                termsVersion: TERMS_VERSION,
               },
             ])
             .returning({ id: users.id, username: users.username });

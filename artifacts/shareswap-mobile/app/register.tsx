@@ -17,7 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { openLegalLink, PRIVACY_URL, TERMS_URL } from "@/lib/legalLinks";
+import { GUIDELINES_URL, openLegalLink, PRIVACY_URL, TERMS_URL } from "@/lib/legalLinks";
 
 export default function RegisterScreen() {
   const colors = useColors();
@@ -33,6 +33,7 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showReferral, setShowReferral] = useState(!!params.ref);
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   async function handleRegister() {
     if (!email.trim() || !password.trim()) {
@@ -47,6 +48,10 @@ export default function RegisterScreen() {
       Alert.alert("Weak password", "Password must be at least 6 characters.");
       return;
     }
+    if (!acceptedTerms) {
+      Alert.alert("One more thing", "Please agree to the Terms of Service and Community Guidelines to create an account.");
+      return;
+    }
     setLoading(true);
     try {
       await register({
@@ -54,6 +59,7 @@ export default function RegisterScreen() {
         password,
         fullName: fullName.trim() || undefined,
         referralCode: referralCode.trim() || undefined,
+        acceptedTerms,
       });
       router.replace("/verify-email-prompt");
     } catch (err: unknown) {
@@ -161,14 +167,41 @@ export default function RegisterScreen() {
             </View>
           )}
 
+          {/* Agreement: explicit, and required before the account is created. */}
+          <View style={styles.agreeRow}>
+            <Pressable
+              testID="accept-terms-checkbox"
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: acceptedTerms }}
+              accessibilityLabel="I agree to the Terms of Service and Community Guidelines"
+              onPress={() => setAcceptedTerms((value) => !value)}
+              hitSlop={8}
+            >
+              <Feather name={acceptedTerms ? "check-square" : "square"} size={22} color={acceptedTerms ? colors.primary : colors.mutedForeground} />
+            </Pressable>
+            <Text style={[styles.agreeText, { color: colors.mutedForeground }]}>
+              I agree to the{" "}
+              <Text style={styles.consentLink} accessibilityRole="link" onPress={() => openLegalLink(TERMS_URL)}>
+                Terms of Service
+              </Text>{" "}
+              and{" "}
+              <Text style={styles.consentLink} accessibilityRole="link" onPress={() => openLegalLink(GUIDELINES_URL)}>
+                Community Guidelines
+              </Text>
+              , including no tolerance for objectionable content or abusive people.
+            </Text>
+          </View>
+
           {/* Submit */}
           <Pressable
+            testID="create-account-button"
+            accessibilityState={{ disabled: loading || !acceptedTerms }}
             style={({ pressed }) => [
               styles.submitBtn,
-              { backgroundColor: colors.primary, opacity: pressed || loading ? 0.85 : 1 },
+              { backgroundColor: colors.primary, opacity: !acceptedTerms ? 0.5 : pressed || loading ? 0.85 : 1 },
             ]}
             onPress={handleRegister}
-            disabled={loading}
+            disabled={loading || !acceptedTerms}
           >
             {loading ? (
               <ActivityIndicator color={colors.primaryForeground} />
@@ -180,11 +213,7 @@ export default function RegisterScreen() {
           </Pressable>
 
           <Text style={[styles.consentText, { color: colors.mutedForeground }]}>
-            By creating an account you agree to the{" "}
-            <Text style={styles.consentLink} accessibilityRole="link" onPress={() => openLegalLink(TERMS_URL)}>
-              Terms
-            </Text>{" "}
-            and{" "}
+            How we handle your information is in our{" "}
             <Text style={styles.consentLink} accessibilityRole="link" onPress={() => openLegalLink(PRIVACY_URL)}>
               Privacy Policy
             </Text>
@@ -283,6 +312,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   consentLink: { textDecorationLine: "underline" },
+  agreeRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  agreeText: { flex: 1, fontSize: 13, lineHeight: 19, fontFamily: "Inter_400Regular" },
   divider: { height: 1, width: "100%" },
   switchText: {
     fontSize: 14,

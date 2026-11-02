@@ -13,6 +13,12 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 - [ ] Switch Stripe to live keys (and the other Stripe live-mode items below)
 - [ ] MODERATION_EMAIL set to moderation@shareswap.app in Replit Secrets (the address is configuration, not code). Without it the boot log warns "MODERATION_EMAIL is not set" and reports are queued but nobody is emailed. After setting it, file a test report and confirm the email arrives; someone must read that inbox and work /admin/reports daily (Apple expects action within 24 hours)
 
+### Legal text (you, with counsel)
+
+- [ ] Approve the drafts in docs/legal (community-guidelines.md and terms-zero-tolerance.md), then delete the "DRAFT" note at the top of each. The Community Guidelines page at /community-guidelines shows that file as written.
+- [ ] Replace the placeholder Terms of Service and Privacy Policy pages, which still say "The full text is coming soon". Apple will not accept that. Fold the zero-tolerance section into the Terms, then bump TERMS_VERSION in artifacts/api-server/src/legal-config.ts so everyone is asked to accept the final text.
+- [ ] Confirm the support address. It defaults to support@shareswap.app; set SUPPORT_EMAIL in the environment to change it without a release.
+
 ### App Store / Play blockers
 
 - [ ] Content safeguards (#3): report, block, moderation queue, zero-tolerance terms (Apple 1.2)

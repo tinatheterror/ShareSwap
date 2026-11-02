@@ -47,6 +47,8 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").default(false),
   bannedAt: timestamp("banned_at"),
   banReason: text("ban_reason"),
+  termsAcceptedAt: timestamp("terms_accepted_at"), // when they last accepted the Terms and Community Guidelines
+  termsVersion: text("terms_version"), // which version (see legal-config.ts); null = never
   lastActiveAt: timestamp("last_active_at"),
   deactivatedAt: timestamp("deactivated_at"),
   deletionRequestedAt: timestamp("deletion_requested_at"),

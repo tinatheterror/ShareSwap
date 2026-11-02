@@ -2,6 +2,7 @@ import { Alert, Linking } from "react-native";
 
 export const PRIVACY_URL = "https://shareswap.app/privacy";
 export const TERMS_URL = "https://shareswap.app/terms";
+export const GUIDELINES_URL = "https://shareswap.app/community-guidelines";
 /** Deletion without the app: sign in, then request, cancel or confirm. Also the deletion URL for the Play listing. */
 export const DELETE_ACCOUNT_URL = "https://shareswap.app/delete-account";
 

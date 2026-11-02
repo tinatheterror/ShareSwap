@@ -52,6 +52,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [showReactivate, setShowReactivate] = useState(false);
   // Set when Google sign-in found a deactivated account: the one-time token that reactivates it.
@@ -229,7 +230,7 @@ export default function AuthPage() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: { username: string; password: string; fullName?: string; referralCode?: string; deviceFingerprint?: string }) => {
+    mutationFn: async (credentials: { username: string; password: string; fullName?: string; referralCode?: string; deviceFingerprint?: string; acceptedTerms: boolean }) => {
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -272,7 +273,8 @@ export default function AuthPage() {
         password,
         fullName: fullName.trim() || undefined,
         referralCode: referralCode.trim() || undefined,
-        deviceFingerprint 
+        deviceFingerprint,
+        acceptedTerms,
       });
     }
   };
@@ -466,10 +468,29 @@ export default function AuthPage() {
                 </p>
               </div>
             )}
+            {!isLogin && (
+              <label className="flex items-start gap-2 text-sm text-gray-700" htmlFor="acceptedTerms">
+                <input
+                  id="acceptedTerms"
+                  type="checkbox"
+                  className="mt-1"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  data-testid="accept-terms-checkbox"
+                />
+                <span>
+                  I agree to the{" "}
+                  <a href="/terms" target="_blank" rel="noreferrer" className="text-teal-600 underline">Terms of Service</a>
+                  {" "}and{" "}
+                  <a href="/community-guidelines" target="_blank" rel="noreferrer" className="text-teal-600 underline">Community Guidelines</a>
+                  , including no tolerance for objectionable content or abusive people.
+                </span>
+              </label>
+            )}
             <Button
               type="submit"
               className="w-full"
-              disabled={loginMutation.isPending || registerMutation.isPending}
+              disabled={loginMutation.isPending || registerMutation.isPending || (!isLogin && !acceptedTerms)}
             >
               {loginMutation.isPending || registerMutation.isPending
                 ? "Please wait..."

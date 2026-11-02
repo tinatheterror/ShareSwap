@@ -25,6 +25,8 @@ import { shouldRunBackgroundJobs } from "./background-jobs-gate";
 import { guardedJob } from "./guarded-job";
 import { isEmailShaped } from "./public-identity";
 import { rejectDisallowedText } from "./content-policy";
+import { TERMS_VERSION, supportEmail, termsAcceptanceRequired } from "./legal-config";
+import { csrfProtection } from "./csrf";
 import { backgroundJobs } from "./background-jobs-registry";
 import { isBannedEmail } from "./account-deletion/banned-email";
 import { getVerificationForUser, googleEmailIsVerified, verificationRecipient } from "./verification";
@@ -814,6 +816,15 @@ export function setupAuth(app: Express) {
 
       if (rejectDisallowedText(res, { fullName: req.body.fullName })) return;
 
+      // Creating an account means agreeing to the Terms and Community Guidelines, which say objectionable content and
+      // abusive users are not tolerated. The box must be ticked; the server records when and which version.
+      if (req.body.acceptedTerms !== true) {
+        return res.status(400).json({
+          code: "TERMS_REQUIRED",
+          message: "Please accept the Terms of Service and Community Guidelines to create an account.",
+        });
+      }
+
       const [existingUser] = await getUserByUsername(result.data.username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
@@ -880,6 +891,8 @@ export function setupAuth(app: Express) {
           emailVerificationToken,
           emailVerificationExpires,
           authProvider: "local",
+          termsAcceptedAt: new Date(),
+          termsVersion: TERMS_VERSION,
         })
         .returning();
 
@@ -1602,6 +1615,30 @@ export function setupAuth(app: Express) {
       missing: verification.missing,
       activeStatus,
       responseTime,
+      // Clients show a blocking screen until the current Terms and Guidelines are accepted.
+      termsAcceptanceRequired: termsAcceptanceRequired(req.user as any),
+      currentTermsVersion: TERMS_VERSION,
+      supportEmail: supportEmail(),
     });
+  });
+
+  // Public: what the sign-up and settings screens need to show without hard-coding it.
+  app.get("/api/legal/config", (_req, res) => {
+    res.json({ termsVersion: TERMS_VERSION, supportEmail: supportEmail() });
+  });
+
+  // Accepting the current Terms and Community Guidelines (existing accounts, and new Google sign-ins).
+  app.post("/api/account/accept-terms", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) return res.status(401).json({ message: "Not authenticated" });
+    const version = typeof req.body?.version === "string" ? req.body.version : null;
+    if (version !== TERMS_VERSION) {
+      return res.status(409).json({
+        code: "TERMS_VERSION_CHANGED",
+        message: "The Terms were updated. Please read the latest version and accept again.",
+        currentVersion: TERMS_VERSION,
+      });
+    }
+    await db.update(users).set({ termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION }).where(eq(users.id, req.user.id));
+    return res.json({ termsAcceptanceRequired: false, currentTermsVersion: TERMS_VERSION });
   });
 }

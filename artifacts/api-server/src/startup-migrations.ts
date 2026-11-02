@@ -212,6 +212,22 @@ export async function ensureWishlistHiddenAt() {
   }
 }
 
+const TERMS_ACCEPTANCE_FILE = "lib/db/scripts/0014_terms_acceptance.sql";
+
+/** users.terms_acceptance columns (0014): every /api/user read selects them, so a missing column would fail them all. */
+export async function ensureTermsAcceptanceColumns() {
+  const { rows } = await pool.query(
+    `SELECT (SELECT count(*)::int FROM information_schema.columns
+              WHERE table_schema = current_schema() AND table_name = 'users' AND column_name IN ('terms_accepted_at', 'terms_version')) AS present`,
+  );
+  if (rows[0]?.present === 2) return;
+  try {
+    await runMigrationFile(TERMS_ACCEPTANCE_FILE);
+  } catch (err) {
+    if ((err as { code?: string }).code !== "42701") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -220,6 +236,7 @@ export async function applyStartupMigrations() {
   await ensurePaymentCurrencyColumn();
   await ensureContentSafeguards();
   await ensureWishlistHiddenAt();
+  await ensureTermsAcceptanceColumns();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
   await ensureJobSwitchesAttributionConstraint();

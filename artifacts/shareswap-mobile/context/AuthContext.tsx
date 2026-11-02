@@ -49,7 +49,7 @@ interface AuthContextValue {
   sessionExpired: boolean;
   clearSessionExpired: () => void;
   login: (username: string, password: string) => Promise<void>;
-  register: (opts: { email: string; password: string; fullName?: string; referralCode?: string }) => Promise<void>;
+  register: (opts: { email: string; password: string; fullName?: string; referralCode?: string; acceptedTerms: boolean }) => Promise<void>;
   logout: () => Promise<void>;
   refetchUser: () => Promise<number | null>;
   resendVerification: () => Promise<void>;
@@ -205,7 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const register = useCallback(
-    async (opts: { email: string; password: string; fullName?: string; referralCode?: string }) => {
+    async (opts: { email: string; password: string; fullName?: string; referralCode?: string; acceptedTerms: boolean }) => {
       authGeneration.current++;
       const deviceFingerprint = await getDeviceFingerprint();
       await apiPost("/api/register", {
@@ -213,6 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password: opts.password,
         fullName: opts.fullName,
         referralCode: opts.referralCode,
+        acceptedTerms: opts.acceptedTerms,
         deviceFingerprint,
       });
       await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "email");

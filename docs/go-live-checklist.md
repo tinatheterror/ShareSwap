@@ -2,6 +2,37 @@
 
 Items parked while building on Stripe test mode. Nothing here has been done; tick each off at the switch to live keys.
 
+## Before launch
+
+### Config and deploy (you, not code)
+
+- [ ] BANNED_EMAIL_HASH_KEY set in Replit Secrets (never change it once set)
+- [ ] One end-to-end account deletion against Stripe test mode (Customer, subscription, Connect account removed)
+- [ ] Switch account-deletion finalize job on in production
+- [ ] Review handoff-deadlines dry-run output, then switch the sweep to live
+- [ ] Switch Stripe to live keys (and the other Stripe live-mode items below)
+
+### App Store / Play blockers
+
+- [ ] Content safeguards (#3): report, block, moderation queue, zero-tolerance terms (Apple 1.2)
+- [ ] Sign in with Apple (#1): required because Google sign-in is offered
+- [ ] Subscriptions vs In-App Purchase (#6): decide and record
+- [ ] Raw server errors reaching users (#10)
+- [ ] eas.json submit config and Android FCM (#11, #12)
+- [ ] Icon and splash placeholders (#14)
+
+### Product
+
+- [ ] Audit transaction flows end to end (rent, borrow, swap, gift)
+
+### Fixes
+
+- [ ] Timezone: production runs tz 2026a; ship 2026e+ ICU tz files via ICU_TIMEZONE_FILES_DIR and confirm the [request-dates] boot line
+- [ ] Healthchecks on /ws and /storage returned 500 at boot; confirm startup timing only, or add a /health endpoint
+- [ ] Postgres SSL warning: set sslmode=verify-full on DATABASE_URL
+- [ ] Replace url.parse() usage (DEP0169)
+- [ ] Owner-return-flow e2e flake: re-run; if it fails again, register waitForResponse before the click
+
 ## Parked improvement: in-app card authentication
 
 - [ ] Add `@stripe/stripe-react-native` to the mobile app and complete `requires_action` payments in-app (deposits, deposit holds and subscription upgrades). Today the app shows "authenticate your card in Payment Settings", and subscription upgrades open Stripe's hosted invoice page in the browser.

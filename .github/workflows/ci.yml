@@ -53,8 +53,10 @@ jobs:
       - name: API unit tests
         run: pnpm --filter @workspace/api-server run test
       - name: Web unit tests
+        if: ${{ !cancelled() }}
         run: pnpm --filter @workspace/shareswap run test
       - name: Mobile unit tests
+        if: ${{ !cancelled() }}
         run: pnpm --filter @workspace/shareswap-mobile run test
 
       - name: Typecheck (api, web, mobile) against the baselines

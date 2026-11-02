@@ -2,7 +2,8 @@
 import type { Express } from "express";
 import { db } from "@workspace/db";
 import { users, achievements, userAchievements, wishlists } from "@workspace/db";
-import { eq, and, ne, desc } from "drizzle-orm";
+import { eq, and, ne, desc, isNull, sql } from "drizzle-orm";
+import { accountVisibleSql, blockedBetweenSql } from "./content-visibility";
 import { trustLevelForScore } from "./trust-score-service";
 
 const BADGE_TITLE_MAP: Record<string, string> = {
@@ -239,7 +240,15 @@ export function addSimplifiedRoutes(app: Express) {
         })
         .from(wishlists)
         .innerJoin(users, eq(users.id, wishlists.userId))
-        .where(and(eq(wishlists.isActive, true), ne(wishlists.userId, (req.user as any).id)))
+        // The community feed both apps show: a post a moderator hid, one by a banned or deleted account, and one by
+        // anyone the viewer has blocked (or who blocked them) never appear.
+        .where(and(
+          eq(wishlists.isActive, true),
+          isNull(wishlists.hiddenAt),
+          ne(wishlists.userId, (req.user as any).id),
+          accountVisibleSql(wishlists.userId),
+          sql`NOT ${blockedBetweenSql((req.user as any).id, wishlists.userId)}`,
+        ))
         .orderBy(desc(wishlists.createdAt));
 
       const today = new Date();

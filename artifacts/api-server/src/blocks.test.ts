@@ -45,7 +45,13 @@ async function signIn(user: { username: string }) {
 }
 
 const browseIds = async (client: Client) => ((await (await client.get("/api/items")).json()) as { id: number }[]).map((i) => i.id);
-const wishlistIds = async (client: Client) => ((await (await client.get("/api/wishlists")).json()) as { id: number }[]).map((w) => w.id);
+// Both feeds: /api/wishlists, and /api/all-wishlists, which is the one the apps' community tab actually calls.
+const wishlistIds = async (client: Client) => {
+  const ids = async (path: string) => ((await (await client.get(path)).json()) as { id: number }[]).map((w) => w.id);
+  const [a, b] = [await ids("/api/wishlists"), await ids("/api/all-wishlists")];
+  assert.deepEqual([...a].sort(), [...b].sort(), "the two feeds agree");
+  return a;
+};
 const thread = async (client: Client, partnerId: number) => (await (await client.get(`/api/messages/${partnerId}`)).json()) as { content: string; messageType: string }[];
 const conversationPartners = async (client: Client) => ((await (await client.get("/api/conversations")).json()) as { userId: number }[]).map((c) => c.userId);
 const send = (client: Client, receiverId: unknown, content: unknown, extra: Record<string, unknown> = {}) => client.post("/api/messages", { receiverId, content, ...extra });

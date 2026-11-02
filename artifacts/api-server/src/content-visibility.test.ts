@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { eq, inArray } from "drizzle-orm";
 import { WebSocket } from "ws";
-import { db, itemRequests, items, moderationActions, pool, userPushTokens, users } from "@workspace/db";
+import { db, itemRequests, items, moderationActions, pool, userPushTokens, users, wishlists } from "@workspace/db";
 import { accountIsBlocked, hashPassword } from "./auth.js";
 import { HIDDEN_ACCOUNT_STATUSES, accountIsPubliclyVisible, itemIsPubliclyVisible } from "./content-visibility.js";
 import { Client, startApp } from "./auth-test-client.js";
@@ -65,6 +65,7 @@ before(async () => {
 after(async () => {
   try {
     await pool.query("DELETE FROM moderation_actions WHERE admin_id = ANY($1)", [userIds]);
+    if (userIds.length) await db.delete(wishlists).where(inArray(wishlists.userId, userIds));
     if (itemIds.length) {
       await db.delete(itemRequests).where(inArray(itemRequests.itemId, itemIds));
       await db.delete(items).where(inArray(items.id, itemIds));
@@ -163,6 +164,9 @@ test("a ban ends the person's sessions, socket and pushes, hides their listings 
   const item = await makeItem(target.id);
   await db.insert(userPushTokens).values({ userId: target.id, token: `ExponentPushToken[${UNIQUE}]` } as any);
   const targetClient = await signIn(target);
+  const [wish] = await db.insert(wishlists).values({ userId: target.id, itemName: `${UNIQUE}-banned-wish` }).returning();
+  const communityIds = async () => ((await (await viewerClient.get("/api/all-wishlists")).json()) as { id: number }[]).map((w) => w.id);
+  assert.ok((await communityIds()).includes(wish.id), "their wishlist post shows before the ban");
 
   const socket = new WebSocket(`${baseUrl.replace("http", "ws")}/ws/chat`, { headers: { cookie: targetClient.cookieHeader() } });
   const frames: { type: string }[] = [];
@@ -189,6 +193,7 @@ test("a ban ends the person's sessions, socket and pushes, hides their listings 
 
   assert.ok(!(await browseIds(viewerClient)).includes(item.id), "browse");
   assert.ok(!(await nearbyIds(viewerClient)).includes(item.id), "nearby");
+  assert.ok(!(await communityIds()).includes(wish.id), "their wishlist post is gone from the community feed");
   assert.equal((await viewerClient.get(`/api/items/${item.id}`)).status, 404, "item page");
   assert.equal((await viewerClient.get(`/api/items/${item.id}/booked-dates`)).status, 404, "booked dates");
   for (const path of [

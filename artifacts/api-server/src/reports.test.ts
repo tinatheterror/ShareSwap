@@ -304,7 +304,12 @@ test("hiding a reported review, message or wishlist post removes it from every p
   assert.equal((await db.select().from(messages).where(eq(messages.id, message.id))).length, 1, "kept as evidence");
 
   const [wish] = await db.insert(wishlists).values({ userId: author.id, itemName: `${UNIQUE}-offensive-wish` }).returning();
-  const wishIds = async () => ((await (await cr.get("/api/wishlists")).json()) as { id: number }[]).map((w) => w.id);
+  const wishIds = async () => {
+    const ids = async (path: string) => ((await (await cr.get(path)).json()) as { id: number }[]).map((w) => w.id);
+    const [a, b] = [await ids("/api/wishlists"), await ids("/api/all-wishlists")];
+    assert.deepEqual([...a].sort(), [...b].sort(), "the two feeds agree");
+    return a;
+  };
   assert.ok((await wishIds()).includes(wish.id));
   const wishReport = ((await (await report(cr, { targetType: "wishlist", targetId: wish.id, reason: "sexual" })).json()) as { id: number }).id;
   assert.equal((await adminClient.post(`/api/admin/reports/${wishReport}/resolve`, { action: "remove_content" })).status, 200);

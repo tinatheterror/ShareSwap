@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { achievements, subscriptionPlans } from "@workspace/db";
+import { achievements } from "@workspace/db";
 
 export const initializeAchievements = async () => {
   try {
@@ -76,53 +76,5 @@ export const initializeAchievements = async () => {
     }
   } catch (error) {
     console.error("Error initializing achievements:", error);
-  }
-};
-
-export const initializeSubscriptionPlans = async () => {
-  try {
-    const existingPlans = await db.select().from(subscriptionPlans).limit(1);
-    
-    if (existingPlans.length === 0) {
-      await db.insert(subscriptionPlans).values([
-        {
-          name: "ShareSwap Premium",
-          description: "Unlock priority access, lower fees, and exclusive features",
-          monthlyPrice: "9.99",
-          annualPrice: "99.99",
-          features: [
-            "Priority access to high-demand items",
-            "50% reduction in transaction fees",
-            "Early access to new features",
-            "Premium customer support",
-            "Advanced search filters",
-            "Unlimited wishlist items",
-            "Enhanced profile visibility"
-          ],
-          discountPercentage: 50,
-          priorityAccess: true,
-          lowerFees: true,
-        },
-        {
-          name: "ShareSwap Pro",
-          description: "Perfect for active community members",
-          monthlyPrice: "4.99",
-          annualPrice: "49.99",
-          features: [
-            "25% reduction in transaction fees",
-            "Advanced search filters",
-            "Up to 20 wishlist items",
-            "Priority customer support",
-            "Extended borrowing periods"
-          ],
-          discountPercentage: 25,
-          priorityAccess: false,
-          lowerFees: true,
-        },
-      ]);
-      console.log("Subscription plans initialized");
-    }
-  } catch (error) {
-    console.error("Error initializing subscription plans:", error);
   }
 };

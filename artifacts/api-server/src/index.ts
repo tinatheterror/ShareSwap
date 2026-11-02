@@ -3,7 +3,7 @@ import { logger } from "./lib/logger";
 import { registerRoutes } from "./routes/routes";
 import { setupStorageRoutes } from "./storage";
 import { initializeSampleGames } from "./init-games";
-import { initializeAchievements, initializeSubscriptionPlans } from "./init-achievements";
+import { initializeAchievements } from "./init-achievements";
 import { startRateLimitCleanup } from "./auth";
 import { applyStartupMigrations } from "./startup-migrations";
 import { logStripeStartup } from "./stripe.server";
@@ -49,8 +49,6 @@ async function start() {
   try {
     await initializeSampleGames();
     await initializeAchievements();
-    // @ts-ignore
-    await initializeSubscriptionPlans?.();
   } catch (err) {
     logger.error({ err }, "Failed to initialize features");
   }

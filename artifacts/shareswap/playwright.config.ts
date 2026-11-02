@@ -30,6 +30,9 @@ export default defineConfig({
       command:
         `PORT=4180 E2E_TEST_MODE=true E2E_API_SERVER_LOG=${apiServerLogPath} node e2e/run-api-server.mjs`,
       url: "http://127.0.0.1:4180/api/csrf-token",
+      // Playwright discards a server's stdout by default, which is where the API server logs why it refused to boot.
+      stdout: "pipe",
+      stderr: "pipe",
       reuseExistingServer: false,
       timeout: 120_000,
     },
@@ -37,6 +40,8 @@ export default defineConfig({
       command:
         "PORT=4173 BASE_PATH=/ API_PROXY_TARGET=http://127.0.0.1:4180 pnpm --filter @workspace/shareswap run dev",
       url: "http://127.0.0.1:4173",
+      stdout: "pipe",
+      stderr: "pipe",
       reuseExistingServer: false,
       timeout: 120_000,
     },

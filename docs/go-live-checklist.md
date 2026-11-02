@@ -39,7 +39,7 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 - [ ] Healthchecks on /ws and /storage returned 500 at boot; confirm startup timing only, or add a /health endpoint
 - [ ] Postgres SSL warning: set sslmode=verify-full on DATABASE_URL
 - [ ] Replace url.parse() usage (DEP0169)
-- [ ] Owner-return-flow e2e flake: re-run; if it fails again, register waitForResponse before the click
+- [x] Owner-return-flow e2e flake. Two causes, both fixed. The first-visit tutorial overlay could open after the spec's one-time check for it and swallow the click on "Confirm Return" (the CI page snapshot showed it); the specs now tell the page the tutorial was seen. And the specs ran in parallel against one server whose setup sweeps unregistered fixtures, one of which a spec creates on purpose, so another spec's setup could delete it before it was counted; the suite now runs on one worker.
 
 ## After launch
 

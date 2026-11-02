@@ -15,7 +15,18 @@ export const emptyFixtureRecords = {
 };
 export type FixtureRecordCounts = typeof emptyFixtureRecords;
 
+/**
+ * Called first by every spec. Besides stubbing the reminder check, it tells the page the first-visit tutorial was already
+ * seen (the app keeps that in localStorage under hasSeenTutorial_<userId>). Dismissing the tutorial after the page loads
+ * is a race: it can appear a moment after any check for it, and its overlay then swallows the click on the dialog under it.
+ */
 export async function suppressReturnReminderChecks(page: Page) {
+  await page.addInitScript(() => {
+    const getItem = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (this: Storage, key: string) {
+      return typeof key === "string" && key.startsWith("hasSeenTutorial_") ? "true" : getItem.call(this, key);
+    };
+  });
   await page.route("**/api/notifications/check-return-reminders", async (route) => {
     await route.fulfill({
       status: 200,
@@ -70,12 +81,14 @@ export function expectPostReturnActivity(counts: FixtureRecordCounts) {
   expect(counts.notifications).toBeGreaterThan(0);
 }
 
-/** The inbox is a panel on the home page (there is no inbox route): load the page, skip the first-visit tour, open the panel. */
+/**
+ * The inbox is a panel on the home page (there is no inbox route): load the page and open the panel. The page must have
+ * come from a spec that called suppressReturnReminderChecks, which keeps the first-visit tutorial from ever opening.
+ */
 export async function openInbox(page: Page) {
   await page.goto("/");
-  const skipTour = page.getByRole("button", { name: "Skip tutorial" });
-  if (await skipTour.isVisible({ timeout: 5_000 }).catch(() => false)) await skipTour.click();
   await page.getByRole("button", { name: "Open inbox" }).click();
+  await expect(page.getByRole("button", { name: "Skip tutorial" })).toHaveCount(0);
 }
 
 export async function completeReturnWithReview(page: Page, fixture: OwnerReturnFixture) {

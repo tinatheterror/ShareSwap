@@ -11,7 +11,11 @@ export default defineConfig({
   testDir: "./e2e",
   testIgnore: ["server-output-fixtures/**", "owner-return-restart.spec.ts"],
   globalTeardown: "./e2e/server-output.global-teardown.ts",
-  fullyParallel: true,
+  // One worker. The owner-return specs share one API server and one database, and each setup sweeps fixtures the server
+  // does not know about: one spec creates exactly such an orphan on purpose, so another spec starting in parallel can sweep
+  // it before it is counted.
+  fullyParallel: false,
+  workers: 1,
   forbidOnly: true,
   retries: 0,
   reporter: "line",

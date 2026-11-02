@@ -59,6 +59,13 @@ jobs:
         if: ${{ !cancelled() }}
         run: pnpm --filter @workspace/shareswap-mobile run test
 
+      - name: Generate the Expo type references
+        # Expo writes this git-ignored file the first time the app starts. It pulls in expo/types
+        # (the `global` declaration and the react-native-web Pressable typings), which the mobile
+        # sources and tests are typed against.
+        if: ${{ !cancelled() }}
+        working-directory: artifacts/shareswap-mobile
+        run: echo '/// <reference types="expo/types" />' > expo-env.d.ts
       - name: Typecheck (api, web, mobile) against the baselines
         if: ${{ !cancelled() }}
         run: |

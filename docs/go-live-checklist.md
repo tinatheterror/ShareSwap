@@ -34,6 +34,11 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 - [ ] Replace url.parse() usage (DEP0169)
 - [ ] Owner-return-flow e2e flake: re-run; if it fails again, register waitForResponse before the click
 
+## After launch
+
+- [ ] Async Vision check on new item photos: send a flagged photo to the moderation queue instead of blocking the upload. Reporting is the only photo safeguard at launch.
+- [ ] Web report and block UI. The server-side enforcement (blocks, removals, bans) applies to web from day one; only the buttons are missing.
+
 ## Parked improvement: in-app card authentication
 
 - [ ] Add `@stripe/stripe-react-native` to the mobile app and complete `requires_action` payments in-app (deposits, deposit holds and subscription upgrades). Today the app shows "authenticate your card in Payment Settings", and subscription upgrades open Stripe's hosted invoice page in the browser.

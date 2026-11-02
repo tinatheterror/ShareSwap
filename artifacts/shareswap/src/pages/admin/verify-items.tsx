@@ -28,7 +28,7 @@ export default function VerifyItemsPage() {
   const [selectedItem, setSelectedItem] = useState<SelectItem | null>(null);
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
 
-  const form = useForm<z.infer<typeof verificationFormSchema>>({
+  const form = useForm<z.input<typeof verificationFormSchema>, unknown, z.output<typeof verificationFormSchema>>({
     resolver: zodResolver(verificationFormSchema),
     defaultValues: {
       actualConditionRating: 10,
@@ -135,7 +135,7 @@ export default function VerifyItemsPage() {
                         <FormItem>
                           <FormLabel>Actual Condition Rating (1-10)</FormLabel>
                           <FormControl>
-                            <Input type="number" min="1" max="10" {...field} />
+                            <Input type="number" min="1" max="10" {...field} value={String(field.value ?? "")} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

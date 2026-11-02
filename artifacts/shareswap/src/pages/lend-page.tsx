@@ -767,7 +767,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const lastDetectedName = useRef("");
   const previousTier = useRef<number | null>(null);
 
-  const form = useForm<z.infer<typeof baseFormSchema>>({
+  const form = useForm<z.input<typeof baseFormSchema>, unknown, z.output<typeof baseFormSchema>>({
     resolver: zodResolver(isEditMode ? baseFormSchema : formSchema),
     defaultValues: {
       name: "",

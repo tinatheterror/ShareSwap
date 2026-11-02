@@ -117,7 +117,7 @@ export function ItemRequestForm({
     totalFree: number;
   }>({ queryKey: ["/api/user/fee-waiver-status"] });
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<z.input<typeof formSchema>, unknown, z.output<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       message: "",

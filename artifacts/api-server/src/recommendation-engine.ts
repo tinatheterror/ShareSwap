@@ -1,7 +1,7 @@
 import { db } from "@workspace/db";
 import { users, items, itemRequests, shareCoinsTransactions, swapMatches, locationAlerts } from "@workspace/db";
 import { eq, desc, and, or, inArray, sql } from "drizzle-orm";
-import { publiclyVisibleItem } from "./content-visibility";
+import { publiclyVisibleItem, usersAreBlocked } from "./content-visibility";
 
 interface RecommendationScore {
   itemId: number;
@@ -131,7 +131,7 @@ export class RecommendationEngine {
       .where(
         and(
           eq(items.isAvailable, true),
-          publiclyVisibleItem(),
+          publiclyVisibleItem(userId),
           sql`${items.ownerId} != ${userId}`
         )
       );
@@ -222,7 +222,7 @@ export class RecommendationEngine {
     const recommendedItems = await db
       .select()
       .from(items)
-      .where(and(inArray(items.id, itemIds), publiclyVisibleItem()));
+      .where(and(inArray(items.id, itemIds), publiclyVisibleItem(userId)));
 
     // Combine items with their scores and reasons
     return recommendedItems.map(item => {
@@ -264,7 +264,7 @@ export class RecommendationEngine {
         and(
           eq(items.isSwappable, true),
           eq(items.isAvailable, true),
-          publiclyVisibleItem(),
+          publiclyVisibleItem(request.items.ownerId),
           sql`${items.ownerId} = ${request.item_requests.requesterId}` // Items owned by the requester
         )
       );
@@ -353,6 +353,7 @@ export class RecommendationEngine {
 
     for (const alert of alerts) {
       if (!alert.latitude || !alert.longitude) continue;
+      if (alert.userId && item.ownerId && await usersAreBlocked(alert.userId, item.ownerId)) continue;
 
       // Calculate distance
       const latDiff = Math.abs(Number(item.latitude) - Number(alert.latitude));
@@ -387,7 +388,7 @@ export class RecommendationEngine {
       .where(
         and(
           eq(items.isAvailable, true),
-          publiclyVisibleItem(),
+          publiclyVisibleItem(userId),
           sql`${items.ownerId} != ${userId}`
         )
       );

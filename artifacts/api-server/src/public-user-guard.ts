@@ -1,11 +1,12 @@
 import type { NextFunction, Request, Response } from "express";
 import { eq, or } from "drizzle-orm";
 import { db, users } from "@workspace/db";
-import { accountIsPubliclyVisible } from "./content-visibility";
+import { accountIsPubliclyVisible, usersAreBlocked } from "./content-visibility";
 
 // Mounted at /api/users. Every route that shows someone else's profile, reputation, listings, reviews or
 // achievements answers 404 for an account that is banned, deactivated or deleted, instead of each handler
-// remembering to. People always see themselves.
+// remembering to. The same answer for anyone who has blocked, or been blocked by, the person asked about.
+// People always see themselves.
 const BY_ID = /^\/(\d+)\/(?:public-profile|reputation)$/;
 const BY_USERNAME = /^\/username\/([^/]+)(?:\/(?:items|reviews|achievements))?$/;
 
@@ -25,8 +26,13 @@ export function publicUserGuard() {
             .limit(1);
 
       // No such user: the route's own 404 handling stays in charge.
-      if (!target || accountIsPubliclyVisible(target) || (req.user as { id?: number } | undefined)?.id === target.id) return next();
-      return res.status(404).json({ error: "User not found" });
+      if (!target) return next();
+      const viewerId = (req.user as { id?: number } | undefined)?.id;
+      if (viewerId === target.id) return next();
+      if (!accountIsPubliclyVisible(target)) return res.status(404).json({ error: "User not found" });
+      // A block hides each from the other, whoever pressed the button.
+      if (viewerId && await usersAreBlocked(viewerId, target.id)) return res.status(404).json({ error: "User not found" });
+      return next();
     } catch (err) {
       next(err);
     }

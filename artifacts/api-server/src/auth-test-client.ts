@@ -33,6 +33,12 @@ export class Client {
     return this.send(path, { method: "POST", headers, body: JSON.stringify(body) });
   }
 
+  delete(path: string) {
+    const headers: Record<string, string> = {};
+    if (this.csrfToken) headers["x-csrf-token"] = this.csrfToken;
+    return this.send(path, { method: "DELETE", headers });
+  }
+
   patch(path: string, body: unknown = {}) {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (this.csrfToken) headers["x-csrf-token"] = this.csrfToken;

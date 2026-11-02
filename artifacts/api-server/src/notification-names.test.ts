@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { after, before, test } from "node:test";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { db, itemRequests, items, messages, notifications, pool, reputationActivities, userReviews, users } from "@workspace/db";
+import { db, itemRequests, items, messages, notifications, pool, reputationActivities, userReviews, users, wishlists } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { Client, startApp } from "./auth-test-client.js";
 
@@ -20,6 +20,7 @@ let senderId: number;
 let namedId: number;
 let recipientId: number;
 let itemId: number;
+let wishlistId: number;
 let requestId: number;
 let baseUrl: string;
 let closeServer: () => Promise<void>;
@@ -44,6 +45,7 @@ before(async () => {
     .values({ name: `${UNIQUE}-item`, description: "x", photos: [], conditionRating: 5, shareCoinsReward: "1", ownerId: recipientId, isAvailable: true, isLendable: true, isGift: true })
     .returning({ id: items.id });
   itemId = item.id;
+  [{ id: wishlistId }] = await db.insert(wishlists).values({ userId: recipientId, itemName: `${UNIQUE}-wanted` }).returning({ id: wishlists.id });
   const [request] = await db
     .insert(itemRequests)
     .values({ itemId, requesterId: senderId, requestType: "BORROW", status: "COMPLETED" })
@@ -59,6 +61,7 @@ after(async () => {
     await db.delete(userReviews).where(inArray(userReviews.reviewerId, userIds));
     await db.delete(reputationActivities).where(inArray(reputationActivities.userId, userIds));
     await db.delete(messages).where(inArray(messages.senderId, userIds));
+    await db.delete(wishlists).where(eq(wishlists.userId, recipientId));
     await db.delete(itemRequests).where(eq(itemRequests.itemId, itemId));
     await db.delete(items).where(eq(items.id, itemId));
     await db.delete(users).where(inArray(users.id, userIds));
@@ -95,14 +98,14 @@ const noAddress = (row: { title: string; message: string }) => {
 
 test("wishlist_match names the lister by display name, or 'A neighbour' when there is none", async () => {
   const noName = await signIn(SENDER_EMAIL);
-  const sent = await noName.post("/api/wishlist-match-notification", { itemId, wishlistId: 1, wishlistOwnerId: recipientId });
+  const sent = await noName.post("/api/wishlist-match-notification", { itemId, wishlistId, wishlistOwnerId: recipientId });
   assert.equal(sent.status, 200);
   const first = await latest("wishlist_match");
   noAddress(first);
   assert.match(first.message, /listed by A neighbour$/);
 
   const named = await signIn(NAMED_EMAIL);
-  assert.equal((await named.post("/api/wishlist-match-notification", { itemId, wishlistId: 1, wishlistOwnerId: recipientId })).status, 200);
+  assert.equal((await named.post("/api/wishlist-match-notification", { itemId, wishlistId, wishlistOwnerId: recipientId })).status, 200);
   const second = await latest("wishlist_match");
   noAddress(second);
   assert.match(second.message, /listed by Nina$/);

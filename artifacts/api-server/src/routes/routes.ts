@@ -28,7 +28,9 @@ import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull, isNotNull, inArray, n
 import { alias } from "drizzle-orm/pg-core";
 import { WebSocket, WebSocketServer } from "ws";
 import { connectedClients } from "../ws-registry";
-import { publiclyVisibleItem } from "../content-visibility";
+import { accountIsPubliclyVisible, accountVisibleSql, blockedBetweenSql, publiclyVisibleItem, usersAreBlocked } from "../content-visibility";
+import { blockUser, listBlockedUsers, unblockUser } from "../blocks-service";
+import { MAX_MESSAGE_LENGTH, messageLimiter } from "../message-limit";
 import { publicUserGuard } from "../public-user-guard";
 import { banUser, removeItem, restoreItem, unbanUser } from "../moderation-service";
 import { log } from "../vite";
@@ -4653,7 +4655,7 @@ Respond with ONLY the category name, nothing else.`
       let whereConditions = [
         eq(items.isAvailable, true),
         eq(items.isDeleted, false),
-        publiclyVisibleItem(),
+        publiclyVisibleItem(req.user.id),
         sql`${items.latitude} IS NOT NULL`,
         sql`${items.longitude} IS NOT NULL`,
         sql`${items.latitude}::numeric >= ${bbox.minLat}`,
@@ -4761,7 +4763,7 @@ Respond with ONLY the category name, nothing else.`
           )`
         )!,
         eq(items.isDeleted, false),
-        publiclyVisibleItem(),
+        publiclyVisibleItem(req.user.id),
         eq(items.isSwapped, false),
         // Exclude expired listings (null = no expiry, for legacy items)
         or(isNull(items.listingExpiresAt), gte(items.listingExpiresAt, now))!,
@@ -4933,7 +4935,12 @@ Respond with ONLY the category name, nothing else.`
         })
         .from(wishlists)
         .innerJoin(users, eq(users.id, wishlists.userId))
-        .where(and(eq(wishlists.isActive, true), ne(wishlists.userId, (req.user as any).id)))
+        .where(and(
+          eq(wishlists.isActive, true),
+          ne(wishlists.userId, (req.user as any).id),
+          accountVisibleSql(wishlists.userId),
+          sql`NOT ${blockedBetweenSql((req.user as any).id, wishlists.userId)}`,
+        ))
         .orderBy(desc(wishlists.createdAt));
 
       // For urgent wishlists, highlight verified users and calculate expired status
@@ -4992,7 +4999,7 @@ Respond with ONLY the category name, nothing else.`
       const { itemId } = req.body;
       if (!itemId) return res.status(400).json({ error: "itemId is required" });
 
-      const [found] = await db.select().from(items).where(and(eq(items.id, Number(itemId)), publiclyVisibleItem())).limit(1);
+      const [found] = await db.select().from(items).where(and(eq(items.id, Number(itemId)), publiclyVisibleItem(req.user.id))).limit(1);
       if (!found) return res.status(404).json({ error: "Item not found" });
 
       const [newWishlist] = await db
@@ -5167,11 +5174,20 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Missing required fields" });
       }
 
+      // The notification goes to the owner of that wishlist, nobody else, and never across a block.
+      const [wishlist] = await db.select({ userId: wishlists.userId }).from(wishlists).where(eq(wishlists.id, Number(wishlistId))).limit(1);
+      if (!wishlist || wishlist.userId !== Number(wishlistOwnerId)) {
+        return res.status(404).json({ error: "Wishlist not found" });
+      }
+      if (await usersAreBlocked(req.user.id, wishlist.userId!)) {
+        return res.status(404).json({ error: "Wishlist not found" });
+      }
+
       // Get the item details
       const [item] = await db
         .select()
         .from(items)
-        .where(and(eq(items.id, itemId), publiclyVisibleItem()));
+        .where(and(eq(items.id, itemId), publiclyVisibleItem(req.user.id)));
 
       if (!item) {
         return res.status(404).json({ error: "Item not found" });
@@ -5216,13 +5232,21 @@ Respond with ONLY the category name, nothing else.`
       return res.status(400).json({ error: "wishlistId required" });
     }
     try {
+      const [target] = await db
+        .select({ userId: wishlists.userId })
+        .from(wishlists)
+        .where(and(eq(wishlists.id, parseInt(wishlistId)), accountVisibleSql(wishlists.userId)))
+        .limit(1);
+      if (!target || (target.userId !== null && await usersAreBlocked(req.user.id, target.userId))) {
+        return res.status(404).json({ error: "Wishlist not found" });
+      }
       await db.insert(wishlistOffers)
         .values({ userId: req.user.id, wishlistId: parseInt(wishlistId) })
         .onConflictDoNothing();
-      res.json({ ok: true });
+      return res.json({ ok: true });
     } catch (error) {
       console.error("Error creating wishlist offer:", error);
-      res.status(500).json({ error: "Failed to record offer" });
+      return res.status(500).json({ error: "Failed to record offer" });
     }
   });
 
@@ -5474,7 +5498,7 @@ Respond with ONLY the category name, nothing else.`
 
     // A listing a moderator removed, or whose owner is banned, is gone for everyone but its owner.
     if (itemWithOwner.ownerId !== req.user.id) {
-      const [visible] = await db.select({ id: items.id }).from(items).where(and(eq(items.id, itemId), publiclyVisibleItem())).limit(1);
+      const [visible] = await db.select({ id: items.id }).from(items).where(and(eq(items.id, itemId), publiclyVisibleItem(req.user.id))).limit(1);
       if (!visible) return res.status(404).send("Item not found");
     }
 
@@ -5569,7 +5593,7 @@ Respond with ONLY the category name, nothing else.`
           eq(itemAvailabilitySubscribers.userId, req.user.id),
           eq(items.isAvailable, false),
           eq(items.isDeleted, false),
-          publiclyVisibleItem(),
+          publiclyVisibleItem(req.user.id),
         )
       );
     res.json(rows);
@@ -5668,9 +5692,34 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Chat API endpoints
-  app.post("/api/messages", requireEmailVerified, async (req: any, res) => {
-    const { receiverId, content, requestId } = req.body;
-    const parsedRequestId = requestId ? parseInt(requestId) : null;
+  app.post("/api/messages", requireEmailVerified, messageLimiter, async (req: any, res) => {
+    const body = req.body ?? {};
+    const receiverId = Number(body.receiverId);
+    if (!Number.isSafeInteger(receiverId) || receiverId <= 0) {
+      return res.status(400).json({ error: "receiverId must be a user id" });
+    }
+    if (receiverId === req.user.id) {
+      return res.status(400).json({ error: "You cannot message yourself" });
+    }
+    const content = typeof body.content === "string" ? body.content.trim() : "";
+    if (!content) return res.status(400).json({ error: "A message cannot be empty" });
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      return res.status(400).json({ error: `A message can be at most ${MAX_MESSAGE_LENGTH} characters` });
+    }
+    const hasRequestId = body.requestId !== undefined && body.requestId !== null && body.requestId !== "";
+    const parsedRequestId = hasRequestId ? Number(body.requestId) : null;
+    if (hasRequestId && (!Number.isSafeInteger(parsedRequestId) || (parsedRequestId as number) <= 0)) {
+      return res.status(400).json({ error: "requestId must be a request id" });
+    }
+
+    const [recipient] = await db.select({ accountStatus: users.accountStatus }).from(users).where(eq(users.id, receiverId)).limit(1);
+    if (!recipient || !accountIsPubliclyVisible(recipient)) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    // The same answer whoever blocked whom, so a block does not reveal itself.
+    if (await usersAreBlocked(req.user.id, receiverId)) {
+      return res.status(403).json({ code: "MESSAGING_UNAVAILABLE", error: "You can't message this user." });
+    }
 
     const [message] = await db
       .insert(messages)
@@ -5708,7 +5757,7 @@ Respond with ONLY the category name, nothing else.`
       data: { screen: "chat", chatUserId: req.user.id },
     }, "messages").catch(() => {});
 
-    res.status(201).json(message);
+    return res.status(201).json(message);
   });
 
   app.get("/api/messages/:userId", async (req, res) => {
@@ -5742,10 +5791,37 @@ Respond with ONLY the category name, nothing else.`
     const chatMessages = await db
       .select()
       .from(messages)
-      .where(whereClause)
+      .where(and(whereClause, sql`NOT (${messages.messageType} = 'text' AND ${blockedBetweenSql(req.user.id, partnerId)})`))
       .orderBy(messages.createdAt);
 
     res.json(chatMessages);
+  });
+
+  // ── Blocks. Either side's block hides each from the other everywhere (see content-visibility.ts). ──
+  app.get("/api/blocks", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const rows = await listBlockedUsers(req.user.id);
+    return res.json(rows.map((row) => ({
+      userId: row.id,
+      username: publicUsername(row) ?? "Member",
+      displayName: row.displayName,
+      profilePhoto: row.profilePhoto,
+      blockedAt: row.blockedAt,
+    })));
+  });
+
+  app.post("/api/blocks/:userId", csrfProtection, async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const result = await blockUser(req.user.id, Number.parseInt(String(req.params.userId), 10));
+    if (!result.ok) return res.status(result.status).json({ error: result.error });
+    return res.status(result.alreadyBlocked ? 200 : 201).json({ blocked: true });
+  });
+
+  app.delete("/api/blocks/:userId", csrfProtection, async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const result = await unblockUser(req.user.id, Number.parseInt(String(req.params.userId), 10));
+    if (!result.ok) return res.status(result.status).json({ error: result.error });
+    return res.json({ blocked: false });
   });
 
   app.post("/api/messages/mark-read/:partnerId", async (req, res) => {
@@ -6253,9 +6329,13 @@ Respond with ONLY the category name, nothing else.`
       })
       .from(messages)
       .where(
-        or(
-          eq(messages.senderId, req.user.id),
-          eq(messages.receiverId, req.user.id)
+        and(
+          or(
+            eq(messages.senderId, req.user.id),
+            eq(messages.receiverId, req.user.id)
+          ),
+          // Text across a block is hidden for both sides; system events of a request still in flight stay.
+          sql`NOT (${messages.messageType} = 'text' AND ${blockedBetweenSql(messages.senderId, messages.receiverId)})`,
         )
       )
       .orderBy(desc(messages.createdAt));
@@ -6766,7 +6846,7 @@ Respond with ONLY the category name, nothing else.`
         and(
           eq(items.id, itemId),
           eq(items.isAvailable, true),
-          publiclyVisibleItem(),
+          publiclyVisibleItem(req.user.id),
           // Check if the requested type is available
           or(
             and(eq(items.isLendable, true), eq(requestType, "BORROW")),
@@ -15060,6 +15140,10 @@ Respond with ONLY the category name, nothing else.`
   app.post("/api/users/:userId/reviews", requireEmailVerified, async (req: any, res) => {
     const reviewedUserId = parseInt(req.params.userId);
     const { rating, comment, transactionId, feedbackTags } = req.body;
+
+    if (await usersAreBlocked(req.user.id, reviewedUserId)) {
+      return res.status(403).json({ error: "You can't review this user." });
+    }
 
     // Verify the transaction exists and involves both users
     const [transaction] = await db

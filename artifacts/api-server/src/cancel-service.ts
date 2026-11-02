@@ -19,6 +19,7 @@ import { classifyDepositState, cancelPenaltyApplies } from "./deposit-state";
 import { legacyCancelPenaltyExempt, LEGACY_CANCEL_ACK_UNTIL_ENV } from "./legacy-cancel-exemption";
 import { buildRefundLedgerRows, insertRefundLedger, refundUpfrontCharges, type UpfrontRefund } from "./request-refunds";
 import { applyCancellationAfterDepositPenalty, trustLevelForScore } from "./trust-score-service";
+import { usersAreBlocked } from "./content-visibility";
 
 // Cancelling a BORROW or RENT request (POST /api/requests/:id/cancel).
 //
@@ -39,6 +40,8 @@ export const PENALTY_ACK_REQUIRED_CODE = "PENALTY_ACK_REQUIRED";
 export const CANCEL_REASONS = ["user_requested", "changed_plans", "item_unavailable", "other"] as const;
 export type CancelReason = (typeof CANCEL_REASONS)[number];
 export const DEFAULT_CANCEL_REASON: CancelReason = "user_requested";
+/** Stored as the cancel reason when a block lies between the two people, whatever reason the app sent. */
+export const BLOCKED_CANCEL_REASON = "user_blocked";
 
 /** HANDOFF_CONFIRMED is deliberately absent: the item may already have changed hands. */
 export const CANCELABLE_STATUSES = ["PENDING", "ACCEPTED", "DEPOSIT_CONFIRMED"] as const;
@@ -176,7 +179,10 @@ export async function cancelBorrowRentRequest(
   }
 
   const depositState = classifyDepositState(request);
-  const penalty = cancelPenaltyApplies(depositState);
+  // After a block either person may cancel before the handoff with everything given back and no penalty: they did not
+  // choose to walk away from a deposit, and neither side can be made to keep dealing with the other.
+  const blocked = await usersAreBlocked(item.ownerId!, request.requesterId!);
+  const penalty = cancelPenaltyApplies(depositState) && !blocked;
   // Old builds cannot show the penalty modal: for a limited period they cancel without the penalty
   // instead of getting a 409 they cannot answer.
   const legacyExempt = penalty && legacyCancelPenaltyExempt(input.headers ?? {});
@@ -253,7 +259,7 @@ export async function cancelBorrowRentRequest(
           cancelledAt: now,
           cancelledBy: actorId,
           cancelledFromStatus: request.status,
-          cancelReason: reason,
+          cancelReason: blocked ? BLOCKED_CANCEL_REASON : reason,
           cancelledWithPenalty: penalty && !legacyExempt,
           cancelDepositState: depositState,
         })

@@ -41,6 +41,10 @@ interface User {
   canBorrow?: boolean;
   canRent?: boolean;
   missing?: ("email" | "id" | "card")[];
+  // Decided by the server: the current Terms and Community Guidelines still have to be accepted.
+  termsAcceptanceRequired?: boolean;
+  currentTermsVersion?: string;
+  supportEmail?: string;
 }
 
 interface AuthContextValue {

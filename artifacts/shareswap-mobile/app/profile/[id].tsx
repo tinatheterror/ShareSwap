@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Coins } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -22,6 +22,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, photoUrl } from "@/lib/api";
 import { fmtDate } from "@/lib/dateUtils";
+import { useModeration } from "@/components/ModerationActions";
 
 const SCREEN_W = Dimensions.get("window").width;
 const CARD_W = SCREEN_W - 48;
@@ -303,10 +304,13 @@ function ReviewsCarousel({
   reviews,
   totalCount,
   colors,
+  onReport,
 }: {
   reviews: Review[];
   totalCount: number;
   colors: Colors;
+  /** When given, each review shows a flag that reports it. */
+  onReport?: (review: Review) => void;
 }) {
   const [activeIdx, setActiveIdx] = useState(0);
 
@@ -345,6 +349,18 @@ function ReviewsCarousel({
                 },
               ]}
             >
+              {onReport ? (
+                <Pressable
+                  testID={`report-review-${review.id}`}
+                  accessibilityRole="button"
+                  accessibilityLabel="Report this review"
+                  hitSlop={10}
+                  onPress={() => onReport(review)}
+                  style={{ position: "absolute", top: 10, right: 10, zIndex: 1 }}
+                >
+                  <Feather name="flag" size={16} color={colors.mutedForeground} />
+                </Pressable>
+              ) : null}
               <View style={styles.reviewerRow}>
                 {review.reviewer.profilePhoto ? (
                   <Image
@@ -441,6 +457,8 @@ export default function PublicProfileScreen() {
   const isWeb = Platform.OS === "web";
   const { user: currentUser } = useAuth();
   const isOwnProfile = !!currentUser && String(currentUser.id) === String(id);
+  // Blocking someone from their profile takes you off it: it is gone for you now.
+  const moderation = useModeration({ onBlocked: () => router.back() });
 
   const { data: profile, isLoading } = useQuery<PublicProfile>({
     queryKey: [`/api/users/${id}/public-profile`],
@@ -490,6 +508,24 @@ export default function PublicProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {!isOwnProfile && currentUser ? (
+        <Stack.Screen
+          options={{
+            headerRight: () => (
+              <Pressable
+                testID="profile-more"
+                accessibilityRole="button"
+                accessibilityLabel="Report or block"
+                hitSlop={10}
+                onPress={() => moderation.userMenu(profile.id, displayName)}
+              >
+                <Feather name="more-horizontal" size={22} color={colors.foreground} />
+              </Pressable>
+            ),
+          }}
+        />
+      ) : null}
+      {moderation.sheet}
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 16,
@@ -701,6 +737,18 @@ export default function PublicProfileScreen() {
               reviews={reviews}
               totalCount={profile.reviewCount ?? reviews.length}
               colors={colors}
+              onReport={
+                !isOwnProfile && currentUser
+                  ? (review) =>
+                      moderation.report({
+                        targetType: "review",
+                        targetId: review.id,
+                        label: "this review",
+                        authorId: review.reviewer.id,
+                        authorName: review.reviewer.displayName ?? review.reviewer.username,
+                      })
+                  : undefined
+              }
             />
           ) : (
             <View

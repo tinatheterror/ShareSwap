@@ -22,6 +22,7 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { fmtDate, safeDate } from "@/lib/dateUtils";
 import { NotificationBell } from "@/components/NotificationBell";
+import { useModeration } from "@/components/ModerationActions";
 
 interface WishlistItem {
   id: number;
@@ -74,6 +75,7 @@ export default function WishlistScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const moderation = useModeration();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
@@ -524,6 +526,22 @@ export default function WishlistScreen() {
                         <Text style={[styles.urgentText, { color: "#78350f" }]}>URGENT</Text>
                       </View>
                     ) : null}
+                    <Pressable
+                      testID={`report-wishlist-${item.id}`}
+                      accessibilityRole="button"
+                      accessibilityLabel="Report or block"
+                      hitSlop={10}
+                      onPress={() => {
+                        const author = item.displayName ?? item.username ?? "this person";
+                        Alert.alert(item.itemName, undefined, [
+                          { text: "Report this post", onPress: () => moderation.report({ targetType: "wishlist", targetId: item.id, label: "this post", authorId: item.userId, authorName: author }) },
+                          { text: `Block ${author}`, style: "destructive", onPress: () => moderation.confirmBlock(item.userId, author) },
+                          { text: "Cancel", style: "cancel" },
+                        ]);
+                      }}
+                    >
+                      <Feather name="more-horizontal" size={18} color={colors.mutedForeground} />
+                    </Pressable>
                   </View>
 
                   {/* Need type badges — gift always last */}
@@ -1153,6 +1171,7 @@ export default function WishlistScreen() {
           </View>
         </View>
       </Modal>
+      {moderation.sheet}
     </View>
   );
 }

@@ -35,6 +35,7 @@ import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { SwapInventorySelector } from "@/components/SwapInventorySelector";
 import { BorrowRequestSheet, BorrowRequestData } from "@/components/BorrowRequestSheet";
 import { InsufficientShareCoinsModal } from "@/components/InsufficientShareCoinsModal";
+import { useModeration } from "@/components/ModerationActions";
 
 type RequestType = "BORROW" | "RENT" | "SWAP" | "GIFT";
 
@@ -101,6 +102,8 @@ export default function ItemDetailScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const isWeb = Platform.OS === "web";
+  // Blocking the owner of the listing you are looking at takes you off it: it is gone for you now.
+  const moderation = useModeration({ onBlocked: () => router.back() });
 
   const [activeRequestType, setActiveRequestType] = useState<RequestType | null>(null);
   const [showSwapSelector, setShowSwapSelector] = useState(false);
@@ -913,6 +916,27 @@ export default function ItemDetailScreen() {
                     <BadgeCheck size={16} fill="#0DCEA1" color="white" strokeWidth={1.5} />
                   ) : null}
                 </Pressable>
+                {user && !isOwner ? (
+                  <Pressable
+                    testID="item-more"
+                    accessibilityRole="button"
+                    accessibilityLabel="Report or block"
+                    hitSlop={10}
+                    style={{ marginLeft: "auto" }}
+                    onPress={() => {
+                      const owner = item.owner!;
+                      const ownerName = owner.displayName ?? owner.username;
+                      Alert.alert(item.title ?? "Listing", undefined, [
+                        { text: "Report this listing", onPress: () => moderation.report({ targetType: "item", targetId: item.id, label: "this listing", authorId: owner.id, authorName: ownerName }) },
+                        { text: `Report ${ownerName}`, onPress: () => moderation.report({ targetType: "user", targetId: owner.id, label: ownerName, authorId: owner.id, authorName: ownerName }) },
+                        { text: `Block ${ownerName}`, style: "destructive", onPress: () => moderation.confirmBlock(owner.id, ownerName) },
+                        { text: "Cancel", style: "cancel" },
+                      ]);
+                    }}
+                  >
+                    <Feather name="more-horizontal" size={22} color={colors.mutedForeground} />
+                  </Pressable>
+                ) : null}
               </View>
               {conditionLabel ? (
                 <View style={[styles.metaChip, { alignSelf: "flex-start", backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -930,6 +954,8 @@ export default function ItemDetailScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {moderation.sheet}
 
       <InsufficientShareCoinsModal
         isOpen={showEarnModal}

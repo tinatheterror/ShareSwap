@@ -37,6 +37,8 @@ import { CancelDialog } from "@/components/CancelDialog";
 import { CancelOutcomeBanner } from "@/components/CancelOutcomeBanner";
 import { useCancelRequest } from "@/hooks/useCancelRequest";
 import { cancelAction, cancelToast, legacyCancelDialog, type CancelRole } from "@workspace/api-client-react/cancel-flow";
+import { useModeration } from "@/components/ModerationActions";
+import { moderationErrorMessage } from "@/lib/moderation";
 import {
   resolveDepositPhase, depositSummaryLine, depositConfirmedStamp, claimOpenedBorrowerCopy, claimResolvedCardView,
   claimOpenedOwnerLine, claimResolvedOwnerLine, depositReleasedStamp, CLAIM_REVIEW_TOP, claimReviewChargedLabel,
@@ -277,6 +279,8 @@ export default function ChatScreen() {
   const qc = useQueryClient();
   const router = useRouter();
   const isWeb = Platform.OS === "web";
+  // Blocking the person you are talking to ends the conversation for you.
+  const moderation = useModeration({ onBlocked: () => router.back() });
   const flatListRef = useRef<FlatList>(null);
   const sendingRef = useRef(false);
 
@@ -1468,6 +1472,17 @@ export default function ChatScreen() {
             </View>
           )}
         </View>
+
+        <Pressable
+          testID="chat-more"
+          accessibilityRole="button"
+          accessibilityLabel="Report or block"
+          hitSlop={10}
+          style={{ paddingHorizontal: 6, paddingVertical: 4 }}
+          onPress={() => moderation.userMenu(parseInt(id ?? "0"), partnerName || "this person")}
+        >
+          <Feather name="more-vertical" size={22} color={colors.foreground} />
+        </Pressable>
       </View>
 
       {/* Request card (pinned between header and messages, always shown in full) */}
@@ -1711,7 +1726,12 @@ export default function ChatScreen() {
 
             // ── Regular text message ──────────────────────────────────────────
             return (
-              <View
+              <Pressable
+                testID={`message-${msg.id}`}
+                // Hold someone else's message to report it.
+                onLongPress={isMe ? undefined : () => moderation.report({ targetType: "message", targetId: msg.id, label: "this message", authorId: msg.senderId, authorName: partnerName || null })}
+                delayLongPress={350}
+                accessibilityHint={isMe ? undefined : "Hold to report this message"}
                 style={[
                   styles.bubble,
                   isMe ? styles.bubbleMe : styles.bubbleThem,
@@ -1724,7 +1744,7 @@ export default function ChatScreen() {
                 <Text style={[styles.bubbleTime, { color: isMe ? "rgba(255,255,255,0.7)" : colors.mutedForeground }]}>
                   {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </Text>
-              </View>
+              </Pressable>
             );
           }}
           ListEmptyComponent={
@@ -1780,9 +1800,14 @@ export default function ChatScreen() {
               qc.invalidateQueries({ queryKey: ["/api/inbox"] });
               qc.invalidateQueries({ queryKey: ["/api/inbox/archived"] });
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            } catch {
+            } catch (err) {
               // Restore text so the user can retry if the send failed
               setText(trimmed);
+              // The server's refusals are written for people: language that isn't allowed, a block, too many messages.
+              const status = (err as { status?: number }).status;
+              if (status === 403 || status === 404 || status === 422 || status === 429) {
+                Alert.alert("Message not sent", moderationErrorMessage(err));
+              }
             } finally {
               sendingRef.current = false;
             }
@@ -1796,6 +1821,8 @@ export default function ChatScreen() {
           />
         </Pressable>
       </View>
+
+      {moderation.sheet}
 
       {/* Handoff sheet — owner view */}
       {request && (

@@ -24,7 +24,7 @@ import { ApiEnvironmentLabel } from "@/components/ApiEnvironmentLabel";
 import { AccountDeletionSheet } from "@/components/AccountDeletionSheet";
 import { DeletionPendingBanner } from "@/components/DeletionPendingBanner";
 import { isDeletionPending } from "@/lib/accountDeletion";
-import { DELETE_ACCOUNT_URL, openLegalLink, PRIVACY_URL, TERMS_URL } from "@/lib/legalLinks";
+import { DEFAULT_SUPPORT_EMAIL, DELETE_ACCOUNT_URL, GUIDELINES_URL, openLegalLink, PRIVACY_URL, supportMailto, TERMS_URL } from "@/lib/legalLinks";
 
 interface UserProfile {
   id: number;
@@ -528,6 +528,29 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* ── Safety ── */}
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeader}>
+            <Feather name="shield" size={17} color={colors.mutedForeground} />
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Safety</Text>
+          </View>
+
+          <Pressable
+            testID="blocked-users-row"
+            accessibilityRole="button"
+            onPress={() => router.push("/blocked-users" as never)}
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <View style={styles.actionText}>
+              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Blocked users</Text>
+              <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+                See who you've blocked, or unblock someone. To report something, tap the ⋯ on a profile, listing or chat.
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
+
         {/* ── Legal ── */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
@@ -553,6 +576,33 @@ export default function SettingsScreen() {
           >
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Terms of Service</Text>
             <Feather name="external-link" size={16} color={colors.mutedForeground} />
+          </Pressable>
+
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+
+          <Pressable
+            testID="guidelines-row"
+            accessibilityRole="link"
+            onPress={() => openLegalLink(GUIDELINES_URL)}
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Community Guidelines</Text>
+            <Feather name="external-link" size={16} color={colors.mutedForeground} />
+          </Pressable>
+
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+
+          <Pressable
+            testID="support-row"
+            accessibilityRole="link"
+            onPress={() => openLegalLink(supportMailto(user?.supportEmail))}
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <View style={styles.actionText}>
+              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Contact support</Text>
+              <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>{user?.supportEmail ?? DEFAULT_SUPPORT_EMAIL}</Text>
+            </View>
+            <Feather name="mail" size={16} color={colors.mutedForeground} />
           </Pressable>
         </View>
       </ScrollView>

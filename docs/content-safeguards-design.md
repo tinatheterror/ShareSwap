@@ -1,6 +1,6 @@
 # Content safeguards: design
 
-Status: draft for approval. Nothing here is built. It covers go-live checklist item #3 (Apple guideline 1.2).
+Status: built (steps 1 to 6). It covers go-live checklist item #3 (Apple guideline 1.2). The sections below are the original design; "As built" at the end lists what differs and what is left.
 
 ## What Apple requires
 
@@ -107,3 +107,18 @@ Each step is a separate, reviewable change with tests.
 3. **Who is the moderator**, and which address should receive `MODERATION_EMAIL`? Someone has to read it daily.
 4. **Terms and Community Guidelines text** and the support email. I can draft the guidelines section, but it needs your review, and ideally a lawyer's.
 5. **Web parity** for report and block: in the first release or right after?
+
+## As built
+
+Decisions made, and where the build differs from the design above:
+
+- **Blocking with a request in flight.** Text stops at once; system steps continue. Before the handoff either person may cancel with a full refund and no penalty (`cancel_reason = user_blocked`); after it, the request runs to its end and disputes go to admin.
+- **Photos.** Reporting only at launch. An async Vision check on new item photos is on the "After launch" list, along with the web report and block buttons (the server-side enforcement is live for web).
+- **Moderation address and support address** are configuration: `MODERATION_EMAIL` (no default) and `SUPPORT_EMAIL` (default support@shareswap.app).
+- **Text filter** is built in-house (`content-policy.ts`, term list in `content-policy-terms.ts`) rather than with a library: a short list of slurs and the most explicit terms, matched whole-word where they sit inside innocent words. It is a floor, with reporting behind it.
+- **One visibility rule** (`content-visibility.ts`) decides what others see: moderator removals, banned, deactivated and deleted accounts, and blocks in either direction. It covers browse, nearby, an item page, booked dates, requests, recommendations, stats, profiles and their sub-pages, and both wishlist feeds, including `/api/all-wishlists`, which is the one the apps call.
+- **Bans** delete the person's session rows, close their open chat socket, drop their push tokens, and write an audit row, like every other moderator action.
+- **Acceptance of the Terms** is required at sign-up on web and mobile (the server refuses an account without it) and is asked once of everyone who has not accepted the current version. It is enforced by the clients' blocking screen, not by refusing every API write.
+- **Mobile**: a report sheet used from a profile, a review, a listing, a chat message and a community wishlist post; Block from the same places; Settings has Blocked users, Community Guidelines and Contact support.
+
+Still to do before launch, all in docs/go-live-checklist.md: approve the drafts in docs/legal, replace the placeholder Terms and Privacy pages, set `MODERATION_EMAIL`, and decide who reads that inbox daily.

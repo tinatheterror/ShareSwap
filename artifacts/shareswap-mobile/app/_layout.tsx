@@ -25,6 +25,7 @@ import {
 import { ShareCoinAnimation } from "@/components/ShareCoinAnimation";
 import { LevelUpBanner } from "@/components/LevelUpBanner";
 import { PushPrePrompt } from "@/components/PushPrePrompt";
+import { TermsGate } from "@/components/TermsGate";
 
 if (Platform.OS !== "web") {
   SplashScreen.preventAutoHideAsync();
@@ -61,6 +62,7 @@ function RootLayoutNav() {
       <ShareCoinAnimation />
       <LevelUpBanner />
       <PushPrePrompt />
+      <TermsGate />
       <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
@@ -142,6 +144,13 @@ function RootLayoutNav() {
         name="edit-profile"
         options={{
           title: "Edit Profile",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="blocked-users"
+        options={{
+          title: "Blocked users",
           headerBackTitle: "Back",
         }}
       />

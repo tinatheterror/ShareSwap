@@ -13,7 +13,7 @@ You must have reached the age of majority where you live. Renting, lending again
 - **Canada:** 19 in British Columbia, New Brunswick, Newfoundland and Labrador, Nova Scotia, the Northwest Territories, Nunavut and Yukon; 18 in Alberta, Manitoba, Ontario, Prince Edward Island, Quebec and Saskatchewan.
 - **United States:** 18, except 19 in Alabama and Nebraska and 21 in Mississippi.
 
-ShareSwap is not currently offered in other places, including US territories. You tell us your date of birth and where you live when you sign up (or the first time you open the app after we start asking), and we check them against these ages. If you move to a place with a higher age, you must wait until you reach it. We may ask again, and we may end an account that gave false details. [Counsel: confirm the table and the territory position.]
+ShareSwap is not currently offered in other places, including US territories. You tell us your date of birth and where you live when you sign up (or the first time you open the app after we start asking), and we check them against these ages. If you move to a place with a higher age, you must wait until you reach it. We may ask again, and we may end an account that gave false details.
 
 You must also be able to make a binding contract. You must give accurate information, keep your password safe, and keep one account. You are responsible for everything done through your account. We may refuse or end an account to keep ShareSwap safe.
 
@@ -30,11 +30,19 @@ ShareSwap is a marketplace that helps neighbours lend, rent, swap and give away 
 
 ## Payments, deposits, fees and payouts
 
-Payments are processed by Stripe. Prices are in Canadian dollars unless the app shows otherwise. We charge platform and processing fees, which are shown before you confirm. A deposit may be authorised on the borrower's card and released, or captured in whole or in part following a claim. Owners who earn rental income are paid through Stripe Connect after the hold period; Stripe's terms apply and you must complete its checks. ShareCoins are an in-app points system. They have no cash value, cannot be withdrawn, and may be changed or ended on notice. Subscriptions renew until cancelled; you can cancel as described in the app. [Counsel: refunds, taxes, chargebacks.]
+Payments are processed by Stripe. Prices are in Canadian dollars unless the app shows otherwise. We charge platform and processing fees, which are shown before you confirm. A deposit may be authorised on the borrower's card and released, or captured in whole or in part following a claim. Owners who earn rental income are paid through Stripe Connect after the hold period; Stripe's terms apply and you must complete its checks. ShareCoins are an in-app points system. They have no cash value, cannot be withdrawn, and may be changed or ended on notice. Subscriptions renew until cancelled; you can cancel as described in the app.
+
+**Refunds and cancellations.** What a cancellation costs, and what is refunded, depends on the stage of the request. Where a cancellation carries a penalty, the app asks you to acknowledge it first. A deposit hold that is released is not a charge. If something goes wrong with a handoff or a return, use the claim process below.
+
+**Payouts.** Rental earnings are paid out through Stripe Connect after the hold period, in amounts of $10 or more, to the payout account you set up. You can withdraw your own balance at any time, including before you delete your account.
+
+**Taxes.** Prices shown do not include sales taxes unless the app says so. You are responsible for any tax on what you earn through ShareSwap.
+
+**Chargebacks.** Please use the claim process before disputing a payment with your card issuer. If a payment you made is reversed by your issuer without a good reason, we may recover the amount, including from your wallet balance, and may suspend your account.
 
 ## Claims and disputes
 
-An owner may open a claim for loss or damage after a return. We ask the borrower to respond, review the evidence both sides give, and decide. Our decision on deposits is final within ShareSwap, without limiting your legal rights. Do not take a payment dispute to your card issuer without first using the claim process. [Counsel: arbitration and class waiver, if wanted.]
+An owner may open a claim for loss or damage after a return. We ask the borrower to respond, review the evidence both sides give, and decide. Our decision on deposits is final within ShareSwap, without limiting your legal rights. Do not take a payment dispute to your card issuer without first using the claim process. Anything we cannot resolve together is decided by the courts named in "Governing law" below.
 
 ## Zero tolerance for objectionable content and abusive users
 
@@ -64,7 +72,7 @@ You may delete your account at any time as described in the Privacy Policy. We m
 
 ## Our responsibility
 
-ShareSwap is provided "as is". To the extent the law allows, we are not liable for the items, the conduct of members, injuries, loss or damage arising from an arrangement between members, or for indirect or consequential losses; our total liability to you is limited to [amount, for example the fees you paid in the previous 12 months]. Nothing here limits liability that cannot be limited by law. You agree to compensate us for claims arising from your breach of these Terms or your content. [Counsel: review for the jurisdictions you operate in.]
+ShareSwap is provided "as is". To the extent the law allows, we are not liable for the items, the conduct of members, injuries, loss or damage arising from an arrangement between members, or for indirect or consequential losses; our total liability to you is limited to the greater of CA$100 and the fees you paid us in the 12 months before the claim. Nothing here limits liability that cannot be limited by law. You agree to compensate us for claims arising from your breach of these Terms or your content.
 
 ## Changes to these Terms
 
@@ -72,7 +80,7 @@ We may update these Terms. If a change matters, we will ask you to accept the ne
 
 ## Governing law
 
-These Terms are governed by the laws of [province or state and country], and the courts there have jurisdiction, except where the law of your home requires otherwise. [Counsel to complete.]
+These Terms are governed by the laws of [province or state and country where the operating company is based], and the courts there have jurisdiction, except where the law of your home requires otherwise.
 
 ## Contact
 

@@ -47,7 +47,7 @@ We use your information to run your account; to show listings and wishlists near
 - **UserJot** (feedback widget, website only, and only while it is switched on): your internal user number, so feedback can be tied to your account, and whatever you write in a feedback post. Not your name, email address or the page you are on. Loading the widget also shows UserJot your IP address and browser details, as any website you load from does. The mobile app does not load it: its Send feedback row opens UserJot's public board in your browser and passes nothing about you.
 - **Authorities and advisers.** We may disclose information when the law requires it, to report content that appears to be illegal, to protect someone's safety, or to our lawyers and auditors.
 
-These providers may process data in countries other than your own. [Counsel: add the transfer mechanism and the list of countries.]
+Most of these providers are based in the United States, and they and their own service providers may process your information there and in other countries, whose data protection laws may differ from those where you live. We share with each only what it needs for its part, and we choose providers that publish their own security and privacy commitments.
 
 ## AI features and your consent
 
@@ -72,7 +72,7 @@ While your account is open we keep what is described above. When you delete your
 - **Until it expires:** sign-in counters (about 15 minutes), one-time sign-in tokens (5 minutes), and sessions.
 - **No end date:** if you are banned and then delete your account, we keep a keyed one-way hash of your email address (never the address itself) so the ban cannot be avoided by signing up again.
 
-Backups roll off on the hosting provider's normal schedule. [Confirm backup retention.]
+Backups roll off on the hosting provider's normal schedule. [Confirm with Replit how long database backups are kept, and say so here in one sentence.]
 
 ## Deleting your account
 
@@ -80,7 +80,7 @@ You can request deletion in the app or at https://shareswap.app/delete-account a
 
 ## Your choices and rights
 
-You can edit your profile and location, change notification preferences, withdraw your wallet balance, block members, and delete your account. Depending on where you live you may also have the right to ask for a copy of your information, to correct it, to object to or restrict how we use it, and to complain to your data protection authority. Write to support@shareswap.app and we will reply within 30 days. [Counsel: add the specific rights, such as GDPR, PIPEDA or CCPA, that apply to your members.]
+You can edit your profile and location, change notification preferences, withdraw your wallet balance, block members, and delete your account. Under the privacy laws that apply in Canada (such as PIPEDA, and the provincial laws of British Columbia, Alberta and Quebec) and in many US states (such as the California Consumer Privacy Act), you may also have the right to ask for a copy of your information, to have it corrected or deleted, to withdraw a consent you gave, to object to or limit some uses, and not to be treated worse for using these rights. We do not sell your personal information or share it for advertising. Write to support@shareswap.app and we will reply within 30 days; you can also ask us to treat a request from someone acting for you. If you are not satisfied, you may complain to the Office of the Privacy Commissioner of Canada, your provincial or state regulator, or your state attorney general.
 
 ## Security
 

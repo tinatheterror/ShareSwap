@@ -15,8 +15,7 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 
 ### Legal text (you, with counsel)
 
-- [ ] Approve the drafts in docs/legal (community-guidelines.md and terms-zero-tolerance.md), then delete the "DRAFT" note at the top of each. The Community Guidelines page at /community-guidelines shows that file as written.
-- [ ] Replace the placeholder Terms of Service and Privacy Policy pages, which still say "The full text is coming soon". Apple will not accept that. Fold the zero-tolerance section into the Terms, then bump TERMS_VERSION in artifacts/api-server/src/legal-config.ts so everyone is asked to accept the final text.
+- [ ] Approve the drafts in docs/legal (community-guidelines.md, terms-of-service.md and privacy-policy.md), fill in the [bracketed] gaps (legal entity, address, governing law, liability cap, data-transfer wording, backup retention, minimum age 18 is a draft decision: nothing in the app asks for or enforces age yet), then delete the "DRAFT" note at the top of each. /terms, /privacy and /community-guidelines show those files as written; the mobile app links to those pages. Then bump TERMS_VERSION in artifacts/api-server/src/legal-config.ts so everyone is asked to accept the final text.
 - [ ] Confirm the support address. It defaults to support@shareswap.app; set SUPPORT_EMAIL in the environment to change it without a release.
 
 ### App Store / Play blockers

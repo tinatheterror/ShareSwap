@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkText, containsDisallowedLanguage, normalise } from "./content-policy.js";
-import { ANYWHERE, WHOLE_WORD } from "./content-policy-terms.js";
+import { asMatchedPattern, checkText, containsDisallowedLanguage, withEdgePunctuationOpened, withSpreadLettersJoined } from "./content-policy.js";
+import { ALLOWED_PHRASES, EXTRA_ANYWHERE, EXTRA_WHOLE_WORD } from "./content-policy-terms.js";
 
 // The filter has two ways to be wrong: letting the obvious through, and rejecting ordinary words. Both are tested, because a
 // marketplace that refuses "cocktail shaker" teaches people to ignore the rule.
@@ -42,17 +42,73 @@ test("checkText names the first field that fails and ignores values that are not
   assert.deepEqual(checkText({ name: undefined, description: null, rating: 5, tags: ["fine"] }), { ok: true });
 });
 
-test("normalise folds case, accents and lookalike characters, and turns everything else into spaces", () => {
-  assert.equal(normalise("Héllo, W0RLD!"), "hello  worldi");
-  assert.equal(normalise("a_b-c.d"), "a b c d");
+test("leetspeak, spacing, repeated letters and look-alike characters are caught", () => {
+  const variants: Record<string, string[]> = {
+    leetspeak: ["sh1t", "5h1t", "$h!t", "f4gg0t", "b1tch", "b!tch", "a$$hole", "@sshole", "c0ck", "fvck", "wh0re", "5lut", "d1ldo", "p0rn", "tr4nn1es", "j3rk0ff"],
+    spacing: ["f u c k", "f.u.c.k", "f-u-c-k", "f_u_c_k", "f*u*c*k", "F  U  C  K", "s.h.i.t", "a s s h o l e", "c u n t", "you are a b i t c h", "what the f u c k is this", "w h o r e", "5 h 1 t"],
+    "repeated letters": ["fuuuuck", "fuckkkk", "fuuuuuuuck", "shiiiiit", "shhhhit", "biiiitch", "bitchesss", "cuuunt", "asssshole", "fffuck"],
+    "accents and look-alikes": ["fück", "fúck", "shít", "bïtch", "ｆｕｃｋ", "fuсk" /* Cyrillic с */],
+    "mixed": ["F.u.u.u.c.k", "S H 1 T", "you $lut", "g0 f u c k y0urself"],
+  };
+  for (const [kind, texts] of Object.entries(variants)) {
+    for (const text of texts) assert.equal(containsDisallowedLanguage(text), true, `${kind}: ${text}`);
+  }
 });
 
-test("the term lists are lowercase words, with no overlap that would hide a mistake", () => {
-  for (const term of [...WHOLE_WORD, ...ANYWHERE]) assert.match(term, /^[a-z]+$/, term);
-  assert.equal(new Set(WHOLE_WORD).size, WHOLE_WORD.length, "WHOLE_WORD has a duplicate");
-  for (const term of ANYWHERE) assert.ok(!WHOLE_WORD.includes(term), `${term} is in both lists`);
-  // A term that is inside an innocent word must be whole-word only.
-  for (const innocent of ["scunthorpe", "shiitake", "niggardly", "cocktail", "assess", "classic", "title"]) {
-    for (const term of ANYWHERE) assert.ok(!innocent.includes(term), `${term} is inside ${innocent}`);
+test("spread-out letters only join in runs of three or more, so ordinary initials and lists are left alone", () => {
+  assert.equal(withSpreadLettersJoined("f u c k"), "f u c k\nfuck");
+  assert.equal(withSpreadLettersJoined("A. B. Smith"), "A. B. Smith");
+  assert.equal(withSpreadLettersJoined("k.d. lang"), "k.d. lang");
+  assert.equal(withSpreadLettersJoined("size 5 cm x 10 cm"), "size 5 cm x 10 cm");
+  assert.equal(withSpreadLettersJoined("Vitamin A B C"), "Vitamin A B C\nABC");
+  for (const innocent of ["Vitamin A B C", "plan A B C D", "1 2 3 4 5", "S M L XL sizes", "U.S.A. flag", "a b c song book", "R2 D2 C3 PO toy"]) {
+    assert.equal(containsDisallowedLanguage(innocent), false, innocent);
   }
+});
+
+test("ShareSwap's own additions are caught whole and, for the few that no innocent word contains, inside longer words", () => {
+  for (const term of [...EXTRA_WHOLE_WORD, ...EXTRA_ANYWHERE]) {
+    assert.equal(containsDisallowedLanguage(term), true, term);
+    assert.equal(containsDisallowedLanguage(`you ${term.toUpperCase()}!`), true, `${term} shouted`);
+  }
+  for (const term of EXTRA_ANYWHERE) assert.equal(containsDisallowedLanguage(`x${term}x`), true, `${term} inside a word`);
+  for (const term of EXTRA_WHOLE_WORD) assert.equal(containsDisallowedLanguage(`x${term}x`), false, `${term} inside a word is left alone`);
+});
+
+test("the additions are plain lowercase words, with no overlap that would hide a mistake", () => {
+  for (const term of [...EXTRA_WHOLE_WORD, ...EXTRA_ANYWHERE]) assert.match(term, /^[a-z]+$/, term);
+  assert.equal(new Set(EXTRA_WHOLE_WORD).size, EXTRA_WHOLE_WORD.length, "EXTRA_WHOLE_WORD has a duplicate");
+  for (const term of EXTRA_ANYWHERE) assert.ok(!EXTRA_WHOLE_WORD.includes(term), `${term} is in both lists`);
+  // A term that is inside an innocent word must be whole-word only.
+  for (const innocent of ["scunthorpe", "shiitake", "niggardly", "cocktail", "assess", "classic", "title", "raccoon"]) {
+    for (const term of EXTRA_ANYWHERE) assert.ok(!innocent.includes(term), `${term} is inside ${innocent}`);
+  }
+  for (const phrase of ALLOWED_PHRASES) assert.match(phrase, /^[a-z' ]+$/, phrase);
+});
+
+test("a protected word does not protect abuse written next to it", () => {
+  for (const text of ["shiitake you fucking idiot", "rapeseed oil, you cunt", "a fucking fire retardant spray", "pussy willow and a slut"]) {
+    assert.equal(containsDisallowedLanguage(text), true, text);
+  }
+});
+
+test("terms with double letters are written the way the library will see the text", () => {
+  assert.equal(asMatchedPattern("trannies"), "tranies");
+  assert.equal(asMatchedPattern("jerkoff"), "jerkof");
+  assert.equal(asMatchedPattern("gook"), "gook", "o may double");
+  assert.equal(asMatchedPattern("faggot"), "faggot", "g may double");
+  assert.equal(asMatchedPattern("jigaboo"), "jigaboo");
+  for (const term of ["trannies", "jerkoff", "jackoff", "gooks", "beaners"]) assert.equal(containsDisallowedLanguage(`${term} and ${term.toUpperCase()}`), true, term);
+});
+
+test("punctuation stuck to a word does not hide it, and a '!' inside a word is still a letter", () => {
+  for (const text of ["trannies!", "!trannies", "you JERKOFF!!", "you gooks|", "shut up, beaners!", "sh!t", "b!tch", "f!ck you!"]) {
+    assert.equal(containsDisallowedLanguage(text), true, text);
+  }
+  for (const text of ["Great drill!", "wow!!", "Sale! Everything must go!", "!important", "Hi! I'm Pat!", "50% off!!!"]) {
+    assert.equal(containsDisallowedLanguage(text), false, text);
+  }
+  assert.equal(withEdgePunctuationOpened("trannies!"), "trannies ");
+  assert.equal(withEdgePunctuationOpened("b!tch"), "b!tch");
+  assert.equal(withEdgePunctuationOpened("a|b"), "a|b");
 });

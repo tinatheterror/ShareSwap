@@ -1,27 +1,26 @@
-// The language ShareSwap does not allow in what people write: slurs and the most explicit sexual terms. This is a floor, not
-// a ceiling: it is meant to stop the obvious, with reporting and the moderation queue behind it. It is deliberately short and
-// avoids ordinary profanity ("damn", "crap") and anything with a common innocent use ("rooster", "pussy willow", "rapeseed",
-// "Dick" the name), because a marketplace that rejects "cocktail shaker" teaches people to ignore the rule.
+// What ShareSwap adds to, and carves out of, the `obscenity` English dataset (see content-policy.ts). The dataset is the base:
+// it covers the common profanity, slurs and sexual terms, with leetspeak, repeated letters and look-alike characters handled by
+// the library's transformers. These lists are only for what it gets wrong for a neighbourhood marketplace.
 //
-// To maintain it: add the plain lowercase word. A word in WHOLE_WORD only matches as a complete word, which is how the
-// Scunthorpe problem is avoided for terms that sit inside innocent words. A word in ANYWHERE also matches inside a longer
-// word, so it is only for terms no innocent word contains. Plurals and the common inflections are listed explicitly.
+// To maintain them: add the plain lowercase word. A term in EXTRA_WHOLE_WORD only matches as a complete word. A term in
+// EXTRA_ANYWHERE also matches inside a longer word, so it is only for terms no innocent word contains. A phrase in
+// ALLOWED_PHRASES is protected: a blocked term that sits inside it is not counted ("shiitake", "Scunthorpe"-style words).
 
-/** Matched as a complete word only. */
-export const WHOLE_WORD: readonly string[] = [
-  // slurs ("nigga" is whole-word because "niggardly" is an ordinary word; "coon", "dyke", "fag", "spic" and "sambo" are left
-  // out because of Maine Coon cats, dykes and dikes, British cigarettes, "spic and span" and the martial art)
-  "nigga", "niggas", "faggots", "tranny", "trannies", "shemale",
-  "kike", "kikes", "spics", "beaner", "beaners", "gook", "gooks", "paki", "pakis", "jigaboo",
-  "retard", "retards", "retarded", "cunt", "cunts",
-  // explicit sexual terms and abuse
-  "bitch", "bitches", "whore", "whores", "slut", "sluts", "asshole", "assholes", "dickhead", "dickheads",
-  "twat", "twats", "wanker", "wankers", "blowjob", "blowjobs", "handjob", "handjobs", "rimjob", "cumshot", "cumshots",
-  "gangbang", "porn", "porno", "dildo", "dildos", "motherfucker", "motherfuckers", "cocksucker", "cocksuckers",
-  "jackoff", "jerkoff", "fuckwit", "shithead", "shitheads",
-  // sit inside innocent words ("shiitake", "Scunthorpe"), so only the exact word counts
-  "fuck", "fucks", "fucker", "fuckers", "fucking", "fucked", "shit", "shits",
+/** Blocked, as complete words. The old in-house list's terms that the dataset does not cover. */
+export const EXTRA_WHOLE_WORD: readonly string[] = [
+  "trannies", "shemale", "spics", "beaner", "beaners", "gook", "gooks", "paki", "pakis", "jigaboo",
+  "rimjob", "jackoff", "jerkoff",
 ];
 
-/** Also matched inside a longer word: none of these appear inside an innocent English word. */
-export const ANYWHERE: readonly string[] = ["nigger", "faggot", "wetback", "motherfuck", "cocksuck"];
+/** Blocked, also inside a longer word: none of these appear inside an innocent English word. */
+export const EXTRA_ANYWHERE: readonly string[] = ["nigger", "faggot", "wetback", "motherfuck", "cocksuck"];
+
+/**
+ * Ordinary words and phrases that contain a blocked term, or that the dataset blocks but a marketplace needs ("rapeseed",
+ * "fire retardant", "shiitake mushrooms", "pussy willow", the Dick's Sporting Goods shop). Lowercase letters; the library
+ * matches them against the text after its own transformations (so "Shiitake" and "sh1itake" are protected alike).
+ */
+export const ALLOWED_PHRASES: readonly string[] = [
+  "shiitake", "rapeseed", "rape seed", "retardant", "pussy willow", "dick's sporting goods", "bastard file",
+  "fag packet", "niggardly", "dyke wall", "pornographic", "fukushima",
+];

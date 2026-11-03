@@ -1,69 +1,66 @@
 import type { Response } from "express";
-import { ANYWHERE, WHOLE_WORD } from "./content-policy-terms";
+import { DataSet, RegExpMatcher, englishDataset, type EnglishProfaneWord, englishRecommendedTransformers, parseRawPattern } from "obscenity";
+import { ALLOWED_PHRASES, EXTRA_ANYWHERE, EXTRA_WHOLE_WORD } from "./content-policy-terms";
 
 // One rule for everything people write that other people read: listings, profiles, messages, reviews, wishlist posts and
 // the notes on a request. Routes call checkText / rejectDisallowedText before they store or upload anything.
+//
+// The matching is done by the `obscenity` library (its English dataset and recommended transformers: leetspeak such as "sh1t",
+// repeated letters such as "fuuuck", look-alike and accented characters, and its own list of innocent words like "Scunthorpe").
+// ShareSwap adds to it in content-policy-terms.ts, and adds one step the library does not have: letters spread out with spaces
+// or punctuation ("f u c k", "f.u.c.k").
 
 export const CONTENT_NOT_ALLOWED_CODE = "CONTENT_NOT_ALLOWED";
 export const CONTENT_NOT_ALLOWED_MESSAGE = "This contains language we don't allow. Please change it and try again.";
 
-/** Characters people swap for letters to get past a filter. Digits only count when they sit inside a word. */
-const LOOKALIKES: Record<string, string> = {
-  "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t",
-  "@": "a", "$": "s", "!": "i", "|": "i", "+": "t", "€": "e", "£": "e", "¡": "i",
-};
-
-/** Lowercased, accents removed, lookalikes turned back into letters, everything else a space. */
-export function normalise(text: string): string {
-  const folded = text.normalize("NFKD").replace(/\p{M}+/gu, "").toLowerCase();
-  let out = "";
-  for (const ch of folded) {
-    if (/\p{L}/u.test(ch)) out += ch;
-    else if (LOOKALIKES[ch]) out += LOOKALIKES[ch];
-    else out += " ";
-  }
-  return out;
+/**
+ * The library shortens repeated letters in the text before matching (its recommended settings keep up to two of b, e, o, l, s
+ * and g and one of anything else), and does not do the same to its patterns. So a term with a double letter, like "trannies"
+ * or "jerkoff", has to be written the way the text will look: "tranies", "jerkof".
+ */
+export function asMatchedPattern(term: string): string {
+  return term.replace(/(.)\1+/g, (run, ch: string) => ch.repeat(Math.min(run.length, "beolsg".includes(ch) ? 2 : 1)));
 }
 
-/** "f u c k" is four one-letter tokens: join a run of three or more into one word. */
-function joinSpacedLetters(tokens: string[]): string[] {
-  const out: string[] = [];
-  let run = "";
-  const flush = () => {
-    if (run.length >= 3) out.push(run);
-    else for (const ch of run) out.push(ch);
-    run = "";
-  };
-  for (const token of tokens) {
-    if (token.length === 1) run += token;
-    else {
-      flush();
-      out.push(token);
-    }
-  }
-  flush();
-  return out;
+function buildMatcher(): RegExpMatcher {
+  // Pattern syntax: `|word|` is a complete word, `word` matches anywhere (see the library's pattern documentation).
+  const dataset = new DataSet<{ originalWord: EnglishProfaneWord }>().addAll(englishDataset);
+  for (const term of EXTRA_WHOLE_WORD) dataset.addPhrase((phrase) => phrase.addPattern(parseRawPattern(`|${asMatchedPattern(term)}|`)));
+  for (const term of EXTRA_ANYWHERE) dataset.addPhrase((phrase) => phrase.addPattern(parseRawPattern(asMatchedPattern(term))));
+  const built = dataset.build();
+  return new RegExpMatcher({
+    blacklistedTerms: built.blacklistedTerms,
+    whitelistedTerms: [...(built.whitelistedTerms ?? []), ...ALLOWED_PHRASES],
+    ...englishRecommendedTransformers,
+  });
 }
 
-/** A word as typed, with long runs of one letter shortened: "fuuuuck" -> "fuuck" -> "fuck". */
-function variants(word: string): string[] {
-  const upToTwo = word.replace(/(.)\1{2,}/g, "$1$1");
-  const single = word.replace(/(.)\1+/g, "$1");
-  return [...new Set([word, upToTwo, single])];
+const matcher = buildMatcher();
+
+/** A run of three or more single letters or digits split up by spaces, dots, dashes, underscores, asterisks or commas. */
+const SPREAD_OUT = /(?<![\p{L}\p{N}])(?:[\p{L}\p{N}][\s._\-*,]+){2,}[\p{L}\p{N}](?![\p{L}\p{N}])/gu;
+
+/** "f u c k" and "f.u.c.k" as one word: the text, plus each spread-out run joined up. Three or more, so "A. B. Smith" and "k.d. lang" are left alone. */
+export function withSpreadLettersJoined(text: string): string {
+  const joined = text.match(SPREAD_OUT)?.map((run) => run.replace(/[\s._\-*,]+/g, ""));
+  return joined?.length ? `${text}\n${joined.join("\n")}` : text;
 }
 
-const WHOLE = new Set(WHOLE_WORD);
+/**
+ * The library reads "!" and "|" as the letter i wherever they sit, so "trannies!" becomes "tranniesi" and stops being a whole
+ * word. A "!" that ends or starts a word is punctuation, not a letter: open it up into a space. A "!" inside a word ("b!tch")
+ * is left for the library to read as a letter.
+ */
+export function withEdgePunctuationOpened(text: string): string {
+  return text.replace(/(?<=\p{L})[!¡|]+(?![\p{L}\p{N}])/gu, " ").replace(/(?<![\p{L}\p{N}])[!¡|]+(?=\p{L})/gu, " ");
+}
 
 export function containsDisallowedLanguage(text: string): boolean {
   if (!text) return false;
-  const tokens = joinSpacedLetters(normalise(text).split(/\s+/).filter(Boolean));
-  for (const token of tokens) {
-    for (const form of variants(token)) {
-      if (WHOLE.has(form)) return true;
-      for (const term of ANYWHERE) if (form.includes(term)) return true;
-    }
-  }
-  return false;
+  const spread = withSpreadLettersJoined(text);
+  if (matcher.hasMatch(spread)) return true;
+  const opened = withEdgePunctuationOpened(spread);
+  return opened !== spread && matcher.hasMatch(opened);
 }
 
 export type PolicyResult = { ok: true } | { ok: false; field: string };

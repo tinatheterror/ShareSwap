@@ -2,6 +2,7 @@ import React, { act } from "react";
 import renderer from "react-test-renderer";
 
 const mockRefetchUser = jest.fn().mockResolvedValue(1);
+const mockLogout = jest.fn().mockResolvedValue(undefined);
 let mockUser: Record<string, unknown> | null = null;
 
 jest.mock("@/hooks/useColors", () => ({
@@ -17,7 +18,14 @@ jest.mock("@/lib/api", () => ({
   apiGet: jest.fn().mockResolvedValue({ regions: [{ code: "CA-BC", country: "CA", name: "British Columbia", ageOfMajority: 19 }] }),
   apiPost: jest.fn(),
 }));
-jest.mock("@/context/AuthContext", () => ({ useAuth: () => ({ user: mockUser, refetchUser: mockRefetchUser }) }));
+jest.mock("@/context/AuthContext", () => ({ useAuth: () => ({ user: mockUser, refetchUser: mockRefetchUser, logout: mockLogout }) }));
+jest.mock("@/components/AccountDeletionSheet", () => ({
+  AccountDeletionSheet: ({ onClose }: { onClose: () => void }) => {
+    const { View } = require("react-native");
+    const mockReact = require("react");
+    return mockReact.createElement(View, { testID: "deletion-sheet", onClose });
+  },
+}));
 jest.mock("@/lib/legalLinks", () => ({ openLegalLink: jest.fn(), TERMS_URL: "t", GUIDELINES_URL: "g" }));
 
 import { TermsGate } from "@/components/TermsGate";
@@ -75,4 +83,16 @@ test("an under-age answer is shown and the Terms are not accepted", async () => 
   expect(JSON.stringify(find(tree, "terms-gate-error").props.children)).toContain("at least 19");
   expect((apiPost as jest.Mock).mock.calls).toHaveLength(1);
   expect(mockRefetchUser).not.toHaveBeenCalled();
+});
+
+test("the gate offers Sign out and Delete my account, which opens the existing deletion sheet", async () => {
+  mockUser = { id: 1, termsAcceptanceRequired: true, ageConfirmationRequired: false, currentTermsVersion: "v1" };
+  const tree = await mount();
+  expect(maybe(tree, "deletion-sheet")).toHaveLength(0);
+  await press(tree, "terms-gate-sign-out");
+  expect(mockLogout).toHaveBeenCalledTimes(1);
+  await press(tree, "terms-gate-delete-account");
+  expect(maybe(tree, "deletion-sheet").length).toBeGreaterThan(0);
+  await act(async () => { maybe(tree, "deletion-sheet")[0].props.onClose(); });
+  expect(maybe(tree, "deletion-sheet")).toHaveLength(0);
 });

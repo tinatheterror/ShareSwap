@@ -17,8 +17,8 @@ const READABLE = ["/terms", "/privacy", "/community-guidelines", "/delete-accoun
  * legal-config.ts and age-of-majority.ts on the server). It asks only for what is still missing.
  */
 export function TermsGate() {
-  const { user } = useAuth();
-  const [location] = useLocation();
+  const { user, logoutMutation } = useAuth();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
   const [agreed, setAgreed] = useState(false);
   const [age, setAge] = useState<AgeValue>(emptyAge);
@@ -75,10 +75,19 @@ export function TermsGate() {
             <span>I have read and agree to the Terms of Service and Community Guidelines.</span>
           </label>
         )}
-        <DialogFooter>
+        <DialogFooter className="sm:flex-col sm:space-x-0 gap-2">
           <Button disabled={(termsRequired && !agreed) || (ageRequired && !ageComplete(age)) || accept.isPending} onClick={() => accept.mutate()} data-testid="terms-gate-accept">
             {accept.isPending ? "Saving…" : termsRequired ? "Agree and continue" : "Continue"}
           </Button>
+          {/* A way out for someone who cannot or will not continue. The deletion pages are on READABLE, and the server exempts /api/account/*. */}
+          <div className="flex justify-between gap-2">
+            <Button variant="ghost" size="sm" onClick={() => logoutMutation?.mutate()} disabled={logoutMutation?.isPending} data-testid="terms-gate-sign-out">
+              Sign out
+            </Button>
+            <Button variant="ghost" size="sm" className="text-red-600" onClick={() => navigate("/delete-account")} data-testid="terms-gate-delete-account">
+              Delete my account
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

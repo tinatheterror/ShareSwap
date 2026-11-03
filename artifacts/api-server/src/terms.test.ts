@@ -187,7 +187,7 @@ test("write actions are refused with TERMS_ACCEPTANCE_REQUIRED until the current
 
 test("the exemptions are exactly the safety and account paths", async () => {
   const { isExemptFromTermsAcceptance: exempt } = await import("./terms-enforcement.js");
-  for (const path of ["/api/account/accept-terms", "/api/account/deletion/request", "/api/reports", "/api/blocks/5", "/api/logout", "/api/admin/users/3/ban", "/api/user/push-token"]) assert.equal(exempt(path), true, path);
+  for (const path of ["/api/account/accept-terms", "/api/account/deletion/request", "/api/account/deletion/cancel", "/api/account/deletion/confirm", "/api/account/confirm-age", "/api/reports", "/api/blocks/5", "/api/logout", "/api/admin/users/3/ban", "/api/user/push-token"]) assert.equal(exempt(path), true, path);
   for (const path of ["/api/messages", "/api/items", "/api/items/4/request", "/api/users/9/reviews", "/api/wishlists", "/api/accounts-x", "/api/reports-archive", "/api/blocksmith"]) assert.equal(exempt(path), false, path);
 });
 
@@ -208,4 +208,15 @@ test("TERMS_ENFORCEMENT=off in production is announced at boot; in development, 
   assert.equal(termsEnforcementBootWarning({ NODE_ENV: "production", TERMS_ENFORCEMENT: "on" } as NodeJS.ProcessEnv), null);
   assert.equal(termsEnforcementBootWarning({ NODE_ENV: "development", TERMS_ENFORCEMENT: "off" } as NodeJS.ProcessEnv), null);
   assert.equal(termsEnforcementBootWarning({ TERMS_ENFORCEMENT: "off" } as NodeJS.ProcessEnv), null);
+});
+
+test("someone who has not accepted or confirmed their age can still reach the deletion flow", async () => {
+  const user = await makeUser("deleter", { termsAcceptedAt: null, termsVersion: null, ageConfirmedAt: null, ageRegion: null });
+  const client = await signIn(user);
+  assert.equal(((await (await client.post("/api/messages", { receiverId: user.id, content: "x" })).json()) as { code: string }).code, "TERMS_ACCEPTANCE_REQUIRED");
+  assert.equal((await client.get("/api/account/deletion-eligibility")).status, 200);
+  const request = await client.post("/api/account/deletion/request", {});
+  assert.notEqual(request.status, 403, "the gate does not stop a deletion request");
+  assert.notEqual(((await request.json()) as { code?: string }).code, "TERMS_ACCEPTANCE_REQUIRED");
+  assert.equal((await client.post("/api/logout", {})).status < 400, true, "and signing out works");
 });

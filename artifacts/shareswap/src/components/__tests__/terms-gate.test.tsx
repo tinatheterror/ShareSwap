@@ -7,10 +7,12 @@ const mocks = vi.hoisted(() => ({
   apiRequest: vi.fn(),
   invalidateQueries: vi.fn(),
   toast: vi.fn(),
+  navigate: vi.fn(),
+  logout: vi.fn(),
 }));
 
-vi.mock("@/hooks/use-auth", () => ({ useAuth: () => ({ user: mocks.user }) }));
-vi.mock("wouter", () => ({ useLocation: () => [mocks.path, vi.fn()] }));
+vi.mock("@/hooks/use-auth", () => ({ useAuth: () => ({ user: mocks.user, logoutMutation: { mutate: mocks.logout, isPending: false } }) }));
+vi.mock("wouter", () => ({ useLocation: () => [mocks.path, mocks.navigate] }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock("@/lib/queryClient", () => ({ apiRequest: mocks.apiRequest, queryClient: { invalidateQueries: mocks.invalidateQueries } }));
 vi.mock("@tanstack/react-query", () => ({
@@ -29,6 +31,8 @@ beforeEach(() => {
   mocks.apiRequest.mockReset().mockResolvedValue({ ok: true, json: async () => ({}) });
   mocks.invalidateQueries.mockReset();
   mocks.toast.mockReset();
+  mocks.navigate.mockReset();
+  mocks.logout.mockReset();
 });
 afterEach(cleanup);
 
@@ -98,5 +102,19 @@ describe("TermsGate", () => {
     expect((await screen.findByTestId("age-error")).textContent).toContain("at least 19");
     expect(mocks.apiRequest).toHaveBeenCalledTimes(1);
     expect(mocks.invalidateQueries).not.toHaveBeenCalled();
+  });
+
+  it("offers a way out: sign out, and the existing account deletion page", () => {
+    render(<TermsGate />);
+    fireEvent.click(screen.getByTestId("terms-gate-sign-out"));
+    expect(mocks.logout).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId("terms-gate-delete-account"));
+    expect(mocks.navigate).toHaveBeenCalledWith("/delete-account");
+  });
+
+  it("is not shown on the deletion page itself, so the deletion flow stays reachable", () => {
+    mocks.path = "/delete-account";
+    const { container } = render(<TermsGate />);
+    expect(container.textContent).toBe("");
   });
 });

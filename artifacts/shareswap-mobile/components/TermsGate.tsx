@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { AccountDeletionSheet } from "@/components/AccountDeletionSheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AgeFields, ageComplete, emptyAge, type AgeValue } from "@/components/AgeFields";
 import { useAuth } from "@/context/AuthContext";
@@ -15,11 +16,12 @@ import { moderationErrorMessage } from "@/lib/moderation";
  * (termsAcceptanceRequired and ageConfirmationRequired on /api/user); this only asks for what is missing and records the answer.
  */
 export function TermsGate() {
-  const { user, refetchUser } = useAuth();
+  const { user, refetchUser, logout } = useAuth();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [agreed, setAgreed] = useState(false);
   const [age, setAge] = useState<AgeValue>(emptyAge);
+  const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,6 +90,17 @@ export function TermsGate() {
         >
           {saving ? <ActivityIndicator color={colors.primaryForeground} /> : <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>{termsRequired ? "Agree and continue" : "Continue"}</Text>}
         </Pressable>
+
+        {/* A way out for someone who cannot or will not continue. The deletion calls are under /api/account, which the server exempts. */}
+        <View style={styles.wayOut}>
+          <Pressable testID="terms-gate-sign-out" accessibilityRole="button" onPress={() => { void logout(); }} hitSlop={8}>
+            <Text style={[styles.wayOutText, { color: colors.mutedForeground }]}>Sign out</Text>
+          </Pressable>
+          <Pressable testID="terms-gate-delete-account" accessibilityRole="button" onPress={() => setDeleting(true)} hitSlop={8}>
+            <Text style={[styles.wayOutText, { color: "#dc2626" }]}>Delete my account</Text>
+          </Pressable>
+        </View>
+        {deleting ? <AccountDeletionSheet visible onClose={() => setDeleting(false)} /> : null}
       </View>
     </Modal>
   );
@@ -100,6 +113,8 @@ const styles = StyleSheet.create({
   link: { textDecorationLine: "underline", color: "#0d9488" },
   agreeRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, alignSelf: "stretch", marginTop: 8 },
   agreeText: { flex: 1, fontSize: 14, lineHeight: 20, fontFamily: "Inter_500Medium" },
+  wayOut: { flexDirection: "row", justifyContent: "space-between", alignSelf: "stretch" },
+  wayOutText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   error: { color: "#dc2626", fontSize: 13, fontFamily: "Inter_500Medium", textAlign: "center" },
   button: { alignSelf: "stretch", borderRadius: 14, paddingVertical: 15, alignItems: "center", marginTop: "auto" },
   buttonText: { fontSize: 16, fontFamily: "Inter_700Bold" },

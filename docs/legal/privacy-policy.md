@@ -60,7 +60,7 @@ Five features send content to OpenAI, an AI provider, to produce their result. [
 
 We never send your name, email address or account details to OpenAI. We ask OpenAI not to use this content to train its models. [Counsel and engineering: confirm the terms that apply to the AI Integrations service, including OpenAI's retention of requests, and update this sentence to match.]
 
-We record your agreement for each feature, with the date and the wording you agreed to, and ask again if the wording changes. You can withdraw it at any time by writing to support@shareswap.app, and when you delete your account the record is deleted with it.
+We record your agreement for each feature, with the date and the wording you agreed to, and ask again if the wording changes. You can see and change each choice at any time in Settings under AI features, on the website and in the app, and when you delete your account the record is deleted with it.
 
 ## How long we keep it
 

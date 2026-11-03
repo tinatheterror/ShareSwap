@@ -101,7 +101,7 @@ export function AiConsentProvider({ children }: { children: ReactNode }) {
                 <p>{definition.notShared}</p>
                 <p><strong>If you say no:</strong> {definition.withoutConsent}</p>
                 <p>
-                  You can change your mind at any time by writing to support@shareswap.app. See our{" "}
+                  You can change your mind at any time in Settings under AI features. See our{" "}
                   <a href="/privacy" target="_blank" rel="noreferrer" className="text-teal-600 underline">Privacy Policy</a>.
                 </p>
               </div>

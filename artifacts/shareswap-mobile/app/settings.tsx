@@ -21,6 +21,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiRequest } from "@/lib/api";
 import { ApiEnvironmentLabel } from "@/components/ApiEnvironmentLabel";
+import { AiConsentSettings } from "@/components/AiConsentSettings";
 import { AccountDeletionSheet } from "@/components/AccountDeletionSheet";
 import { DeletionPendingBanner } from "@/components/DeletionPendingBanner";
 import { isDeletionPending } from "@/lib/accountDeletion";
@@ -475,6 +476,9 @@ export default function SettingsScreen() {
             );
           })}
         </View>
+
+        {/* ── AI features: consent to send content to OpenAI, per feature ── */}
+        <AiConsentSettings />
 
         {/* ── Account Actions ── */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>

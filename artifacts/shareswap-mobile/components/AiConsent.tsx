@@ -90,7 +90,7 @@ export function AiConsentProvider({ children }: { children: ReactNode }) {
                 <Text style={styles.bold}>If you say no: </Text>{pending.feature.withoutConsent}
               </Text>
               <Text style={[styles.body, { color: colors.mutedForeground }]}>
-                You can change your mind any time by writing to support@shareswap.app. See our{" "}
+                You can change your mind any time in Settings under AI features. See our{" "}
                 <Text style={styles.link} accessibilityRole="link" onPress={() => openLegalLink(PRIVACY_URL)}>Privacy Policy</Text>.
               </Text>
               {error ? <Text testID="ai-consent-error" style={styles.error}>{error}</Text> : null}

@@ -19,7 +19,6 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 - [ ] Have counsel confirm the age-of-majority table in artifacts/api-server/src/age-of-majority.ts (Canada 19 in BC, NB, NL, NS, NT, NU, YT and 18 elsewhere; US 18 except AL and NE 19, MS 21; checked against public sources on 2026-11-03, not against statutes) and the position on US territories, which are not offered. Also confirm that a birth date used once and not stored is enough for your obligations.
 - [ ] **Bump TERMS_VERSION** in artifacts/api-server/src/legal-config.ts once the legal text is final, so everyone is asked to accept it. Do it after the last edit to the Terms, Privacy Policy or Community Guidelines, not before. Bump AI_CONSENT_VERSION in ai-consent.ts whenever what is sent to OpenAI changes.
 - [ ] TERMS_ENFORCEMENT is unset in the production environment. If it is `off` the server logs an error-level line at every boot; treat that line as a page.
-- [ ] Add a way to withdraw AI consent in the apps (the endpoint exists: DELETE /api/ai-consent/:feature). The Privacy Policy draft currently says to write to support.
 - [ ] Confirm the support address. It defaults to support@shareswap.app; set SUPPORT_EMAIL in the environment to change it without a release.
 
 ### App Store / Play blockers

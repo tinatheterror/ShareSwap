@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AiConsentSettings } from "@/components/ai-consent-settings";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -235,6 +236,8 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        <AiConsentSettings />
 
         <Card className="mb-4">
           <CardHeader className="py-3 pb-2">

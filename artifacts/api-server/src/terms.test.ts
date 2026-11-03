@@ -19,7 +19,10 @@ const previousGoogle = { id: process.env.GOOGLE_CLIENT_ID, secret: process.env.G
 
 const clearLimiter = () => pool.query("DELETE FROM rate_limit_store WHERE key LIKE 'auth:%'");
 
+const previousEnforcement = process.env.TERMS_ENFORCEMENT;
+
 before(async () => {
+  process.env.TERMS_ENFORCEMENT = "on"; // the test script turns it off for the suites that sign in users who never accepted
   process.env.GOOGLE_CLIENT_ID = "test-client-id.apps.googleusercontent.com";
   process.env.GOOGLE_CLIENT_SECRET = "test-client-secret";
   ({ baseUrl, close: closeServer } = await startApp());
@@ -28,6 +31,8 @@ before(async () => {
 
 after(async () => {
   try {
+    await pool.query("DELETE FROM content_reports WHERE target_user_id IN (SELECT id FROM users WHERE username LIKE $1) OR reporter_id IN (SELECT id FROM users WHERE username LIKE $1)", [`${UNIQUE}-%`]);
+    await pool.query("DELETE FROM user_blocks WHERE blocker_id IN (SELECT id FROM users WHERE username LIKE $1) OR blocked_id IN (SELECT id FROM users WHERE username LIKE $1)", [`${UNIQUE}-%`]);
     await pool.query("DELETE FROM users WHERE username LIKE $1", [`${UNIQUE}-%`]);
     if (userIds.length) await db.delete(users).where(inArray(users.id, userIds));
     await clearLimiter();
@@ -36,6 +41,8 @@ after(async () => {
       if (value === undefined) delete process.env[name];
       else process.env[name] = value;
     }
+    if (previousEnforcement === undefined) delete process.env.TERMS_ENFORCEMENT;
+    else process.env.TERMS_ENFORCEMENT = previousEnforcement;
     await closeServer?.();
     await pool.end();
   }
@@ -148,4 +155,46 @@ test("a new Google sign-in has not accepted anything yet, so it is asked on firs
   const created = await row((result.user as { id: number }).id);
   assert.equal(created.termsAcceptedAt, null);
   assert.equal(termsAcceptanceRequired(created), true);
+});
+
+test("write actions are refused with TERMS_ACCEPTANCE_REQUIRED until the current text is accepted; reads, reports, blocks and accepting still work", async () => {
+  const other = await makeUser("write-other", { termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION });
+  for (const [label, extra] of [
+    ["write-legacy", {}],
+    ["write-stale", { termsAcceptedAt: new Date("2025-01-01"), termsVersion: "2025-01-01" }],
+  ] as const) {
+    const user = await makeUser(label, extra);
+    const client = await signIn(user);
+    const messages = await client.post("/api/messages", { receiverId: other.id, content: "hello" });
+    assert.equal(messages.status, 403, label);
+    const body = (await messages.json()) as { code: string; message: string };
+    assert.equal(body.code, "TERMS_ACCEPTANCE_REQUIRED");
+    assert.doesNotMatch(body.message, /csrf|token/i, "clients retry a 403 that mentions these");
+    for (const [method, path] of [["post", "/api/items"], ["post", "/api/wishlists"], ["post", `/api/users/${other.id}/reviews`], ["post", `/api/items/1/request`], ["patch", "/api/user-profile"]] as const) {
+      const response = await (client as any)[method](path, {});
+      assert.equal(response.status, 403, `${method} ${path}`);
+      assert.equal(((await response.json()) as { code: string }).code, "TERMS_ACCEPTANCE_REQUIRED", path);
+    }
+    assert.equal((await client.get("/api/user")).status, 200, "reading still works");
+    const report = await client.post("/api/reports", { targetType: "user", targetId: other.id, reason: "spam" });
+    assert.notEqual(((await report.json()) as { code?: string }).code, "TERMS_ACCEPTANCE_REQUIRED", "reports are never locked");
+    assert.equal((await client.post(`/api/blocks/${other.id}`, {})).status, 201, "blocking is never locked");
+    assert.equal((await client.post("/api/account/accept-terms", { version: TERMS_VERSION })).status, 200);
+    const after = await client.post("/api/messages", { receiverId: other.id, content: "hello" });
+    assert.notEqual(((await after.json()) as { code?: string }).code, "TERMS_ACCEPTANCE_REQUIRED", "after acceptance the write goes through to the route");
+  }
+});
+
+test("the exemptions are exactly the safety and account paths", async () => {
+  const { isExemptFromTermsAcceptance: exempt } = await import("./terms-enforcement.js");
+  for (const path of ["/api/account/accept-terms", "/api/account/deletion/request", "/api/reports", "/api/blocks/5", "/api/logout", "/api/admin/users/3/ban", "/api/user/push-token"]) assert.equal(exempt(path), true, path);
+  for (const path of ["/api/messages", "/api/items", "/api/items/4/request", "/api/users/9/reviews", "/api/wishlists", "/api/accounts-x", "/api/reports-archive", "/api/blocksmith"]) assert.equal(exempt(path), false, path);
+});
+
+test("TERMS_ENFORCEMENT=off lets writes through; anything else keeps the rule", async () => {
+  const { termsEnforced } = await import("./terms-enforcement.js");
+  assert.equal(termsEnforced({} as NodeJS.ProcessEnv), true);
+  assert.equal(termsEnforced({ TERMS_ENFORCEMENT: "on" } as NodeJS.ProcessEnv), true);
+  assert.equal(termsEnforced({ TERMS_ENFORCEMENT: "nonsense" } as NodeJS.ProcessEnv), true);
+  assert.equal(termsEnforced({ TERMS_ENFORCEMENT: " OFF " } as NodeJS.ProcessEnv), false);
 });

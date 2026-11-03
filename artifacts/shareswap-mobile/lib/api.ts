@@ -36,6 +36,13 @@ export function onSessionExpired(listener: () => void) {
   return () => { expirationListeners.delete(listener); };
 }
 
+const termsListeners = new Set<() => void>();
+/** Called when the server refuses a write because the current Terms are not accepted yet: the app refetches the user so the acceptance screen opens. */
+export function onTermsAcceptanceRequired(listener: () => void) {
+  termsListeners.add(listener);
+  return () => { termsListeners.delete(listener); };
+}
+
 function sessionError() {
   return Object.assign(new Error("Your session has expired. Please sign in again."), { status: 401 });
 }
@@ -105,6 +112,7 @@ async function throwIfNotOk(res: Response) {
     // require an explicit next step. Preserve that structured response so callers
     // can render the server-provided disclosure rather than parsing its message.
     if (parsed) Object.assign(err, parsed);
+    if (err.code === "TERMS_ACCEPTANCE_REQUIRED") termsListeners.forEach((listener) => listener());
     throw err;
   }
 }

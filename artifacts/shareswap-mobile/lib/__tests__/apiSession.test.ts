@@ -1,4 +1,4 @@
-import { apiGet, apiPost, onSessionExpired, setApiSession } from "../api";
+import { apiGet, apiPost, onSessionExpired, onTermsAcceptanceRequired, setApiSession } from "../api";
 import { resumeDestination } from "../sessionNavigation";
 
 // expo-constants is untranspiled ESM in node_modules, so the node-environment unit project cannot load it.
@@ -130,4 +130,19 @@ test("every request carries the app version and build, so the server can tell le
   const headers = mockFetch.mock.calls[0][1].headers;
   expect(headers["x-app-version"]).toBe("9.9.9");
   expect(headers["x-app-build"]).toBe("42");
+});
+
+test("a write refused for unaccepted Terms tells the app to reload the user, so the acceptance screen opens", async () => {
+  setApiSession(true);
+  const needed = jest.fn();
+  const stop = onTermsAcceptanceRequired(needed);
+  mockFetch.mockImplementation(async (url: string) =>
+    String(url).endsWith("/api/csrf-token")
+      ? response(200, { csrfToken: "t" })
+      : response(403, { code: "TERMS_ACCEPTANCE_REQUIRED", message: "Please accept the updated Terms of Service and Community Guidelines to continue." }),
+  );
+  await expect(apiPost("/api/messages", { content: "hi" })).rejects.toMatchObject({ status: 403, code: "TERMS_ACCEPTANCE_REQUIRED" });
+  expect(needed).toHaveBeenCalledTimes(1);
+  expect(mockFetch.mock.calls.filter(([url]) => String(url).endsWith("/api/messages"))).toHaveLength(1); // not mistaken for a CSRF failure and retried
+  stop();
 });

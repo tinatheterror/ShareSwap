@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { AppState, AppStateStatus } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, onSessionExpired, setApiSession } from "@/lib/api";
+import { apiGet, apiPost, onSessionExpired, onTermsAcceptanceRequired, setApiSession } from "@/lib/api";
 import { getPushTokenForLogout, registerPushToken } from "@/hooks/usePushNotifications";
 
 const HAS_SESSION_KEY = "has_session";
@@ -125,6 +125,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
   }, [expireSession, queryClient]);
+
+  // A write the server refused because the Terms are not accepted: reload the user so the acceptance screen opens.
+  useEffect(() => onTermsAcceptanceRequired(() => { void fetchUser(); }), [fetchUser]);
 
   useEffect(() => {
     let mounted = true;

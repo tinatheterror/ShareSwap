@@ -9,6 +9,8 @@ async function throwIfResNotOk(res: Response) {
     error.code = parsed?.code;
     error.status = res.status;
     if (parsed && typeof parsed === "object") Object.assign(error, parsed);
+    // The server refuses writes until the current Terms are accepted: refetch the user so the acceptance screen opens.
+    if (error.code === "TERMS_ACCEPTANCE_REQUIRED") void queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     throw error;
   }
 }

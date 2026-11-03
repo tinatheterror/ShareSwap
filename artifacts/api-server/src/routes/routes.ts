@@ -58,6 +58,7 @@ import type { InsertItem } from "@workspace/db";
 import connectPgSimple from "connect-pg-simple";
 import { recommendationEngine } from "../recommendation-engine";
 import { addSimplifiedRoutes } from "../simplified-routes";
+import { requireCurrentTerms } from "../terms-enforcement";
 import { computeAuthoritativeRentalPricing } from "../rental-pricing";
 import { platformConfig, calculateCommission } from "../platform-config";
 import { AntiFarmingSystem } from "../anti-farming-system";
@@ -1994,6 +1995,8 @@ export function registerRoutes(
     },
   };
   setupAuth(app);
+  // Write actions wait on acceptance of the current Terms (see terms-enforcement.ts).
+  app.use("/api", requireCurrentTerms);
   app.use(usernameScrubMiddleware);
 
   if (e2eTestModeEnabled()) {

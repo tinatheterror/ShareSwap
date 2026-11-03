@@ -21,6 +21,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiRequest } from "@/lib/api";
 import { ApiEnvironmentLabel } from "@/components/ApiEnvironmentLabel";
+import { FEEDBACK_URL } from "@/lib/feedback";
 import { AiConsentSettings } from "@/components/AiConsentSettings";
 import { AccountDeletionSheet } from "@/components/AccountDeletionSheet";
 import { DeletionPendingBanner } from "@/components/DeletionPendingBanner";
@@ -608,6 +609,25 @@ export default function SettingsScreen() {
             </View>
             <Feather name="mail" size={16} color={colors.mutedForeground} />
           </Pressable>
+
+          {/* The public feedback board in the browser. Nothing about the person is passed to it. */}
+          {FEEDBACK_URL ? (
+            <>
+              <View style={[styles.sep, { backgroundColor: colors.border }]} />
+              <Pressable
+                testID="feedback-row"
+                accessibilityRole="link"
+                onPress={() => openLegalLink(FEEDBACK_URL!)}
+                style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <View style={styles.actionText}>
+                  <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Send feedback</Text>
+                  <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>Suggest an idea or report a problem. Opens in your browser.</Text>
+                </View>
+                <Feather name="external-link" size={16} color={colors.mutedForeground} />
+              </Pressable>
+            </>
+          ) : null}
         </View>
       </ScrollView>
 

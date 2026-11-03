@@ -8,19 +8,22 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "shareswap.app"
+        "EXPO_PUBLIC_DOMAIN": "shareswap.app",
+        "EXPO_PUBLIC_FEEDBACK_URL": "https://shareswap.userjot.com"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "shareswap.app"
+        "EXPO_PUBLIC_DOMAIN": "shareswap.app",
+        "EXPO_PUBLIC_FEEDBACK_URL": "https://shareswap.userjot.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "shareswap.app"
+        "EXPO_PUBLIC_DOMAIN": "shareswap.app",
+        "EXPO_PUBLIC_FEEDBACK_URL": "https://shareswap.userjot.com"
       }
     }
   },

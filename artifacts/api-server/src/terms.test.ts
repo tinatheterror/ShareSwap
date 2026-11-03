@@ -198,3 +198,14 @@ test("TERMS_ENFORCEMENT=off lets writes through; anything else keeps the rule", 
   assert.equal(termsEnforced({ TERMS_ENFORCEMENT: "nonsense" } as NodeJS.ProcessEnv), true);
   assert.equal(termsEnforced({ TERMS_ENFORCEMENT: " OFF " } as NodeJS.ProcessEnv), false);
 });
+
+test("TERMS_ENFORCEMENT=off in production is announced at boot; in development, or with enforcement on, nothing is said", async () => {
+  const { termsEnforcementBootWarning } = await import("./terms-enforcement.js");
+  const warning = termsEnforcementBootWarning({ NODE_ENV: "production", TERMS_ENFORCEMENT: "off" } as NodeJS.ProcessEnv);
+  assert.match(warning ?? "", /TERMS_ENFORCEMENT=off in production/);
+  assert.match(termsEnforcementBootWarning({ NODE_ENV: "production", TERMS_ENFORCEMENT: " OFF " } as NodeJS.ProcessEnv) ?? "", /NOT refused/);
+  assert.equal(termsEnforcementBootWarning({ NODE_ENV: "production" } as NodeJS.ProcessEnv), null);
+  assert.equal(termsEnforcementBootWarning({ NODE_ENV: "production", TERMS_ENFORCEMENT: "on" } as NodeJS.ProcessEnv), null);
+  assert.equal(termsEnforcementBootWarning({ NODE_ENV: "development", TERMS_ENFORCEMENT: "off" } as NodeJS.ProcessEnv), null);
+  assert.equal(termsEnforcementBootWarning({ TERMS_ENFORCEMENT: "off" } as NodeJS.ProcessEnv), null);
+});

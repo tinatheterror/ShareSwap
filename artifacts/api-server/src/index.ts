@@ -9,6 +9,7 @@ import { applyStartupMigrations } from "./startup-migrations";
 import { logStripeStartup } from "./stripe.server";
 import { requireSubscriptionWebhookSecret } from "./subscription-webhook";
 import { moderationEmail } from "./moderation-config";
+import { termsEnforcementBootWarning } from "./terms-enforcement";
 import { timeZoneBootLine } from "./request-dates";
 import { backgroundJobsBootLine } from "./background-jobs-gate";
 import { backgroundJobs } from "./background-jobs-registry";
@@ -30,6 +31,8 @@ if (Number.isNaN(port) || port <= 0) {
 async function start() {
   // First, so it is in the log even when a later step stops the boot.
   logger.info(timeZoneBootLine());
+  const termsWarning = termsEnforcementBootWarning();
+  if (termsWarning) logger.error(termsWarning);
   if (!moderationEmail()) {
     logger.warn("[moderation] MODERATION_EMAIL is not set: reports are stored and queued, but nobody is emailed about them");
   }

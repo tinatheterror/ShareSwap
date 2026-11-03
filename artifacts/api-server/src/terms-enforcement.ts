@@ -33,6 +33,16 @@ export function isExemptFromTermsAcceptance(path: string): boolean {
  */
 export const termsEnforced = (env: NodeJS.ProcessEnv = process.env) => env.TERMS_ENFORCEMENT?.trim().toLowerCase() !== "off";
 
+/**
+ * The boot line for TERMS_ENFORCEMENT=off in production, where it means nobody has to accept the Terms or confirm their age
+ * before writing anything. It is for emergencies and tests, so it is logged at error level every time the server starts, and
+ * null when there is nothing to say.
+ */
+export function termsEnforcementBootWarning(env: NodeJS.ProcessEnv = process.env): string | null {
+  if (env.NODE_ENV !== "production" || termsEnforced(env)) return null;
+  return "[terms] TERMS_ENFORCEMENT=off in production: write actions are NOT refused for people who have not accepted the current Terms or confirmed their age. Unset it unless this is a deliberate, temporary rollback.";
+}
+
 /** Refuses write actions from a signed-in person who has not accepted the current Terms. Reads and signed-out requests pass. */
 export function requireCurrentTerms(req: Request, res: Response, next: NextFunction) {
   if (!WRITE_METHODS.has(req.method.toUpperCase()) || !termsEnforced()) return next();

@@ -44,7 +44,7 @@ We use your information to run your account; to show listings and wishlists near
 - **OpenAI** (the AI features, only after you agree to each one): see "AI features and your consent" below.
 - **OpenStreetMap Nominatim** (looking up coordinates for a postal code or city): the place text you enter.
 - **Replit** (hosting, the database and object storage for photos), which stores all of the above on our behalf, and whose AI Integrations service carries the AI requests to OpenAI.
-- **UserJot** (feedback widget, website only, and only while it is switched on): your user number, your email address (which is your username), the page you are on and whether you are on a phone or a computer, so you can send us feedback. [Decide whether to keep the widget; if so, confirm UserJot's terms.]
+- **UserJot** (feedback widget, website only, and only while it is switched on): your internal user number, so feedback can be tied to your account, and whatever you write in a feedback post. Not your name, email address or the page you are on. Loading the widget also shows UserJot your IP address and browser details, as any website you load from does. The mobile app does not load it: its Send feedback row opens UserJot's public board in your browser and passes nothing about you.
 - **Authorities and advisers.** We may disclose information when the law requires it, to report content that appears to be illegal, to protect someone's safety, or to our lawyers and auditors.
 
 These providers may process data in countries other than your own. [Counsel: add the transfer mechanism and the list of countries.]

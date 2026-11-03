@@ -10,7 +10,6 @@ declare global {
 
 interface UseUserJotOptions {
   userId?: number;
-  username?: string;
 }
 
 let scriptLoaded = false;
@@ -31,7 +30,12 @@ function loadSDK() {
   document.head.appendChild(script);
 }
 
-export function useUserJot({ userId, username }: UseUserJotOptions) {
+/**
+ * The website feedback widget (UserJot). The only thing it is told about the person is the internal user number, so feedback can
+ * be tied to an account: no email address, username or name, and no page URL or other custom fields (URLs can carry query
+ * strings). Website only: the mobile app opens the public board in the browser and passes nothing (see FEEDBACK_URL).
+ */
+export function useUserJot({ userId }: UseUserJotOptions) {
   useEffect(() => {
     const projectId = import.meta.env.VITE_USERJOT_PROJECT_ID;
     if (!projectId || !userId) return;
@@ -47,18 +51,8 @@ export function useUserJot({ userId, username }: UseUserJotOptions) {
       });
     }
 
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
-
-    window.uj.identify({
-      id: String(userId),
-      name: username || undefined,
-    });
-
-    window.uj.setCustomFields?.({
-      device_type: isMobile ? "mobile" : "web",
-      page_url: window.location.href,
-    });
-  }, [userId, username]);
+    window.uj.identify({ id: String(userId) });
+  }, [userId]);
 
   const openFeedback = useCallback(() => {
     if (window.uj?.showWidget) {

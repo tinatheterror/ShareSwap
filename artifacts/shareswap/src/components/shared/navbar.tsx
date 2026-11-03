@@ -352,10 +352,7 @@ export function Navbar() {
       window.removeEventListener("tutorial-close-mobile-menu", handleCloseMenu);
     };
   }, []);
-  const { openFeedback } = useUserJot({
-    userId: user?.id,
-    username: user?.username,
-  });
+  const { openFeedback } = useUserJot({ userId: user?.id });
 
   return (
     <>

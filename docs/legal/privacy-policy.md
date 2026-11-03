@@ -24,7 +24,7 @@ ShareSwap is for people who have reached the age of majority where they live: 19
 
 **Identity verification.** If you choose to verify, Persona collects your name, ID document and a selfie on our behalf. We keep your name, ID number, the Persona inquiry reference and the result.
 
-**Devices and technical data.** Push notification tokens and your notification preferences; a session cookie that keeps you signed in; on the web, a device fingerprint built from browser characteristics (screen size, time zone, language, platform), used only to spot repeat sign-ups and referral abuse; your IP address, held in a counter for about 15 minutes to limit repeated sign-in attempts, and in our server logs. We do not use advertising trackers or third-party analytics, and we do not sell personal information.
+**Devices and technical data.** Push notification tokens and your notification preferences; a session cookie that keeps you signed in; on the web, a device fingerprint built from browser characteristics (screen size, time zone, language, platform), used only to spot repeat sign-ups and referral abuse; your IP address, held in a counter for about 15 minutes to limit repeated sign-in attempts, and in our server logs. We do not use advertising trackers or analytics services, and we do not sell personal information.
 
 **Reports, blocks and safety records.** Reports you make or that are made about you, the people you block, moderation decisions, and the date you accepted our Terms and the version you accepted.
 
@@ -43,14 +43,15 @@ We use your information to run your account; to show listings and wishlists near
 - **Expo** (push notifications): your push token and the notification text, passed on to Apple or Google to reach your device.
 - **OpenAI** (the AI features, only after you agree to each one): see "AI features and your consent" below.
 - **OpenStreetMap Nominatim** (looking up coordinates for a postal code or city): the place text you enter.
-- **Replit** (hosting, the database and object storage for photos), which stores all of the above on our behalf.
+- **Replit** (hosting, the database and object storage for photos), which stores all of the above on our behalf, and whose AI Integrations service carries the AI requests to OpenAI.
+- **UserJot** (feedback widget, website only, and only while it is switched on): your user number, your email address (which is your username), the page you are on and whether you are on a phone or a computer, so you can send us feedback. [Decide whether to keep the widget; if so, confirm UserJot's terms.]
 - **Authorities and advisers.** We may disclose information when the law requires it, to report content that appears to be illegal, to protect someone's safety, or to our lawyers and auditors.
 
 These providers may process data in countries other than your own. [Counsel: add the transfer mechanism and the list of countries.]
 
 ## AI features and your consent
 
-Five features send content to OpenAI, an AI provider, to produce their result. [Confirm: requests are routed through Replit's AI Integrations service, which forwards them to OpenAI.] Each one asks for your permission the first time you use it, names OpenAI, and says what will be shared. Nothing is sent to OpenAI before you agree to that feature, and you can say no and carry on:
+Five features send content to OpenAI, an AI provider, to produce their result. ShareSwap does not hold its own OpenAI account: the requests are made through Replit's AI Integrations service, which forwards them to OpenAI. Each one asks for your permission the first time you use it, names OpenAI, and says what will be shared. Nothing is sent to OpenAI before you agree to that feature, and you can say no and carry on:
 
 - **Profile photo check.** Sends the profile photo you upload, which shows your face, so OpenAI can check that it shows a clear face. If you decline, your photo is saved without the check.
 - **SmartScan.** Sends the item photos you give it, to identify the item and fill in its details. If you decline, SmartScan is unavailable and you can fill in the listing yourself.
@@ -58,7 +59,7 @@ Five features send content to OpenAI, an AI provider, to produce their result. [
 - **Import from a screenshot.** Sends the screenshots you upload (up to 5), which can show whatever the original listing showed, such as names, prices and photos. If you decline, it is unavailable.
 - **Category suggestion.** Sends the item name you type, to suggest a category. If you decline, you choose the category yourself.
 
-We never send your name, email address or account details to OpenAI. We ask OpenAI not to use this content to train its models. [Counsel and engineering: confirm the terms that apply to the AI Integrations service, including OpenAI's retention of requests, and update this sentence to match.]
+We never send your name, email address or account details to OpenAI. [Confirm before launch, under the terms of Replit's AI Integrations service and OpenAI: how long the requests and their content are kept, and whether they may be used to train models. Then say so here in one sentence.]
 
 We record your agreement for each feature, with the date and the wording you agreed to, and ask again if the wording changes. You can see and change each choice at any time in Settings under AI features, on the website and in the app, and when you delete your account the record is deleted with it.
 

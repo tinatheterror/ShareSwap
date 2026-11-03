@@ -14,6 +14,7 @@ vi.mock("wouter", () => ({ useLocation: () => [mocks.path, vi.fn()] }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock("@/lib/queryClient", () => ({ apiRequest: mocks.apiRequest, queryClient: { invalidateQueries: mocks.invalidateQueries } }));
 vi.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({ data: { regions: [{ code: "CA-ON", country: "CA", name: "Ontario", ageOfMajority: 18 }, { code: "CA-BC", country: "CA", name: "British Columbia", ageOfMajority: 19 }] } }),
   useMutation: ({ mutationFn, onSuccess, onError }: any) => ({
     isPending: false,
     mutate: () => mutationFn().then(onSuccess, onError),
@@ -69,5 +70,33 @@ describe("TermsGate", () => {
       expect(screen.queryByTestId("terms-gate"), path).toBeNull();
       unmount();
     }
+  });
+
+  it("asks for the age too: nothing is sent until both are filled in, then the age is checked first and the Terms are accepted", async () => {
+    mocks.user = { id: 1, termsAcceptanceRequired: true, ageConfirmationRequired: true, currentTermsVersion: "2026-11-02" };
+    render(<TermsGate />);
+    const accept = screen.getByTestId("terms-gate-accept") as HTMLButtonElement;
+    fireEvent.click(screen.getByTestId("terms-gate-checkbox"));
+    expect(accept.disabled).toBe(true);
+    fireEvent.change(screen.getByTestId("age-region"), { target: { value: "CA-BC" } });
+    fireEvent.change(screen.getByTestId("age-dob"), { target: { value: "1990-05-05" } });
+    expect(accept.disabled).toBe(false);
+    fireEvent.click(accept);
+    await waitFor(() => expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["/api/user"] }));
+    expect(mocks.apiRequest.mock.calls.map((call) => call[1])).toEqual(["/api/account/confirm-age", "/api/account/accept-terms"]);
+    expect(mocks.apiRequest.mock.calls[0][2]).toEqual({ dateOfBirth: "1990-05-05", region: "CA-BC" });
+  });
+
+  it("an existing account that only needs its age checked sees no Terms box, and an under-age answer is shown on the screen", async () => {
+    mocks.user = { id: 1, termsAcceptanceRequired: false, ageConfirmationRequired: true, currentTermsVersion: "2026-11-02" };
+    mocks.apiRequest.mockResolvedValue({ ok: false, json: async () => ({ code: "AGE_NOT_ELIGIBLE", message: "You must be at least 19 to use ShareSwap in British Columbia." }) });
+    render(<TermsGate />);
+    expect(screen.queryByTestId("terms-gate-checkbox")).toBeNull();
+    fireEvent.change(screen.getByTestId("age-region"), { target: { value: "CA-BC" } });
+    fireEvent.change(screen.getByTestId("age-dob"), { target: { value: "2008-01-01" } });
+    fireEvent.click(screen.getByTestId("terms-gate-accept"));
+    expect((await screen.findByTestId("age-error")).textContent).toContain("at least 19");
+    expect(mocks.apiRequest).toHaveBeenCalledTimes(1);
+    expect(mocks.invalidateQueries).not.toHaveBeenCalled();
   });
 });

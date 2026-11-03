@@ -8,11 +8,11 @@ ShareSwap lets neighbours lend, rent, swap and give away things they own. This p
 
 ## Who can use ShareSwap
 
-ShareSwap is for people aged 18 or over. We do not knowingly collect information from anyone under 18. If you believe a child has an account, write to support@shareswap.app and we will delete it.
+ShareSwap is for people who have reached the age of majority where they live: 19 in British Columbia, New Brunswick, Newfoundland and Labrador, Nova Scotia, the Northwest Territories, Nunavut and Yukon; 18 in the other Canadian provinces; and in the United States 18, except 19 in Alabama and Nebraska and 21 in Mississippi. We do not knowingly collect information from anyone younger. At sign-up we ask for your date of birth and your province or state. We use the date of birth once, to check your age, and do not store it. We store the province or state and the date the check passed. If you believe a minor has an account, write to support@shareswap.app and we will delete it.
 
 ## What we collect
 
-**Account details.** Email address, username, handle, display name, full name, password (stored only as a salted hash), phone number if you add one, a short bio, and a profile photo. If you sign in with Google we receive your Google account identifier, name and email address.
+**Account details.** Province or state and the date your age was confirmed (not your date of birth), email address, username, handle, display name, full name, password (stored only as a salted hash), phone number if you add one, a short bio, and a profile photo. If you sign in with Google we receive your Google account identifier, name and email address.
 
 **Location.** You choose a default postal code and city and a search radius. When you list an item you can add its address or coordinates, and a pickup or drop-off address for a delivery. You can save location alerts, which store keywords, coordinates and a radius. We use location to show you things nearby and to work out distances, and to arrange delivery. The apps do not track your position in the background. We turn a postal code or city into coordinates with the OpenStreetMap Nominatim service (see below).
 
@@ -75,7 +75,7 @@ Backups roll off on the hosting provider's normal schedule. [Confirm backup rete
 
 ## Deleting your account
 
-You can request deletion in the app or at https://shareswap.app/delete-account after signing in. We first check that nothing is still in progress: open requests, claims, deposits or payouts must finish, and a wallet balance of $10 or more must be withdrawn. A balance from $1 to under $10 is offered as a withdrawal, and under $1 is forfeited, after you acknowledge it. Deletion then waits 14 days, during which you can cancel; after that, a job deletes the account. It removes your profile, contact details, password, photos, location, saved cards (Stripe customer and, where possible, Connect account), push tokens, wishlists, alerts, notifications, game and ShareCoin history, and verification data. Messages you wrote are replaced with "[Message removed]", your reviews show "Former member" with the comment removed, and your listings are removed from view. Other people's side of shared records stays.
+You can request deletion in the app or at https://shareswap.app/delete-account after signing in. We first check that nothing is still in progress: open requests, claims, deposits or payouts must finish, and a wallet balance of $10 or more must be withdrawn. A balance from $1 to under $10 is offered as a withdrawal, and under $1 is forfeited, after you acknowledge it. Deletion then waits 14 days, during which you can cancel; after that, a job deletes the account. It removes your profile, province or state, contact details, password, photos, location, saved cards (Stripe customer and, where possible, Connect account), push tokens, wishlists, alerts, notifications, game and ShareCoin history, and verification data. Messages you wrote are replaced with "[Message removed]", your reviews show "Former member" with the comment removed, and your listings are removed from view. Other people's side of shared records stays.
 
 ## Your choices and rights
 

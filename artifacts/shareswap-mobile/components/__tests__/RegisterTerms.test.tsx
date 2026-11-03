@@ -22,6 +22,7 @@ jest.mock("@expo/vector-icons", () => {
   const mockReact = require("react");
   return { Feather: (props: object) => mockReact.createElement(View, props) };
 });
+jest.mock("@/lib/api", () => ({ apiGet: jest.fn().mockResolvedValue({ regions: [{ code: "CA-ON", country: "CA", name: "Ontario", ageOfMajority: 18 }] }), apiPost: jest.fn() }));
 jest.mock("@/lib/legalLinks", () => ({
   openLegalLink: jest.fn(),
   PRIVACY_URL: "https://shareswap.app/privacy",
@@ -63,13 +64,32 @@ describe("Create account asks for explicit agreement", () => {
     expect(mockRegister).not.toHaveBeenCalled();
   });
 
-  test("ticking the box enables the button and the register call says the terms were accepted", async () => {
+  const fillAge = async () => {
+    await act(async () => { find(tree, "age-dob").props.onChangeText("19900505"); });
+    await act(async () => { find(tree, "age-region").props.onPress(); });
+    await act(async () => { find(tree, "age-region-CA-ON").props.onPress(); });
+  };
+
+  test("without a date of birth and a place nothing is sent, even with the box ticked", async () => {
+    await act(async () => { find(tree, "accept-terms-checkbox").props.onPress(); });
+    await act(async () => { find(tree, "create-account-button").props.onPress(); });
+    expect(mockRegister).not.toHaveBeenCalled();
+    expect(alert).toHaveBeenCalledWith("One more thing", expect.stringContaining("date of birth"));
+  });
+
+  test("the date of birth is typed as digits and shown as YYYY-MM-DD", async () => {
+    await act(async () => { find(tree, "age-dob").props.onChangeText("19900505"); });
+    expect(find(tree, "age-dob").props.value).toBe("1990-05-05");
+  });
+
+  test("ticking the box enables the button and the register call says the terms were accepted and carries the age answer", async () => {
+    await fillAge();
     await act(async () => { find(tree, "accept-terms-checkbox").props.onPress(); });
     expect(find(tree, "accept-terms-checkbox").props.accessibilityState).toEqual({ checked: true });
     expect(find(tree, "create-account-button").props.disabled).toBe(false);
     await act(async () => { find(tree, "create-account-button").props.onPress(); });
     expect(mockRegister).toHaveBeenCalledTimes(1);
-    expect(mockRegister.mock.calls[0][0]).toMatchObject({ acceptedTerms: true, email: "avery@example.com" });
+    expect(mockRegister.mock.calls[0][0]).toMatchObject({ acceptedTerms: true, email: "avery@example.com", dateOfBirth: "1990-05-05", region: "CA-ON" });
   });
 
   test("unticking it again blocks the sign-up again", async () => {

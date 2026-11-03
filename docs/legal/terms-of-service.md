@@ -8,7 +8,14 @@ These Terms are an agreement between you and [legal entity name] ("ShareSwap", "
 
 ## Who can use ShareSwap
 
-You must be at least 18 years old and able to make a binding contract. You must give accurate information, keep your password safe, and keep one account. You are responsible for everything done through your account. We may refuse or end an account to keep ShareSwap safe.
+You must have reached the age of majority where you live. Renting, lending against a deposit and being paid out are contracts, and a minor cannot make them. The age of majority is:
+
+- **Canada:** 19 in British Columbia, New Brunswick, Newfoundland and Labrador, Nova Scotia, the Northwest Territories, Nunavut and Yukon; 18 in Alberta, Manitoba, Ontario, Prince Edward Island, Quebec and Saskatchewan.
+- **United States:** 18, except 19 in Alabama and Nebraska and 21 in Mississippi.
+
+ShareSwap is not currently offered in other places, including US territories. You tell us your date of birth and where you live when you sign up (or the first time you open the app after we start asking), and we check them against these ages. If you move to a place with a higher age, you must wait until you reach it. We may ask again, and we may end an account that gave false details. [Counsel: confirm the table and the territory position.]
+
+You must also be able to make a binding contract. You must give accurate information, keep your password safe, and keep one account. You are responsible for everything done through your account. We may refuse or end an account to keep ShareSwap safe.
 
 ## What ShareSwap is
 

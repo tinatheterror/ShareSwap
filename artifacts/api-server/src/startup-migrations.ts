@@ -228,6 +228,22 @@ export async function ensureTermsAcceptanceColumns() {
   }
 }
 
+const AGE_CONFIRMATION_FILE = "lib/db/scripts/0016_age_confirmation.sql";
+
+/** users.age_confirmed_at / age_region (0016): every /api/user read selects them, so a missing column would fail them all. */
+export async function ensureAgeConfirmationColumns() {
+  const { rows } = await pool.query(
+    `SELECT (SELECT count(*)::int FROM information_schema.columns
+              WHERE table_schema = current_schema() AND table_name = 'users' AND column_name IN ('age_confirmed_at', 'age_region')) AS present`,
+  );
+  if (rows[0]?.present === 2) return;
+  try {
+    await runMigrationFile(AGE_CONFIRMATION_FILE);
+  } catch (err) {
+    if ((err as { code?: string }).code !== "42701") throw err;
+  }
+}
+
 const AI_CONSENTS_FILE = "lib/db/scripts/0015_ai_consents.sql";
 
 /** ai_consents (0015): every AI feature reads it before sending anything to OpenAI, so a missing table would fail them all. */
@@ -252,6 +268,7 @@ export async function applyStartupMigrations() {
   await ensureWishlistHiddenAt();
   await ensureTermsAcceptanceColumns();
   await ensureAiConsentsTable();
+  await ensureAgeConfirmationColumns();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
   await ensureJobSwitchesAttributionConstraint();

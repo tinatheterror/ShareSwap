@@ -1,8 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
+import { ageConfirmationRequired } from "./age-of-majority";
 import { termsAcceptanceRequired } from "./legal-config";
 
 /** The error code clients route to the acceptance screen. */
 export const TERMS_ACCEPTANCE_REQUIRED_CODE = "TERMS_ACCEPTANCE_REQUIRED";
+export const AGE_CONFIRMATION_REQUIRED_CODE = "AGE_CONFIRMATION_REQUIRED";
+export const AGE_CONFIRMATION_REQUIRED_MESSAGE = "Please confirm your date of birth and where you live to continue.";
 
 // Deliberately free of the words "csrf" and "token": both apps retry a 403 whose body mentions them.
 export const TERMS_ACCEPTANCE_REQUIRED_MESSAGE = "Please accept the updated Terms of Service and Community Guidelines to continue.";
@@ -33,10 +36,12 @@ export const termsEnforced = (env: NodeJS.ProcessEnv = process.env) => env.TERMS
 /** Refuses write actions from a signed-in person who has not accepted the current Terms. Reads and signed-out requests pass. */
 export function requireCurrentTerms(req: Request, res: Response, next: NextFunction) {
   if (!WRITE_METHODS.has(req.method.toUpperCase()) || !termsEnforced()) return next();
-  const user = req.user as { termsAcceptedAt?: Date | string | null; termsVersion?: string | null } | undefined;
+  const user = req.user as { termsAcceptedAt?: Date | string | null; termsVersion?: string | null; ageConfirmedAt?: Date | string | null; ageRegion?: string | null } | undefined;
   if (!user) return next();
   const path = req.originalUrl.split("?")[0];
   if (isExemptFromTermsAcceptance(path)) return next();
-  if (!termsAcceptanceRequired(user)) return next();
-  return res.status(403).json({ code: TERMS_ACCEPTANCE_REQUIRED_CODE, message: TERMS_ACCEPTANCE_REQUIRED_MESSAGE });
+  if (termsAcceptanceRequired(user)) return res.status(403).json({ code: TERMS_ACCEPTANCE_REQUIRED_CODE, message: TERMS_ACCEPTANCE_REQUIRED_MESSAGE });
+  // The same rule and the same exemptions for the age check: nobody writes anything until their age has been confirmed.
+  if (ageConfirmationRequired(user)) return res.status(403).json({ code: AGE_CONFIRMATION_REQUIRED_CODE, message: AGE_CONFIRMATION_REQUIRED_MESSAGE });
+  return next();
 }

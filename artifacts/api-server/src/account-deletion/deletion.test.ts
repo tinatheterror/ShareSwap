@@ -396,7 +396,7 @@ test("deleting a banned account records a keyed hash of the normalised email, an
 
   // And the banned address cannot register again.
   await pool.query("DELETE FROM rate_limit_store WHERE key LIKE 'auth:%'");
-  const res = await new Client(baseUrl).post("/api/register", { username: `${UNIQUE}-banned@example.com`, password: PASSWORD, acceptedTerms: true });
+  const res = await new Client(baseUrl).post("/api/register", { username: `${UNIQUE}-banned@example.com`, password: PASSWORD, acceptedTerms: true, dateOfBirth: "1990-05-05", region: "CA-ON" });
   assert.equal(res.status, 403, await res.clone().text());
 });
 

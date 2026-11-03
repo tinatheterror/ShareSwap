@@ -51,7 +51,7 @@ after(async () => {
 async function makeUser(label: string, extra: Partial<typeof users.$inferInsert> = {}) {
   const [row] = await db
     .insert(users)
-    .values({ username: `${UNIQUE}-${label}`, password: await hashPassword(PASSWORD), emailVerified: true, ...extra })
+    .values({ username: `${UNIQUE}-${label}`, password: await hashPassword(PASSWORD), emailVerified: true, ageConfirmedAt: new Date(), ageRegion: "CA-ON", ...extra })
     .returning();
   userIds.push(row.id);
   return row;
@@ -86,7 +86,7 @@ test("sign-up needs the box ticked, and records when and which version", async (
   const username = `${UNIQUE}-new@example.com`;
   await clearLimiter();
   for (const acceptedTerms of [undefined, false, "true", 1, null]) {
-    const response = await new Client(baseUrl).post("/api/register", { username, password: PASSWORD, acceptedTerms });
+    const response = await new Client(baseUrl).post("/api/register", { username, password: PASSWORD, acceptedTerms, dateOfBirth: "1990-05-05", region: "CA-ON" });
     assert.equal(response.status, 400, String(acceptedTerms));
     assert.equal(((await response.json()) as { code: string }).code, "TERMS_REQUIRED");
   }
@@ -94,7 +94,7 @@ test("sign-up needs the box ticked, and records when and which version", async (
 
   await clearLimiter();
   const before = Date.now();
-  const ok = await new Client(baseUrl).post("/api/register", { username, password: PASSWORD, acceptedTerms: true });
+  const ok = await new Client(baseUrl).post("/api/register", { username, password: PASSWORD, acceptedTerms: true, dateOfBirth: "1990-05-05", region: "CA-ON" });
   assert.equal(ok.status, 201);
   const [created] = await db.select().from(users).where(eq(users.username, username));
   assert.equal(created.termsVersion, TERMS_VERSION);

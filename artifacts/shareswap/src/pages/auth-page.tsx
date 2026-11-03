@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { AgeFields, ageComplete, emptyAge, type AgeValue } from "@/components/age-fields";
 import { Redirect, useSearch, useLocation } from "wouter";
 import { rememberReturnTo } from "@/lib/return-to";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [age, setAge] = useState<AgeValue>(emptyAge);
   const [referralCode, setReferralCode] = useState("");
   const [showReactivate, setShowReactivate] = useState(false);
   // Set when Google sign-in found a deactivated account: the one-time token that reactivates it.
@@ -230,7 +232,7 @@ export default function AuthPage() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: { username: string; password: string; fullName?: string; referralCode?: string; deviceFingerprint?: string; acceptedTerms: boolean }) => {
+    mutationFn: async (credentials: { username: string; password: string; fullName?: string; referralCode?: string; deviceFingerprint?: string; acceptedTerms: boolean; dateOfBirth: string; region: string }) => {
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -275,6 +277,8 @@ export default function AuthPage() {
         referralCode: referralCode.trim() || undefined,
         deviceFingerprint,
         acceptedTerms,
+        dateOfBirth: age.dateOfBirth,
+        region: age.region,
       });
     }
   };
@@ -468,6 +472,7 @@ export default function AuthPage() {
                 </p>
               </div>
             )}
+            {!isLogin && <AgeFields value={age} onChange={setAge} idPrefix="signup-age" />}
             {!isLogin && (
               <label className="flex items-start gap-2 text-sm text-gray-700" htmlFor="acceptedTerms">
                 <input
@@ -490,7 +495,7 @@ export default function AuthPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={loginMutation.isPending || registerMutation.isPending || (!isLogin && !acceptedTerms)}
+              disabled={loginMutation.isPending || registerMutation.isPending || (!isLogin && (!acceptedTerms || !ageComplete(age)))}
             >
               {loginMutation.isPending || registerMutation.isPending
                 ? "Please wait..."

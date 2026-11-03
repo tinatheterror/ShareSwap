@@ -45,6 +45,8 @@ interface User {
   termsAcceptanceRequired?: boolean;
   /** AI features this person has agreed to send content to OpenAI for (see the server's ai-consent.ts). */
   aiConsents?: string[];
+  /** True until the age of majority check has passed (date of birth and province/state, asked on the same screen as the Terms). */
+  ageConfirmationRequired?: boolean;
   currentTermsVersion?: string;
   supportEmail?: string;
 }
@@ -55,7 +57,7 @@ interface AuthContextValue {
   sessionExpired: boolean;
   clearSessionExpired: () => void;
   login: (username: string, password: string) => Promise<void>;
-  register: (opts: { email: string; password: string; fullName?: string; referralCode?: string; acceptedTerms: boolean }) => Promise<void>;
+  register: (opts: { email: string; password: string; fullName?: string; referralCode?: string; acceptedTerms: boolean; dateOfBirth: string; region: string }) => Promise<void>;
   logout: () => Promise<void>;
   refetchUser: () => Promise<number | null>;
   resendVerification: () => Promise<void>;
@@ -214,7 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const register = useCallback(
-    async (opts: { email: string; password: string; fullName?: string; referralCode?: string; acceptedTerms: boolean }) => {
+    async (opts: { email: string; password: string; fullName?: string; referralCode?: string; acceptedTerms: boolean; dateOfBirth: string; region: string }) => {
       authGeneration.current++;
       const deviceFingerprint = await getDeviceFingerprint();
       await apiPost("/api/register", {
@@ -223,6 +225,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fullName: opts.fullName,
         referralCode: opts.referralCode,
         acceptedTerms: opts.acceptedTerms,
+        dateOfBirth: opts.dateOfBirth,
+        region: opts.region,
         deviceFingerprint,
       });
       await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "email");

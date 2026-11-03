@@ -112,7 +112,7 @@ async function throwIfNotOk(res: Response) {
     // require an explicit next step. Preserve that structured response so callers
     // can render the server-provided disclosure rather than parsing its message.
     if (parsed) Object.assign(err, parsed);
-    if (err.code === "TERMS_ACCEPTANCE_REQUIRED") termsListeners.forEach((listener) => listener());
+    if (err.code === "TERMS_ACCEPTANCE_REQUIRED" || err.code === "AGE_CONFIRMATION_REQUIRED") termsListeners.forEach((listener) => listener());
     throw err;
   }
 }

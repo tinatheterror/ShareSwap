@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { GUIDELINES_URL, openLegalLink, PRIVACY_URL, TERMS_URL } from "@/lib/legalLinks";
+import { AgeFields, ageComplete, emptyAge, type AgeValue } from "@/components/AgeFields";
 
 export default function RegisterScreen() {
   const colors = useColors();
@@ -34,6 +35,7 @@ export default function RegisterScreen() {
   const [showReferral, setShowReferral] = useState(!!params.ref);
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [age, setAge] = useState<AgeValue>(emptyAge);
 
   async function handleRegister() {
     if (!email.trim() || !password.trim()) {
@@ -48,6 +50,10 @@ export default function RegisterScreen() {
       Alert.alert("Weak password", "Password must be at least 6 characters.");
       return;
     }
+    if (!ageComplete(age)) {
+      Alert.alert("One more thing", "Please choose where you live and enter your date of birth.");
+      return;
+    }
     if (!acceptedTerms) {
       Alert.alert("One more thing", "Please agree to the Terms of Service and Community Guidelines to create an account.");
       return;
@@ -60,6 +66,8 @@ export default function RegisterScreen() {
         fullName: fullName.trim() || undefined,
         referralCode: referralCode.trim() || undefined,
         acceptedTerms,
+        dateOfBirth: age.dateOfBirth,
+        region: age.region,
       });
       router.replace("/verify-email-prompt");
     } catch (err: unknown) {
@@ -166,6 +174,9 @@ export default function RegisterScreen() {
               />
             </View>
           )}
+
+          {/* Age of majority where they live: checked by the server, birth date not kept. */}
+          <AgeFields value={age} onChange={setAge} />
 
           {/* Agreement: explicit, and required before the account is created. */}
           <View style={styles.agreeRow}>

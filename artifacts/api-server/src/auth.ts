@@ -26,6 +26,7 @@ import { guardedJob } from "./guarded-job";
 import { isEmailShaped } from "./public-identity";
 import { rejectDisallowedText } from "./content-policy";
 import { consentedAiFeatures } from "./ai-consent";
+import { REGIONS, ageConfirmationRequired, ageErrorResponse, checkAgeEligibility } from "./age-of-majority";
 import { TERMS_VERSION, supportEmail, termsAcceptanceRequired } from "./legal-config";
 import { csrfProtection } from "./csrf";
 import { backgroundJobs } from "./background-jobs-registry";
@@ -826,6 +827,11 @@ export function setupAuth(app: Express) {
         });
       }
 
+      // Renting, lending against a deposit and payouts are contracts, so an account needs the age of majority where the person
+      // lives. The birth date answers that here and is not stored; the place and the date it was confirmed are.
+      const ageCheck = checkAgeEligibility({ dateOfBirth: req.body.dateOfBirth, region: req.body.region });
+      if (!ageCheck.ok) return res.status(ageCheck.reason === "underage" ? 403 : 400).json(ageErrorResponse(ageCheck));
+
       const [existingUser] = await getUserByUsername(result.data.username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
@@ -894,6 +900,8 @@ export function setupAuth(app: Express) {
           authProvider: "local",
           termsAcceptedAt: new Date(),
           termsVersion: TERMS_VERSION,
+          ageConfirmedAt: new Date(),
+          ageRegion: ageCheck.region.code,
         })
         .returning();
 
@@ -1619,6 +1627,8 @@ export function setupAuth(app: Express) {
       // Clients show a blocking screen until the current Terms and Guidelines are accepted.
       termsAcceptanceRequired: termsAcceptanceRequired(req.user as any),
       currentTermsVersion: TERMS_VERSION,
+      // Same screen as the Terms: asks for date of birth and province/state until the age check has passed.
+      ageConfirmationRequired: ageConfirmationRequired(req.user as any),
       supportEmail: supportEmail(),
       // The AI features this person has agreed to send content to OpenAI for (see ai-consent.ts).
       aiConsents: await consentedAiFeatures(req.user.id),
@@ -1628,6 +1638,21 @@ export function setupAuth(app: Express) {
   // Public: what the sign-up and settings screens need to show without hard-coding it.
   app.get("/api/legal/config", (_req, res) => {
     res.json({ termsVersion: TERMS_VERSION, supportEmail: supportEmail() });
+  });
+
+  // Public: the places ShareSwap is offered and the age of majority in each, for the sign-up and age screens.
+  app.get("/api/legal/age-config", (_req, res) => {
+    res.json({ regions: REGIONS });
+  });
+
+  // Confirming the age of majority (existing accounts, and new Google sign-ins). Nothing is stored for a refusal, and the
+  // birth date is never stored: only the place and the moment the check passed.
+  app.post("/api/account/confirm-age", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) return res.sendStatus(401);
+    const check = checkAgeEligibility({ dateOfBirth: req.body?.dateOfBirth, region: req.body?.region });
+    if (!check.ok) return res.status(check.reason === "underage" ? 403 : 400).json(ageErrorResponse(check));
+    await db.update(users).set({ ageConfirmedAt: new Date(), ageRegion: check.region.code }).where(eq(users.id, req.user.id));
+    return res.json({ ageConfirmationRequired: false, ageRegion: check.region.code });
   });
 
   // Accepting the current Terms and Community Guidelines (existing accounts, and new Google sign-ins).

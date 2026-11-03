@@ -49,6 +49,9 @@ export const users = pgTable("users", {
   banReason: text("ban_reason"),
   termsAcceptedAt: timestamp("terms_accepted_at"), // when they last accepted the Terms and Community Guidelines
   termsVersion: text("terms_version"), // which version (see legal-config.ts); null = never
+  // Age check (age-of-majority.ts): the date they were confirmed to be of age and the province/state it was judged by. The birth date is never stored.
+  ageConfirmedAt: timestamp("age_confirmed_at"),
+  ageRegion: text("age_region"),
   lastActiveAt: timestamp("last_active_at"),
   deactivatedAt: timestamp("deactivated_at"),
   deletionRequestedAt: timestamp("deletion_requested_at"),

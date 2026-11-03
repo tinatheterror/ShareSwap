@@ -13,12 +13,14 @@ export const TERMS_ACCEPTANCE_REQUIRED_MESSAGE = "Please accept the updated Term
 /**
  * Write requests that still work before the current Terms are accepted. Accepting must work, reporting and blocking must
  * never be locked (they are how people stay safe), and people must be able to sign out, change a password, leave or
- * delete their account, and have their device registered for notifications. Staff tools are exempt so moderation does not
+ * delete their account (including withdrawing their own wallet balance first, which deletion requires), and have their device registered for notifications. Staff tools are exempt so moderation does not
  * wait on a moderator's own acceptance. Everything else that writes (messages, listings, requests, reviews, wishlists,
  * payments, profile edits and so on) is refused.
  */
 const EXEMPT_PREFIXES = ["/api/account/", "/api/reports", "/api/blocks", "/api/admin/", "/api/e2e/", "/api/user/push-token", "/api/user/notification-prefs"];
-const EXEMPT_EXACT = new Set(["/api/login", "/api/logout", "/api/register", "/api/csrf-token"]);
+// /api/rental-balance/payout moves only the signed-in person's own balance to their own payout account (every lookup in the route is
+// keyed to req.user.id), and a wallet of $10 or more must be withdrawn before an account can be deleted, so a gated person needs it.
+const EXEMPT_EXACT = new Set(["/api/login", "/api/logout", "/api/register", "/api/csrf-token", "/api/rental-balance/payout"]);
 const EXEMPT_AUTH_PATTERN = /^\/api\/(?:auth\/|forgot-password|reset-password|verify-email|resend-verification)/;
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 

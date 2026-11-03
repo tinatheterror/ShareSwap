@@ -187,8 +187,8 @@ test("write actions are refused with TERMS_ACCEPTANCE_REQUIRED until the current
 
 test("the exemptions are exactly the safety and account paths", async () => {
   const { isExemptFromTermsAcceptance: exempt } = await import("./terms-enforcement.js");
-  for (const path of ["/api/account/accept-terms", "/api/account/deletion/request", "/api/account/deletion/cancel", "/api/account/deletion/confirm", "/api/account/confirm-age", "/api/reports", "/api/blocks/5", "/api/logout", "/api/admin/users/3/ban", "/api/user/push-token"]) assert.equal(exempt(path), true, path);
-  for (const path of ["/api/messages", "/api/items", "/api/items/4/request", "/api/users/9/reviews", "/api/wishlists", "/api/accounts-x", "/api/reports-archive", "/api/blocksmith"]) assert.equal(exempt(path), false, path);
+  for (const path of ["/api/account/accept-terms", "/api/account/deletion/request", "/api/account/deletion/cancel", "/api/account/deletion/confirm", "/api/account/confirm-age", "/api/reports", "/api/blocks/5", "/api/logout", "/api/rental-balance/payout", "/api/admin/users/3/ban", "/api/user/push-token"]) assert.equal(exempt(path), true, path);
+  for (const path of ["/api/messages", "/api/items", "/api/items/4/request", "/api/users/9/reviews", "/api/wishlists", "/api/accounts-x", "/api/reports-archive", "/api/blocksmith", "/api/rental-balance/payout/extra", "/api/rental-balance", "/api/stripe/connect/onboard"]) assert.equal(exempt(path), false, path);
 });
 
 test("TERMS_ENFORCEMENT=off lets writes through; anything else keeps the rule", async () => {
@@ -215,6 +215,10 @@ test("someone who has not accepted or confirmed their age can still reach the de
   const client = await signIn(user);
   assert.equal(((await (await client.post("/api/messages", { receiverId: user.id, content: "x" })).json()) as { code: string }).code, "TERMS_ACCEPTANCE_REQUIRED");
   assert.equal((await client.get("/api/account/deletion-eligibility")).status, 200);
+  const payout = await client.post("/api/rental-balance/payout", { amount: 10 });
+  assert.notEqual(((await payout.json()) as { code?: string }).code, "TERMS_ACCEPTANCE_REQUIRED", "a gated person can withdraw their own balance (this account has no payout method, so the route itself says so)");
+  assert.equal(payout.status, 400);
+  assert.equal((await client.post("/api/rental-balance/payout/other", { amount: 10 })).status, 403, "only that exact path is exempt");
   const request = await client.post("/api/account/deletion/request", {});
   assert.notEqual(request.status, 403, "the gate does not stop a deletion request");
   assert.notEqual(((await request.json()) as { code?: string }).code, "TERMS_ACCEPTANCE_REQUIRED");

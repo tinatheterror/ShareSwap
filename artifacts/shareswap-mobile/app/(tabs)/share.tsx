@@ -53,6 +53,7 @@ import { isLocked } from "@/lib/verificationCapabilities";
 import { HeartPeopleIcon } from "@/components/HeartPeopleIcon";
 import { NotificationBell } from "@/components/NotificationBell";
 import Svg, { Path, Circle, Rect } from "react-native-svg";
+import { useAiConsent } from "@/components/AiConsent";
 
 const ITEM_TYPES = [
   "Baby & Kids",
@@ -532,8 +533,11 @@ export default function ShareScreen() {
     } as any);
   }
 
+  const { ensureAiConsent } = useAiConsent();
   const analyzeMutation = useMutation({
     mutationFn: async (assets: ImagePicker.ImagePickerAsset[]) => {
+      // The photos go to OpenAI: ask first. Without agreement SmartScan is unavailable and the listing is filled in by hand.
+      if (!(await ensureAiConsent("smartscan"))) throw Object.assign(new Error("SmartScan needs your permission to send photos to OpenAI."), { aiDeclined: true });
       const formData = new FormData();
       await Promise.all(
         assets.map((asset, i) =>
@@ -556,6 +560,7 @@ export default function ShareScreen() {
       setImportVisible(false);
     },
     onError: (error: Error) => {
+      if ((error as { aiDeclined?: boolean }).aiDeclined) return;
       Alert.alert("Couldn't read that listing", error.message);
     },
   });

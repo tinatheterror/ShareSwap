@@ -43,6 +43,8 @@ interface User {
   missing?: ("email" | "id" | "card")[];
   // Decided by the server: the current Terms and Community Guidelines still have to be accepted.
   termsAcceptanceRequired?: boolean;
+  /** AI features this person has agreed to send content to OpenAI for (see the server's ai-consent.ts). */
+  aiConsents?: string[];
   currentTermsVersion?: string;
   supportEmail?: string;
 }

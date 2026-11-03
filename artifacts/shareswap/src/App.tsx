@@ -38,6 +38,7 @@ import AdminDisputesPage from "@/pages/admin/disputes";
 import AdminReportsPage from "@/pages/admin/reports";
 import CommunityGuidelinesPage from "@/pages/community-guidelines-page";
 import { TermsGate } from "@/components/terms-gate";
+import { AiConsentProvider } from "@/components/ai-consent";
 import AdminDashboardPage from "@/pages/admin/index";
 import AdminUsersPage from "@/pages/admin/users";
 import AdminItemsPage from "@/pages/admin/items";
@@ -162,6 +163,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <AuthProvider>
+            <AiConsentProvider>
             <ReturnAfterSignIn />
             <DeletionPendingBanner />
             <TermsGate />
@@ -172,6 +174,7 @@ function App() {
             <BackgroundPolling />
             <ShareCoinAnimation />
             <Toaster />
+            </AiConsentProvider>
           </AuthProvider>
         </WouterRouter>
       </QueryClientProvider>

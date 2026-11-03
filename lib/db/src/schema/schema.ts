@@ -928,6 +928,18 @@ export const userBlocks = pgTable("user_blocks", {
   blockedIdx: index("user_blocks_blocked_idx").on(table.blockedId),
 }));
 
+// Consent to send a kind of content to OpenAI, one row per (person, AI feature). The feature keys and the text the person
+// agreed to are defined by the API server (ai-consent.ts); `version` says which text, so a change asks again.
+export const aiConsents = pgTable("ai_consents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  feature: text("feature").notNull(),
+  version: text("version").notNull(),
+  consentedAt: timestamp("consented_at").defaultNow().notNull(),
+}, (table) => ({
+  userFeatureUidx: uniqueIndex("ai_consents_user_feature_uidx").on(table.userId, table.feature),
+}));
+
 export const CONTENT_REPORT_TARGET_TYPES = ["user", "item", "message", "review", "wishlist"] as const;
 export const CONTENT_REPORT_REASONS = ["spam", "harassment", "hate", "sexual", "violence", "illegal", "scam", "other"] as const;
 

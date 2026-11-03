@@ -1,4 +1,5 @@
 import { Navbar } from "@/components/shared/navbar";
+import { useAiConsent } from "@/components/ai-consent";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -344,8 +345,12 @@ export default function ProfilePage() {
     },
   });
 
+  const { ensureAiConsent } = useAiConsent();
+
   const profilePhotoMutation = useMutation({
     mutationFn: async (file: File) => {
+      // The photo shows a face and is only sent to OpenAI for the check if the person agrees; either way it is saved.
+      await ensureAiConsent("profile_photo_check");
       const formData = new FormData();
       formData.append("profilePhoto", file);
 

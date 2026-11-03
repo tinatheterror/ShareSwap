@@ -26,6 +26,7 @@ import { ShareCoinAnimation } from "@/components/ShareCoinAnimation";
 import { LevelUpBanner } from "@/components/LevelUpBanner";
 import { PushPrePrompt } from "@/components/PushPrePrompt";
 import { TermsGate } from "@/components/TermsGate";
+import { AiConsentProvider } from "@/components/AiConsent";
 
 if (Platform.OS !== "web") {
   SplashScreen.preventAutoHideAsync();
@@ -214,11 +215,13 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <SessionGuard />
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <KeyboardProvider>
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
+            <AiConsentProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <KeyboardProvider>
+                  <RootLayoutNav />
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </AiConsentProvider>
           </AuthProvider>
         </QueryClientProvider>
       </ErrorBoundary>

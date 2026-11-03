@@ -228,6 +228,20 @@ export async function ensureTermsAcceptanceColumns() {
   }
 }
 
+const AI_CONSENTS_FILE = "lib/db/scripts/0015_ai_consents.sql";
+
+/** ai_consents (0015): every AI feature reads it before sending anything to OpenAI, so a missing table would fail them all. */
+export async function ensureAiConsentsTable() {
+  const { rows } = await pool.query(`SELECT to_regclass('ai_consents') IS NOT NULL AS present`);
+  if (rows[0]?.present === true) return;
+  try {
+    await runMigrationFile(AI_CONSENTS_FILE);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code !== "42P07" && code !== "23505") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -237,6 +251,7 @@ export async function applyStartupMigrations() {
   await ensureContentSafeguards();
   await ensureWishlistHiddenAt();
   await ensureTermsAcceptanceColumns();
+  await ensureAiConsentsTable();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
   await ensureJobSwitchesAttributionConstraint();

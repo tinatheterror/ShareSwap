@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, DragEvent } from "react";
+import { useAiConsent } from "@/components/ai-consent";
 import ReactCrop, { type Crop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import {
@@ -301,8 +302,12 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
     return null;
   };
 
+  const { ensureAiConsent } = useAiConsent();
+
   const handleScan = async () => {
     if (!fileItems.length) return;
+    // The screenshots go to OpenAI: ask first. Without agreement the import is unavailable and the listing is filled in by hand.
+    if (!(await ensureAiConsent("screenshot_import"))) return;
     setStep("scanning");
     try {
       const csrfToken = await getFreshCsrfToken();

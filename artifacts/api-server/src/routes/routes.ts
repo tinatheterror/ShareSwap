@@ -59,6 +59,7 @@ import connectPgSimple from "connect-pg-simple";
 import { recommendationEngine } from "../recommendation-engine";
 import { addSimplifiedRoutes } from "../simplified-routes";
 import { requireCurrentTerms } from "../terms-enforcement";
+import { hasAiConsent, registerAiConsentRoutes, requireAiConsent } from "../ai-consent";
 import { computeAuthoritativeRentalPricing } from "../rental-pricing";
 import { platformConfig, calculateCommission } from "../platform-config";
 import { AntiFarmingSystem } from "../anti-farming-system";
@@ -1997,6 +1998,7 @@ export function registerRoutes(
   setupAuth(app);
   // Write actions wait on acceptance of the current Terms (see terms-enforcement.ts).
   app.use("/api", requireCurrentTerms);
+  registerAiConsentRoutes(app);
   app.use(usernameScrubMiddleware);
 
   if (e2eTestModeEnabled()) {
@@ -3380,7 +3382,8 @@ export function registerRoutes(
       let validationReason = "";
       let shareCoinsAwarded = 0;
 
-      if (!hasAlreadyEarnedBonus) {
+      // Without consent to the profile photo check the photo goes to no one: it is saved unchecked (the check is informational).
+      if (!hasAlreadyEarnedBonus && (await hasAiConsent(userId, "profile_photo_check"))) {
         try {
           // Use resolved buffer (from multipart or base64 JSON)
           const base64Image = fileBuffer.toString("base64");
@@ -3587,7 +3590,7 @@ Respond with ONLY valid JSON in this exact format:
     }
   });
 
-  app.post("/api/smartscan/analyze", upload.array("photos", 10), async (req, res) => {
+  app.post("/api/smartscan/analyze", requireAiConsent("smartscan"), upload.array("photos", 10), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
@@ -3782,7 +3785,7 @@ IMPORTANT: For luxury designer items, do NOT undervalue. A genuine Chanel purse 
   });
 
   // AI-powered listing autofill from uploaded photos
-  app.post("/api/listings/ai-generate", csrfProtection, async (req, res) => {
+  app.post("/api/listings/ai-generate", csrfProtection, requireAiConsent("listing_autofill"), async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     const { imageDataUrls } = req.body;
@@ -3878,7 +3881,7 @@ Be accurate and practical. Always populate every field — never leave condition
   });
 
   // Import listing from marketplace screenshot using GPT-4 Vision
-  app.post('/api/import-from-screenshot', upload.array('screenshots', 5), async (req, res) => {
+  app.post('/api/import-from-screenshot', requireAiConsent("screenshot_import"), upload.array('screenshots', 5), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
@@ -4021,7 +4024,7 @@ Return only the JSON object, no other text.`
   });
 
   // AI-powered item category detection
-  app.post("/api/detect-category", csrfProtection, async (req, res) => {
+  app.post("/api/detect-category", csrfProtection, requireAiConsent("category_suggestion"), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
@@ -4132,7 +4135,9 @@ Respond with ONLY the category name, nothing else.`
         photos: validPhotos.length > 0 ? validPhotos : undefined,
       };
 
-      const result = await calculateAIValuation(valuationInput);
+      // allowAi is false on purpose: every tier band is a single value, so the valuation never needs OpenAI. To use it again, add a
+      // feature to ai-consent.ts (and the Privacy Policy) and pass that consent here.
+      const result = await calculateAIValuation(valuationInput, { allowAi: false });
       
       // Replacement value = max(AI market estimate, original value range midpoint).
       // This ensures the owner is protected at least at the original purchase price level
@@ -4244,7 +4249,7 @@ Respond with ONLY the category name, nothing else.`
       };
 
       try {
-        aiValuationResult = await calculateAIValuation(valuationInput);
+        aiValuationResult = await calculateAIValuation(valuationInput, { allowAi: false });
         shareCoinsReward = aiValuationResult.shareCoinsValue;
         console.log(`AI Valuation for "${req.body.name}": ${shareCoinsReward} ShareCoins (Tier ${tier}, Band: ${aiValuationResult.tierBand.min}-${aiValuationResult.tierBand.max})`);
         console.log(`Reasoning: ${aiValuationResult.reasoning}`);

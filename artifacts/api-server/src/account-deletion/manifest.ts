@@ -46,6 +46,15 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     anonymize: [],
     delete: [],
   },
+  ai_consents: {
+    rows: "delete",
+    retention: null,
+    note: "The user's consent to send content to OpenAI, per AI feature.",
+    userColumns: ["user_id"],
+    keep: [],
+    anonymize: [],
+    delete: ["id", "user_id", "feature", "version", "consented_at"],
+  },
   banned_email_hashes: {
     rows: "retain",
     retention: null,

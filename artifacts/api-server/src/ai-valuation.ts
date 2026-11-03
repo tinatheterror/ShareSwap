@@ -79,8 +79,14 @@ export interface ValuationResult {
   internalItemValue: number;
 }
 
+/**
+ * `allowAi` must be true only when the person has agreed to an AI feature that covers this (see ai-consent.ts; none does
+ * today, and every tier band is a single value, so the OpenAI call below is not reached). Without it nothing is sent to
+ * OpenAI and the value comes from the formula.
+ */
 export async function calculateAIValuation(
-  item: ItemValuationInput
+  item: ItemValuationInput,
+  options: { allowAi: boolean },
 ): Promise<ValuationResult> {
   const tier = item.tier;
   const band = TIER_BANDS[tier] || TIER_BANDS[1];
@@ -118,6 +124,8 @@ export async function calculateAIValuation(
       internalItemValue: getBaseItemValue(item.originalValue),
     };
   }
+
+  if (!options.allowAi) return calculateFallbackValuation(item, band, getBaseItemValue);
 
   try {
     const openai = new OpenAI({

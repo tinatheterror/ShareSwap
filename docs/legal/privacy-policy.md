@@ -30,7 +30,7 @@ ShareSwap is for people aged 18 or over. We do not knowingly collect information
 
 ## How we use it
 
-We use your information to run your account; to show listings and wishlists near you; to carry requests from offer to return; to take deposits, fees and payments and to pay out earnings; to send emails and push notifications you need; to verify identity and prevent fraud; to review reports and enforce our Terms and Community Guidelines; to value items; to meet legal and accounting obligations; and to answer your questions.
+We use your information to run your account; to show listings and wishlists near you; to carry requests from offer to return; to take deposits, fees and payments and to pay out earnings; to send emails and push notifications you need; to verify identity and prevent fraud; to review reports and enforce our Terms and Community Guidelines; to offer the optional AI features you agree to; to meet legal and accounting obligations; and to answer your questions.
 
 ## Who we share it with
 
@@ -41,12 +41,26 @@ We use your information to run your account; to show listings and wishlists near
 - **Uber Direct** (delivery): the pickup and drop-off names, addresses and phone numbers, and a description of the parcel.
 - **SendGrid** (email): your email address and the content of emails we send, such as verification and password reset.
 - **Expo** (push notifications): your push token and the notification text, passed on to Apple or Google to reach your device.
-- **OpenAI** (item valuation): the item details you enter and up to three listing photos, to suggest a ShareCoin value. We do not send your name or email.
+- **OpenAI** (the AI features, only after you agree to each one): see "AI features and your consent" below.
 - **OpenStreetMap Nominatim** (looking up coordinates for a postal code or city): the place text you enter.
 - **Replit** (hosting, the database and object storage for photos), which stores all of the above on our behalf.
 - **Authorities and advisers.** We may disclose information when the law requires it, to report content that appears to be illegal, to protect someone's safety, or to our lawyers and auditors.
 
 These providers may process data in countries other than your own. [Counsel: add the transfer mechanism and the list of countries.]
+
+## AI features and your consent
+
+Five features send content to OpenAI, an AI provider, to produce their result. [Confirm: requests are routed through Replit's AI Integrations service, which forwards them to OpenAI.] Each one asks for your permission the first time you use it, names OpenAI, and says what will be shared. Nothing is sent to OpenAI before you agree to that feature, and you can say no and carry on:
+
+- **Profile photo check.** Sends the profile photo you upload, which shows your face, so OpenAI can check that it shows a clear face. If you decline, your photo is saved without the check.
+- **SmartScan.** Sends the item photos you give it, to identify the item and fill in its details. If you decline, SmartScan is unavailable and you can fill in the listing yourself.
+- **Listing autofill from photos.** Sends up to 3 item photos, to suggest a title, description, condition, category, brand, model and price. If you decline, it is unavailable.
+- **Import from a screenshot.** Sends the screenshots you upload (up to 5), which can show whatever the original listing showed, such as names, prices and photos. If you decline, it is unavailable.
+- **Category suggestion.** Sends the item name you type, to suggest a category. If you decline, you choose the category yourself.
+
+We never send your name, email address or account details to OpenAI. We ask OpenAI not to use this content to train its models. [Counsel and engineering: confirm the terms that apply to the AI Integrations service, including OpenAI's retention of requests, and update this sentence to match.]
+
+We record your agreement for each feature, with the date and the wording you agreed to, and ask again if the wording changes. You can withdraw it at any time by writing to support@shareswap.app, and when you delete your account the record is deleted with it.
 
 ## How long we keep it
 

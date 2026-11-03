@@ -1,4 +1,5 @@
 import { Navbar } from "@/components/shared/navbar";
+import { useAiConsent } from "@/components/ai-consent";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -1145,8 +1146,12 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     form.setValue("originalValue", "");
   };
 
+  const { ensureAiConsent } = useAiConsent();
+
   const handleAiAutofill = async () => {
     if (selectedPhotos.length === 0) return;
+    // Names OpenAI and what is shared before the first photo leaves the device; without agreement the form is filled in by hand.
+    if (!(await ensureAiConsent("listing_autofill"))) return;
     setIsAiGenerating(true);
     try {
       const dataUrls = await getPhotoDataUrls();
@@ -1259,6 +1264,8 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       return;
 
     lastDetectedName.current = itemName;
+    // Starts by itself as the name is typed, so a "Not now" is remembered until the page reloads.
+    if (!(await ensureAiConsent("category_suggestion", { askOnce: true }))) return;
     setIsDetectingCategory(true);
 
     try {

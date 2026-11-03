@@ -25,6 +25,7 @@ import { shouldRunBackgroundJobs } from "./background-jobs-gate";
 import { guardedJob } from "./guarded-job";
 import { isEmailShaped } from "./public-identity";
 import { rejectDisallowedText } from "./content-policy";
+import { consentedAiFeatures } from "./ai-consent";
 import { TERMS_VERSION, supportEmail, termsAcceptanceRequired } from "./legal-config";
 import { csrfProtection } from "./csrf";
 import { backgroundJobs } from "./background-jobs-registry";
@@ -1619,6 +1620,8 @@ export function setupAuth(app: Express) {
       termsAcceptanceRequired: termsAcceptanceRequired(req.user as any),
       currentTermsVersion: TERMS_VERSION,
       supportEmail: supportEmail(),
+      // The AI features this person has agreed to send content to OpenAI for (see ai-consent.ts).
+      aiConsents: await consentedAiFeatures(req.user.id),
     });
   });
 

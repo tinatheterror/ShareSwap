@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiRequest, BASE_URL, photoUrl } from "@/lib/api";
+import { useAiConsent } from "@/components/AiConsent";
 
 interface UserProfile {
   id: number;
@@ -35,6 +36,7 @@ export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, refreshUser } = useAuth() as any;
+  const { ensureAiConsent } = useAiConsent();
   const queryClient = useQueryClient();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
@@ -125,6 +127,8 @@ export default function EditProfileScreen() {
         throw new Error("Could not read image data. Please try again.");
       }
 
+      // The photo shows a face and is only sent to OpenAI for the check if the person agrees; either way it is saved.
+      await ensureAiConsent("profile_photo_check");
       const res = await apiRequest("POST", "/api/users/profile-photo", {
         imageBase64: asset.base64,
         mimeType,

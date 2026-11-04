@@ -25,6 +25,8 @@ import { LAST_AUTH_METHOD_KEY } from "@/context/AuthContext";
 import { registerPushToken } from "@/hooks/usePushNotifications";
 import { resumeDestination } from "@/lib/sessionNavigation";
 import { ApiEnvironmentLabel } from "@/components/ApiEnvironmentLabel";
+import { AppleSignInButton } from "@/components/AppleSignInButton";
+import { AppleSignInCancelled, appleSignInAvailable, requestAppleCredential } from "@/lib/appleSignIn";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -47,15 +49,27 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showReferral, setShowReferral] = useState(false);
   const [referralCode, setReferralCode] = useState("");
-  const [lastAuthMethod, setLastAuthMethod] = useState<"google" | "email" | null>(null);
+  const [lastAuthMethod, setLastAuthMethod] = useState<"google" | "apple" | "email" | null>(null);
+  // Sign in with Apple is offered on iOS when the device supports it, and on the web build; never on Android.
+  const [appleAvailable, setAppleAvailable] = useState(Platform.OS === "web");
 
   // Read the previously used sign-in method so we can highlight it.
   useEffect(() => {
     AsyncStorage.getItem(LAST_AUTH_METHOD_KEY)
       .then((val) => {
-        if (val === "google" || val === "email") setLastAuthMethod(val);
+        if (val === "google" || val === "apple" || val === "email") setLastAuthMethod(val);
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    appleSignInAvailable().then((ok) => {
+      if (active && ok) setAppleAvailable(true);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function handleLogin() {
@@ -71,6 +85,50 @@ export default function LoginScreen() {
       const msg =
         err instanceof Error ? err.message : "Login failed. Please try again.";
       setLoginError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAppleLogin() {
+    if (Platform.OS === "web") {
+      window.location.href = `${BASE_URL}/api/auth/apple/start`;
+      return;
+    }
+    setLoading(true);
+    try {
+      const payload = await requestAppleCredential();
+      const resp = await apiRequest("POST", "/api/auth/apple/native", payload);
+      const body = await resp.json();
+      if (body?.reactivate && typeof body.token === "string") {
+        // Apple confirmed the account, but it is deactivated: offer to bring it back.
+        const confirmed = await new Promise<boolean>((resolve) =>
+          Alert.alert(
+            "Account deactivated",
+            "Your account is deactivated and your listings are hidden. Reactivate it now?",
+            [
+              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              { text: "Reactivate", onPress: () => resolve(true) },
+            ],
+            { cancelable: true, onDismiss: () => resolve(false) },
+          ),
+        );
+        if (!confirmed) return;
+        const reactivatedResp = await apiRequest("POST", "/api/auth/oauth-reactivate", { token: body.token });
+        const reactivated = await reactivatedResp.json();
+        if (!reactivated?.user?.id) throw new Error("Unable to reactivate your account. Please try again.");
+        setUserData(reactivated.user);
+      } else if (body?.id) {
+        setUserData(body);
+      } else {
+        throw new Error("Unable to verify your sign-in. Please try again.");
+      }
+      await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "apple");
+      registerPushToken().catch(() => {});
+    } catch (err: unknown) {
+      if (err instanceof AppleSignInCancelled) return;
+      const msg = err instanceof Error ? err.message : "Apple sign-in failed.";
+      Alert.alert("Sign-in failed", msg);
     } finally {
       setLoading(false);
     }
@@ -178,6 +236,17 @@ export default function LoginScreen() {
           <Text style={[styles.heading, { color: colors.foreground }]}>
             Sign in and discover a world of shared resources
           </Text>
+
+          {appleAvailable && (
+            <View style={styles.appleRow}>
+              <AppleSignInButton onPress={handleAppleLogin} disabled={loading} />
+              {lastAuthMethod === "apple" && (
+                <View pointerEvents="none" style={[styles.lastUsedBadge, styles.appleBadge]}>
+                  <Text style={styles.lastUsedBadgeText}>Last used</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           <Pressable
             style={({ pressed }) => [
@@ -379,6 +448,8 @@ const styles = StyleSheet.create({
     color: "#ea580c",
     flex: 1,
   },
+  appleRow: { marginBottom: 12, width: "100%" },
+  appleBadge: { position: "absolute", right: 12, top: 14 },
   googleBtn: {
     borderRadius: 14,
     paddingVertical: 16,

@@ -30,6 +30,11 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn(), replace: jest.fn() }),
   useLocalSearchParams: () => ({}),
 }));
+jest.mock("@/lib/appleSignIn", () => ({
+  appleSignInAvailable: jest.fn().mockResolvedValue(false),
+  requestAppleCredential: jest.fn(),
+  AppleSignInCancelled: class AppleSignInCancelled extends Error {},
+}));
 jest.mock("expo-linking", () => ({ createURL: () => "shareswap://login" }));
 jest.mock("expo-web-browser", () => ({
   openAuthSessionAsync: (...args: unknown[]) => mockOpenAuthSession(...args),

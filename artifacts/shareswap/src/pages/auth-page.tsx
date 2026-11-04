@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { googleSignInHref, isEmbeddedBrowser } from "@/lib/google-sign-in";
+import { APPLE_SIGN_IN_MESSAGES, appleSignInHref } from "@/lib/apple-sign-in";
 
 // Generate a simple device fingerprint for anti-fraud
 function generateDeviceFingerprint(): string {
@@ -59,6 +60,8 @@ export default function AuthPage() {
   const [showReactivate, setShowReactivate] = useState(false);
   // Set when Google sign-in found a deactivated account: the one-time token that reactivates it.
   const [googleReactivateToken, setGoogleReactivateToken] = useState<string | null>(null);
+  // Which provider issued that token; Apple and Google tokens are redeemed at different paths.
+  const [reactivateProvider, setReactivateProvider] = useState<"google" | "apple">("google");
   const [showPassword, setShowPassword] = useState(false);
   const [showReferralInput, setShowReferralInput] = useState(false);
   const [isEmbeddedPreview, setIsEmbeddedPreview] = useState(false);
@@ -80,8 +83,10 @@ export default function AuthPage() {
   // Extract referral code from URL and handle verification status
   useEffect(() => {
     const params = new URLSearchParams(searchString);
-    const reactivateToken = params.get("reactivate") === "google" ? params.get("token") : null;
+    const reactivateFrom = params.get("reactivate");
+    const reactivateToken = reactivateFrom === "google" || reactivateFrom === "apple" ? params.get("token") : null;
     if (reactivateToken) {
+      setReactivateProvider(reactivateFrom === "apple" ? "apple" : "google");
       setGoogleReactivateToken(reactivateToken);
       setShowReactivate(true);
       // Keep the token out of the address bar and the history.
@@ -93,6 +98,16 @@ export default function AuthPage() {
       setIsLogin(false); // Switch to signup mode when coming from referral
     }
     
+    const appleReason = params.get("apple");
+    if (appleReason) {
+      toast({
+        title: "Sign in with Apple",
+        description: APPLE_SIGN_IN_MESSAGES[appleReason] || APPLE_SIGN_IN_MESSAGES.failed,
+        variant: "destructive",
+      });
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+
     // Handle email verification status
     const verified = params.get("verified");
     const error = params.get("error");
@@ -177,14 +192,14 @@ export default function AuthPage() {
 
   const googleReactivateMutation = useMutation({
     mutationFn: async (token: string) => {
-      const response = await fetch("/api/auth/google-reactivate", {
+      const response = await fetch(reactivateProvider === "apple" ? "/api/auth/oauth-reactivate" : "/api/auth/google-reactivate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || "Reactivation failed. Please sign in with Google again.");
+        throw new Error(error.message || `Reactivation failed. Please sign in with ${reactivateProvider === "apple" ? "Apple" : "Google"} again.`);
       }
       return response.json();
     },
@@ -304,6 +319,16 @@ export default function AuthPage() {
                 Sign in and discover a world of shared resources
               </h2>
 
+              <Button asChild className="w-full bg-black text-white hover:bg-black/85 h-11">
+                <a
+                  href={appleSignInHref(referralCode, import.meta.env.BASE_URL)}
+                  target={isEmbeddedPreview ? "_blank" : undefined}
+                  rel={isEmbeddedPreview ? "noopener noreferrer" : undefined}
+                >
+                  Continue with Apple
+                </a>
+              </Button>
+
               <Button
                 asChild
                 className="w-full bg-primary hover:bg-primary/90 h-11"
@@ -318,7 +343,7 @@ export default function AuthPage() {
               </Button>
               {isEmbeddedPreview && (
                 <p className="text-xs text-center text-muted-foreground">
-                  Google sign-in opens in a new tab. Continue using ShareSwap in that tab.
+                  Apple and Google sign-in open in a new tab. Continue using ShareSwap in that tab.
                 </p>
               )}
 

@@ -55,6 +55,24 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     anonymize: [],
     delete: ["id", "user_id", "feature", "version", "consented_at"],
   },
+  apple_links: {
+    rows: "delete",
+    retention: null,
+    note: "Sign in with Apple: the encrypted refresh token (used to revoke the grant, then removed) and the private-relay forwarding state.",
+    userColumns: ["user_id"],
+    keep: [],
+    anonymize: [],
+    delete: ["user_id", "refresh_token_enc", "email_forwarding_enabled", "created_at", "updated_at"],
+  },
+  banned_apple_hashes: {
+    rows: "retain",
+    retention: null,
+    note: "Keyed hashes of the Apple IDs of banned people whose accounts were deleted; kept without an end date so they cannot sign in again. Holds no Apple ID.",
+    userColumns: [],
+    keep: ["id", "sub_hash", "created_at"],
+    anonymize: [],
+    delete: [],
+  },
   banned_email_hashes: {
     rows: "retain",
     retention: null,
@@ -416,7 +434,7 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     userColumns: ["referred_by"],
     keep: ["id", "auth_provider", "referred_by", "has_completed_first_listing", "has_completed_first_rent", "has_completed_first_lend", "has_completed_first_swap", "has_completed_first_gift", "has_completed_first_borrow", "banned_at", "ban_reason", "terms_accepted_at", "terms_version", "deletion_requested_at", "rental_balance", "pending_rental_balance", "stripe_connected_account_id", "subscription_tier", "stripe_subscription_id", "stripe_subscription_status", "monthly_borrow_count", "monthly_borrow_reset_at", "pro_delivery_count", "pro_delivery_reset_at", "created_at"],
     anonymize: ["username", "handle", "display_name", "referral_code", "account_status"],
-    delete: ["display_name_changed_at", "password", "email", "google_id", "phone_number", "phone", "phone_verified", "email_verified", "email_verification_token", "email_verification_expires", "pending_email", "password_reset_token", "password_reset_expires", "profile_photo", "has_uploaded_profile_photo", "profile_photo_validation_status", "profile_photo_validation_reason", "full_name", "bio", "location", "default_postal_code", "default_city", "location_radius", "has_completed_location_setup", "device_fingerprint", "stripe_customer_id", "stripe_payment_method_id", "payment_method_last4", "payment_method_brand", "payment_method_exp_month", "payment_method_exp_year", "payment_method_added_at", "share_coins", "reputation_score", "reputation_level", "is_verified", "verified_at", "last_active_at", "deactivated_at", "smart_scans_used", "smart_scans_reset_date", "has_seen_verification_nudge", "is_premium", "premium_expires_at", "is_admin", "age_confirmed_at", "age_region"],
+    delete: ["display_name_changed_at", "password", "email", "google_id", "apple_id", "phone_number", "phone", "phone_verified", "email_verified", "email_verification_token", "email_verification_expires", "pending_email", "password_reset_token", "password_reset_expires", "profile_photo", "has_uploaded_profile_photo", "profile_photo_validation_status", "profile_photo_validation_reason", "full_name", "bio", "location", "default_postal_code", "default_city", "location_radius", "has_completed_location_setup", "device_fingerprint", "stripe_customer_id", "stripe_payment_method_id", "payment_method_last4", "payment_method_brand", "payment_method_exp_month", "payment_method_exp_year", "payment_method_added_at", "share_coins", "reputation_score", "reputation_level", "is_verified", "verified_at", "last_active_at", "deactivated_at", "smart_scans_used", "smart_scans_reset_date", "has_seen_verification_nudge", "is_premium", "premium_expires_at", "is_admin", "age_confirmed_at", "age_region"],
   },
   verifications: {
     rows: "delete",

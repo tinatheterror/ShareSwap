@@ -258,6 +258,25 @@ export async function ensureAiConsentsTable() {
   }
 }
 
+const APPLE_SIGN_IN_FILE = "lib/db/scripts/0017_apple_sign_in.sql";
+
+/** users.apple_id, apple_links and banned_apple_hashes (0017): the user reads select apple_id, so a missing column would fail them all. */
+export async function ensureAppleSignInTables() {
+  const { rows } = await pool.query(
+    `SELECT (SELECT count(*)::int FROM information_schema.columns
+              WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'apple_id') AS col,
+            to_regclass('apple_links') IS NOT NULL AS links,
+            to_regclass('banned_apple_hashes') IS NOT NULL AS banned`,
+  );
+  if (rows[0]?.col === 1 && rows[0]?.links === true && rows[0]?.banned === true) return;
+  try {
+    await runMigrationFile(APPLE_SIGN_IN_FILE);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code !== "42701" && code !== "42P07" && code !== "23505") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -269,6 +288,7 @@ export async function applyStartupMigrations() {
   await ensureTermsAcceptanceColumns();
   await ensureAiConsentsTable();
   await ensureAgeConfirmationColumns();
+  await ensureAppleSignInTables();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
   await ensureJobSwitchesAttributionConstraint();

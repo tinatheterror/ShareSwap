@@ -13,6 +13,7 @@ export const users = pgTable("users", {
   authProvider: text("auth_provider").default("local"), // 'local', 'google', 'phone'
   email: text("email"),
   googleId: text("google_id").unique(),
+  appleId: text("apple_id").unique(), // Sign in with Apple: the stable `sub` claim
   phoneNumber: text("phone_number").unique(),
   phoneVerified: boolean("phone_verified").default(false),
   emailVerified: boolean("email_verified").default(false),
@@ -162,6 +163,24 @@ export const bannedEmailHashes = pgTable("banned_email_hashes", {
   id: serial("id").primaryKey(),
   emailHash: text("email_hash").notNull().unique(),
   createdAt: timestamp("created_at").defaultNow(),
+})
+
+// Keyed hashes (HMAC-SHA256, domain-separated from the email hashes) of the Apple `sub` of banned people whose accounts
+// were deleted, so the same Apple ID cannot sign in again. Never holds the sub. Same key as banned_email_hashes.
+export const bannedAppleHashes = pgTable("banned_apple_hashes", {
+  id: serial("id").primaryKey(),
+  subHash: text("sub_hash").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+})
+
+// What Sign in with Apple needs per account beyond users.apple_id: the refresh token (AES-256-GCM encrypted) that
+// deletion uses to revoke the grant, and whether Apple forwards mail to the person's private-relay address.
+export const appleLinks = pgTable("apple_links", {
+  userId: integer("user_id").primaryKey().references(() => users.id),
+  refreshTokenEnc: text("refresh_token_enc"),
+  emailForwardingEnabled: boolean("email_forwarding_enabled").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 })
 
 // A Stripe Connect account that could not be deleted when its owner's account was deleted (Stripe refuses while the

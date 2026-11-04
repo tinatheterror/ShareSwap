@@ -52,6 +52,9 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 - [ ] Postgres SSL warning: set sslmode=verify-full on DATABASE_URL
 - [ ] Replace url.parse() usage (DEP0169)
 - [x] Owner-return-flow e2e flake. Two causes, both fixed. The first-visit tutorial overlay could open after the spec's one-time check for it and swallow the click on "Confirm Return" (the CI page snapshot showed it); the specs now tell the page the tutorial was seen. And the specs ran in parallel against one server whose setup sweeps unregistered fixtures, one of which a spec creates on purpose, so another spec's setup could delete it before it was counted; the suite now runs on one worker.
+- [ ] Switch AI features from Replit AI Integrations to a direct OpenAI API key (OPENAI_API_KEY in Secrets), so user data (incl. profile photos) goes only to OpenAI under its API policy; update the Privacy draft to name OpenAI directly. Replit Core has no model-improvement opt-out.
+- [ ] store: false: add it explicitly when you switch to your own OpenAI key. It's harmless there and makes the intent clear.
+- [ ] The unused OpenAI call in ai-valuation.ts: delete it during the same switch, so it can't get switched back on by accident.
 
 ## After launch
 

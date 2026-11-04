@@ -5,6 +5,7 @@ import { eq, inArray, like } from "drizzle-orm";
 import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair } from "jose";
 import { appleLinks, bannedAppleHashes, db, pool, users } from "@workspace/db";
 import { hashBannedAppleSub } from "./account-deletion/banned-apple.js";
+import { finalizeDueDeletions } from "./account-deletion/service.js";
 import { appleRuntime } from "./apple-routes.js";
 import { decryptAppleToken, sha256Hex } from "./apple-auth.js";
 import { hashPassword } from "./auth.js";
@@ -361,12 +362,93 @@ test("account-delete starts the ordinary deletion request, and a repeat does not
   assert.equal((await userRow(sub)).deletionRequestedAt!.getTime(), first);
 });
 
-test("account-delete for an account that cannot start deleting yet changes nothing and still answers 200", async () => {
+type Alert = { userId: number; cause: string; blockers: { code: string; amount?: string }[] };
+
+async function withAlerts<T>(fn: (alerts: Alert[]) => Promise<T>, fail = false) {
+  const alerts: Alert[] = [];
+  appleRuntime.alertAdmins = async (a) => {
+    alerts.push(a as Alert);
+    if (fail) throw new Error("mail down");
+  };
+  try {
+    return await fn(alerts);
+  } finally {
+    appleRuntime.alertAdmins = undefined;
+  }
+}
+
+test("account-delete for an account something still blocks is recorded as pending anyway, admins are told what blocks it, and nothing is erased", async () => {
   const sub = newSub("n-delete-blocked");
+  await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(sub));
+  await db.update(users).set({ rentalBalance: "25.00" }).where(eq(users.appleId, sub));
+  const row = await userRow(sub);
+  await withAlerts(async (alerts) => {
+    assert.equal((await notify("account-delete", sub)).status, 200);
+    const after = await userRow(sub);
+    assert.equal(after.accountStatus, "pending_deletion");
+    assert.ok(after.deletionRequestedAt);
+    assert.equal(after.appleId, sub, "nothing is erased by the request");
+    assert.equal(alerts.length, 1);
+    assert.equal(alerts[0].userId, row.id);
+    assert.deepEqual(alerts[0].blockers.map((b) => [b.code, b.amount]), [["wallet_available", "25.00"]]);
+    // A repeat delivery from Apple records and alerts nothing more.
+    assert.equal((await notify("account-delete", sub)).status, 200);
+    assert.equal(alerts.length, 1);
+  });
+});
+
+test("the finalize job leaves a blocked Apple deletion alone, then completes it once the blockers clear", async () => {
+  const sub = newSub("n-delete-job");
+  await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(sub));
+  await db.update(users).set({ rentalBalance: "25.00" }).where(eq(users.appleId, sub));
+  await withAlerts(async () => void (await notify("account-delete", sub)));
+  const id = (await userRow(sub)).id;
+  const later = () => new Date(Date.now() + 15 * 24 * 3_600_000);
+  const noMail = { now: later, stripeCleanup: async () => undefined, sendDeletedEmail: async () => undefined, removeUpload: async () => undefined, only: [id] };
+
+  const blocked = await finalizeDueDeletions(noMail);
+  assert.deepEqual([blocked.due, blocked.blocked, blocked.deleted], [1, 1, 0]);
+  assert.equal((await userRow(sub)).accountStatus, "pending_deletion");
+
+  await db.update(users).set({ rentalBalance: "0.00" }).where(eq(users.id, id));
+  const done = await finalizeDueDeletions(noMail);
+  assert.deepEqual([done.blocked, done.deleted], [0, 1]);
+  const gone = await db.select().from(users).where(eq(users.id, id));
+  assert.equal(gone[0].accountStatus, "deleted");
+  assert.equal(gone[0].appleId, null);
+});
+
+test("an Apple deletion nothing blocks sends no admin alert; a failing alert does not fail the notification", async () => {
+  const clean = newSub("n-delete-clean");
+  await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(clean));
+  await withAlerts(async (alerts) => {
+    assert.equal((await notify("account-delete", clean)).status, 200);
+    assert.equal((await userRow(clean)).accountStatus, "pending_deletion");
+    assert.equal(alerts.length, 0);
+  });
+
+  const blocked = newSub("n-delete-alert-fails");
+  await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(blocked));
+  await db.update(users).set({ rentalBalance: "30.00" }).where(eq(users.appleId, blocked));
+  await withAlerts(async (alerts) => {
+    assert.equal((await notify("account-delete", blocked)).status, 200);
+    assert.equal(alerts.length, 1);
+    assert.equal((await userRow(blocked)).accountStatus, "pending_deletion", "the request stands even though the alert could not be sent");
+  }, true);
+});
+
+test("a deactivated account is recorded for deletion too; a banned one is left to the ban process", async () => {
+  const sub = newSub("n-delete-deact");
   await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(sub));
   await db.update(users).set({ accountStatus: "deactivated" }).where(eq(users.appleId, sub));
   assert.equal((await notify("account-delete", sub)).status, 200);
-  assert.equal((await userRow(sub)).accountStatus, "deactivated");
+  assert.equal((await userRow(sub)).accountStatus, "pending_deletion");
+
+  const banned = newSub("n-delete-banned");
+  await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(banned));
+  await db.update(users).set({ accountStatus: "banned", bannedAt: new Date() }).where(eq(users.appleId, banned));
+  assert.equal((await notify("account-delete", banned)).status, 200);
+  assert.equal((await userRow(banned)).accountStatus, "banned");
 });
 
 test("email-disabled and email-enabled record whether Apple forwards to the relay address", async () => {

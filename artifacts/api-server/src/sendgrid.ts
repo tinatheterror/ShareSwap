@@ -428,3 +428,32 @@ export async function sendModerationAlertEmail(
     return false;
   }
 }
+
+// Tells the moderation/admin inbox that an account's deletion was recorded but is blocked, and by what. Carries the user
+// id and the blockers, never a name or address.
+export async function sendDeletionBlockedAlertEmail(
+  toEmail: string,
+  alert: { userId: number; cause: string; blockers: { code: string; message: string; count?: number; amount?: string }[] },
+) {
+  try {
+    const { client, fromEmail } = await getUncachableSendGridClient();
+    const lines = [
+      'The deletion of user #' + alert.userId + ' was recorded (' + alert.cause + ') but cannot finish yet.',
+      'Blocking it:',
+      ...alert.blockers.map((b) => '- ' + b.code + (b.count ? ' x' + b.count : '') + (b.amount ? ' ($' + b.amount + ')' : '') + ': ' + b.message),
+      'The person may not be able to sign in to deal with this. The daily deletion job retries and completes the deletion once these clear; someone may need to resolve them.',
+    ];
+    await client.send({
+      to: toEmail,
+      from: fromEmail,
+      subject: 'ShareSwap: deletion of user #' + alert.userId + ' is blocked',
+      text: lines.join('\n\n'),
+      html: emailShell('Account deletion blocked', lines),
+    });
+    console.log('[SendGrid] Deletion-blocked alert sent');
+    return true;
+  } catch (error) {
+    console.error('[SendGrid] Error sending deletion-blocked alert:', error);
+    return false;
+  }
+}

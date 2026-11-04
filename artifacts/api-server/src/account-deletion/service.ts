@@ -95,16 +95,29 @@ async function tryEmail(send: () => Promise<unknown>) {
 }
 
 /** Starts the grace period. Re-checks eligibility on the server; requesting twice returns the same schedule. */
-export async function requestDeletion(userId: number, input: { acknowledgeForfeit: boolean }, deps: DeletionDeps = {}): Promise<DeletionState> {
+export async function requestDeletion(
+  userId: number,
+  input: {
+    acknowledgeForfeit: boolean;
+    /**
+     * Records the request even when something is still open (and for a deactivated account), without the forfeit
+     * acknowledgement. For deletions the person did not ask for in the app, such as Apple telling us their Apple ID was
+     * deleted: the finalize job still refuses to erase anything until the blockers clear.
+     */
+    bypassEligibility?: boolean;
+  },
+  deps: DeletionDeps = {},
+): Promise<DeletionState> {
   const user = await loadUser(userId);
   if (user.accountStatus === "pending_deletion" && user.deletionRequestedAt) return stateOf("pending_deletion", user.deletionRequestedAt);
-  if (user.accountStatus !== "active") throw new DeletionError("account_not_active", "This account cannot be deleted right now.");
+  const startable = user.accountStatus === "active" || (!!input.bypassEligibility && user.accountStatus === "deactivated");
+  if (!startable) throw new DeletionError("account_not_active", "This account cannot be deleted right now.");
 
   const eligibility = await getDeletionEligibility(userId);
-  if (!eligibility.eligible) {
+  if (!eligibility.eligible && !input.bypassEligibility) {
     throw new DeletionError("blocked", "Finish what is still open before deleting your account.", 409, eligibility.blockers);
   }
-  if (eligibility.wallet.forfeitedOnDeletion !== "0.00" && !input.acknowledgeForfeit) {
+  if (eligibility.wallet.forfeitedOnDeletion !== "0.00" && !input.acknowledgeForfeit && !input.bypassEligibility) {
     throw new DeletionError("forfeit_acknowledgement_required", `Deleting the account forfeits your balance of $${eligibility.wallet.forfeitedOnDeletion}. Acknowledge this to continue.`, 400);
   }
 
@@ -113,7 +126,7 @@ export async function requestDeletion(userId: number, input: { acknowledgeForfei
     const [row] = await tx
       .update(users)
       .set({ accountStatus: "pending_deletion", deletionRequestedAt: requestedAt })
-      .where(and(eq(users.id, userId), eq(users.accountStatus, "active")))
+      .where(and(eq(users.id, userId), inArray(users.accountStatus, input.bypassEligibility ? ["active", "deactivated"] : ["active"])))
       .returning({ id: users.id });
     if (!row) return false;
     // New requests stop arriving while the account waits to be deleted.
@@ -313,7 +326,7 @@ export async function retryConnectFailures(deps: Pick<DeletionDeps, "deleteConne
 export type DueSweepResult = { due: number; deleted: number; blocked: number; failed: number; wouldDelete: number; connectTried: number; connectResolved: number };
 
 /** Accounts whose grace period is over. A banned account that asked to be deleted is deleted too. */
-export async function finalizeDueDeletions(deps: DeletionDeps & { dryRun?: boolean; limit?: number } = {}): Promise<DueSweepResult> {
+export async function finalizeDueDeletions(deps: DeletionDeps & { dryRun?: boolean; limit?: number; /** Only these accounts (tests, a manual run). */ only?: number[] } = {}): Promise<DueSweepResult> {
   let connectTried = 0;
   let connectResolved = 0;
   if (!deps.dryRun) {
@@ -330,7 +343,7 @@ export async function finalizeDueDeletions(deps: DeletionDeps & { dryRun?: boole
   const due = await db
     .select({ id: users.id })
     .from(users)
-    .where(and(isNotNull(users.deletionRequestedAt), lte(users.deletionRequestedAt, cutoff), inArray(users.accountStatus, ["pending_deletion", "banned"])))
+    .where(and(isNotNull(users.deletionRequestedAt), lte(users.deletionRequestedAt, cutoff), inArray(users.accountStatus, ["pending_deletion", "banned"]), ...(deps.only ? [inArray(users.id, deps.only.length ? deps.only : [0])] : [])))
     .orderBy(users.deletionRequestedAt)
     .limit(deps.limit ?? 25);
   const result: DueSweepResult = { due: due.length, deleted: 0, blocked: 0, failed: 0, wouldDelete: 0, connectTried, connectResolved };

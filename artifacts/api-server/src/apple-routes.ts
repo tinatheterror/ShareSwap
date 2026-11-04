@@ -13,7 +13,7 @@ import {
   type AppleClientDeps,
   type AppleConfig,
 } from "./apple-auth";
-import { APPLE_NOTIFICATIONS_PATH, handleAppleNotification } from "./apple-notifications";
+import { APPLE_NOTIFICATIONS_PATH, handleAppleNotification, type AppleNotificationOptions } from "./apple-notifications";
 import { appleFullName, resolveAppleUser, storeAppleRefreshToken, type AppleSignInDeps } from "./apple-signin";
 
 const CALLBACK_PATH = "/api/auth/apple/callback";
@@ -28,7 +28,7 @@ export type AppleRouteDeps = AppleSignInDeps & {
 };
 
 /** Tests replace these; production leaves them alone (Apple's real keys, real fetch, process.env). */
-export const appleRuntime: { keys?: JWTVerifyGetKey; fetch?: AppleClientDeps["fetch"]; env: NodeJS.ProcessEnv } = { env: process.env };
+export const appleRuntime: { keys?: JWTVerifyGetKey; fetch?: AppleClientDeps["fetch"]; env: NodeJS.ProcessEnv; alertAdmins?: AppleNotificationOptions["alertAdmins"] } = { env: process.env };
 
 /** Sign in with Apple is on only when the four Apple settings and the token-encryption key are all present. */
 export function appleSignInConfig(env: NodeJS.ProcessEnv = appleRuntime.env): AppleConfig | null {
@@ -132,7 +132,7 @@ export function registerAppleRoutes(app: Express, deps: AppleRouteDeps) {
         if (error instanceof AppleAuthError && error.code === "apple_unavailable") return res.status(503).json({ message: "Try again" });
         return res.status(400).json({ message: "The notification could not be verified" });
       }
-      const result = await handleAppleNotification(event);
+      const result = await handleAppleNotification(event, { alertAdmins: appleRuntime.alertAdmins });
       console.log(`[apple] notification ${event.type}: ${result}`);
       return res.status(200).json({ ok: true });
     } catch (error) {

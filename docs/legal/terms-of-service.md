@@ -1,10 +1,10 @@
 # ShareSwap Terms of Service
 
-> DRAFT for review. Not legal advice: counsel must read it before launch. Items in [square brackets] are for you to fill in or decide. This replaces the stand-alone drafts in docs/legal that were meant to be folded in; the zero-tolerance section below is that text.
+> DRAFT for review. Not legal advice: counsel must read it before launch. The only item still in [square brackets] is the effective date, which is set when TERMS_VERSION is bumped at launch. This replaces the stand-alone drafts in docs/legal that were meant to be folded in; the zero-tolerance section below is that text.
 
 Effective date: [date]. Last updated: [date].
 
-These Terms are an agreement between you and [legal entity name] ("ShareSwap", "we", "us"). They apply to the ShareSwap website and mobile app. By creating an account or using ShareSwap you agree to them and to our Community Guidelines and Privacy Policy. If you do not agree, do not use ShareSwap.
+These Terms are an agreement between you and ShareSwap Marketplace Inc. ("ShareSwap", "we", "us"). They apply to the ShareSwap website and mobile app. By creating an account or using ShareSwap you agree to them and to our Community Guidelines and Privacy Policy. If you do not agree, do not use ShareSwap.
 
 ## Who can use ShareSwap
 
@@ -80,8 +80,8 @@ We may update these Terms. If a change matters, we will ask you to accept the ne
 
 ## Governing law
 
-These Terms are governed by the laws of [province or state and country where the operating company is based], and the courts there have jurisdiction, except where the law of your home requires otherwise.
+These Terms are governed by the laws of British Columbia, Canada, and the courts there have jurisdiction, except where the law of your home requires otherwise.
 
 ## Contact
 
-support@shareswap.app. [Postal address.]
+support@shareswap.app. Post: ShareSwap Marketplace Inc., 343-13988 Cambie Rd, Richmond, British Columbia, V6V 2K4, Canada.

@@ -1,10 +1,10 @@
 # ShareSwap Privacy Policy
 
-> DRAFT for review. Not legal advice: counsel must read it before launch. It describes what the app does today, taken from the code and the account-deletion manifest. Items in [square brackets] are for you to fill in or decide.
+> DRAFT for review. Not legal advice: counsel must read it before launch. It describes what the app does today, taken from the code and the account-deletion manifest. The only item still in [square brackets] is the effective date, which is set when TERMS_VERSION is bumped at launch. The AI-provider paragraph is marked for counsel review.
 
 Effective date: [date]. Last updated: [date].
 
-ShareSwap lets neighbours lend, rent, swap and give away things they own. This policy explains what we collect, why, who we share it with, how long we keep it, and what you can do about it. It covers the ShareSwap website and mobile app. The operator is [legal entity name and address]. Questions: support@shareswap.app.
+ShareSwap lets neighbours lend, rent, swap and give away things they own. This policy explains what we collect, why, who we share it with, how long we keep it, and what you can do about it. It covers the ShareSwap website and mobile app. The operator is ShareSwap Marketplace Inc., 343-13988 Cambie Rd, Richmond, British Columbia, V6V 2K4, Canada. Questions: support@shareswap.app.
 
 ## Who can use ShareSwap
 
@@ -59,7 +59,9 @@ Five features send content to OpenAI, an AI provider, to produce their result. S
 - **Import from a screenshot.** Sends the screenshots you upload (up to 5), which can show whatever the original listing showed, such as names, prices and photos. If you decline, it is unavailable.
 - **Category suggestion.** Sends the item name you type, to suggest a category. If you decline, you choose the category yourself.
 
-We never send your name, email address or account details to OpenAI. [Confirm before launch, under the terms of Replit's AI Integrations service and OpenAI: how long the requests and their content are kept, and whether they may be used to train models. Then say so here in one sentence.]
+We never send your name, email address or account details to OpenAI. 
+
+*[For counsel review.]* When you use an AI feature, the content described in the consent prompt is sent to OpenAI through Replit's AI Integrations service. OpenAI does not use API data to train its models by default, but it may keep requests for up to 30 days for abuse monitoring, or longer where required for legal or safety reasons. Replit processes these requests as our infrastructure provider under its own terms and privacy policy. We do not ask either provider to store this content beyond processing the request.
 
 We record your agreement for each feature, with the date and the wording you agreed to, and ask again if the wording changes. You can see and change each choice at any time in Settings under AI features, on the website and in the app, and when you delete your account the record is deleted with it.
 
@@ -72,7 +74,7 @@ While your account is open we keep what is described above. When you delete your
 - **Until it expires:** sign-in counters (about 15 minutes), one-time sign-in tokens (5 minutes), and sessions.
 - **No end date:** if you are banned and then delete your account, we keep a keyed one-way hash of your email address (never the address itself) so the ban cannot be avoided by signing up again.
 
-Backups roll off on the hosting provider's normal schedule. [Confirm with Replit how long database backups are kept, and say so here in one sentence.]
+Deleted data may remain in our database backups for up to 7 days before it is permanently overwritten.
 
 ## Deleting your account
 
@@ -92,4 +94,4 @@ If we change this policy in a way that matters, we will tell you in the app or b
 
 ## Contact
 
-support@shareswap.app. [Postal address.]
+support@shareswap.app. Post: ShareSwap Marketplace Inc., 343-13988 Cambie Rd, Richmond, British Columbia, V6V 2K4, Canada.

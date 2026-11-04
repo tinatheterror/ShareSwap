@@ -34,7 +34,15 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 - [ ] **Apple age-rating questionnaire**: answer every question honestly from what the app does, including user-generated content and messaging between strangers, in-app payments and deposits, and the marketplace for physical goods. Do not pick the rating you want; expect 18+ and accept what the questionnaire returns. ShareSwap's minimum account age (the age of majority where the person lives) is a separate decision from Apple's rating. Phase 2 teen accounts (docs/product/teen-accounts-phase-2.md) are not for launch and need a fresh answer if they are ever built.
 
 - [ ] Content safeguards (#3): report, block, moderation queue, zero-tolerance terms (Apple 1.2)
-- [ ] Sign in with Apple (#1): required because Google sign-in is offered
+- [ ] Sign in with Apple (#1): built (iOS native button, web redirect, account linking, deletion revocation, server-to-server notifications); it stays off until you finish this setup. Required because Google sign-in is offered. At developer.apple.com > Certificates, Identifiers & Profiles:
+  - [ ] **App ID** `com.shareswap.mobile`: enable the Sign in with Apple capability, then rebuild with EAS (the config plugin and `usesAppleSignIn` are in app.json; Expo Go cannot run it).
+  - [ ] **Services ID** (for the web), e.g. `app.shareswap.web`: enable Sign in with Apple > Configure: primary App ID above, domain `shareswap.app`, **return URL `https://shareswap.app/api/auth/apple/callback`** (HTTPS only; Apple rejects localhost, so test web on a registered domain). If the API is served from another host, set `APPLE_REDIRECT_URL` to that exact registered URL.
+  - [ ] **Key**: Keys > + > Sign in with Apple > primary App ID. Download the `.p8` once; note the Key ID. Note the Team ID (Membership).
+  - [ ] **Server-to-server notification URL**: on the Services ID and on the App ID's Sign in with Apple configuration, set the Server to Server Notification Endpoint to **`https://shareswap.app/api/auth/apple/notifications`**.
+  - [ ] **Private relay email**: Services > Sign in with Apple for Email Communication: register the sending domain and the SendGrid sender address (SPF/DKIM passing), or mail to `@privaterelay.appleid.com` addresses is dropped.
+  - [ ] Secrets in Replit: `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (the .p8 contents; `\n` escapes are accepted), `APPLE_SERVICES_ID`, `APPLE_BUNDLE_ID` (optional, defaults to com.shareswap.mobile), and `APPLE_TOKEN_ENCRYPTION_KEY` (32 random bytes, base64, e.g. `openssl rand -base64 32`; never change it once accounts have signed in, or their stored refresh tokens cannot be read). Sign in with Apple is off until the first four and the encryption key are all set. The Apple routes answer 503 and the web button leads back to /auth with a message.
+  - [ ] `BANNED_EMAIL_HASH_KEY` (above) also protects banned Apple IDs; deleting a banned Apple account fails closed without it.
+  - [ ] Try it on a real iPhone build and on the web: first sign-in (name arrives once), second sign-in, Hide My Email, revoking ShareSwap in Settings > Apple ID > Sign in with Apple (should sign the person out), and deleting an Apple-linked account (the grant should disappear from that Apple settings list).
 - [x] Subscriptions vs In-App Purchase (#6): decided on Stripe subscriptions, not In-App Purchase. Member and Pro only change limits and fees on physical services, so the App Review notes below must say so.
 - [ ] Raw server errors reaching users (#10)
 - [ ] eas.json submit config and Android FCM (#11, #12)
@@ -58,6 +66,9 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 
 ## After launch
 
+- [ ] Google sign-in does not link by verified email, so one address can end up with two accounts (a password account and a Google account). Sign in with Apple does link on a verified email on both sides (apple-signin.ts); give Google the same rule, and decide what to do about the duplicates that already exist.
+- [ ] Banned person returning through Sign in with Apple's private relay: the relay address differs per app, so the email block cannot see it. The Apple ID itself is blocked (banned_apple_hashes); a second Apple ID is not. Revisit if it is abused.
+- [ ] Consult `apple_links.email_forwarding_enabled` before sending email to a private-relay address (Apple's email-disabled notification is recorded but no mailer reads it yet).
 - [ ] Async Vision check on new item photos: send a flagged photo to the moderation queue instead of blocking the upload. Reporting is the only photo safeguard at launch.
 - [ ] Web report and block UI. The server-side enforcement (blocks, removals, bans) applies to web from day one; only the buttons are missing.
 

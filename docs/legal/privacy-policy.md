@@ -12,7 +12,7 @@ ShareSwap is for people who have reached the age of majority where they live: 19
 
 ## What we collect
 
-**Account details.** Province or state and the date your age was confirmed (not your date of birth), email address, username, handle, display name, full name, password (stored only as a salted hash), phone number if you add one, a short bio, and a profile photo. If you sign in with Google we receive your Google account identifier, name and email address.
+**Account details.** Province or state and the date your age was confirmed (not your date of birth), email address, username, handle, display name, full name, password (stored only as a salted hash), phone number if you add one, a short bio, and a profile photo. If you sign in with Google we receive your Google account identifier, name and email address. If you sign in with Apple we receive your Apple account identifier and, if you allow it, your name (Apple sends it once) and your email address, which may be an Apple private-relay address that forwards to you; we also keep a token from Apple, encrypted, so we can end the link when you delete your account.
 
 **Location.** You choose a default postal code and city and a search radius. When you list an item you can add its address or coordinates, and a pickup or drop-off address for a delivery. You can save location alerts, which store keywords, coordinates and a radius. We use location to show you things nearby and to work out distances, and to arrange delivery. The apps do not track your position in the background. We turn a postal code or city into coordinates with the OpenStreetMap Nominatim service (see below).
 
@@ -37,6 +37,7 @@ We use your information to run your account; to show listings and wishlists near
 - **Other members.** Your display name, profile photo, bio, ratings, reviews, listings and approximate location are visible to others. Pickup and delivery addresses are shared with the other person in a request, and with the delivery service, when needed to complete it.
 - **Stripe and Stripe Connect** (payments, deposits, subscriptions and payouts).
 - **Google** (sign-in with Google).
+- **Apple** (sign-in with Apple; Apple also tells us if you stop using ShareSwap with your Apple ID or delete your Apple ID, and we then sign you out or start the deletion of your ShareSwap account).
 - **Persona** (identity verification).
 - **Uber Direct** (delivery): the pickup and drop-off names, addresses and phone numbers, and a description of the parcel.
 - **SendGrid** (email): your email address and the content of emails we send, such as verification and password reset.
@@ -78,7 +79,7 @@ Deleted data may remain in our database backups for up to 7 days before it is pe
 
 ## Deleting your account
 
-You can request deletion in the app or at https://shareswap.app/delete-account after signing in. We first check that nothing is still in progress: open requests, claims, deposits or payouts must finish, and a wallet balance of $10 or more must be withdrawn. A balance from $1 to under $10 is offered as a withdrawal, and under $1 is forfeited, after you acknowledge it. Deletion then waits 14 days, during which you can cancel; after that, a job deletes the account. It removes your profile, province or state, contact details, password, photos, location, saved cards (Stripe customer and, where possible, Connect account), push tokens, wishlists, alerts, notifications, game and ShareCoin history, and verification data. Messages you wrote are replaced with "[Message removed]", your reviews show "Former member" with the comment removed, and your listings are removed from view. Other people's side of shared records stays.
+You can request deletion in the app or at https://shareswap.app/delete-account after signing in. We first check that nothing is still in progress: open requests, claims, deposits or payouts must finish, and a wallet balance of $10 or more must be withdrawn. A balance from $1 to under $10 is offered as a withdrawal, and under $1 is forfeited, after you acknowledge it. Deletion then waits 14 days, during which you can cancel; after that, a job deletes the account. If you signed in with Apple, we first tell Apple to end the link between your Apple ID and ShareSwap (if Apple cannot be reached, the deletion waits and is retried). It removes your profile, province or state, contact details, password, photos, location, saved cards (Stripe customer and, where possible, Connect account), push tokens, wishlists, alerts, notifications, game and ShareCoin history, and verification data. Messages you wrote are replaced with "[Message removed]", your reviews show "Former member" with the comment removed, and your listings are removed from view. Other people's side of shared records stays.
 
 ## Your choices and rights
 

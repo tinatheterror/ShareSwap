@@ -7,7 +7,7 @@ Method: static code review only. The app was not run on a device and no EAS buil
 
 | # | Gap | Evidence | Effort |
 |---|---|---|---|
-| 1 | **No Sign in with Apple.** Google sign-in is offered alongside email. Apple guideline 4.8 requires an equivalent privacy-preserving option on iOS. | `app/login.tsx` has only Google, email and a phone button. | M. Needs `expo-apple-authentication`, server-side identity-token verification, account linking by email and the config plugin. |
+| 1 | **Sign in with Apple: built, not yet live (needs the Apple setup in the go-live checklist and an EAS build).** Originally: no Sign in with Apple. Google sign-in is offered alongside email. Apple guideline 4.8 requires an equivalent privacy-preserving option on iOS. | `app/login.tsx` has only Google, email and a phone button. | M. Needs `expo-apple-authentication`, server-side identity-token verification, account linking by email and the config plugin. |
 | 2 | **In-app account deletion: built, not yet live.** Settings > Delete Account (and the web page `https://shareswap.app/delete-account`) starts a 14-day grace period, then the account is deleted. See [Account deletion](#account-deletion) for what shipped and the steps that must be done before submission. | Was: the row only opened `mailto:support@shareswap.com` and `deletionRequestedAt` was never written. Now: `account-deletion/` in the API server, `components/AccountDeletionSheet.tsx` and `DeletionPendingBanner.tsx` in the app, `pages/delete-account-page.tsx` on the web. | Done in code. **Open: turn the finalize job on (it ships off), set `BANNED_EMAIL_HASH_KEY`, enter the web URL in Play Console.** |
 | 3 | **No user-generated-content safeguards.** Apple 1.2 requires a report mechanism, user blocking, filtering and published contact details. The app has none of them. | The schema has no reports or blocks table. There is no report control on item, profile or chat screens. The "Report an issue" in `ClaimSheet` and `HandoffSheet` is a transaction dispute, not a content report. Chat has no filtering. Admin ban exists (`bannedAt`) but nothing feeds it. | L. Needs report and block tables, endpoints, buttons on listing, chat and profile, hiding blocked users' content, an admin review queue, and a commitment to act within 24 hours. |
 | 4 | **No privacy policy or terms anywhere.** Both stores require a privacy policy URL and a link inside the app. Sign-up has no consent step. | A search of the mobile app finds no links. `register.tsx` has no terms or age text. The web app has no `/privacy` or `/terms` route. | S for the links and consent checkbox, plus the legal text itself. |
@@ -54,7 +54,7 @@ Read from the `users` table and the API.
 - **Financial:** Stripe customer ID, card brand, last 4 digits and expiry, Connect account, balances, transaction history. Card numbers are held by Stripe.
 - **User content:** listing photos, chat messages, reviews, claim evidence photos. Listing photos can also be sent to the server's AI valuation, which should be disclosed.
 - **Identifiers and usage:** user ID, Expo push token, device fingerprint, last-active time, trust score and activity history.
-- **Auth:** Google account ID, hashed password.
+- **Auth:** Google account ID, Apple ID (Apple's `sub`) and an encrypted Apple refresh token (used only to revoke the grant on deletion), hashed password.
 - **Tracking:** no ad SDKs, analytics SDKs or cross-app tracking were seen in the mobile code. That points to "Data not used for tracking", but check the web and server for third-party scripts.
 
 ## Suggested order
@@ -79,7 +79,7 @@ Kept after deletion (see `account-deletion/manifest.ts` for every column): payme
 - [ ] **Check SendGrid sends the two emails** (deletion requested, deletion done). A failed email is logged and never blocks a deletion.
 - [ ] **Run one deletion end to end on a test-mode Stripe account** and check the Customer and Connect account are gone. (A rerun after a failed database step is covered by a test: Stripe's `resource_missing` counts as done.) All automated tests use fake Stripe clients; nothing here has been run against Stripe.
 - [ ] **Add the deletion path to the review notes:** Settings > Delete Account, the 14-day grace period, and Delete now.
-- [ ] If Sign in with Apple (#1) is added, deletion must also revoke the Apple token; it does not yet.
+- [x] Deletion revokes the Sign in with Apple grant (Apple requires it): finalizing revokes the stored refresh token first and waits and retries when Apple cannot be reached. A banned person's Apple ID is blocked afterwards by a keyed hash.
 
 ### Known gaps
 

@@ -1,10 +1,12 @@
 import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { and, eq, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
-import { bannedEmailHashes, connectCleanupFailures, db, items, notifications, requestLifecycleEvents, users } from "@workspace/db";
+import { appleLinks, bannedAppleHashes, bannedEmailHashes, connectCleanupFailures, db, items, notifications, requestLifecycleEvents, users } from "@workspace/db";
 import { sendAccountDeletedEmail, sendAccountDeletionRequestedEmail } from "../sendgrid";
 import { publicName } from "../public-identity";
 import { anonymizeUser } from "./anonymize";
+import { AppleCleanupUnavailableError, type AppleCleanupTarget } from "./apple-cleanup";
+import { hashBannedAppleSub } from "./banned-apple";
 import { accountEmail, hashBannedEmail } from "./banned-email";
 import { getDeletionEligibility, type DeletionBlocker } from "./eligibility";
 import { DELETION_GRACE_DAYS, TERMINAL_REQUEST_STATUSES } from "./retention";
@@ -36,6 +38,8 @@ export type DeletionDeps = {
   env?: NodeJS.ProcessEnv;
   /** Ends the subscription and removes the Customer and Connect account. Must be safe to repeat. */
   stripeCleanup?: (target: StripeCleanupTarget) => Promise<StripeCleanupResult | void>;
+  /** Revokes the person's Sign in with Apple grant. Must be safe to repeat; it throws AppleCleanupUnavailableError to make the deletion wait. */
+  appleCleanup?: (target: AppleCleanupTarget) => Promise<void>;
   /** Deletes a Connect account for a retry: resolves when it is gone (or already was), throws when Stripe refuses. */
   deleteConnectAccount?: (accountId: string) => Promise<void>;
   sendRequestedEmail?: (to: string, deleteOn: Date, name?: string) => Promise<unknown>;
@@ -65,6 +69,7 @@ async function loadUser(userId: number) {
       id: users.id,
       username: users.username,
       email: users.email,
+      appleId: users.appleId,
       displayName: users.displayName,
       accountStatus: users.accountStatus,
       bannedAt: users.bannedAt,
@@ -156,6 +161,9 @@ export async function finalizeDeletion(userId: number, deps: DeletionDeps = {}):
   const email = accountEmail(user);
   const bannedHash = banned && email ? hashBannedEmail(email, deps.env ?? process.env) : null;
 
+  // The same for the Apple ID: a banned person's Apple `sub` is blocked from signing in again, so the key must be there.
+  const bannedAppleHash = banned && user.appleId ? hashBannedAppleSub(user.appleId, deps.env ?? process.env) : null;
+
   const eligibility = await getDeletionEligibility(userId);
   if (!eligibility.eligible) {
     throw new DeletionError("blocked", "Finish what is still open before this account can be deleted.", 409, eligibility.blockers);
@@ -172,6 +180,21 @@ export async function finalizeDeletion(userId: number, deps: DeletionDeps = {}):
   if (deps.stripeCleanup) connectRefused = (await deps.stripeCleanup(target))?.connectRefused;
   else if (target.customerId || target.subscriptionId || target.connectedAccountId) {
     throw new DeletionError("stripe_cleanup_unavailable", "Stripe cleanup is not configured, so an account with Stripe data cannot be deleted.", 500);
+  }
+
+  // Then Apple, which requires the grant to be revoked when the account goes. Also idempotent, and also stops the
+  // deletion (to be retried) when Apple cannot be told.
+  const [appleLink] = await db.select({ refreshTokenEnc: appleLinks.refreshTokenEnc }).from(appleLinks).where(eq(appleLinks.userId, userId)).limit(1);
+  if (appleLink?.refreshTokenEnc) {
+    if (!deps.appleCleanup) throw new DeletionError("apple_cleanup_unavailable", "Apple cleanup is not configured, so an account signed in with Apple cannot be deleted.", 500);
+    try {
+      await deps.appleCleanup({ userId, refreshTokenEnc: appleLink.refreshTokenEnc });
+    } catch (error) {
+      if (error instanceof AppleCleanupUnavailableError) {
+        throw new DeletionError("apple_revocation_pending", "We could not reach Apple to end the Sign in with Apple link. The deletion will be retried.", 503);
+      }
+      throw error;
+    }
   }
 
   const outcome = await db.transaction(async (tx) => {
@@ -226,6 +249,7 @@ export async function finalizeDeletion(userId: number, deps: DeletionDeps = {}):
 
     const { uploads } = await anonymizeUser(tx, userId);
     if (bannedHash) await tx.insert(bannedEmailHashes).values({ emailHash: bannedHash }).onConflictDoNothing();
+    if (bannedAppleHash) await tx.insert(bannedAppleHashes).values({ subHash: bannedAppleHash }).onConflictDoNothing();
     // Stripe would not delete the Connect account: leave a durable note for staff, in the same transaction as the
     // deletion, and let later finalize runs retry it.
     if (connectRefused && target.connectedAccountId) {

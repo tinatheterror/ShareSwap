@@ -81,6 +81,7 @@ import {
   type DeletionDeps,
 } from "../account-deletion/service";
 import { createConnectDeleter, createStripeCleanup, type StripeCleanupClient } from "../account-deletion/stripe-cleanup";
+import { createAppleCleanup } from "../account-deletion/apple-cleanup";
 import { minimumWaiverApplies } from "../account-deletion/retention";
 import { isEmailShaped, publicName, publicUsername } from "../public-identity";
 import { scrubEmailUsernames, usernameScrubMiddleware } from "../username-scrub";
@@ -16300,6 +16301,7 @@ Respond with ONLY the category name, nothing else.`
   const deletionDeps = (): DeletionDeps => ({
     now: options.now,
     stripeCleanup: createStripeCleanup(async () => (await getUncachableStripeClient()) as unknown as StripeCleanupClient),
+    appleCleanup: createAppleCleanup(),
     deleteConnectAccount: createConnectDeleter(async () => (await getUncachableStripeClient()) as unknown as StripeCleanupClient),
     ...options.accountDeletion,
   });

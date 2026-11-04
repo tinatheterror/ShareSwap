@@ -2263,6 +2263,9 @@ export function registerRoutes(
                 // Already agreed to the current Terms, so the acceptance screen does not cover the page under test.
                 termsAcceptedAt: new Date(),
                 termsVersion: TERMS_VERSION,
+                // And already confirmed their age, or every write is refused with AGE_CONFIRMATION_REQUIRED.
+                ageConfirmedAt: new Date(),
+                ageRegion: "US-CA",
               },
               {
                 username: borrowerUsername,
@@ -2275,6 +2278,9 @@ export function registerRoutes(
                 // Already agreed to the current Terms, so the acceptance screen does not cover the page under test.
                 termsAcceptedAt: new Date(),
                 termsVersion: TERMS_VERSION,
+                // And already confirmed their age, or every write is refused with AGE_CONFIRMATION_REQUIRED.
+                ageConfirmedAt: new Date(),
+                ageRegion: "US-CA",
               },
             ])
             .returning({ id: users.id, username: users.username });

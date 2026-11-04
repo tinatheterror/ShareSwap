@@ -1,7 +1,7 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { Express } from "express";
+import { Express, type NextFunction, type Request, type Response } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import rateLimit, { ipKeyGenerator, type Store, type Options, type ClientRateLimitInfo } from "express-rate-limit";
@@ -31,6 +31,7 @@ import { TERMS_VERSION, supportEmail, termsAcceptanceRequired } from "./legal-co
 import { csrfProtection } from "./csrf";
 import { backgroundJobs } from "./background-jobs-registry";
 import { isBannedEmail } from "./account-deletion/banned-email";
+import { registerAppleRoutes } from "./apple-routes";
 import { getVerificationForUser, googleEmailIsVerified, verificationRecipient } from "./verification";
 
 // ---------------------------------------------------------------------------
@@ -320,7 +321,7 @@ export const REACTIVATE_TOKEN_PREFIX = "reactivate-";
 /** How long a one-time native token (sign-in or reactivation) can be exchanged. */
 export const NATIVE_TOKEN_TTL_MS = 5 * 60 * 1000;
 
-async function storeNativeToken(userId: number, prefix = ""): Promise<string> {
+export async function storeNativeToken(userId: number, prefix = ""): Promise<string> {
   await ensureNativeTokenTable();
   const token = `${prefix}${randomBytes(32).toString("hex")}`;
   const expiresAt = new Date(Date.now() + NATIVE_TOKEN_TTL_MS);
@@ -359,7 +360,7 @@ function generateEmailVerificationToken(): string {
 
 // Generate a unique 6-char user code: L N L N L N (e.g. T3B7C2)
 // Used as both handle (userCode) and referralCode — they are always the same value.
-async function generateUserCode(firstLetter?: string): Promise<string> {
+export async function generateUserCode(firstLetter?: string): Promise<string> {
   const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no I/O (confusing)
   const digits = "23456789"; // no 0/1 (confusing)
   const rL = () => letters[Math.floor(Math.random() * letters.length)];
@@ -389,7 +390,7 @@ async function generateUserCode(firstLetter?: string): Promise<string> {
 }
 
 // Generate display name from Google profile or email
-function generateDisplayName(email?: string, googleName?: string): string {
+export function generateDisplayName(email?: string, googleName?: string): string {
   // A name that is itself an address is not a name: fall through to the email-derived one.
   if (googleName && !isEmailShaped(googleName)) {
     // Use Google profile name, optionally abbreviate last name
@@ -1099,9 +1100,10 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Reactivate a deactivated Google account. The one-time token was issued by the Google callback after Google
-  // confirmed the account's owner, so it stands in for the password the reactivation route asks for.
-  app.post("/api/auth/google-reactivate", authLimiter, async (req, res, next) => {
+  // Reactivate a deactivated account that signed in with Google or Apple. The one-time token was issued by the OAuth
+  // callback after the provider confirmed the account's owner, so it stands in for the password the reactivation route
+  // asks for. /api/auth/google-reactivate is the original path; the provider-neutral one is /api/auth/oauth-reactivate.
+  const reactivateWithProviderToken = async (req: Request, res: Response, next: NextFunction) => {
     const token = req.body?.token;
     if (typeof token !== "string" || !token.startsWith(REACTIVATE_TOKEN_PREFIX)) {
       return res.status(400).json({ message: "Token required" });
@@ -1127,9 +1129,21 @@ export function setupAuth(app: Express) {
         res.json({ message: "Account reactivated successfully", user: active });
       });
     } catch (error) {
-      console.error("Google reactivation error:", error);
+      console.error("Provider reactivation error:", error);
       return next(error);
     }
+  };
+  app.post("/api/auth/google-reactivate", authLimiter, reactivateWithProviderToken);
+  app.post("/api/auth/oauth-reactivate", authLimiter, reactivateWithProviderToken);
+
+  registerAppleRoutes(app, {
+    authLimiter,
+    generateUserCode,
+    generateDisplayName,
+    storeNativeToken,
+    reactivationPrefix: REACTIVATE_TOKEN_PREFIX,
+    sessionSecret: SESSION_SECRET,
+    login: (req, user) => new Promise<void>((resolve, reject) => req.login(user as any, (err) => (err ? reject(err) : resolve()))),
   });
 
   // Email verification endpoint

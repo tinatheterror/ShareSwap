@@ -55,20 +55,46 @@ export function resolveAppleRedirectUri(env: NodeJS.ProcessEnv = appleRuntime.en
 
 const sign = (secret: string, value: string) => createHmac("sha256", secret).update(`apple-state:${value}`).digest("base64url");
 
-/** `state` is `<nonce>.<expiry>.<signature>`; the nonce is also kept in the session, which is what ties the callback to this browser. */
-function makeState(secret: string, nonce: string, now = Date.now()) {
-  const body = `${nonce}.${now + 10 * 60 * 1000}`;
+/**
+ * Where the system browser may send the Android app back to: the app's own scheme. Expo Go's exp:// links are accepted
+ * outside production only. Anything else is ignored (an open redirect would hand the one-time token to another site).
+ */
+export function allowedAppRedirect(value: unknown, env: NodeJS.ProcessEnv = appleRuntime.env): string | null {
+  if (typeof value !== "string" || value.length > 500) return null;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.username || url.password) return null;
+  if (url.protocol === "shareswap:") return value;
+  if ((url.protocol === "exp:" || url.protocol === "exps:") && env.NODE_ENV !== "production") return value;
+  return null;
+}
+
+const withParams = (base: string, params: string) => `${base}${base.includes("?") ? "&" : "?"}${params}`;
+
+/**
+ * `state` is `<nonce>.<expiry>.<app redirect, base64url or empty>.<signature>`. The nonce is also kept in the session, which
+ * is what ties the callback to this browser; the redirect rides in the state (not the session) so it cannot be swapped.
+ */
+function makeState(secret: string, nonce: string, redirect: string | null, now = Date.now()) {
+  const body = `${nonce}.${now + 10 * 60 * 1000}.${redirect ? Buffer.from(redirect).toString("base64url") : ""}`;
   return `${body}.${sign(secret, body)}`;
 }
 
-function readState(secret: string, state: unknown, now = Date.now()): string | null {
+function readState(secret: string, state: unknown, now = Date.now()): { nonce: string; redirect: string | null } | null {
   if (typeof state !== "string") return null;
-  const [nonce, expiry, signature] = state.split(".");
+  const parts = state.split(".");
+  if (parts.length !== 4) return null;
+  const [nonce, expiry, encodedRedirect, signature] = parts;
   if (!nonce || !expiry || !signature) return null;
-  const expected = Buffer.from(sign(secret, `${nonce}.${expiry}`));
+  const expected = Buffer.from(sign(secret, `${nonce}.${expiry}.${encodedRedirect}`));
   const given = Buffer.from(signature);
   if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
-  return Number(expiry) > now ? nonce : null;
+  if (!(Number(expiry) > now)) return null;
+  return { nonce, redirect: encodedRedirect ? allowedAppRedirect(Buffer.from(encodedRedirect, "base64url").toString()) : null };
 }
 
 export const reactivationRedirectFor = (token: string) => `/auth?reactivate=apple&token=${token}`;
@@ -161,30 +187,33 @@ export function registerAppleRoutes(app: Express, deps: AppleRouteDeps) {
       client_id: config.servicesId,
       redirect_uri: resolveAppleRedirectUri(),
       scope: "name email",
-      state: makeState(deps.sessionSecret, nonce),
+      state: makeState(deps.sessionSecret, nonce, allowedAppRedirect(req.query.platform === "native" ? req.query.redirect_uri : null)),
       nonce,
     });
     session.save((err: unknown) => (err ? next(err) : res.redirect(`${APPLE_AUTHORIZE_URL}?${params}`)));
   });
 
-  // Web: Apple posts the result back here (form_post).
+  // Web: Apple posts the result back here (form_post). Also the return leg of the Android app, which opens this flow in
+  // the system browser: then the state carries the app's redirect, and the app gets a one-time token instead of a session.
   app.post(CALLBACK_PATH, deps.authLimiter, async (req, res, next) => {
     try {
       const config = appleSignInConfig();
-      if (!config) return res.redirect("/auth?apple=unavailable");
-      if (req.body?.error) return res.redirect("/auth"); // the person cancelled
+      const early = readState(deps.sessionSecret, req.body?.state);
+      const app_ = early?.redirect ?? null;
+      const back = (webPath: string, appParams: string) => res.redirect(app_ ? withParams(app_, appParams) : webPath);
+      if (!config) return back("/auth?apple=unavailable", "apple=unavailable");
+      if (req.body?.error) return back("/auth", "apple=cancelled"); // the person cancelled
       const session = req.session as any;
-      const stateNonce = readState(deps.sessionSecret, req.body?.state);
       const sessionNonce: string | undefined = session?.appleAuth?.nonce;
-      if (!stateNonce || !sessionNonce || stateNonce !== sessionNonce || typeof req.body?.id_token !== "string") {
-        return res.redirect("/auth?apple=failed");
+      if (!early || !sessionNonce || early.nonce !== sessionNonce || typeof req.body?.id_token !== "string") {
+        return back("/auth?apple=failed", "apple=failed");
       }
       delete session.appleAuth; // one try per start
       let identity;
       try {
         identity = await verifyAppleIdentityToken(req.body.id_token, { audience: [config.servicesId], expectedNonce: sessionNonce, keys: appleRuntime.keys });
       } catch {
-        return res.redirect("/auth?apple=failed");
+        return back("/auth?apple=failed", "apple=failed");
       }
       // `user` is a JSON string, present on the first authorization only.
       let fullName: string | null = null;
@@ -198,9 +227,17 @@ export function registerAppleRoutes(app: Express, deps: AppleRouteDeps) {
       const referralCode = typeof session.pendingReferralCode === "string" ? session.pendingReferralCode : null;
       delete session.pendingReferralCode;
       const outcome = await resolveAppleUser(identity, { fullName, referralCode }, deps);
-      if (outcome.kind === "refused") return res.redirect("/auth?apple=refused");
-      if (outcome.kind === "reactivate") return res.redirect(reactivationRedirectFor(await deps.storeNativeToken(outcome.userId, deps.reactivationPrefix)));
+      if (outcome.kind === "refused") return back("/auth?apple=refused", "apple=refused");
+      if (outcome.kind === "reactivate") {
+        const token = await deps.storeNativeToken(outcome.userId, deps.reactivationPrefix);
+        return back(reactivationRedirectFor(token), `reactivate=1&token=${token}`);
+      }
       await exchangeAndStore(config, outcome.user.id, req.body.code, config.servicesId, resolveAppleRedirectUri());
+      if (app_) {
+        // The app redeems this at POST /api/auth/exchange-token, as it does for Google, so the session cookie lands in
+        // the app's own cookie jar rather than the system browser's.
+        return res.redirect(withParams(app_, `token=${await deps.storeNativeToken(outcome.user.id)}`));
+      }
       await deps.login(req, outcome.user);
       return res.redirect("/");
     } catch (error) {

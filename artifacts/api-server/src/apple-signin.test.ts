@@ -390,3 +390,82 @@ test("notifications answer 503 while Sign in with Apple is not configured", asyn
     appleRuntime.env = saved;
   }
 });
+
+// --- Android: the web redirect flow in the system browser, back into the app -----------------------------------------
+
+const APP = "shareswap://";
+
+async function startApp_(client: Client, redirect = APP) {
+  const res = await client.get(`/api/auth/apple/start?platform=native&redirect_uri=${encodeURIComponent(redirect)}`);
+  assert.equal(res.status, 302);
+  return new URL(res.headers.get("location")!);
+}
+
+test("the app's redirect is allowed only for the app's own scheme", async () => {
+  const { allowedAppRedirect } = await import("./apple-routes.js");
+  const prod = { NODE_ENV: "production" } as NodeJS.ProcessEnv;
+  assert.equal(allowedAppRedirect("shareswap://", prod), "shareswap://");
+  assert.equal(allowedAppRedirect("shareswap://login?x=1", prod), "shareswap://login?x=1");
+  for (const bad of ["https://evil.example/", "http://shareswap.app/", "javascript:alert(1)", "shareswap://user:pw@host/", "exp://192.168.0.2:8081", "", "not a url", undefined, 5]) {
+    assert.equal(allowedAppRedirect(bad as any, prod), null, String(bad));
+  }
+  assert.equal(allowedAppRedirect("exp://192.168.0.2:8081", {} as NodeJS.ProcessEnv), "exp://192.168.0.2:8081", "Expo Go links work outside production");
+});
+
+test("Android: a successful sign-in returns to the app with a one-time token the app redeems for a session", async () => {
+  const browser = new Client(baseUrl);
+  const url = await startApp_(browser);
+  const sub = newSub("android");
+  const idToken = await token({ sub, nonce: url.searchParams.get("nonce"), email: `${UNIQUE}.android@example.com`, email_verified: "true" }, { aud: SERVICES_ID });
+  const res = await formPost(browser, { state: url.searchParams.get("state")!, id_token: idToken, code: "android-code", user: JSON.stringify({ name: { firstName: "Dee", lastName: "Park" } }) });
+  assert.equal(res.status, 302);
+  const location = res.headers.get("location")!;
+  assert.match(location, /^shareswap:\/\/\?token=[0-9a-f]{64}$/);
+  assert.equal((await userRow(sub)).displayName, "Dee P.");
+  assert.equal((await browser.get("/api/user")).status, 401, "the system browser itself is not signed in");
+  assert.equal(exchangeCalls.at(-1)?.get("client_id"), SERVICES_ID);
+
+  const app = new Client(baseUrl);
+  const redeemed = await app.post("/api/auth/exchange-token", { token: new URL(location).searchParams.get("token") });
+  assert.equal(redeemed.status, 200);
+  assert.equal(((await redeemed.json()) as { id: number }).id, (await userRow(sub)).id);
+  assert.equal((await app.get("/api/user")).status, 200);
+  assert.equal((await new Client(baseUrl).post("/api/auth/exchange-token", { token: new URL(location).searchParams.get("token") })).status, 401, "a token works once");
+});
+
+test("Android: refusals, failures and cancelling come back to the app as ?apple=..., never to a web page", async () => {
+  const sub = newSub("android-bad");
+  const c1 = new Client(baseUrl);
+  const u1 = await startApp_(c1);
+  const r1 = await formPost(c1, { state: u1.searchParams.get("state")!, id_token: await token({ sub, nonce: "wrong" }, { aud: SERVICES_ID }) });
+  assert.equal(r1.headers.get("location"), "shareswap://?apple=failed");
+
+  const c2 = new Client(baseUrl);
+  await startApp_(c2);
+  assert.equal((await formPost(c2, { error: "user_cancelled_authorize", state: (await startApp_(c2)).searchParams.get("state")! })).headers.get("location"), "shareswap://?apple=cancelled");
+
+  const banned = newSub("android-banned");
+  await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(banned));
+  await db.update(users).set({ accountStatus: "banned", bannedAt: new Date() }).where(eq(users.appleId, banned));
+  const c3 = new Client(baseUrl);
+  const u3 = await startApp_(c3);
+  const r3 = await formPost(c3, { state: u3.searchParams.get("state")!, id_token: await token({ sub: banned, nonce: u3.searchParams.get("nonce") }, { aud: SERVICES_ID }) });
+  assert.equal(r3.headers.get("location"), "shareswap://?apple=refused");
+});
+
+test("Android: a deactivated account comes back with a reactivation token, and a foreign redirect is ignored", async () => {
+  const sub = newSub("android-deact");
+  await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(sub));
+  await db.update(users).set({ accountStatus: "deactivated", deactivatedAt: new Date() }).where(eq(users.appleId, sub));
+  const c = new Client(baseUrl);
+  const u = await startApp_(c);
+  const res = await formPost(c, { state: u.searchParams.get("state")!, id_token: await token({ sub, nonce: u.searchParams.get("nonce") }, { aud: SERVICES_ID }) });
+  assert.match(res.headers.get("location")!, /^shareswap:\/\/\?reactivate=1&token=reactivate-[0-9a-f]{64}$/);
+
+  // A redirect to another site is dropped at the start, so the flow behaves as the plain web one and the token never leaves.
+  const evil = new Client(baseUrl);
+  const ue = await startApp_(evil, "https://evil.example/steal");
+  const ok = await token({ sub: newSub("android-evil"), nonce: ue.searchParams.get("nonce") }, { aud: SERVICES_ID });
+  const out = await formPost(evil, { state: ue.searchParams.get("state")!, id_token: ok });
+  assert.equal(out.headers.get("location"), "/");
+});

@@ -209,6 +209,9 @@ export function registerAppleRoutes(app: Express, deps: AppleRouteDeps) {
         return back("/auth?apple=failed", "apple=failed");
       }
       delete session.appleAuth; // one try per start
+      // express-session can send the redirect before it has written the session, so a quick second request would still see
+      // the nonce. Save first, so the single try is really single.
+      await new Promise<void>((resolve, reject) => session.save((err: unknown) => (err ? reject(err) : resolve())));
       let identity;
       try {
         identity = await verifyAppleIdentityToken(req.body.id_token, { audience: [config.servicesId], expectedNonce: sessionNonce, keys: appleRuntime.keys });

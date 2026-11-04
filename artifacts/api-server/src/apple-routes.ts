@@ -8,10 +8,12 @@ import {
   appleConfigFromEnv,
   exchangeAppleAuthorizationCode,
   verifyAppleIdentityToken,
+  verifyAppleNotification,
   sha256Hex,
   type AppleClientDeps,
   type AppleConfig,
 } from "./apple-auth";
+import { APPLE_NOTIFICATIONS_PATH, handleAppleNotification } from "./apple-notifications";
 import { appleFullName, resolveAppleUser, storeAppleRefreshToken, type AppleSignInDeps } from "./apple-signin";
 
 const CALLBACK_PATH = "/api/auth/apple/callback";
@@ -87,6 +89,30 @@ export function registerAppleRoutes(app: Express, deps: AppleRouteDeps) {
 
   const refusal = (reason: "banned" | "blocked") =>
     reason === "banned" ? "This account cannot be used on ShareSwap." : "This account is not available.";
+
+  // Apple's server-to-server notifications (consent revoked, Apple ID deleted, relay email forwarding off/on). Apple posts
+  // JSON {"payload": "<signed JWT>"}. There is no session, cookie or CSRF token: the signature is the authentication.
+  app.post(APPLE_NOTIFICATIONS_PATH, async (req, res, next) => {
+    try {
+      const config = appleSignInConfig();
+      if (!config) return unavailable(res);
+      const payload = req.body?.payload;
+      if (typeof payload !== "string" || !payload) return res.status(400).json({ message: "Missing payload" });
+      let event;
+      try {
+        event = await verifyAppleNotification(payload, { audience: [config.servicesId, config.bundleId], keys: appleRuntime.keys });
+      } catch (error) {
+        // Apple's keys unreachable is ours to retry (5xx); a payload that does not verify is not (4xx).
+        if (error instanceof AppleAuthError && error.code === "apple_unavailable") return res.status(503).json({ message: "Try again" });
+        return res.status(400).json({ message: "The notification could not be verified" });
+      }
+      const result = await handleAppleNotification(event);
+      console.log(`[apple] notification ${event.type}: ${result}`);
+      return res.status(200).json({ ok: true });
+    } catch (error) {
+      return next(error);
+    }
+  });
 
   // Native iOS: the app sends what expo-apple-authentication returned, plus the raw nonce it hashed for Apple.
   app.post("/api/auth/apple/native", deps.authLimiter, async (req, res, next) => {

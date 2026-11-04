@@ -312,3 +312,81 @@ test("a person who cancels at Apple lands back on the sign-in page; a deactivate
   const res = await formPost(c2, { state: url.searchParams.get("state")!, id_token: await token({ sub, nonce: url.searchParams.get("nonce") }, { aud: SERVICES_ID }) });
   assert.match(res.headers.get("location")!, /^\/auth\?reactivate=apple&token=reactivate-/);
 });
+
+// --- server-to-server notifications --------------------------------------------------------------------------------
+
+async function notify(type: string, sub: string, over: { aud?: string; key?: CryptoKey; client?: Client; raw?: unknown } = {}) {
+  const payload = await token({ events: JSON.stringify({ type, sub, event_time: Date.now() }) }, { aud: over.aud ?? SERVICES_ID, key: over.key });
+  return (over.client ?? new Client(baseUrl)).post("/api/auth/apple/notifications", over.raw ?? { payload });
+}
+
+test("a notification needs no session or CSRF token, but must carry Apple's signature for this app", async () => {
+  const other = await generateKeyPair("RS256");
+  const sub = newSub("n-sig");
+  for (const bad of [await notify("consent-revoked", sub, { key: other.privateKey }), await notify("consent-revoked", sub, { aud: "someone.else" }), await notify("consent-revoked", sub, { raw: {} }), await notify("consent-revoked", sub, { raw: { payload: "x.y.z" } })]) {
+    assert.equal(bad.status, 400);
+  }
+  assert.equal((await notify("consent-revoked", sub)).status, 200); // an unknown Apple ID is accepted and ignored
+});
+
+test("consent-revoked signs the person out everywhere and drops the dead refresh token", async () => {
+  const sub = newSub("n-revoked");
+  const device1 = new Client(baseUrl);
+  const device2 = new Client(baseUrl);
+  await device1.post("/api/auth/apple/native", await nativeBody(sub));
+  await device2.post("/api/auth/apple/native", await nativeBody(sub));
+  assert.equal((await device1.get("/api/user")).status, 200);
+  const row = await userRow(sub);
+  assert.ok((await db.select().from(appleLinks).where(eq(appleLinks.userId, row.id)))[0].refreshTokenEnc);
+
+  assert.equal((await notify("consent-revoked", sub)).status, 200);
+  assert.equal((await device1.get("/api/user")).status, 401);
+  assert.equal((await device2.get("/api/user")).status, 401);
+  assert.equal((await db.select().from(appleLinks).where(eq(appleLinks.userId, row.id)))[0].refreshTokenEnc, null);
+  assert.equal((await userRow(sub)).accountStatus, "active", "revoking consent does not delete the account");
+  // Signing in with Apple again still works (the person can grant ShareSwap access again).
+  assert.equal((await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(sub))).status, 200);
+});
+
+test("account-delete starts the ordinary deletion request, and a repeat does nothing more", async () => {
+  const sub = newSub("n-delete");
+  const client = new Client(baseUrl);
+  await client.post("/api/auth/apple/native", await nativeBody(sub));
+  assert.equal((await notify("account-delete", sub)).status, 200);
+  const after = await userRow(sub);
+  assert.equal(after.accountStatus, "pending_deletion");
+  assert.ok(after.deletionRequestedAt);
+  const first = after.deletionRequestedAt!.getTime();
+  assert.equal((await notify("account-delete", sub)).status, 200);
+  assert.equal((await userRow(sub)).deletionRequestedAt!.getTime(), first);
+});
+
+test("account-delete for an account that cannot start deleting yet changes nothing and still answers 200", async () => {
+  const sub = newSub("n-delete-blocked");
+  await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(sub));
+  await db.update(users).set({ accountStatus: "deactivated" }).where(eq(users.appleId, sub));
+  assert.equal((await notify("account-delete", sub)).status, 200);
+  assert.equal((await userRow(sub)).accountStatus, "deactivated");
+});
+
+test("email-disabled and email-enabled record whether Apple forwards to the relay address", async () => {
+  const sub = newSub("n-email");
+  await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(sub, { email: "r1@privaterelay.appleid.com", is_private_email: "true", email_verified: "true" }));
+  const id = (await userRow(sub)).id;
+  const forwarding = async () => (await db.select().from(appleLinks).where(eq(appleLinks.userId, id)))[0].emailForwardingEnabled;
+  assert.equal(await forwarding(), true);
+  await notify("email-disabled", sub);
+  assert.equal(await forwarding(), false);
+  await notify("email-enabled", sub);
+  assert.equal(await forwarding(), true);
+});
+
+test("notifications answer 503 while Sign in with Apple is not configured", async () => {
+  const saved = appleRuntime.env;
+  appleRuntime.env = { ...saved, APPLE_KEY_ID: "" };
+  try {
+    assert.equal((await notify("consent-revoked", newSub("n-off"))).status, 503);
+  } finally {
+    appleRuntime.env = saved;
+  }
+});

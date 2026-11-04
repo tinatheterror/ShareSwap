@@ -5,7 +5,8 @@ import { Platform } from "react-native";
 /**
  * Sign in with Apple on iOS. The app asks Apple for an identity token bound to a nonce: Apple gets the SHA-256 of a
  * random value, and the server gets the raw value, so a stolen token cannot be replayed. Android has no native Apple
- * sign-in and does not offer it; the web build uses the server's redirect flow instead.
+ * sign-in, so it (and the web build) uses the server's redirect flow in a browser: Android opens the system browser and
+ * the server sends it back into the app with a one-time token.
  */
 
 export type AppleSignInPayload = {
@@ -42,8 +43,11 @@ export function appleSignInPayload(credential: Credential, rawNonce: string): Ap
 
 const toHex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 
+/** iOS uses Apple's sheet; everything else goes through the browser redirect. */
+export const appleSignInUsesBrowser = () => Platform.OS !== "ios";
+
 export async function appleSignInAvailable(): Promise<boolean> {
-  if (Platform.OS !== "ios") return false;
+  if (Platform.OS !== "ios") return true;
   try {
     return await AppleAuthentication.isAvailableAsync();
   } catch {

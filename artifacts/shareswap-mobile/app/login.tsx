@@ -27,6 +27,7 @@ import { resumeDestination } from "@/lib/sessionNavigation";
 import { ApiEnvironmentLabel } from "@/components/ApiEnvironmentLabel";
 import { AppleSignInButton } from "@/components/AppleSignInButton";
 import { AppleSignInCancelled, appleSignInAvailable, requestAppleCredential } from "@/lib/appleSignIn";
+import { parseAppleRedirect } from "@/lib/appleRedirect";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -50,8 +51,8 @@ export default function LoginScreen() {
   const [showReferral, setShowReferral] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [lastAuthMethod, setLastAuthMethod] = useState<"google" | "apple" | "email" | null>(null);
-  // Sign in with Apple is offered on iOS when the device supports it, and on the web build; never on Android.
-  const [appleAvailable, setAppleAvailable] = useState(Platform.OS === "web");
+  // Sign in with Apple: Apple's sheet on iOS (when the device supports it); the browser redirect flow on Android and the web.
+  const [appleAvailable, setAppleAvailable] = useState(Platform.OS !== "ios");
 
   // Read the previously used sign-in method so we can highlight it.
   useEffect(() => {
@@ -90,6 +91,27 @@ export default function LoginScreen() {
     }
   }
 
+  /** Apple (or Google) confirmed an account that is deactivated: ask, then redeem the token to bring it back. */
+  async function offerReactivation(token: string): Promise<boolean> {
+    const confirmed = await new Promise<boolean>((resolve) =>
+      Alert.alert(
+        "Account deactivated",
+        "Your account is deactivated and your listings are hidden. Reactivate it now?",
+        [
+          { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+          { text: "Reactivate", onPress: () => resolve(true) },
+        ],
+        { cancelable: true, onDismiss: () => resolve(false) },
+      ),
+    );
+    if (!confirmed) return false;
+    const resp = await apiRequest("POST", "/api/auth/oauth-reactivate", { token });
+    const reactivated = await resp.json();
+    if (!reactivated?.user?.id) throw new Error("Unable to reactivate your account. Please try again.");
+    setUserData(reactivated.user);
+    return true;
+  }
+
   async function handleAppleLogin() {
     if (Platform.OS === "web") {
       window.location.href = `${BASE_URL}/api/auth/apple/start`;
@@ -97,32 +119,40 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      const payload = await requestAppleCredential();
-      const resp = await apiRequest("POST", "/api/auth/apple/native", payload);
-      const body = await resp.json();
-      if (body?.reactivate && typeof body.token === "string") {
-        // Apple confirmed the account, but it is deactivated: offer to bring it back.
-        const confirmed = await new Promise<boolean>((resolve) =>
-          Alert.alert(
-            "Account deactivated",
-            "Your account is deactivated and your listings are hidden. Reactivate it now?",
-            [
-              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-              { text: "Reactivate", onPress: () => resolve(true) },
-            ],
-            { cancelable: true, onDismiss: () => resolve(false) },
-          ),
-        );
-        if (!confirmed) return;
-        const reactivatedResp = await apiRequest("POST", "/api/auth/oauth-reactivate", { token: body.token });
-        const reactivated = await reactivatedResp.json();
-        if (!reactivated?.user?.id) throw new Error("Unable to reactivate your account. Please try again.");
-        setUserData(reactivated.user);
-      } else if (body?.id) {
-        setUserData(body);
+      let signedIn: boolean;
+      if (Platform.OS === "ios") {
+        const payload = await requestAppleCredential();
+        const resp = await apiRequest("POST", "/api/auth/apple/native", payload);
+        const body = await resp.json();
+        if (body?.reactivate && typeof body.token === "string") {
+          signedIn = await offerReactivation(body.token);
+        } else if (body?.id) {
+          setUserData(body);
+          signedIn = true;
+        } else {
+          throw new Error("Unable to verify your sign-in. Please try again.");
+        }
       } else {
-        throw new Error("Unable to verify your sign-in. Please try again.");
+        // Android has no native Apple sheet: the server's redirect flow runs in the system browser and returns here.
+        const redirectUri = Linking.createURL("/");
+        const ref = referralCode.trim() ? `&ref=${encodeURIComponent(referralCode.trim())}` : "";
+        const startUrl = `${BASE_URL}/api/auth/apple/start?platform=native&redirect_uri=${encodeURIComponent(redirectUri)}${ref}`;
+        const result = await WebBrowser.openAuthSessionAsync(startUrl, redirectUri);
+        if (result.type !== "success") return;
+        const outcome = parseAppleRedirect(result.url);
+        if (outcome.kind === "cancelled") return;
+        if (outcome.kind === "error") throw new Error(outcome.message);
+        if (outcome.kind === "reactivate") {
+          signedIn = await offerReactivation(outcome.token);
+        } else {
+          const resp = await apiRequest("POST", "/api/auth/exchange-token", { token: outcome.token });
+          const userData = await resp.json();
+          if (!userData?.id) throw new Error("Unable to verify your sign-in. Please try again.");
+          setUserData(userData);
+          signedIn = true;
+        }
       }
+      if (!signedIn) return;
       await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "apple");
       registerPushToken().catch(() => {});
     } catch (err: unknown) {

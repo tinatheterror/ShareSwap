@@ -11,6 +11,7 @@ jest.mock("expo-crypto", () => ({
 }));
 
 import * as AppleAuthentication from "expo-apple-authentication";
+import { parseAppleRedirect } from "../appleRedirect";
 import { AppleSignInCancelled, appleSignInPayload, requestAppleCredential } from "../appleSignIn";
 
 const signIn = AppleAuthentication.signInAsync as jest.Mock;
@@ -45,5 +46,21 @@ describe("requestAppleCredential", () => {
     await expect(requestAppleCredential()).rejects.toBeInstanceOf(AppleSignInCancelled);
     signIn.mockRejectedValue(new Error("network"));
     await expect(requestAppleCredential()).rejects.toThrow("network");
+  });
+});
+
+describe("parseAppleRedirect", () => {
+  test("reads the one-time token, the reactivation token and the failure reasons the server sends back", () => {
+    expect(parseAppleRedirect("shareswap://login?token=abc")).toEqual({ kind: "token", token: "abc" });
+    expect(parseAppleRedirect("shareswap://?reactivate=1&token=reactivate-x")).toEqual({ kind: "reactivate", token: "reactivate-x" });
+    expect(parseAppleRedirect("shareswap://?apple=cancelled")).toEqual({ kind: "cancelled" });
+    expect(parseAppleRedirect("shareswap://?apple=refused")).toEqual({ kind: "error", message: "This account cannot be used on ShareSwap." });
+    expect(parseAppleRedirect("shareswap://?apple=failed")).toMatchObject({ kind: "error" });
+    expect(parseAppleRedirect("shareswap://?apple=somethingnew")).toMatchObject({ kind: "error" });
+  });
+
+  test("a link with no token and no reason is an error, not a sign-in", () => {
+    expect(parseAppleRedirect("shareswap://")).toMatchObject({ kind: "error" });
+    expect(parseAppleRedirect("shareswap://?reactivate=1")).toMatchObject({ kind: "error" });
   });
 });

@@ -6,6 +6,7 @@ const mockSetUserData = jest.fn();
 const mockApiRequest = jest.fn();
 const mockRequestCredential = jest.fn();
 const mockAvailable = jest.fn();
+const mockOpenAuthSession = jest.fn();
 
 class MockCancelled extends Error {}
 
@@ -34,7 +35,7 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({}),
 }));
 jest.mock("expo-linking", () => ({ createURL: () => "shareswap://login" }));
-jest.mock("expo-web-browser", () => ({ openAuthSessionAsync: jest.fn() }));
+jest.mock("expo-web-browser", () => ({ openAuthSessionAsync: (...args: unknown[]) => mockOpenAuthSession(...args) }));
 jest.mock("react-native-safe-area-context", () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock("@tanstack/react-query", () => ({
   useQuery: () => ({ data: undefined, isLoading: false, refetch: jest.fn() }),
@@ -147,6 +148,50 @@ describe("Sign in with Apple on the login screen", () => {
     await pressApple();
     expect(mockSetUserData).not.toHaveBeenCalled();
     expect(alertSpy).toHaveBeenCalledWith("Sign-in failed", "This account cannot be used on ShareSwap.");
+  });
+
+  describe("on Android (browser redirect flow)", () => {
+    const original = Platform.OS;
+    beforeEach(() => { (Platform as { OS: string }).OS = "android"; mockAvailable.mockResolvedValue(true); });
+    afterEach(() => { (Platform as { OS: string }).OS = original; });
+
+    test("opens the system browser at the server's flow with the app's return address, then redeems the token", async () => {
+      mockOpenAuthSession.mockResolvedValue({ type: "success", url: "shareswap://login?token=abc123" });
+      mockApiRequest.mockResolvedValue({ json: async () => ({ id: 21 }) });
+      await render();
+      await pressApple();
+      expect(mockOpenAuthSession).toHaveBeenCalledWith("https://apple-test.replit.dev/api/auth/apple/start?platform=native&redirect_uri=shareswap%3A%2F%2Flogin", "shareswap://login");
+      expect(mockRequestCredential).not.toHaveBeenCalled();
+      expect(mockApiRequest).toHaveBeenCalledWith("POST", "/api/auth/exchange-token", { token: "abc123" });
+      expect(mockSetUserData).toHaveBeenCalledWith({ id: 21 });
+    });
+
+    test("closing the browser, or cancelling at Apple, shows nothing", async () => {
+      mockOpenAuthSession.mockResolvedValueOnce({ type: "cancel" }).mockResolvedValueOnce({ type: "success", url: "shareswap://login?apple=cancelled" });
+      await render();
+      await pressApple();
+      await pressApple();
+      expect(mockApiRequest).not.toHaveBeenCalled();
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    test("a refusal that comes back in the link is shown to the person", async () => {
+      mockOpenAuthSession.mockResolvedValue({ type: "success", url: "shareswap://login?apple=refused" });
+      await render();
+      await pressApple();
+      expect(mockSetUserData).not.toHaveBeenCalled();
+      expect(alertSpy).toHaveBeenCalledWith("Sign-in failed", "This account cannot be used on ShareSwap.");
+    });
+
+    test("a deactivated account comes back with a reactivation token and is offered the prompt", async () => {
+      pressed = "Reactivate";
+      mockOpenAuthSession.mockResolvedValue({ type: "success", url: "shareswap://login?reactivate=1&token=reactivate-zzz" });
+      mockApiRequest.mockResolvedValue({ json: async () => ({ user: { id: 8, accountStatus: "active" } }) });
+      await render();
+      await pressApple();
+      expect(mockApiRequest).toHaveBeenCalledWith("POST", "/api/auth/oauth-reactivate", { token: "reactivate-zzz" });
+      expect(mockSetUserData).toHaveBeenCalledWith({ id: 8, accountStatus: "active" });
+    });
   });
 
   test("on the web build the button goes to the server's redirect flow", async () => {

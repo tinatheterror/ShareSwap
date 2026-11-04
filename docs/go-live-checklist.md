@@ -69,7 +69,6 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 
 - [ ] Google sign-in does not link by verified email, so one address can end up with two accounts (a password account and a Google account). Sign in with Apple does link on a verified email on both sides (apple-signin.ts); give Google the same rule, and decide what to do about the duplicates that already exist.
 - [ ] Banned person returning through Sign in with Apple's private relay: the relay address differs per app, so the email block cannot see it. The Apple ID itself is blocked (banned_apple_hashes); a second Apple ID is not. Revisit if it is abused.
-- [ ] Consult `apple_links.email_forwarding_enabled` before sending email to a private-relay address (Apple's email-disabled notification is recorded but no mailer reads it yet).
 - [ ] Async Vision check on new item photos: send a flagged photo to the moderation queue instead of blocking the upload. Reporting is the only photo safeguard at launch.
 - [ ] Web report and block UI. The server-side enforcement (blocks, removals, bans) applies to web from day one; only the buttons are missing.
 

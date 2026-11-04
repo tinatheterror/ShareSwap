@@ -1,5 +1,6 @@
 // SendGrid email utility - using Replit SendGrid integration
 import sgMail from '@sendgrid/mail';
+import { sendUnlessRelayDisabled } from './email-relay';
 
 let connectionSettings: any;
 
@@ -39,8 +40,12 @@ async function getCredentials() {
 export async function getUncachableSendGridClient() {
   const { apiKey, email } = await getCredentials();
   sgMail.setApiKey(apiKey);
+  // Every email goes through this wrapper, which skips (and logs) private-relay addresses Apple has switched off.
+  const client = {
+    send: (message: any, ...rest: any[]) => sendUnlessRelayDisabled((m: any) => (sgMail.send as any)(m, ...rest), message),
+  };
   return {
-    client: sgMail,
+    client,
     fromEmail: email
   };
 }

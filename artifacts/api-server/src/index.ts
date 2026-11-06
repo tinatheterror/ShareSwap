@@ -33,6 +33,11 @@ async function start() {
   logger.info(timeZoneBootLine());
   const termsWarning = termsEnforcementBootWarning();
   if (termsWarning) logger.error(termsWarning);
+  // Only whether each is set, never the values.
+  const missingEmailVars = ["RESEND_API_KEY", "EMAIL_FROM"].filter((name) => !process.env[name]?.trim());
+  if (missingEmailVars.length > 0) {
+    logger.warn(`[email] ${missingEmailVars.join(" and ")} not set: no email can be sent`);
+  }
   if (!moderationEmail()) {
     logger.warn("[moderation] MODERATION_EMAIL is not set: reports are stored and queued, but nobody is emailed about them");
   }

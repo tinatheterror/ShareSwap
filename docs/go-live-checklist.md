@@ -71,6 +71,7 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 - [ ] Banned person returning through Sign in with Apple's private relay: the relay address differs per app, so the email block cannot see it. The Apple ID itself is blocked (banned_apple_hashes); a second Apple ID is not. Revisit if it is abused.
 - [ ] Async Vision check on new item photos: send a flagged photo to the moderation queue instead of blocking the upload. Reporting is the only photo safeguard at launch.
 - [ ] Web report and block UI. The server-side enforcement (blocks, removals, bans) applies to web from day one; only the buttons are missing.
+- [ ] Phone verification as an optional trust step in Account Settings (not a sign-in method): Twilio Verify on a new account we control, rate limits and country restrictions, one number per account, a profile badge, and added to the deletion manifest and Privacy Policy. Until then, make sure no UI asks users to verify a phone.
 
 ## Parked improvement: in-app card authentication
 

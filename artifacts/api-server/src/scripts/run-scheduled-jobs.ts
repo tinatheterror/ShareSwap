@@ -59,16 +59,15 @@ const MAX_REPORTED_LINES = 500;
 // ── Secrets ─────────────────────────────────────────────────────────────────────
 
 /**
- * Names only, never values. Stripe keys are environment variables (stripe.server.ts); SendGrid
- * credentials come from the Replit connector (sendgrid.ts), so that needs the connector host plus a
- * token: REPL_IDENTITY in the workspace, WEB_REPL_RENEWAL in a deployment.
+ * Names only, never values. Stripe keys (stripe.server.ts) and the Resend email settings (mail.ts)
+ * are all environment variables.
  */
 export const REQUIRED_SECRETS: ReadonlyArray<string | readonly string[]> = [
   "DATABASE_URL",
   "STRIPE_SECRET_KEY",
   "STRIPE_PUBLISHABLE_KEY",
-  "REPLIT_CONNECTORS_HOSTNAME",
-  ["REPL_IDENTITY", "WEB_REPL_RENEWAL"],
+  "RESEND_API_KEY",
+  "EMAIL_FROM",
 ];
 
 export function findMissingSecrets(
@@ -77,7 +76,7 @@ export function findMissingSecrets(
 ): string[] {
   const present = (name: string) => (env[name] ?? "").trim() !== "";
   const missing: string[] = [];
-  // A report-only run never touches Stripe or SendGrid, so it needs only the database.
+  // A report-only run never touches Stripe or Resend, so it needs only the database.
   for (const requirement of reportOnly ? (["DATABASE_URL"] as const) : REQUIRED_SECRETS) {
     if (typeof requirement === "string") {
       if (!present(requirement)) missing.push(requirement);

@@ -1,59 +1,46 @@
-// SendGrid email utility - using Replit SendGrid integration
-import sgMail from '@sendgrid/mail';
+// Email utility - sends through Resend (https://resend.com/docs/api-reference/emails/send-email).
+// Secrets: RESEND_API_KEY and EMAIL_FROM (support@shareswap.app, a domain verified in Resend).
 import { sendUnlessRelayDisabled } from './email-relay';
 
-let connectionSettings: any;
+const RESEND_URL = 'https://api.resend.com/emails';
 
-async function getCredentials() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
+type MailMessage = { to: string | string[]; from?: string; subject: string; text?: string; html?: string };
 
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+function getCredentials() {
+  const apiKey = (process.env.RESEND_API_KEY ?? '').trim();
+  const email = (process.env.EMAIL_FROM ?? '').trim();
+  if (!apiKey || !email) {
+    const missing = [!apiKey && 'RESEND_API_KEY', !email && 'EMAIL_FROM'].filter(Boolean).join(' and ');
+    throw new Error(`Resend is not configured: ${missing} missing from Secrets. No email can be sent.`);
   }
-
-  const response = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=sendgrid',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  );
-  
-  const data = await response.json();
-  connectionSettings = data.items?.[0];
-
-  if (!connectionSettings || (!connectionSettings.settings?.api_key || !connectionSettings.settings?.from_email)) {
-    throw new Error('SendGrid not connected - missing api_key or from_email');
-  }
-  
-  return { apiKey: connectionSettings.settings.api_key, email: connectionSettings.settings.from_email };
+  return { apiKey, email };
 }
 
-// WARNING: Never cache this client - access tokens expire
-export async function getUncachableSendGridClient() {
-  const { apiKey, email } = await getCredentials();
-  sgMail.setApiKey(apiKey);
+async function sendViaResend(apiKey: string, message: MailMessage) {
+  const response = await fetch(RESEND_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(message),
+  });
+  if (!response.ok) {
+    const detail = (await response.text().catch(() => '')).slice(0, 300);
+    throw new Error(`Resend rejected the email (HTTP ${response.status}): ${detail}`);
+  }
+}
+
+export function getMailClient() {
+  const { apiKey, email } = getCredentials();
   // Every email goes through this wrapper, which skips (and logs) private-relay addresses Apple has switched off.
   const client = {
-    send: (message: any, ...rest: any[]) => sendUnlessRelayDisabled((m: any) => (sgMail.send as any)(m, ...rest), message),
+    send: (message: MailMessage) => sendUnlessRelayDisabled((m: MailMessage) => sendViaResend(apiKey, m), message),
   };
-  return {
-    client,
-    fromEmail: email
-  };
+  return { client, fromEmail: email };
 }
 
 // Send email verification link
 export async function sendVerificationEmail(toEmail: string, verificationToken: string, displayName?: string) {
   try {
-    const { client, fromEmail } = await getUncachableSendGridClient();
+    const { client, fromEmail } = await getMailClient();
     
     // In development, always use the dev domain so the token (stored in the dev DB)
     // can be found. In production, use the custom domain.
@@ -112,10 +99,10 @@ export async function sendVerificationEmail(toEmail: string, verificationToken: 
     };
 
     await client.send(msg);
-    console.log(`[SendGrid] Verification email sent to ${toEmail}`);
+    console.log(`[Mail] Verification email sent to ${toEmail}`);
     return true;
   } catch (error) {
-    console.error('[SendGrid] Error sending verification email:', error);
+    console.error('[Mail] Error sending verification email:', error);
     return false;
   }
 }
@@ -123,7 +110,7 @@ export async function sendVerificationEmail(toEmail: string, verificationToken: 
 // Send email-change verification link to the NEW address
 export async function sendEmailChangeVerificationEmail(toEmail: string, verificationToken: string, displayName?: string) {
   try {
-    const { client, fromEmail } = await getUncachableSendGridClient();
+    const { client, fromEmail } = await getMailClient();
 
     const baseUrl = process.env.NODE_ENV === 'production' && process.env.CUSTOM_DOMAIN
       ? `https://${process.env.CUSTOM_DOMAIN}`
@@ -181,10 +168,10 @@ export async function sendEmailChangeVerificationEmail(toEmail: string, verifica
     };
 
     await client.send(msg);
-    console.log(`[SendGrid] Email-change verification email sent to ${toEmail}`);
+    console.log(`[Mail] Email-change verification email sent to ${toEmail}`);
     return true;
   } catch (error) {
-    console.error('[SendGrid] Error sending email-change verification email:', error);
+    console.error('[Mail] Error sending email-change verification email:', error);
     return false;
   }
 }
@@ -192,7 +179,7 @@ export async function sendEmailChangeVerificationEmail(toEmail: string, verifica
 // Send security alert to the OLD email when user requests an email change
 export async function sendEmailChangeAlertEmail(toEmail: string, newEmail: string, displayName?: string) {
   try {
-    const { client, fromEmail } = await getUncachableSendGridClient();
+    const { client, fromEmail } = await getMailClient();
 
     const msg = {
       to: toEmail,
@@ -237,10 +224,10 @@ export async function sendEmailChangeAlertEmail(toEmail: string, newEmail: strin
     };
 
     await client.send(msg);
-    console.log(`[SendGrid] Email-change alert sent to old address ${toEmail}`);
+    console.log(`[Mail] Email-change alert sent to old address ${toEmail}`);
     return true;
   } catch (error) {
-    console.error('[SendGrid] Error sending email-change alert email:', error);
+    console.error('[Mail] Error sending email-change alert email:', error);
     return false;
   }
 }
@@ -248,7 +235,7 @@ export async function sendEmailChangeAlertEmail(toEmail: string, newEmail: strin
 // Send password reset link
 export async function sendPasswordResetEmail(toEmail: string, resetToken: string, displayName?: string) {
   try {
-    const { client, fromEmail } = await getUncachableSendGridClient();
+    const { client, fromEmail } = await getMailClient();
 
     const baseUrl = process.env.NODE_ENV === 'production' && process.env.CUSTOM_DOMAIN
       ? `https://${process.env.CUSTOM_DOMAIN}`
@@ -307,10 +294,10 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
     };
 
     await client.send(msg);
-    console.log(`[SendGrid] Password reset email sent to ${toEmail}`);
+    console.log(`[Mail] Password reset email sent to ${toEmail}`);
     return true;
   } catch (error) {
-    console.error('[SendGrid] Error sending password reset email:', error);
+    console.error('[Mail] Error sending password reset email:', error);
     return false;
   }
 }
@@ -343,7 +330,7 @@ const emailShell = (greeting: string, paragraphs: string[]) => `
 // Tells the person their account will be deleted on `deleteOn`, and how to cancel. Sent to their own address only.
 export async function sendAccountDeletionRequestedEmail(toEmail: string, deleteOn: Date, displayName?: string) {
   try {
-    const { client, fromEmail } = await getUncachableSendGridClient();
+    const { client, fromEmail } = await getMailClient();
     const greeting = `Hi ${displayName || 'there'},`;
     const date = deletionDate(deleteOn);
     const cancelUrl = `${appBaseUrl()}/delete-account`;
@@ -359,10 +346,10 @@ export async function sendAccountDeletionRequestedEmail(toEmail: string, deleteO
       text: `${greeting}\n\nWe received a request to delete your ShareSwap account. It will be deleted on ${date} (UTC).\n\nUntil then you can change your mind: open the ShareSwap app, go to Settings and tap Cancel deletion, or sign in at ${cancelUrl} and cancel there.\n\nIf you did not ask for this, sign in and cancel the deletion, then change your password.\n\nBest,\nThe ShareSwap Team`,
       html: emailShell(greeting, lines),
     });
-    console.log('[SendGrid] Account deletion request email sent');
+    console.log('[Mail] Account deletion request email sent');
     return true;
   } catch (error) {
-    console.error('[SendGrid] Error sending account deletion request email:', error);
+    console.error('[Mail] Error sending account deletion request email:', error);
     return false;
   }
 }
@@ -370,7 +357,7 @@ export async function sendAccountDeletionRequestedEmail(toEmail: string, deleteO
 // Confirms the deletion is done. The address is the one the account was opened with, read before it was erased.
 export async function sendAccountDeletedEmail(toEmail: string, displayName?: string) {
   try {
-    const { client, fromEmail } = await getUncachableSendGridClient();
+    const { client, fromEmail } = await getMailClient();
     const greeting = `Hi ${displayName || 'there'},`;
     const lines = [
       `Your ShareSwap account has been deleted. Your profile, listings, messages and saved details are gone.`,
@@ -384,10 +371,10 @@ export async function sendAccountDeletedEmail(toEmail: string, displayName?: str
       text: `${greeting}\n\nYour ShareSwap account has been deleted. Your profile, listings, messages and saved details are gone.\n\nRecords of payments and of bookings that involved other members are kept for the period the law requires, without your name or contact details.\n\nYou are welcome to join again at any time.\n\nBest,\nThe ShareSwap Team`,
       html: emailShell(greeting, lines),
     });
-    console.log('[SendGrid] Account deleted email sent');
+    console.log('[Mail] Account deleted email sent');
     return true;
   } catch (error) {
-    console.error('[SendGrid] Error sending account deleted email:', error);
+    console.error('[Mail] Error sending account deleted email:', error);
     return false;
   }
 }
@@ -399,7 +386,7 @@ export async function sendModerationAlertEmail(
   report: { id: number; targetType: string; reason: string; details?: string | null },
 ) {
   try {
-    const { client, fromEmail } = await getUncachableSendGridClient();
+    const { client, fromEmail } = await getMailClient();
     const baseUrl = process.env.NODE_ENV === 'production' && process.env.CUSTOM_DOMAIN
       ? `https://${process.env.CUSTOM_DOMAIN}`
       : process.env.REPLIT_DEV_DOMAIN
@@ -421,10 +408,10 @@ export async function sendModerationAlertEmail(
       text: lines.join('\n\n'),
       html: emailShell('Moderation report', lines),
     });
-    console.log('[SendGrid] Moderation alert sent');
+    console.log('[Mail] Moderation alert sent');
     return true;
   } catch (error) {
-    console.error('[SendGrid] Error sending moderation alert:', error);
+    console.error('[Mail] Error sending moderation alert:', error);
     return false;
   }
 }
@@ -436,7 +423,7 @@ export async function sendDeletionBlockedAlertEmail(
   alert: { userId: number; cause: string; blockers: { code: string; message: string; count?: number; amount?: string }[] },
 ) {
   try {
-    const { client, fromEmail } = await getUncachableSendGridClient();
+    const { client, fromEmail } = await getMailClient();
     const lines = [
       'The deletion of user #' + alert.userId + ' was recorded (' + alert.cause + ') but cannot finish yet.',
       'Blocking it:',
@@ -450,10 +437,10 @@ export async function sendDeletionBlockedAlertEmail(
       text: lines.join('\n\n'),
       html: emailShell('Account deletion blocked', lines),
     });
-    console.log('[SendGrid] Deletion-blocked alert sent');
+    console.log('[Mail] Deletion-blocked alert sent');
     return true;
   } catch (error) {
-    console.error('[SendGrid] Error sending deletion-blocked alert:', error);
+    console.error('[Mail] Error sending deletion-blocked alert:', error);
     return false;
   }
 }

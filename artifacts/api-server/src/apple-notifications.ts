@@ -3,7 +3,7 @@ import { appleLinks, db, pool, users } from "@workspace/db";
 import { DeletionError, requestDeletion, type DeletionDeps } from "./account-deletion/service";
 import { getDeletionEligibility, type DeletionBlocker } from "./account-deletion/eligibility";
 import { moderationEmail } from "./moderation-config";
-import { sendDeletionBlockedAlertEmail } from "./sendgrid";
+import { sendDeletionBlockedAlertEmail } from "./mail";
 import type { AppleNotification } from "./apple-auth";
 export { APPLE_NOTIFICATIONS_PATH } from "./server-to-server-routes";
 

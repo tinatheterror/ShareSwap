@@ -2,7 +2,7 @@ import { unlink } from "node:fs/promises";
 import path from "node:path";
 import { and, eq, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { appleLinks, bannedAppleHashes, bannedEmailHashes, connectCleanupFailures, db, items, notifications, requestLifecycleEvents, users } from "@workspace/db";
-import { sendAccountDeletedEmail, sendAccountDeletionRequestedEmail } from "../sendgrid";
+import { sendAccountDeletedEmail, sendAccountDeletionRequestedEmail } from "../mail";
 import { publicName } from "../public-identity";
 import { anonymizeUser } from "./anonymize";
 import { AppleCleanupUnavailableError, type AppleCleanupTarget } from "./apple-cleanup";

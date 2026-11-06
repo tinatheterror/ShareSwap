@@ -19,7 +19,7 @@ A community sharing platform where neighbours borrow, lend, rent, swap, and gift
 - Auth: Passport.js (local + Google OAuth)
 - Payments: Stripe
 - Storage: @replit/object-storage
-- Email: SendGrid
+- Email: Resend (secrets RESEND_API_KEY, EMAIL_FROM)
 - AI: OpenAI
 - Build: esbuild (ESM bundle)
 

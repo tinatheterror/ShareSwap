@@ -60,7 +60,7 @@ pnpm --dir .migration-backup audit
 ```
 
 `test:dependencies` exercises prototype-poisoning payloads through the actual
-SendGrid, Expo, and Jest dependency resolutions, normal email construction,
+Expo and Jest dependency resolutions,
 Metro image dimensions, Google Cloud's UUID consumer, Zod/Drizzle validation,
 and Express/Multer uploads and size limits. It does not send email, use payment
 services, or access the database.

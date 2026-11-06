@@ -36,7 +36,7 @@ export async function sendUnlessRelayDisabled<M extends Message, R>(sender: (mes
   const keep: Recipient[] = [];
   for (const recipient of list) {
     const address = addressOf(recipient);
-    if (await relayForwardingDisabled(address)) console.log(`[SendGrid] Skipped email to ${maskAddress(address)}: Apple forwarding to this private-relay address is disabled`);
+    if (await relayForwardingDisabled(address)) console.log(`[Mail] Skipped email to ${maskAddress(address)}: Apple forwarding to this private-relay address is disabled`);
     else keep.push(recipient);
   }
   if (keep.length === 0) return undefined;

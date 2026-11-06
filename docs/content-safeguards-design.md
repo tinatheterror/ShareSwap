@@ -72,7 +72,7 @@ A single place decides what is visible, instead of 27 separate queries.
   - Open reports, oldest first, with age and a red marker past 20 hours.
   - Each shows the snapshot, reporter, author, how many other reports exist against that author, and the author's account status.
   - Actions: dismiss, remove or hide the content, warn the user (a notification), ban the user. Every action writes `moderation_actions` and resolves the report. The existing ban and unban routes get the same audit write.
-- **Staying inside 24 hours:** a new report sends an email through the existing SendGrid module to a configured `MODERATION_EMAIL`, and the admin stats show the age of the oldest open report. Who watches that inbox is an operations decision, not code.
+- **Staying inside 24 hours:** a new report sends an email through the existing mail module (Resend) to a configured `MODERATION_EMAIL`, and the admin stats show the age of the oldest open report. Who watches that inbox is an operations decision, not code.
 - **Reporter feedback:** a notification when a report is resolved ("We reviewed your report and took action" or "...found no violation"). No details about the other person.
 
 ## Terms and contact

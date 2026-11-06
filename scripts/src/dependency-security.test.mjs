@@ -10,13 +10,10 @@ import test from "node:test";
 const api = createRequire(resolve("artifacts/api-server/package.json"));
 const mobile = createRequire(resolve("artifacts/shareswap-mobile/package.json"));
 const from = (require, name) => createRequire(require.resolve(name));
-const helpers = from(api, "@sendgrid/mail");
-const sendgridMerge = from(helpers, "@sendgrid/helpers")("deepmerge");
 const expoConfigMerge = from(from(mobile, "expo"), "@expo/config")("deepmerge");
 const jestMerge = from(from(mobile, "jest"), "jest-config")("deepmerge");
 
 for (const [consumer, merge] of [
-  ["SendGrid", sendgridMerge],
   ["Expo config", expoConfigMerge],
   ["Jest config", jestMerge],
 ]) {
@@ -51,18 +48,6 @@ for (const [consumer, merge] of [
     }), { items: [2] });
   });
 }
-
-test("SendGrid still constructs a mail payload with the patched merge", () => {
-  const { Mail } = helpers("@sendgrid/helpers").classes;
-  const mail = Mail.create({
-    to: "recipient@example.invalid",
-    from: "sender@example.invalid",
-    subject: "Dependency compatibility",
-    text: "Local test; no email is sent.",
-  }).toJSON();
-  assert.equal(mail.subject, "Dependency compatibility");
-  assert.equal(mail.personalizations[0].to[0].email, "recipient@example.invalid");
-});
 
 test("Expo's Metro reads image buffers and asset files after the image-size upgrade", async () => {
   const metro = from(from(mobile, "@expo/cli"), "@expo/metro/package.json");

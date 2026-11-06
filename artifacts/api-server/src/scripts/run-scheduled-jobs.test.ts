@@ -82,25 +82,22 @@ test("missing secrets are listed by name only, never by value", () => {
   assert.deepEqual(missing, [
     "STRIPE_SECRET_KEY",
     "STRIPE_PUBLISHABLE_KEY",
-    "REPLIT_CONNECTORS_HOSTNAME",
-    "REPL_IDENTITY or WEB_REPL_RENEWAL",
+    "RESEND_API_KEY",
+    "EMAIL_FROM",
   ]);
   assert.ok(!JSON.stringify(missing).includes("hunter2"));
 });
 
-test("either connector token satisfies the token requirement; blank values count as missing", () => {
-  const base = { DATABASE_URL: "x", STRIPE_SECRET_KEY: "s", STRIPE_PUBLISHABLE_KEY: "p", REPLIT_CONNECTORS_HOSTNAME: "h" };
-  assert.deepEqual(findMissingSecrets({ ...base, WEB_REPL_RENEWAL: "t" } as NodeJS.ProcessEnv), []);
-  assert.deepEqual(findMissingSecrets({ ...base, REPL_IDENTITY: "t" } as NodeJS.ProcessEnv), []);
-  assert.deepEqual(findMissingSecrets({ ...base, REPL_IDENTITY: "   " } as NodeJS.ProcessEnv), [
-    "REPL_IDENTITY or WEB_REPL_RENEWAL",
-  ]);
+test("blank values count as missing", () => {
+  const base = { DATABASE_URL: "x", STRIPE_SECRET_KEY: "s", STRIPE_PUBLISHABLE_KEY: "p", RESEND_API_KEY: "r", EMAIL_FROM: "support@shareswap.app" };
+  assert.deepEqual(findMissingSecrets(base as NodeJS.ProcessEnv), []);
+  assert.deepEqual(findMissingSecrets({ ...base, RESEND_API_KEY: "   " } as NodeJS.ProcessEnv), ["RESEND_API_KEY"]);
   assert.deepEqual(findMissingSecrets({} as NodeJS.ProcessEnv), [
     "DATABASE_URL",
     "STRIPE_SECRET_KEY",
     "STRIPE_PUBLISHABLE_KEY",
-    "REPLIT_CONNECTORS_HOSTNAME",
-    "REPL_IDENTITY or WEB_REPL_RENEWAL",
+    "RESEND_API_KEY",
+    "EMAIL_FROM",
   ]);
 });
 

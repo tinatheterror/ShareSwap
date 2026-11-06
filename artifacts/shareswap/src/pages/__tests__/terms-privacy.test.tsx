@@ -22,7 +22,7 @@ describe("the Terms and Privacy pages", () => {
     for (const heading of ["What we collect", "Who we share it with", "How long we keep it", "Deleting your account"]) {
       expect(screen.getByRole("heading", { name: heading })).toBeTruthy();
     }
-    for (const party of ["Stripe", "Google", "Expo", "SendGrid", "Persona", "OpenAI"]) expect(container.textContent).toContain(party);
+    for (const party of ["Stripe", "Google", "Expo", "Resend", "Persona", "OpenAI"]) expect(container.textContent).toContain(party);
     expect(container.textContent).not.toMatch(/coming soon/i);
   });
 });

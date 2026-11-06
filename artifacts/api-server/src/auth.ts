@@ -18,7 +18,7 @@ import {
 import { db, pool } from "@workspace/db";
 import { eq, or, and, ilike, ne } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
-import { sendVerificationEmail, sendPasswordResetEmail } from "./sendgrid";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./mail";
 import { computeActiveStatus, computeResponseTime } from "./user-stats";
 import { resolveGoogleOAuthCallbackURL } from "./google-oauth-config";
 import { shouldRunBackgroundJobs } from "./background-jobs-gate";

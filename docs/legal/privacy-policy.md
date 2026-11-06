@@ -40,7 +40,7 @@ We use your information to run your account; to show listings and wishlists near
 - **Apple** (sign-in with Apple; Apple also tells us if you stop using ShareSwap with your Apple ID or delete your Apple ID, and we then sign you out or start the deletion of your ShareSwap account).
 - **Persona** (identity verification).
 - **Uber Direct** (delivery): the pickup and drop-off names, addresses and phone numbers, and a description of the parcel.
-- **SendGrid** (email): your email address and the content of emails we send, such as verification and password reset.
+- **Resend** (email): your email address and the content of emails we send, such as verification and password reset.
 - **Expo** (push notifications): your push token and the notification text, passed on to Apple or Google to reach your device.
 - **OpenAI** (the AI features, only after you agree to each one): see "AI features and your consent" below.
 - **OpenStreetMap Nominatim** (looking up coordinates for a postal code or city): the place text you enter.

@@ -11,7 +11,7 @@ concurrency:
 
 env:
   # Typecheck error counts on main today. A change fails CI only by going above these; lower them as errors are fixed.
-  TYPECHECK_BASELINE_API: "333"
+  TYPECHECK_BASELINE_API: "332"
   TYPECHECK_BASELINE_WEB: "29"
   TYPECHECK_BASELINE_MOBILE: "25"
   # The test guard refuses any database but this one.

@@ -15,6 +15,7 @@ import {
   ArrowDownCircle, Loader2, ExternalLink, Building2, RefreshCw, CircleDot,
 } from "lucide-react";
 import { Navbar } from "@/components/shared/navbar";
+import { WalletHistory } from "@/components/wallet-history";
 import { format } from "date-fns";
 
 interface BalanceData {
@@ -380,6 +381,9 @@ export default function MyBalancePage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Every change to the wallet balance (the ledger), with what is owed from payment disputes */}
+        <WalletHistory />
 
         {/* Transaction history */}
         <Card>

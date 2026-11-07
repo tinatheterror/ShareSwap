@@ -821,6 +821,7 @@ import { getUncachableStripeClient, getStripePublishableKey } from "../stripe.se
 import { subscriptionWebhookHandler, type SubscriptionWebhookDeps } from "../subscription-webhook";
 import { DISPUTE_WEBHOOK_PATH, SUBSCRIPTION_WEBHOOK_PATH, isServerToServerPath } from "../server-to-server-routes";
 import { disputeWebhookHandler } from "../dispute-webhook";
+import { getWalletSummary, parseCursor, parsePageLimit } from "../wallet-summary";
 import { handoffSweepLimiter } from "../handoff-sweep-limit";
 import { stripeErrorDetails } from "../stripe-period";
 import { subscribeWithSavedCard, confirmSubscriptionPayment, previewPlanChange, syncSubscriptionWithStripe, keepCurrentPlan, dbUpgradeStore } from "../subscription-upgrade";
@@ -8916,6 +8917,18 @@ Respond with ONLY the category name, nothing else.`
   // =====================================
   // RENTAL BALANCE & PAYOUT ENDPOINTS
   // =====================================
+
+  // The wallet: balance, pending, what is owed from payment disputes, and a page of its history (newest first).
+  // ?limit= (default 20, at most 100) and ?cursor= (the nextCursor of the previous page).
+  app.get("/api/wallet", async (req, res): Promise<any> => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      return res.json(await getWalletSummary(req.user.id, { limit: parsePageLimit(req.query.limit), cursor: parseCursor(req.query.cursor) }));
+    } catch (error) {
+      console.error("Error fetching wallet:", error);
+      return res.status(500).json({ error: "Failed to fetch wallet" });
+    }
+  });
 
   // Get user's rental balance and payout history
   app.get("/api/rental-balance", async (req, res) => {

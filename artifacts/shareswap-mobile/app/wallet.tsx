@@ -23,6 +23,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
 import { fmtDate } from "@/lib/dateUtils";
+import { WalletHistory } from "@/components/WalletHistory";
 
 interface BalanceData {
   balance: { available: number; pending: number; total: number };
@@ -332,6 +333,9 @@ export default function MyBalanceScreen() {
               </View>
             )}
           </View>
+
+          {/* Every change to the wallet balance (the ledger), with what is owed from payment disputes */}
+          <WalletHistory />
 
           {/* Transaction History */}
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>

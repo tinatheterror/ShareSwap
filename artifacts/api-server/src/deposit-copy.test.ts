@@ -139,10 +139,12 @@ test("claim notifications say \"awarded to owner\", only for money that moved, a
   const split = { charged: 100, refunded: 40, retained: 60 };
   const award = { charged: 100, refunded: 0, retained: 100 };
   const refund = { charged: 100, refunded: 100, retained: 0 };
-  assert.equal(copy.resolutionOwner(split, true).message, "Claim resolved. $40 refunded to the borrower · $60 awarded to owner. It has been added to your wallet balance.");
+  assert.equal(copy.resolutionOwner(split, "wallet").message, "Claim resolved. $40 refunded to the borrower · $60 awarded to owner. It has been added to your wallet balance.");
   assert.equal(copy.resolutionOwner(award).title, "Security deposit awarded to owner");
   assert.doesNotMatch(copy.resolutionOwner(award).message, /wallet/, "no wallet claim unless it was credited");
-  assert.equal(copy.resolutionOwner(award, true).message, "Claim resolved. $100 of the borrower's $100 security deposit was awarded to owner. It has been added to your wallet balance.");
+  assert.match(copy.resolutionOwner(award, "manual").message, /processing this payment and will pay it to you directly/);
+  assert.doesNotMatch(copy.resolutionOwner(award, "manual").message, /wallet/);
+  assert.equal(copy.resolutionOwner(award, "wallet").message, "Claim resolved. $100 of the borrower's $100 security deposit was awarded to owner. It has been added to your wallet balance.");
   assert.equal(copy.resolutionOwner(refund).message, "Claim resolved. $100 refunded to the borrower.");
   assert.equal(copy.resolutionBorrower(split, "4242").message, "$40 refunded to your card •••• 4242. $60 of your $100 security deposit was awarded to owner based on the claim outcome.");
   // The notification types stay the same: the apps pick icons from them.

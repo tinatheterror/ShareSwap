@@ -818,7 +818,7 @@ test("claim award: a balance that includes the award can be withdrawn right away
   assert.equal(await ownerWallet(), 0);
 });
 
-test("claim award: an award on a request charged in another currency is not credited, is logged, and the owner is not told it is in the wallet", async () => {
+test("claim award: an award on a request charged in another currency is not credited, goes to manual review, and the owner is told it is being processed", async () => {
   const before = await ownerWallet();
   const { request, claim } = await fixture("refundable_charge", "APPROVED", 50, 100);
   await db.update(itemRequests).set({ paymentCurrency: "usd" }).where(eq(itemRequests.id, request.id));
@@ -827,6 +827,10 @@ test("claim award: an award on a request charged in another currency is not cred
   const state = await rows(claim.id, request.id);
   assert.equal(state.operations.find(o => o.operationKey.startsWith("claim-settlement-"))!.walletCreditedAmount, null);
   assert.doesNotMatch(awardNotes(state)[0].message, /wallet/);
+  assert.match(awardNotes(state)[0].message, /processing this payment and will pay it to you directly/);
+  assert.equal(state.claim.status, "SETTLED");
+  assert.equal(state.claim.settlementStatus, "MANUAL_REVIEW");
+  assert.equal(state.claim.manualReviewReason, "AWARD_PAYOUT_MANUAL");
   const events = await db.select().from(requestLifecycleEvents).where(eq(requestLifecycleEvents.requestId, request.id));
   assert.ok(events.some(e => e.eventType === "CLAIM_AWARD_NOT_CREDITED"));
 });

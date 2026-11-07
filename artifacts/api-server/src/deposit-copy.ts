@@ -207,9 +207,14 @@ export function resolutionBorrower(a: ResolutionAmounts, last4?: string | null) 
     message: `${formatMoney(a.refunded)} refunded to ${cardLabel(last4)}. The security deposit was charged because a claim was opened, and the applicable amount has now been refunded.`,
   };
 }
-/** `addedToWallet`: the award was really credited to the owner's wallet, so only then does the notice say so. */
-export function resolutionOwner(a: ResolutionAmounts, addedToWallet = false) {
-  const wallet = addedToWallet ? " It has been added to your wallet balance." : "";
+/**
+ * `award`: what happened to the owner's share. The notice only says "added to your wallet" when it was really credited
+ * ("wallet"); an award that could not be credited ("manual", e.g. it is in another currency) says we are paying it out by hand.
+ */
+export type AwardDelivery = "wallet" | "manual" | "none";
+export function resolutionOwner(a: ResolutionAmounts, award: AwardDelivery = "none") {
+  const wallet = award === "wallet" ? " It has been added to your wallet balance."
+    : award === "manual" ? " We are processing this payment and will pay it to you directly; you don't need to do anything." : "";
   const outcome = outcomeFor(a.charged, a.refunded, a.retained);
   if (outcome === "retained_full") {
     return {

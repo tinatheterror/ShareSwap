@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import type Stripe from "stripe";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { db, itemRequests, rentalPayouts, walletTransactions } from "@workspace/db";
+import { db, itemRequests, PLATFORM_CURRENCY, rentalPayouts, walletTransactions } from "@workspace/db";
 import { getUncachableStripeClient } from "./stripe.server";
 import { recordCurrency } from "./payment-currency";
 import { closeChargeback, recordChargeback, recordChargebackFee } from "./wallet-chargebacks";
@@ -35,8 +35,11 @@ export async function findDisputeLiability(paymentIntentId: string, disputedCent
     .orderBy(desc(rentalPayouts.id)).limit(1);
   if (payout?.requestId) {
     const [request] = await db.select({ paymentCurrency: itemRequests.paymentCurrency }).from(itemRequests).where(eq(itemRequests.id, payout.requestId)).limit(1);
+    const currency = recordCurrency(request ?? {});
+    // Earnings in another currency were never credited to the (CAD) wallet, so there is nothing in it to take back.
+    if (currency !== PLATFORM_CURRENCY) return null;
     return {
-      userId: payout.userId, requestId: payout.requestId, currency: recordCurrency(request ?? {}),
+      userId: payout.userId, requestId: payout.requestId, currency,
       principalCents: Math.min(Math.round(Number(payout.netAmount) * 100), disputedCents),
     };
   }
@@ -52,6 +55,15 @@ export async function findDisputeLiability(paymentIntentId: string, disputedCent
 export function disputeFeeCents(dispute: any): number {
   const transactions: any[] = Array.isArray(dispute?.balance_transactions) ? dispute.balance_transactions : [];
   return transactions.reduce((total, bt) => total + (Number(bt?.fee) > 0 ? Number(bt.fee) : 0), 0);
+}
+
+/**
+ * What Stripe gave back to us on a closed dispute, in cents: the money that came back on the dispute's balance transactions
+ * (positive net). The withdrawal and its fee are negative net and do not count.
+ */
+export function disputeReturnedCents(dispute: any): number {
+  const transactions: any[] = Array.isArray(dispute?.balance_transactions) ? dispute.balance_transactions : [];
+  return transactions.reduce((total, bt) => total + (Number(bt?.net) > 0 ? Number(bt.net) : 0), 0);
 }
 
 export async function handleDisputeEvent(event: Pick<Stripe.Event, "type" | "data">): Promise<string> {
@@ -73,7 +85,7 @@ export async function handleDisputeEvent(event: Pick<Stripe.Event, "type" | "dat
     return recordChargebackFee(disputeId, disputeFeeCents(dispute));
   }
   if (event.type === "charge.dispute.closed") {
-    return closeChargeback(disputeId, dispute.status === "lost" ? "lost" : "won");
+    return closeChargeback(disputeId, dispute.status === "lost" ? "lost" : "won", { returnedCents: disputeReturnedCents(dispute), disputeAmountCents: Number(dispute.amount) || 0 });
   }
   return "ignored: event type not handled";
 }

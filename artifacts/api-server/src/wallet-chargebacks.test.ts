@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { eq, inArray } from "drizzle-orm";
 import { db, itemRequests, items, notifications, pool, rentalPayouts, users, walletChargebacks, walletTransactions } from "@workspace/db";
-import { disputeFeeCents, disputeWebhookHandler, findDisputeLiability, handleDisputeEvent } from "./dispute-webhook.js";
+import { disputeFeeCents, disputeReturnedCents, disputeWebhookHandler, findDisputeLiability, handleDisputeEvent } from "./dispute-webhook.js";
 import { releaseHeldRentalPayout, reservePayout } from "./rental-payout-service.js";
 import { closeChargeback, openDebtCents, recordChargeback, recordChargebackFee } from "./wallet-chargebacks.js";
 
@@ -96,17 +96,43 @@ test("the dispute fee is charged once, from the balance first, and what the bala
   assert.equal(await recordChargebackFee("du_unknown", 1500), "unknown");
 });
 
-test("winning returns everything collected and clears the debt; losing leaves it taken and owed; closing twice changes nothing", async () => {
+test("winning returns only what Stripe actually returned: the payment yes, the fee only if Stripe gave it back", async () => {
+  // Stripe reinstated the disputed 40.00 but did not return its 15.00 fee: the member gets 25.00 back and pays the fee.
   await setWallet("40.00");
-  const won = dispute();
-  await recordChargeback(input(won, 4000));
-  await recordChargebackFee(won, 1500);
+  const feeKept = dispute();
+  await recordChargeback(input(feeKept, 4000));
+  await recordChargebackFee(feeKept, 1500);
   assert.equal(await balanceCents(), 0);
   assert.equal(await openDebtCents(ownerId), 1500);
-  assert.equal(await closeChargeback(won, "won"), "won");
-  assert.equal(await closeChargeback(won, "won"), "duplicate");
-  assert.equal(await balanceCents(), 4000, "the 40.00 collected is back");
+  assert.equal(await closeChargeback(feeKept, "won", { returnedCents: 4000, disputeAmountCents: 4000 }), "won");
+  assert.equal(await closeChargeback(feeKept, "won", { returnedCents: 4000, disputeAmountCents: 4000 }), "duplicate");
+  assert.equal(await balanceCents(), 2500, "40.00 collected, 15.00 of it covers the fee Stripe kept");
   assert.equal(await openDebtCents(ownerId), 0);
+  assert.equal(await ledgerSum(), await balanceCents());
+
+  // Stripe returned the fee as well: everything collected goes back.
+  await setWallet("40.00");
+  const feeBack = dispute();
+  await recordChargeback(input(feeBack, 4000));
+  await recordChargebackFee(feeBack, 1500);
+  await closeChargeback(feeBack, "won", { returnedCents: 5500, disputeAmountCents: 4000 });
+  assert.equal(await balanceCents(), 4000);
+  assert.equal(await openDebtCents(ownerId), 0);
+
+  // "Won" but Stripe's figures are missing or zero: nothing is returned, and what was taken stays owed.
+  await setWallet("40.00");
+  const noFigures = dispute();
+  await recordChargeback(input(noFigures, 4000));
+  assert.equal(await closeChargeback(noFigures, "won"), "won");
+  assert.equal(await balanceCents(), 0, "Stripe's figures are missing, so nothing is given back");
+  assert.equal(await openDebtCents(ownerId), 0, "the 40.00 is already collected; nothing more is owed");
+
+  // Stripe returned less than the member's share: the shortfall stays an obligation.
+  await setWallet("40.00");
+  const partial = dispute();
+  await recordChargeback(input(partial, 4000));
+  await closeChargeback(partial, "won", { returnedCents: 1000, disputeAmountCents: 4000 });
+  assert.equal(await balanceCents(), 1000, "only the 10.00 Stripe returned");
   assert.equal(await ledgerSum(), await balanceCents());
 
   await setWallet("10.00");
@@ -137,8 +163,14 @@ test("the webhook maps a disputed rental payment to the owner's net earnings, ne
   assert.equal(disputeFeeCents(withdrawn.data.object), 1500);
   assert.equal(await handleDisputeEvent(withdrawn), "recorded");
   assert.equal(await balanceCents(), 50_000 - 9500 - 1500);
-  assert.equal(await handleDisputeEvent({ type: "charge.dispute.closed", data: { object: { id, status: "won" } } } as any), "won");
-  assert.equal(await balanceCents(), 50_000, "won: the earnings and the fee are back");
+  // Stripe reinstated the disputed 120.00 on a balance transaction and kept its 15.00 fee: the earnings come back, the fee does not.
+  const closedWon = {
+    id, status: "won", amount: 12_000,
+    balance_transactions: [{ net: -12_000, fee: 0 }, { net: -1500, fee: 1500 }, { net: 12_000, fee: 0 }],
+  };
+  assert.equal(disputeReturnedCents(closedWon), 12_000);
+  assert.equal(await handleDisputeEvent({ type: "charge.dispute.closed", data: { object: closedWon } } as any), "won");
+  assert.equal(await balanceCents(), 50_000 - 1500, "won: the 95.00 is back, the 15.00 fee stays with the member");
   assert.match(await handleDisputeEvent({ type: "charge.dispute.created", data: { object: { id: dispute(), amount: 100, payment_intent: "pi_unrelated" } } } as any), /ignored/);
 });
 

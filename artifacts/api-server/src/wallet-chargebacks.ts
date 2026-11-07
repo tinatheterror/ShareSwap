@@ -81,23 +81,53 @@ export async function recordChargebackFee(disputeId: string, feeCents: number): 
   });
 }
 
-export async function closeChargeback(disputeId: string, outcome: "won" | "lost"): Promise<"won" | "lost" | "duplicate" | "unknown"> {
+/** What Stripe actually gave back to us when the dispute closed, read from the dispute's balance transactions. */
+export interface StripeReturn {
+  /** Total positive money that came back to the platform on this dispute, in cents (the reinstated payment, and the fee if Stripe returned it). */
+  returnedCents: number;
+  /** The disputed amount, in cents. */
+  disputeAmountCents: number;
+}
+
+/**
+ * Closes a dispute. When it is won the member gets back only what Stripe really returned to us:
+ *   - the member's share of the payment, up to the reinstated amount (the first `disputeAmountCents` that came back);
+ *   - the dispute fee, only to the extent Stripe returned more than the disputed amount.
+ * Whatever Stripe did not return (typically the fee) stays with the member as an obligation, and is paid from the
+ * collected money or later earnings like any debt. With no Stripe figures nothing is returned.
+ */
+export async function closeChargeback(disputeId: string, outcome: "won" | "lost", stripeReturn: StripeReturn = { returnedCents: 0, disputeAmountCents: 0 }): Promise<"won" | "lost" | "duplicate" | "unknown"> {
   return db.transaction(async (tx) => {
     const [row] = await tx.select().from(walletChargebacks).where(eq(walletChargebacks.disputeId, disputeId)).for("update");
     if (!row) return "unknown";
-    const [closed] = await tx.update(walletChargebacks).set({ status: outcome, closedAt: new Date() })
+    let principal = row.principalCents;
+    let fee = row.feeCents;
+    let collected = row.collectedCents;
+    let refund = 0;
+    if (outcome === "won") {
+      const returned = Math.max(0, stripeReturn.returnedCents);
+      const disputed = Math.max(0, stripeReturn.disputeAmountCents);
+      principal = row.principalCents - Math.min(row.principalCents, returned, disputed);
+      fee = row.feeCents - Math.min(row.feeCents, Math.max(0, returned - disputed));
+      refund = Math.max(0, collected - (principal + fee));
+      collected -= refund;
+    }
+    const stillOwed = Math.max(0, principal + fee - collected);
+    const status = outcome === "won" && stillOwed === 0 ? "won" : "lost";
+    const [closed] = await tx.update(walletChargebacks)
+      .set({ status, principalCents: principal, feeCents: fee, collectedCents: collected, closedAt: new Date() })
       .where(and(eq(walletChargebacks.id, row.id), eq(walletChargebacks.status, "open"))).returning({ id: walletChargebacks.id });
     if (!closed) return "duplicate";
-    if (outcome === "won" && row.collectedCents > 0) {
-      await tx.update(users).set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${dollars(row.collectedCents)}::numeric` }).where(eq(users.id, row.userId));
+    if (refund > 0) {
+      await tx.update(users).set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${dollars(refund)}::numeric` }).where(eq(users.id, row.userId));
       await recordWalletEntry(tx, {
-        userId: row.userId, kind: "chargeback_reversal", amountCents: row.collectedCents, currency: row.currency, requestId: row.requestId, idempotencyKey: chargebackReversalKey(disputeId),
+        userId: row.userId, kind: "chargeback_reversal", amountCents: refund, currency: row.currency, requestId: row.requestId, idempotencyKey: chargebackReversalKey(disputeId),
       });
     }
     await tx.insert(notifications).values({
       userId: row.userId, type: "wallet_chargeback", title: outcome === "won" ? "Dispute decided in your favour" : "Dispute decided against you", requestId: row.requestId, isRead: false,
       message: outcome === "won"
-        ? `The disputed payment was decided in your favour.${row.collectedCents > 0 ? ` ${money(row.collectedCents)} was returned to your wallet.` : ""}`
+        ? `The disputed payment was decided in your favour.${refund > 0 ? ` ${money(refund)} was returned to your wallet.` : ""}${stillOwed > 0 ? ` ${money(stillOwed)} (Stripe's dispute fee, which Stripe did not return) is still owed; your next earnings will pay it off first.` : ""}`
         : `The disputed payment was decided against you. ${money(row.collectedCents)} stays taken${owedOf(row) > 0 ? ` and you still owe ${money(owedOf(row))}; your next earnings will pay it off first` : ""}.`,
     } as any);
     return outcome;

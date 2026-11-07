@@ -68,9 +68,10 @@ export async function createTableIfMissing(sql: string) {
   try {
     await pool.query(sql);
   } catch (err) {
-    // Two processes creating it at once: 42P07 duplicate_table, or 23505 on pg_type's unique index.
+    // Two processes creating it at once: 42P07 duplicate_table, 23505 on pg_type's unique index, or 42710 duplicate_object
+    // (the table's row type already exists).
     const code = (err as { code?: string }).code;
-    if (code !== "42P07" && code !== "23505") throw err;
+    if (code !== "42P07" && code !== "23505" && code !== "42710") throw err;
   }
 }
 
@@ -304,7 +305,7 @@ export async function ensureWalletTransactionsTable() {
     await runMigrationFile(WALLET_TRANSACTIONS_FILE);
   } catch (err) {
     const code = (err as { code?: string }).code;
-    if (code !== "42P07" && code !== "23505") throw err;
+    if (code !== "42P07" && code !== "23505" && code !== "42710") throw err;
   }
 }
 

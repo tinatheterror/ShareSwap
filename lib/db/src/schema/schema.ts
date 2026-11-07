@@ -1159,6 +1159,9 @@ export const depositSettlementOperations = pgTable("deposit_settlement_operation
   error: text("error"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
+  // The claim award credited to the owner's wallet when this operation settled (0018). Null = nothing credited.
+  walletCreditedAmount: decimal("wallet_credited_amount", { precision: 10, scale: 2 }),
+  walletCreditedAt: timestamp("wallet_credited_at"),
 }, (table) => ({
   operationKeyUniq: uniqueIndex("deposit_settlement_operations_operation_key_uniq").on(table.operationKey),
   requestIdx: index("deposit_settlement_operations_request_idx").on(table.requestId),

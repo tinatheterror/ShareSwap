@@ -207,20 +207,22 @@ export function resolutionBorrower(a: ResolutionAmounts, last4?: string | null) 
     message: `${formatMoney(a.refunded)} refunded to ${cardLabel(last4)}. The security deposit was charged because a claim was opened, and the applicable amount has now been refunded.`,
   };
 }
-export function resolutionOwner(a: ResolutionAmounts) {
+/** `addedToWallet`: the award was really credited to the owner's wallet, so only then does the notice say so. */
+export function resolutionOwner(a: ResolutionAmounts, addedToWallet = false) {
+  const wallet = addedToWallet ? " It has been added to your wallet balance." : "";
   const outcome = outcomeFor(a.charged, a.refunded, a.retained);
   if (outcome === "retained_full") {
     return {
       type: "security_deposit_retained",
       title: "Security deposit awarded to owner",
-      message: `Claim resolved. ${formatMoney(a.retained)} of the borrower's ${formatMoney(a.charged)} security deposit was awarded to owner.`,
+      message: `Claim resolved. ${formatMoney(a.retained)} of the borrower's ${formatMoney(a.charged)} security deposit was awarded to owner.${wallet}`,
     };
   }
   return {
     type: "security_deposit_refunded",
     title: outcome === "refunded_partial" ? "Security deposit partly refunded" : "Security deposit refunded",
     message: outcome === "refunded_partial"
-      ? `Claim resolved. ${formatMoney(a.refunded)} refunded to the borrower · ${formatMoney(a.retained)} awarded to owner.`
+      ? `Claim resolved. ${formatMoney(a.refunded)} refunded to the borrower · ${formatMoney(a.retained)} awarded to owner.${wallet}`
       : `Claim resolved. ${formatMoney(a.refunded)} refunded to the borrower.`,
   };
 }

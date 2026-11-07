@@ -277,6 +277,23 @@ export async function ensureAppleSignInTables() {
   }
 }
 
+const CLAIM_AWARD_CREDIT_FILE = "lib/db/scripts/0018_claim_award_wallet_credit.sql";
+
+/** deposit_settlement_operations.wallet_credited_* (0018): the claim settlement writes them, so a missing column would fail every settlement. */
+export async function ensureClaimAwardCreditColumns() {
+  const { rows } = await pool.query(
+    `SELECT (SELECT count(*)::int FROM information_schema.columns
+              WHERE table_schema = current_schema() AND table_name = 'deposit_settlement_operations'
+                AND column_name IN ('wallet_credited_amount', 'wallet_credited_at')) AS present`,
+  );
+  if (rows[0]?.present === 2) return;
+  try {
+    await runMigrationFile(CLAIM_AWARD_CREDIT_FILE);
+  } catch (err) {
+    if ((err as { code?: string }).code !== "42701") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -289,6 +306,7 @@ export async function applyStartupMigrations() {
   await ensureAiConsentsTable();
   await ensureAgeConfirmationColumns();
   await ensureAppleSignInTables();
+  await ensureClaimAwardCreditColumns();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
   await ensureJobSwitchesAttributionConstraint();

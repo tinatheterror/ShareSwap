@@ -132,7 +132,7 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     retention: "financial",
     note: "Ledger of deposit captures and refunds.",
     userColumns: [],
-    keep: ["id", "claim_id", "request_id", "operation_key", "status", "approved_amount", "retained_amount", "released_amount", "stripe_payment_intent_id", "stripe_capture_id", "stripe_refund_id", "error", "created_at", "completed_at"],
+    keep: ["id", "claim_id", "request_id", "operation_key", "status", "approved_amount", "retained_amount", "released_amount", "stripe_payment_intent_id", "stripe_capture_id", "stripe_refund_id", "error", "created_at", "completed_at", "wallet_credited_amount", "wallet_credited_at"],
     anonymize: [],
     delete: [],
   },

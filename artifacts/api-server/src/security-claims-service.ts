@@ -1,7 +1,8 @@
 import Stripe from "stripe";
 import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
-import { db, depositSettlementOperations, itemRequests, items, messages, notifications, requestLifecycleEvents, securityClaims } from "@workspace/db";
+import { db, depositSettlementOperations, itemRequests, items, messages, notifications, requestLifecycleEvents, securityClaims, users, PLATFORM_CURRENCY } from "@workspace/db";
 import { OVERDUE_POLICY } from "./overdue-policy";
+import { recordCurrency } from "./payment-currency";
 import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
 import { claimDepositTerminalAction, getPaymentIntentCaptureBefore, releaseDepositTerminalClaim, resolveClaimedDepositIntents } from "./deposit-renewal-service";
 import {
@@ -544,6 +545,23 @@ async function finalizeApprovedSettlement(args: {
       inArray(depositSettlementOperations.status, ["PROCESSING", "INDETERMINATE"]),
     )).returning({ id: depositSettlementOperations.id });
     if (!settledOperation) throw new Error("Settlement ledger finalization was superseded");
+    // The claim award goes to the owner's wallet here, in the same transaction that settled the operation. That update only
+    // matches an operation still PROCESSING/INDETERMINATE, so a retry or a reconcile pass that reaches this point again
+    // finds it SETTLED, throws above or returns false, and credits nothing a second time. We only get here after the capture
+    // succeeded (the fence is held and the Stripe capture/charge was confirmed), and a failed transaction credits nothing.
+    // Only an award in the wallet's currency (CAD) is credited: a request charged in USD before the move to CAD keeps its award in
+    // USD, and adding USD cents to a CAD balance would be wrong. Those are logged for an admin and the owner is not told it is in the wallet.
+    const addedToWallet = amount > 0 && recordCurrency(request) === PLATFORM_CURRENCY;
+    if (addedToWallet) {
+      const award = amount.toFixed(2);
+      await tx.update(users).set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${award}::numeric` }).where(eq(users.id, claim.ownerId));
+      await tx.update(depositSettlementOperations).set({ walletCreditedAmount: award, walletCreditedAt: completedAt }).where(eq(depositSettlementOperations.id, operationId));
+    } else if (amount > 0) {
+      await tx.insert(requestLifecycleEvents).values({
+        requestId: request.id, eventType: "CLAIM_AWARD_NOT_CREDITED", idempotencyKey: `claim-award-not-credited-${claim.id}`,
+        details: { claimId: claim.id, ownerId: claim.ownerId, amount: amount.toFixed(2), currency: recordCurrency(request), reason: "award is not in the wallet currency" },
+      }).onConflictDoNothing();
+    }
     await tx.update(securityClaims).set({ status: "SETTLED", settlementStatus: "SETTLED", updatedAt: completedAt }).where(and(eq(securityClaims.id, claim.id), eq(securityClaims.status, "PROCESSING")));
     await tx.update(itemRequests).set({
       depositStatus: "settled", depositReleasedAt: completedAt, depositRefundedAmount: refundAmount.toFixed(2), depositRetainedAmount: amount.toFixed(2),
@@ -551,7 +569,7 @@ async function finalizeApprovedSettlement(args: {
     }).where(and(eq(itemRequests.id, request.id), eq(itemRequests.depositOperationToken, fenceToken)));
     const amounts = { charged: deposit, refunded: refundAmount, retained: amount };
     const borrowerCopy = resolutionBorrower(amounts, request.depositCardLast4);
-    const ownerCopy = resolutionOwner(amounts);
+    const ownerCopy = resolutionOwner(amounts, addedToWallet);
     await tx.insert(notifications).values([
       { userId: claim.borrowerId, requestId: request.id, itemId: request.itemId, ...borrowerCopy },
       { userId: claim.ownerId, requestId: request.id, itemId: request.itemId, ...ownerCopy },

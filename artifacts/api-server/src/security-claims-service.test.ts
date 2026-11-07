@@ -9,11 +9,13 @@ import {
   messages,
   notifications,
   pool,
+  rentalPayouts,
   requestLifecycleEvents,
   securityClaims,
   users,
 } from "@workspace/db";
 import { claimDepositTerminalAction } from "./deposit-renewal-service.js";
+import { reservePayout, sendPayout } from "./rental-payout-service.js";
 import {
   ensureClaimDepositCaptured,
   finalizeDisputeReleaseToBorrower,
@@ -127,6 +129,7 @@ async function fixture(mode: Mode, claimStatus = "APPROVED", approved = 40, depo
     requesterId: borrowerId,
     requestType: "BORROW",
     status: "RETURN_REQUESTED",
+    paymentCurrency: "cad", // new requests are charged in the platform currency; the wallet is CAD
     trustDepositAmount: deposit.toFixed(2),
     depositStatus: opts.captured ? "captured" : mode === "authorization" ? "authorized" : "SECURED_REFUNDABLE",
     depositPaymentIntentId: `pi_fixture_${unique}_${requestIds.length}`,
@@ -199,6 +202,7 @@ afterEach(async () => {
 });
 
 after(async () => {
+  await db.delete(rentalPayouts).where(eq(rentalPayouts.userId, ownerId));
   await db.delete(items).where(eq(items.id, itemId));
   await db.delete(users).where(inArray(users.id, [ownerId, borrowerId]));
   await pool.end();
@@ -738,4 +742,91 @@ test("confirm-return contract preserves the claim while it exists", async () => 
   );
   assert.doesNotMatch(activeClaimBranch, /resolveClaimedDepositIntents/);
 
+});
+// ---- Claim award: the retained deposit is credited to the owner's wallet ----
+
+async function ownerWallet() {
+  const [row] = await db.select({ rentalBalance: users.rentalBalance }).from(users).where(eq(users.id, ownerId));
+  return Number(row.rentalBalance ?? 0);
+}
+const awardNotes = (state: Awaited<ReturnType<typeof rows>>) => state.notes.filter(n => n.userId === ownerId && n.type.startsWith("security_deposit_"));
+
+test("claim award: the retained deposit is credited to the owner's wallet once, recorded on the settlement, and the owner is told afterwards", async () => {
+  const before = await ownerWallet();
+  const { request, claim } = await fixture("authorization", "APPROVED", 30, 105, { captured: true });
+  await settleApprovedClaim(claim.id, stripeFor(request, "succeeded") as any);
+  assert.equal(await ownerWallet(), before + 30);
+  const state = await rows(claim.id, request.id);
+  const settlement = state.operations.find(o => o.operationKey.startsWith("claim-settlement-"))!;
+  assert.equal(settlement.status, "SETTLED");
+  assert.equal(settlement.walletCreditedAmount, "30.00");
+  assert.ok(settlement.walletCreditedAt);
+  const [note] = awardNotes(state);
+  assert.match(note.message, /\$30 awarded to owner\. It has been added to your wallet balance/);
+});
+
+test("claim award: a retry or reconcile pass after the credit does not credit again", async () => {
+  const before = await ownerWallet();
+  const { request, claim } = await fixture("authorization", "APPROVED", 40, 100, { captured: true });
+  const lost = stripeFor(request, "succeeded", { refundError: connectionError(), refundChangesStateBeforeError: true });
+  await assert.rejects(settleApprovedClaim(claim.id, lost as any), /socket closed/);
+  let state = await rows(claim.id, request.id);
+  const settlement = state.operations.find(o => o.operationKey.startsWith("claim-settlement-"))!;
+  assert.equal(settlement.status, "INDETERMINATE");
+  assert.equal(await ownerWallet(), before, "an unconfirmed settlement credits nothing yet");
+  assert.equal(awardNotes(state).length, 0, "and the owner is not told yet");
+
+  await reconcileSettlementOperation(settlement.id, lost as any);
+  assert.equal(await ownerWallet(), before + 40);
+  await reconcileSettlementOperation(settlement.id, lost as any);
+  await settleApprovedClaim(claim.id, lost as any).catch(() => undefined);
+  assert.equal(await ownerWallet(), before + 40, "running settlement again credits nothing more");
+  state = await rows(claim.id, request.id);
+  assert.equal(awardNotes(state).length, 1);
+  assert.equal(state.operations.find(o => o.operationKey.startsWith("claim-settlement-"))!.walletCreditedAmount, "40.00");
+});
+
+test("claim award: a capture that fails credits nothing and sends no award notice", async () => {
+  const before = await ownerWallet();
+  const { request, claim } = await fixture("authorization", "APPROVED", 40, 100);
+  const stripe = stripeFor(request, "requires_capture", { captureError: definitiveError() });
+  await assert.rejects(settleApprovedClaim(claim.id, stripe as any));
+  assert.equal(await ownerWallet(), before);
+  const state = await rows(claim.id, request.id);
+  assert.equal(awardNotes(state).length, 0);
+  assert.ok(state.operations.every(o => o.walletCreditedAmount === null));
+});
+
+test("claim award: a settlement that retains nothing credits nothing", async () => {
+  const before = await ownerWallet();
+  const { request, claim } = await fixture("authorization", "APPROVED", 0, 100, { captured: true });
+  await settleApprovedClaim(claim.id, stripeFor(request, "succeeded") as any).catch(() => undefined);
+  assert.equal(await ownerWallet(), before);
+});
+
+test("claim award: a balance that includes the award can be withdrawn right away", async () => {
+  await db.update(users).set({ rentalBalance: "0.00" }).where(eq(users.id, ownerId));
+  const { request, claim } = await fixture("refundable_charge", "APPROVED", 100, 100);
+  await settleApprovedClaim(claim.id, stripeFor(request, "succeeded") as any);
+  assert.equal(await ownerWallet(), 100);
+  const payout = await reservePayout(ownerId, 10_000);
+  assert.ok(payout, "the whole award is available to reserve for a withdrawal");
+  const transfers: any[] = [];
+  const outcome = await sendPayout(payout, "acct_test", { transfers: { create: async (params: any) => { transfers.push(params); return { id: `tr_${unique}` }; } } });
+  assert.equal(outcome.ok, true);
+  assert.equal(transfers[0].amount, 10_000);
+  assert.equal(await ownerWallet(), 0);
+});
+
+test("claim award: an award on a request charged in another currency is not credited, is logged, and the owner is not told it is in the wallet", async () => {
+  const before = await ownerWallet();
+  const { request, claim } = await fixture("refundable_charge", "APPROVED", 50, 100);
+  await db.update(itemRequests).set({ paymentCurrency: "usd" }).where(eq(itemRequests.id, request.id));
+  await settleApprovedClaim(claim.id, stripeFor(request, "succeeded") as any);
+  assert.equal(await ownerWallet(), before);
+  const state = await rows(claim.id, request.id);
+  assert.equal(state.operations.find(o => o.operationKey.startsWith("claim-settlement-"))!.walletCreditedAmount, null);
+  assert.doesNotMatch(awardNotes(state)[0].message, /wallet/);
+  const events = await db.select().from(requestLifecycleEvents).where(eq(requestLifecycleEvents.requestId, request.id));
+  assert.ok(events.some(e => e.eventType === "CLAIM_AWARD_NOT_CREDITED"));
 });

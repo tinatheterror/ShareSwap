@@ -3,7 +3,7 @@ import { after, before, beforeEach, test } from "node:test";
 import cookieParser from "cookie-parser";
 import express from "express";
 import { eq, inArray } from "drizzle-orm";
-import { db, notifications, pool, rentalPayouts, users } from "@workspace/db";
+import { db, notifications, pool, rentalPayouts, users, walletTransactions } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { registerRoutes } from "./routes/routes.js";
 
@@ -92,6 +92,7 @@ before(async () => {
 beforeEach(async () => {
   transferCalls = [];
   transferImpl = async () => ({ id: `tr_${transferCalls.length}` });
+  await db.delete(walletTransactions).where(eq(walletTransactions.userId, userId));
   await db.delete(rentalPayouts).where(eq(rentalPayouts.userId, userId));
   await setBalance("0.00");
   await db.update(users).set({ deletionRequestedAt: null }).where(eq(users.id, userId));
@@ -100,6 +101,7 @@ beforeEach(async () => {
 after(async () => {
   if (userIds.length) {
     await db.delete(notifications).where(inArray(notifications.userId, userIds));
+    await db.delete(walletTransactions).where(inArray(walletTransactions.userId, userIds));
     await db.delete(rentalPayouts).where(inArray(rentalPayouts.userId, userIds));
     await db.delete(users).where(inArray(users.id, userIds));
   }

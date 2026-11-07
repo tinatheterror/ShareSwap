@@ -3,6 +3,7 @@ import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db, depositSettlementOperations, itemRequests, items, messages, notifications, requestLifecycleEvents, securityClaims, users, PLATFORM_CURRENCY } from "@workspace/db";
 import { OVERDUE_POLICY } from "./overdue-policy";
 import { recordCurrency } from "./payment-currency";
+import { claimAwardKey, recordWalletEntry, toCents } from "./wallet-ledger";
 import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
 import { claimDepositTerminalAction, getPaymentIntentCaptureBefore, releaseDepositTerminalClaim, resolveClaimedDepositIntents } from "./deposit-renewal-service";
 import {
@@ -559,8 +560,16 @@ async function finalizeApprovedSettlement(args: {
     const manualPayout = amount > 0 && !addedToWallet;
     if (addedToWallet) {
       const award = amount.toFixed(2);
-      await tx.update(users).set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${award}::numeric` }).where(eq(users.id, claim.ownerId));
-      await tx.update(depositSettlementOperations).set({ walletCreditedAmount: award, walletCreditedAt: completedAt }).where(eq(depositSettlementOperations.id, operationId));
+      // The ledger row is the second lock: only the caller that records it moves the balance, so even a manual or backfill
+      // entry for the same claim cannot lead to a second credit.
+      const recorded = await recordWalletEntry(tx, {
+        userId: claim.ownerId, kind: "claim_award", amountCents: toCents(award), currency: recordCurrency(request),
+        requestId: request.id, claimId: claim.id, idempotencyKey: claimAwardKey(claim.id), createdAt: completedAt,
+      });
+      if (recorded) {
+        await tx.update(users).set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${award}::numeric` }).where(eq(users.id, claim.ownerId));
+        await tx.update(depositSettlementOperations).set({ walletCreditedAmount: award, walletCreditedAt: completedAt }).where(eq(depositSettlementOperations.id, operationId));
+      }
     } else if (manualPayout) {
       await tx.insert(requestLifecycleEvents).values({
         requestId: request.id, eventType: "CLAIM_AWARD_NOT_CREDITED", idempotencyKey: `claim-award-not-credited-${claim.id}`,

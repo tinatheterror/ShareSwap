@@ -1,6 +1,8 @@
 import { and, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
 import { db, itemRequests, items, notifications, PLATFORM_CURRENCY, rentalPayouts, users } from "@workspace/db";
 import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
+import { recordCurrency } from "./payment-currency";
+import { recordWalletEntry, rentalEarningKey, toCents, withdrawalKey, withdrawalReversalKey } from "./wallet-ledger";
 
 export type PayoutStripeClient = {
   transfers: { create(params: any, options?: any): Promise<{ id: string }> };
@@ -45,6 +47,9 @@ export async function reservePayout(userId: number, cents: number): Promise<Payo
       netAmount: amount,
       status: "pending_payout",
     }).returning();
+    await recordWalletEntry(tx, {
+      userId, kind: "withdrawal", amountCents: -cents, currency: PLATFORM_CURRENCY, rentalPayoutId: row.id, idempotencyKey: withdrawalKey(row.id),
+    });
     return row;
   });
 }
@@ -62,6 +67,10 @@ async function failAndRestore(row: PayoutRow): Promise<boolean> {
       .update(users)
       .set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${row.netAmount}::numeric` })
       .where(eq(users.id, row.userId));
+    await recordWalletEntry(tx, {
+      userId: row.userId, kind: "withdrawal_reversal", amountCents: toCents(row.netAmount), currency: PLATFORM_CURRENCY,
+      rentalPayoutId: row.id, idempotencyKey: withdrawalReversalKey(row.id),
+    });
     return true;
   });
 }
@@ -192,13 +201,18 @@ export async function releaseHeldRentalPayout(args: {
       .update(rentalPayouts)
       .set({ status: "released", releasedAt: new Date() })
       .where(and(eq(rentalPayouts.requestId, requestId), eq(rentalPayouts.status, "held")))
-      .returning({ netAmount: rentalPayouts.netAmount });
+      .returning({ id: rentalPayouts.id, netAmount: rentalPayouts.netAmount });
     if (!row) return null;
     const net = parseFloat(row.netAmount || "0");
     await tx.update(users).set({
       pendingRentalBalance: sql`GREATEST(0, COALESCE(${users.pendingRentalBalance}, 0) - ${net})`,
       rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${net}`,
     }).where(eq(users.id, ownerId));
+    const [paidRequest] = await tx.select({ paymentCurrency: itemRequests.paymentCurrency }).from(itemRequests).where(eq(itemRequests.id, requestId)).limit(1);
+    await recordWalletEntry(tx, {
+      userId: ownerId, kind: "rental_payout", amountCents: toCents(net), currency: recordCurrency(paidRequest ?? {}),
+      requestId, rentalPayoutId: row.id, idempotencyKey: rentalEarningKey(row.id),
+    });
     const short = itemName.length > 20 ? `${itemName.slice(0, 20)}…` : itemName;
     await tx.insert(notifications).values({
       userId: ownerId, type: "payment_received", title: "Rental Payment Ready",

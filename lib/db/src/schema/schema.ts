@@ -1167,6 +1167,25 @@ export const depositSettlementOperations = pgTable("deposit_settlement_operation
   requestIdx: index("deposit_settlement_operations_request_idx").on(table.requestId),
 }));
 
+/** The wallet ledger (0019): a signed row per change to users.rental_balance, written in the same transaction. */
+export const walletTransactions = pgTable("wallet_transactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  kind: text("kind").notNull(), // 'rental_payout' | 'claim_award' | 'withdrawal' | 'withdrawal_reversal'
+  amountCents: integer("amount_cents").notNull(), // signed: + credit, - debit
+  currency: text("currency").notNull().default("cad"),
+  requestId: integer("request_id").references(() => itemRequests.id),
+  claimId: integer("claim_id").references(() => securityClaims.id),
+  rentalPayoutId: integer("rental_payout_id").references(() => rentalPayouts.id),
+  idempotencyKey: text("idempotency_key").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  idempotencyKeyUniq: uniqueIndex("wallet_transactions_idempotency_key_uniq").on(table.idempotencyKey),
+  userIdx: index("wallet_transactions_user_idx").on(table.userId, table.createdAt),
+}));
+
+export type WalletTransaction = typeof walletTransactions.$inferSelect;
+
 export const itemAvailabilitySubscribers = pgTable("item_availability_subscribers", {
   id: serial("id").primaryKey(),
   itemId: integer("item_id").notNull().references(() => items.id),

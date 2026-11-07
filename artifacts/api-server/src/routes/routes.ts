@@ -13,7 +13,7 @@ import {
   legacyCancelPenaltyExempt,
   LEGACY_CANCEL_ACK_UNTIL_ENV,
 } from "../legacy-cancel-exemption";
-import { db, pool, PLATFORM_CURRENCY } from "@workspace/db";
+import { db, pool, PLATFORM_CURRENCY , walletTransactions} from "@workspace/db";
 import { currencyForNewCharge, recordCurrency, stampPaymentCurrency } from "../payment-currency";
 import { awardAchievementOnce } from "../achievement-awards";
 import {
@@ -2038,6 +2038,9 @@ export function registerRoutes(
       await tx
         .delete(rentalReturns)
         .where(inArray(rentalReturns.requestId, requestIds));
+      await tx
+        .delete(walletTransactions)
+        .where(inArray(walletTransactions.requestId, requestIds));
       await tx
         .delete(rentalPayouts)
         .where(inArray(rentalPayouts.requestId, requestIds));

@@ -11,6 +11,7 @@ import {
   pool,
   rentalPayouts,
   requestLifecycleEvents,
+  walletTransactions,
   securityClaims,
   users,
 } from "@workspace/db";
@@ -194,6 +195,7 @@ afterEach(async () => {
   if (requestIds.length) {
     await db.delete(messages).where(inArray(messages.requestId, requestIds));
     await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
+    await db.delete(walletTransactions).where(inArray(walletTransactions.requestId, requestIds));
     await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, requestIds));
     await db.delete(depositSettlementOperations).where(inArray(depositSettlementOperations.requestId, requestIds));
     await db.delete(securityClaims).where(inArray(securityClaims.requestId, requestIds));
@@ -202,6 +204,7 @@ afterEach(async () => {
 });
 
 after(async () => {
+  await db.delete(walletTransactions).where(eq(walletTransactions.userId, ownerId));
   await db.delete(rentalPayouts).where(eq(rentalPayouts.userId, ownerId));
   await db.delete(items).where(eq(items.id, itemId));
   await db.delete(users).where(inArray(users.id, [ownerId, borrowerId]));
@@ -761,6 +764,8 @@ test("claim award: the retained deposit is credited to the owner's wallet once, 
   assert.equal(settlement.status, "SETTLED");
   assert.equal(settlement.walletCreditedAmount, "30.00");
   assert.ok(settlement.walletCreditedAt);
+  const ledgerRows = await db.select().from(walletTransactions).where(eq(walletTransactions.claimId, claim.id));
+  assert.deepEqual(ledgerRows.map(r => [r.kind, r.amountCents, r.currency, r.userId, r.idempotencyKey]), [["claim_award", 3000, "cad", ownerId, `claim-award-${claim.id}`]]);
   const [note] = awardNotes(state);
   assert.match(note.message, /\$30 awarded to owner\. It has been added to your wallet balance/);
 });
@@ -784,6 +789,7 @@ test("claim award: a retry or reconcile pass after the credit does not credit ag
   state = await rows(claim.id, request.id);
   assert.equal(awardNotes(state).length, 1);
   assert.equal(state.operations.find(o => o.operationKey.startsWith("claim-settlement-"))!.walletCreditedAmount, "40.00");
+  assert.equal((await db.select().from(walletTransactions).where(eq(walletTransactions.claimId, claim.id))).length, 1, "one ledger row however often settlement ran");
 });
 
 test("claim award: a capture that fails credits nothing and sends no award notice", async () => {
@@ -826,6 +832,7 @@ test("claim award: an award on a request charged in another currency is not cred
   assert.equal(await ownerWallet(), before);
   const state = await rows(claim.id, request.id);
   assert.equal(state.operations.find(o => o.operationKey.startsWith("claim-settlement-"))!.walletCreditedAmount, null);
+  assert.equal((await db.select().from(walletTransactions).where(eq(walletTransactions.claimId, claim.id))).length, 0, "nothing credited, nothing in the ledger");
   assert.doesNotMatch(awardNotes(state)[0].message, /wallet/);
   assert.match(awardNotes(state)[0].message, /processing this payment and will pay it to you directly/);
   assert.equal(state.claim.status, "SETTLED");

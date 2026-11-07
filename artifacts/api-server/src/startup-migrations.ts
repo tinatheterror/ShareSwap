@@ -294,6 +294,20 @@ export async function ensureClaimAwardCreditColumns() {
   }
 }
 
+const WALLET_TRANSACTIONS_FILE = "lib/db/scripts/0019_wallet_transactions.sql";
+
+/** wallet_transactions (0019): every wallet change writes a ledger row in its transaction, so a missing table would fail them all. */
+export async function ensureWalletTransactionsTable() {
+  const { rows } = await pool.query(`SELECT to_regclass('wallet_transactions') IS NOT NULL AS present`);
+  if (rows[0]?.present === true) return;
+  try {
+    await runMigrationFile(WALLET_TRANSACTIONS_FILE);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code !== "42P07" && code !== "23505") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -307,6 +321,7 @@ export async function applyStartupMigrations() {
   await ensureAgeConfirmationColumns();
   await ensureAppleSignInTables();
   await ensureClaimAwardCreditColumns();
+  await ensureWalletTransactionsTable();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
   await ensureJobSwitchesAttributionConstraint();

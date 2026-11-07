@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { eq, inArray } from "drizzle-orm";
-import { db, itemRequests, items, messages, notifications, pool, rentalPayouts, shareCoinsTransactions, users } from "@workspace/db";
+import { db, itemRequests, items, messages, notifications, pool, rentalPayouts, shareCoinsTransactions, users, walletTransactions } from "@workspace/db";
 import { processHandoffDeadlines, type HandoffDeadlineDeps } from "./handoff-deadline-service.js";
 import { findStrandedHeldPayouts, releaseHeldRentalPayout, releaseStrandedRentalPayouts } from "./rental-payout-service.js";
 
@@ -65,6 +65,7 @@ after(async () => {
     if (requestIds.length) {
       await db.delete(messages).where(inArray(messages.requestId, requestIds));
       await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
+      await db.delete(walletTransactions).where(inArray(walletTransactions.requestId, requestIds));
       await db.delete(rentalPayouts).where(inArray(rentalPayouts.requestId, requestIds));
       await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
     }

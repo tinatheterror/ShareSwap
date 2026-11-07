@@ -5,7 +5,7 @@ import { db, walletTransactions } from "@workspace/db";
  * writes one signed row here, in the same transaction. The idempotency key is unique, so the same event cannot be recorded
  * twice: a retry, a reconcile pass and the backfill all use the same key for the same event.
  */
-export type WalletKind = "rental_payout" | "claim_award" | "withdrawal" | "withdrawal_reversal" | "currency_conversion" | "rental_payout_freeze" | "rental_payout_unfreeze" | "chargeback" | "chargeback_fee" | "chargeback_reversal" | "debt_payment";
+export type WalletKind = "rental_payout" | "claim_award" | "withdrawal" | "withdrawal_reversal" | "currency_conversion" | "rental_payout_freeze" | "rental_payout_unfreeze" | "chargeback" | "chargeback_fee" | "chargeback_reversal" | "debt_payment" | "adjustment";
 
 /** A transaction handle or the db itself: anything that can insert. */
 type Inserter = Pick<typeof db, "insert">;

@@ -16,6 +16,7 @@ export const WALLET_KIND_LABELS: Record<WalletKind, string> = {
   currency_conversion: "Currency conversion",
   rental_payout_freeze: "Earnings on hold",
   rental_payout_unfreeze: "Earnings released",
+  adjustment: "Adjustment",
 };
 
 export const labelForKind = (kind: string) => WALLET_KIND_LABELS[kind as WalletKind] ?? "Wallet activity";

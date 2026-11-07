@@ -321,6 +321,20 @@ export async function ensureRentalPayoutHoldUntilDropped() {
   await runMigrationFile(DROP_HOLD_UNTIL_FILE);
 }
 
+const WALLET_CHARGEBACKS_FILE = "lib/db/scripts/0021_wallet_chargebacks.sql";
+
+/** wallet_chargebacks (0021): every wallet credit looks for debts to pay first, so a missing table would fail them all. */
+export async function ensureWalletChargebacksTable() {
+  const { rows } = await pool.query(`SELECT to_regclass('wallet_chargebacks') IS NOT NULL AS present`);
+  if (rows[0]?.present === true) return;
+  try {
+    await runMigrationFile(WALLET_CHARGEBACKS_FILE);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code !== "42P07" && code !== "23505" && code !== "42710") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -335,6 +349,7 @@ export async function applyStartupMigrations() {
   await ensureAppleSignInTables();
   await ensureClaimAwardCreditColumns();
   await ensureWalletTransactionsTable();
+  await ensureWalletChargebacksTable();
   await ensureRentalPayoutHoldUntilDropped();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();

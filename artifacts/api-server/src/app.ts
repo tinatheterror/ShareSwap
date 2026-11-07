@@ -7,7 +7,7 @@ import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
 import healthRouter from "./routes/health";
 import { legacyReputationScoreAlias } from "./legacy-reputation-alias";
-import { SUBSCRIPTION_WEBHOOK_PATH, isServerToServerPath } from "./server-to-server-routes";
+import { DISPUTE_WEBHOOK_PATH, SUBSCRIPTION_WEBHOOK_PATH, isServerToServerPath } from "./server-to-server-routes";
 
 const app: Express = express();
 
@@ -122,6 +122,7 @@ app.use("/api/", generalLimiter);
 app.use(cookieParser());
 
 app.use(SUBSCRIPTION_WEBHOOK_PATH, express.raw({ type: "application/json" }));
+app.use(DISPUTE_WEBHOOK_PATH, express.raw({ type: "application/json" }));
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: false, limit: "10mb" }));

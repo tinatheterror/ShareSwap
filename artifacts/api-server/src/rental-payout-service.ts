@@ -2,6 +2,7 @@ import { and, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
 import { db, itemRequests, items, notifications, PLATFORM_CURRENCY, rentalPayouts, users } from "@workspace/db";
 import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
 import { recordCurrency } from "./payment-currency";
+import { payDebtsFromCredit } from "./wallet-chargebacks";
 import { recordWalletEntry, rentalEarningKey, toCents, withdrawalKey, withdrawalReversalKey } from "./wallet-ledger";
 
 export type PayoutStripeClient = {
@@ -204,19 +205,25 @@ export async function releaseHeldRentalPayout(args: {
       .returning({ id: rentalPayouts.id, netAmount: rentalPayouts.netAmount });
     if (!row) return null;
     const net = parseFloat(row.netAmount || "0");
+    const [paidRequest] = await tx.select({ paymentCurrency: itemRequests.paymentCurrency }).from(itemRequests).where(eq(itemRequests.id, requestId)).limit(1);
+    const currency = recordCurrency(paidRequest ?? {});
+    // The earnings first pay any chargeback debt the owner has (oldest first); only the rest reaches the wallet balance.
+    const paidToDebts = await payDebtsFromCredit(tx, ownerId, toCents(net), currency, rentalEarningKey(row.id));
+    const toBalance = ((toCents(net) - paidToDebts) / 100).toFixed(2);
     await tx.update(users).set({
       pendingRentalBalance: sql`GREATEST(0, COALESCE(${users.pendingRentalBalance}, 0) - ${net})`,
-      rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${net}`,
+      rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${toBalance}::numeric`,
     }).where(eq(users.id, ownerId));
-    const [paidRequest] = await tx.select({ paymentCurrency: itemRequests.paymentCurrency }).from(itemRequests).where(eq(itemRequests.id, requestId)).limit(1);
     await recordWalletEntry(tx, {
-      userId: ownerId, kind: "rental_payout", amountCents: toCents(net), currency: recordCurrency(paidRequest ?? {}),
+      userId: ownerId, kind: "rental_payout", amountCents: toCents(net), currency,
       requestId, rentalPayoutId: row.id, idempotencyKey: rentalEarningKey(row.id),
     });
     const short = itemName.length > 20 ? `${itemName.slice(0, 20)}…` : itemName;
     await tx.insert(notifications).values({
       userId: ownerId, type: "payment_received", title: "Rental Payment Ready",
-      message: `$${net.toFixed(2)} earned from "${short}" — ready to withdraw.`,
+      message: paidToDebts > 0
+        ? `$${net.toFixed(2)} earned from "${short}". $${(paidToDebts / 100).toFixed(2)} went to a payment dispute you owe, and $${toBalance} is in your wallet.`
+        : `$${net.toFixed(2)} earned from "${short}" — ready to withdraw.`,
       itemId, requestId, isRead: false,
     });
     return net;

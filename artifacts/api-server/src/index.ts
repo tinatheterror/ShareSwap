@@ -8,6 +8,7 @@ import { startRateLimitCleanup } from "./auth";
 import { applyStartupMigrations } from "./startup-migrations";
 import { logStripeStartup } from "./stripe.server";
 import { requireSubscriptionWebhookSecret } from "./subscription-webhook";
+import { DISPUTE_WEBHOOK_SECRET_ENV } from "./dispute-webhook";
 import { moderationEmail } from "./moderation-config";
 import { termsEnforcementBootWarning } from "./terms-enforcement";
 import { timeZoneBootLine } from "./request-dates";
@@ -51,6 +52,12 @@ async function start() {
 
   // A missing webhook signing secret stops the boot, like missing Stripe keys.
   requireSubscriptionWebhookSecret();
+
+  // The dispute webhook secret only warns (names only): the app must be able to deploy before the Stripe endpoint exists.
+  // Until it is set the endpoint rejects every request and chargebacks are not recovered from wallets.
+  if (!process.env[DISPUTE_WEBHOOK_SECRET_ENV]?.trim()) {
+    logger.warn(`${DISPUTE_WEBHOOK_SECRET_ENV} is not set: Stripe dispute events are rejected and chargebacks are not recovered from wallets.`);
+  }
 
   // Missing Stripe keys stop the boot; a failed account lookup only warns. Otherwise log test/live and the account id (never the keys).
   await logStripeStartup((line) => logger.info(line), (line) => logger.warn(line));

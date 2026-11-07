@@ -3,6 +3,7 @@ import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db, depositSettlementOperations, itemRequests, items, messages, notifications, requestLifecycleEvents, securityClaims, users, PLATFORM_CURRENCY } from "@workspace/db";
 import { OVERDUE_POLICY } from "./overdue-policy";
 import { recordCurrency } from "./payment-currency";
+import { payDebtsFromCredit } from "./wallet-chargebacks";
 import { claimAwardKey, recordWalletEntry, toCents } from "./wallet-ledger";
 import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
 import { claimDepositTerminalAction, getPaymentIntentCaptureBefore, releaseDepositTerminalClaim, resolveClaimedDepositIntents } from "./deposit-renewal-service";
@@ -567,7 +568,10 @@ async function finalizeApprovedSettlement(args: {
         requestId: request.id, claimId: claim.id, idempotencyKey: claimAwardKey(claim.id), createdAt: completedAt,
       });
       if (recorded) {
-        await tx.update(users).set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${award}::numeric` }).where(eq(users.id, claim.ownerId));
+        // A chargeback debt the owner has is paid first; only the rest reaches the wallet balance.
+        const paidToDebts = await payDebtsFromCredit(tx, claim.ownerId, toCents(award), recordCurrency(request), claimAwardKey(claim.id));
+        const toBalance = ((toCents(award) - paidToDebts) / 100).toFixed(2);
+        await tx.update(users).set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${toBalance}::numeric` }).where(eq(users.id, claim.ownerId));
         await tx.update(depositSettlementOperations).set({ walletCreditedAmount: award, walletCreditedAt: completedAt }).where(eq(depositSettlementOperations.id, operationId));
       }
     } else if (manualPayout) {

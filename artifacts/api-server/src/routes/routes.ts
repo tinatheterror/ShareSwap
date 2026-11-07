@@ -819,7 +819,8 @@ export async function checkAndAwardAchievements(userId: number) {
 // Initialize Stripe - will be loaded from connector
 import { getUncachableStripeClient, getStripePublishableKey } from "../stripe.server";
 import { subscriptionWebhookHandler, type SubscriptionWebhookDeps } from "../subscription-webhook";
-import { SUBSCRIPTION_WEBHOOK_PATH, isServerToServerPath } from "../server-to-server-routes";
+import { DISPUTE_WEBHOOK_PATH, SUBSCRIPTION_WEBHOOK_PATH, isServerToServerPath } from "../server-to-server-routes";
+import { disputeWebhookHandler } from "../dispute-webhook";
 import { handoffSweepLimiter } from "../handoff-sweep-limit";
 import { stripeErrorDetails } from "../stripe-period";
 import { subscribeWithSavedCard, confirmSubscriptionPayment, previewPlanChange, syncSubscriptionWithStripe, keepCurrentPlan, dbUpgradeStore } from "../subscription-upgrade";
@@ -16634,6 +16635,9 @@ Respond with ONLY the category name, nothing else.`
 
   // Stripe subscription webhook
   app.post(SUBSCRIPTION_WEBHOOK_PATH, subscriptionWebhookHandler(options.subscriptionWebhook));
+
+  // Stripe dispute (chargeback) webhook: recovers the disputed amount from the member who received the money.
+  app.post(DISPUTE_WEBHOOK_PATH, disputeWebhookHandler());
 
   // Migrate existing users to have handles (runs once at startup)
   (async () => {

@@ -272,6 +272,15 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     anonymize: [],
     delete: ["referrer_device_fingerprint", "referred_device_fingerprint"],
   },
+  wallet_chargebacks: {
+    rows: "retain",
+    retention: "financial",
+    note: "Chargebacks charged to a wallet, and what is still owed.",
+    userColumns: ["user_id"],
+    keep: ["id", "user_id", "dispute_id", "payment_intent_id", "request_id", "currency", "principal_cents", "fee_cents", "collected_cents", "status", "created_at", "closed_at"],
+    anonymize: [],
+    delete: [],
+  },
   wallet_transactions: {
     rows: "retain",
     retention: "financial",

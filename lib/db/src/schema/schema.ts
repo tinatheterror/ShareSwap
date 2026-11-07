@@ -1185,6 +1185,27 @@ export const walletTransactions = pgTable("wallet_transactions", {
 
 export type WalletTransaction = typeof walletTransactions.$inferSelect;
 
+/** One row per Stripe dispute charged to a member's wallet (0021). Owed = principal + fee - collected while open or lost. */
+export const walletChargebacks = pgTable("wallet_chargebacks", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  disputeId: text("dispute_id").notNull(),
+  paymentIntentId: text("payment_intent_id"),
+  requestId: integer("request_id").references(() => itemRequests.id),
+  currency: text("currency").notNull(),
+  principalCents: integer("principal_cents").notNull(),
+  feeCents: integer("fee_cents").notNull().default(0),
+  collectedCents: integer("collected_cents").notNull().default(0),
+  status: text("status").notNull().default("open"), // 'open' | 'won' | 'lost'
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  closedAt: timestamp("closed_at"),
+}, (table) => ({
+  disputeIdUniq: uniqueIndex("wallet_chargebacks_dispute_id_uniq").on(table.disputeId),
+  userIdx: index("wallet_chargebacks_user_idx").on(table.userId, table.status),
+}));
+
+export type WalletChargeback = typeof walletChargebacks.$inferSelect;
+
 export const itemAvailabilitySubscribers = pgTable("item_availability_subscribers", {
   id: serial("id").primaryKey(),
   itemId: integer("item_id").notNull().references(() => items.id),

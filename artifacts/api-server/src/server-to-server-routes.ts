@@ -9,7 +9,10 @@ export const SUBSCRIPTION_WEBHOOK_PATH = "/api/stripe/subscription-webhook";
 /** Apple posts its Sign in with Apple notifications here (signed; see apple-notifications.ts). */
 export const APPLE_NOTIFICATIONS_PATH = "/api/auth/apple/notifications";
 
-const SERVER_TO_SERVER_PATHS: ReadonlySet<string> = new Set([SUBSCRIPTION_WEBHOOK_PATH, APPLE_NOTIFICATIONS_PATH]);
+/** Stripe posts dispute (chargeback) events here (signed; see dispute-webhook.ts). */
+export const DISPUTE_WEBHOOK_PATH = "/api/stripe/dispute-webhook";
+
+const SERVER_TO_SERVER_PATHS: ReadonlySet<string> = new Set([SUBSCRIPTION_WEBHOOK_PATH, DISPUTE_WEBHOOK_PATH, APPLE_NOTIFICATIONS_PATH]);
 
 /** True for a request path (query string ignored) that only another server calls. */
 export function isServerToServerPath(path: string | undefined): boolean {

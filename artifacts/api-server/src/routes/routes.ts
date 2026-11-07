@@ -86,7 +86,8 @@ import { minimumWaiverApplies } from "../account-deletion/retention";
 import { isEmailShaped, publicName, publicUsername } from "../public-identity";
 import { scrubEmailUsernames, usernameScrubMiddleware } from "../username-scrub";
 import { e2eTestModeEnabled } from "../e2e-mode";
-import { freezeRentalEarnings, resolveFrozenRentalEarnings } from "../rental-earnings-freeze";
+import { freezeRentalEarnings } from "../rental-earnings-freeze";
+import { resolveHandoffDispute } from "../handoff-dispute-service";
 import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, releaseStrandedRentalPayouts, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
@@ -15003,32 +15004,37 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // Resolve a handoff dispute that was opened after an auto-confirm. "owner": the handoff stands, the rental continues and
-  // the frozen earnings go back to the owner's wallet. "borrower": the item was never handed over; the frozen earnings are
-  // reversed and the request is cancelled. Refunding the borrower's rental payment and releasing their deposit is NOT done here.
+  // Resolve a handoff dispute that was opened after an auto-confirm (see handoff-dispute-service.ts).
+  // "owner": the handoff stands, the rental continues and the frozen earnings return to the owner's wallet.
+  // "borrower": the rental payment and platform fee are refunded, the deposit is released, the rental is cancelled and the
+  // owner's earnings are reversed. Every Stripe call has a deterministic idempotency key; repeating the call is safe.
   app.post("/api/admin/handoff-disputes/:requestId/resolve", requireAdmin, csrfProtection, async (req, res): Promise<any> => {
     const requestId = parseInt(String(req.params.requestId));
     const { decision } = req.body as { decision: "owner" | "borrower" };
+    if (!Number.isFinite(requestId)) return res.status(400).json({ error: "Invalid request id" });
     if (!["owner", "borrower"].includes(decision)) return res.status(400).json({ error: "decision must be 'owner' or 'borrower'" });
     try {
-      const [request] = await db.select().from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(eq(itemRequests.id, requestId)).limit(1);
-      if (!request) return res.status(404).json({ error: "Request not found" });
-      if (request.item_requests.status !== "HANDOFF_DISPUTED") return res.status(400).json({ error: "Request is not in HANDOFF_DISPUTED status" });
-      const [moved] = await db.update(itemRequests).set({ status: decision === "owner" ? "IN_PROGRESS" : "CANCELLED" })
-        .where(and(eq(itemRequests.id, requestId), eq(itemRequests.status, "HANDOFF_DISPUTED"))).returning({ id: itemRequests.id });
-      if (!moved) return res.status(409).json({ error: "Dispute changed before it could be resolved" });
-      const earnings = await resolveFrozenRentalEarnings(requestId, decision);
-      const name = request.items.name.length > 20 ? `${request.items.name.slice(0, 20)}…` : request.items.name;
-      await db.insert(notifications).values([
-        { userId: request.items.ownerId!, type: "dispute_resolved", title: "Handoff dispute resolved", requestId, isRead: false,
-          message: decision === "owner" ? `The handoff of "${name}" stands. Any earnings on hold have been returned to your wallet.` : `The handoff of "${name}" was not upheld and the rental was cancelled. Earnings on hold from it were reversed.` },
-        { userId: request.item_requests.requesterId, type: "dispute_resolved", title: "Handoff dispute resolved", requestId, isRead: false,
-          message: decision === "owner" ? `The handoff of "${name}" stands and the rental continues.` : `The handoff of "${name}" was not upheld and the rental was cancelled. We will refund you.` },
-      ] as any);
-      return res.json({ success: true, decision, earnings, refundRequired: decision === "borrower" });
+      const result = await resolveHandoffDispute({ requestId, decision, adminId: req.user?.id ?? null, stripe: (options.stripe ?? stripe) as any });
+      return res.status(result.status).json(result.body);
     } catch (err) {
       console.error("Error resolving handoff dispute:", err);
-      res.status(500).json({ error: "Failed to resolve handoff dispute" });
+      return res.status(500).json({ error: "Failed to resolve handoff dispute" });
+    }
+  });
+
+  // Rental payouts that could not be credited to the wallet (the earnings are not in its currency) and wait for an admin to pay them by hand.
+  app.get("/api/admin/payouts-needing-review", requireAdmin, async (_req, res) => {
+    try {
+      const rows = await db
+        .select({ id: rentalPayouts.id, userId: rentalPayouts.userId, requestId: rentalPayouts.requestId, netAmount: rentalPayouts.netAmount, paymentCurrency: itemRequests.paymentCurrency, createdAt: rentalPayouts.createdAt })
+        .from(rentalPayouts)
+        .leftJoin(itemRequests, eq(itemRequests.id, rentalPayouts.requestId))
+        .where(eq(rentalPayouts.status, "needs_review"))
+        .orderBy(rentalPayouts.id);
+      res.json({ payouts: rows });
+    } catch (err) {
+      console.error("Error listing payouts needing review:", err);
+      res.status(500).json({ error: "Failed to list payouts" });
     }
   });
 

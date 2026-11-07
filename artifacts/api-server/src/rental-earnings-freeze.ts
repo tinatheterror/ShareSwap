@@ -55,8 +55,11 @@ export async function freezeRentalEarnings(requestId: number): Promise<FreezeRes
 
 export type FreezeOutcome = "owner" | "borrower";
 
-export async function resolveFrozenRentalEarnings(requestId: number, outcome: FreezeOutcome): Promise<{ payoutId: number; frozenCents: number; shortfallCents: number } | null> {
-  return db.transaction(async (tx) => {
+type FreezeExecutor = Pick<typeof db, "update" | "select" | "insert">;
+
+/** Pass `executor` (a transaction) to make this part of the caller's transaction; without it, it runs in its own. */
+export async function resolveFrozenRentalEarnings(requestId: number, outcome: FreezeOutcome, executor?: FreezeExecutor): Promise<{ payoutId: number; frozenCents: number; shortfallCents: number } | null> {
+  const run = async (tx: FreezeExecutor) => {
     const [claimed] = await tx.update(rentalPayouts).set({ status: outcome === "owner" ? "released" : "reversed" })
       .where(and(eq(rentalPayouts.requestId, requestId), eq(rentalPayouts.status, "frozen")))
       .returning({ id: rentalPayouts.id, userId: rentalPayouts.userId, netAmount: rentalPayouts.netAmount });
@@ -82,5 +85,6 @@ export async function resolveFrozenRentalEarnings(requestId: number, outcome: Fr
       details: { rentalPayoutId: claimed.id, frozenCents, shortfallCents },
     }).onConflictDoNothing();
     return { payoutId: claimed.id, frozenCents, shortfallCents };
-  });
+  };
+  return executor ? run(executor) : db.transaction(run);
 }

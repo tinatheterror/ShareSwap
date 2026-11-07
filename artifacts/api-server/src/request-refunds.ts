@@ -1,5 +1,5 @@
 import { db, rentalPayouts, requestRefunds, type itemRequests } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { DepositRelease, DepositRenewalStripeClient } from "./deposit-renewal-service";
 import { recordCurrency } from "./payment-currency";
 
@@ -17,7 +17,7 @@ import { recordCurrency } from "./payment-currency";
 // Every call carries a deterministic idempotency key, and "already refunded" counts as done, so the
 // caller can run this again after a failure and get the same result.
 
-export type RefundKeyPrefix = "expire" | "cancel";
+export type RefundKeyPrefix = "expire" | "cancel" | "handoff-dispute";
 
 export interface UpfrontRefund {
   kind: "platform_fee_refund" | "rental_refund";
@@ -57,7 +57,7 @@ interface Target {
 }
 
 /** The charges that exist on this request and are not the deposit. */
-export async function upfrontRefundTargets(request: RefundableRequest): Promise<Target[]> {
+export async function upfrontRefundTargets(request: RefundableRequest, payoutStatuses: readonly string[] = ["held"]): Promise<Target[]> {
   const targets: Target[] = [];
   const seen = new Set<string>();
   const add = (kind: Target["kind"], stripeId: string | null | undefined) => {
@@ -73,7 +73,7 @@ export async function upfrontRefundTargets(request: RefundableRequest): Promise<
   const payouts = await db
     .select({ paymentIntentId: rentalPayouts.stripePaymentIntentId })
     .from(rentalPayouts)
-    .where(and(eq(rentalPayouts.requestId, request.id), eq(rentalPayouts.status, "held")));
+    .where(and(eq(rentalPayouts.requestId, request.id), inArray(rentalPayouts.status, [...payoutStatuses])));
   for (const payout of payouts) add("rental_refund", payout.paymentIntentId);
 
   add("platform_fee_refund", request.platformFeeChargeId);
@@ -88,9 +88,9 @@ export async function upfrontRefundTargets(request: RefundableRequest): Promise<
 export async function refundUpfrontCharges(
   request: RefundableRequest,
   stripe: DepositRenewalStripeClient,
-  options: { keyPrefix: RefundKeyPrefix },
+  options: { keyPrefix: RefundKeyPrefix; /** Payout statuses whose rental payment is refunded; default held (before the handoff). */ payoutStatuses?: readonly string[] },
 ): Promise<UpfrontRefund[]> {
-  const targets = await upfrontRefundTargets(request);
+  const targets = await upfrontRefundTargets(request, options.payoutStatuses);
   if (targets.length === 0) return [];
   if (!stripe.refunds) throw new Error("Stripe refunds are unavailable");
 

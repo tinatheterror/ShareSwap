@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 import { eq, inArray } from "drizzle-orm";
-import { db, itemRequests, items, messages, notifications, pool, shareCoinsTransactions, users } from "@workspace/db";
+import { db, itemRequests, items, messages, notifications, pool, requestLifecycleEvents, shareCoinsTransactions, users } from "@workspace/db";
 import app from "./app.js";
 import { hashPassword } from "./auth.js";
 import { registerRoutes } from "./routes/routes.js";
@@ -149,6 +149,7 @@ beforeEach(async () => {
   if (requestIds.length) {
     await db.delete(messages).where(inArray(messages.requestId, requestIds));
     await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
+    await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, requestIds));
     await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
     requestIds.length = 0;
   }
@@ -161,6 +162,7 @@ after(async () => {
     if (requestIds.length) {
       await db.delete(messages).where(inArray(messages.requestId, requestIds));
       await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
+      await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, requestIds));
       await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
     }
     if (userIds.length) await db.delete(notifications).where(inArray(notifications.userId, userIds));

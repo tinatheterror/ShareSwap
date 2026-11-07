@@ -8,6 +8,7 @@ import {
   messages,
   notifications,
   pool,
+  requestLifecycleEvents,
   shareCoinsTransactions,
   users,
 } from "@workspace/db";
@@ -133,6 +134,7 @@ after(async () => {
   if (requestIds.length) {
     await db.delete(messages).where(inArray(messages.requestId, requestIds));
     await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
+    await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, requestIds));
     await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
   }
   if (userIds.length) await db.delete(shareCoinsTransactions).where(inArray(shareCoinsTransactions.userId, userIds));
@@ -219,10 +221,11 @@ test("deadlines that have not passed, and both-silent requests, are left alone",
 
   const result = await run([future.id, bothSilent.id]);
   assert.equal(result.autoAdvancedCount + result.flaggedCount + result.depositExpiredCount, 0);
-  assert.deepEqual(
-    [await snapshot(future.id, future.itemId), await snapshot(bothSilent.id, bothSilent.itemId)],
-    before,
-  );
+  const [futureAfter, silentAfter] = [await snapshot(future.id, future.itemId), await snapshot(bothSilent.id, bothSilent.itemId)];
+  assert.deepEqual(silentAfter, before[1]);
+  // The only change to the request with an hour left is the borrower's reminder; nothing about the exchange moves.
+  assert.deepEqual(futureAfter.notificationTypes, ["handoff_reminder"]);
+  assert.deepEqual({ ...futureAfter, notificationTypes: [] }, before[0]);
 });
 
 // ── flag ───────────────────────────────────────────────────────────────────────

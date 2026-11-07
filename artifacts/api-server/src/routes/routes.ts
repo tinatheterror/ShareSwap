@@ -86,6 +86,7 @@ import { minimumWaiverApplies } from "../account-deletion/retention";
 import { isEmailShaped, publicName, publicUsername } from "../public-identity";
 import { scrubEmailUsernames, usernameScrubMiddleware } from "../username-scrub";
 import { e2eTestModeEnabled } from "../e2e-mode";
+import { freezeRentalEarnings, resolveFrozenRentalEarnings } from "../rental-earnings-freeze";
 import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, releaseStrandedRentalPayouts, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
@@ -10523,6 +10524,16 @@ Respond with ONLY the category name, nothing else.`
           ...proofField,
         }).where(eq(itemRequests.id, requestId));
 
+        // The owner's earnings were released when the handoff auto-confirmed. Hold this rental's earnings (only these)
+        // until an admin decides the dispute.
+        if (request.item_requests.requestType === "RENT") {
+          try {
+            await freezeRentalEarnings(requestId);
+          } catch (freezeErr) {
+            console.error(`Could not freeze the earnings of disputed rental ${requestId}:`, freezeErr);
+          }
+        }
+
         const ownerId3 = request.items.ownerId!;
         const borrowerId3 = request.item_requests.requesterId;
         await db.insert(messages).values({ content: `🔴 A dispute has been opened on this exchange. Both parties have 24 hours to submit evidence.`, senderId: ownerId3, receiverId: borrowerId3, messageType: "system", requestId });
@@ -14975,6 +14986,35 @@ Respond with ONLY the category name, nothing else.`
     } catch (err) {
       console.error("Error resolving dispute:", err);
       res.status(500).json({ error: "Failed to resolve dispute" });
+    }
+  });
+
+  // Resolve a handoff dispute that was opened after an auto-confirm. "owner": the handoff stands, the rental continues and
+  // the frozen earnings go back to the owner's wallet. "borrower": the item was never handed over; the frozen earnings are
+  // reversed and the request is cancelled. Refunding the borrower's rental payment and releasing their deposit is NOT done here.
+  app.post("/api/admin/handoff-disputes/:requestId/resolve", requireAdmin, csrfProtection, async (req, res): Promise<any> => {
+    const requestId = parseInt(String(req.params.requestId));
+    const { decision } = req.body as { decision: "owner" | "borrower" };
+    if (!["owner", "borrower"].includes(decision)) return res.status(400).json({ error: "decision must be 'owner' or 'borrower'" });
+    try {
+      const [request] = await db.select().from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(eq(itemRequests.id, requestId)).limit(1);
+      if (!request) return res.status(404).json({ error: "Request not found" });
+      if (request.item_requests.status !== "HANDOFF_DISPUTED") return res.status(400).json({ error: "Request is not in HANDOFF_DISPUTED status" });
+      const [moved] = await db.update(itemRequests).set({ status: decision === "owner" ? "IN_PROGRESS" : "CANCELLED" })
+        .where(and(eq(itemRequests.id, requestId), eq(itemRequests.status, "HANDOFF_DISPUTED"))).returning({ id: itemRequests.id });
+      if (!moved) return res.status(409).json({ error: "Dispute changed before it could be resolved" });
+      const earnings = await resolveFrozenRentalEarnings(requestId, decision);
+      const name = request.items.name.length > 20 ? `${request.items.name.slice(0, 20)}…` : request.items.name;
+      await db.insert(notifications).values([
+        { userId: request.items.ownerId!, type: "dispute_resolved", title: "Handoff dispute resolved", requestId, isRead: false,
+          message: decision === "owner" ? `The handoff of "${name}" stands. Any earnings on hold have been returned to your wallet.` : `The handoff of "${name}" was not upheld and the rental was cancelled. Earnings on hold from it were reversed.` },
+        { userId: request.item_requests.requesterId, type: "dispute_resolved", title: "Handoff dispute resolved", requestId, isRead: false,
+          message: decision === "owner" ? `The handoff of "${name}" stands and the rental continues.` : `The handoff of "${name}" was not upheld and the rental was cancelled. We will refund you.` },
+      ] as any);
+      return res.json({ success: true, decision, earnings, refundRequired: decision === "borrower" });
+    } catch (err) {
+      console.error("Error resolving handoff dispute:", err);
+      res.status(500).json({ error: "Failed to resolve handoff dispute" });
     }
   });
 

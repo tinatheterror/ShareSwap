@@ -10,6 +10,7 @@ import {
 import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import * as depositCopy from "./deposit-copy";
 import { releaseHeldRentalPayout } from "./rental-payout-service";
+import { sendBorrowerHandoffReminders } from "./handoff-reminders";
 
 // Handoff deadline transitions, shared by the web-polled endpoint
 // (POST /api/requests/check-handoff-deadlines) and the server interval:
@@ -131,6 +132,9 @@ export async function processHandoffDeadlines(
     dryRun,
     candidates: [],
   };
+
+  // ── Borrower reminders 12 and 2 hours before an auto-confirm (live runs only; a dry run changes nothing) ──
+  if (!dryRun) await sendBorrowerHandoffReminders(now, { requestTypes: options.requestTypes, onlyRequestIds: options.onlyRequestIds });
 
   // ── Auto-advance: AWAITING requests past their confirmation deadline ──
   const expiredHandoffs = await db

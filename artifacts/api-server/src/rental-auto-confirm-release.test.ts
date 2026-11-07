@@ -28,7 +28,7 @@ async function rental(opts: { type?: string; status?: string; held?: boolean; ha
   itemIds.push(item.id);
   const handedOff = opts.handedOff ?? false;
   const [request] = await db.insert(itemRequests).values({
-    itemId: item.id, requesterId: borrowerId, requestType: opts.type ?? "RENT", status: opts.status ?? "AWAITING_HANDOFF_CONFIRM",
+    itemId: item.id, requesterId: borrowerId, requestType: opts.type ?? "RENT", status: opts.status ?? "AWAITING_HANDOFF_CONFIRM", paymentCurrency: "cad",
     startDate: new Date("2026-10-01T00:00:00.000Z"), endDate: new Date("2026-10-08T00:00:00.000Z"),
     ownerConfirmedHandoff: true, borrowerConfirmedHandoff: handedOff,
     handoffConfirmDeadline: new Date(Date.now() - HOUR),

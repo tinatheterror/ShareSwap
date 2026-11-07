@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
-import { db, itemRequests, items, notifications, PLATFORM_CURRENCY, rentalPayouts, users } from "@workspace/db";
+import { db, itemRequests, items, notifications, PLATFORM_CURRENCY, rentalPayouts, requestLifecycleEvents, users } from "@workspace/db";
 import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
 import { recordCurrency } from "./payment-currency";
 import { payDebtsFromCredit } from "./wallet-chargebacks";
@@ -198,15 +198,32 @@ export async function releaseHeldRentalPayout(args: {
 }): Promise<boolean> {
   const { requestId, ownerId, itemId, itemName, logTag } = args;
   const released = await db.transaction(async (tx) => {
+    const [paidRequest] = await tx.select({ paymentCurrency: itemRequests.paymentCurrency }).from(itemRequests).where(eq(itemRequests.id, requestId)).limit(1);
+    const currency = recordCurrency(paidRequest ?? {});
+    // Only an amount in the wallet's currency is ever credited to the wallet. Earnings charged in another currency (the USD
+    // requests from before the move to CAD) are never added to a CAD balance: the payout goes to admin review ('needs_review',
+    // listed by GET /api/admin/payouts-needing-review) to be paid out by hand, and the owner is told it is being processed.
+    const creditable = currency === PLATFORM_CURRENCY;
     const [row] = await tx
       .update(rentalPayouts)
-      .set({ status: "released", releasedAt: new Date() })
+      .set(creditable ? { status: "released", releasedAt: new Date() } : { status: "needs_review" })
       .where(and(eq(rentalPayouts.requestId, requestId), eq(rentalPayouts.status, "held")))
       .returning({ id: rentalPayouts.id, netAmount: rentalPayouts.netAmount });
     if (!row) return null;
     const net = parseFloat(row.netAmount || "0");
-    const [paidRequest] = await tx.select({ paymentCurrency: itemRequests.paymentCurrency }).from(itemRequests).where(eq(itemRequests.id, requestId)).limit(1);
-    const currency = recordCurrency(paidRequest ?? {});
+    if (!creditable) {
+      await tx.insert(requestLifecycleEvents).values({
+        requestId, eventType: "RENTAL_EARNINGS_NOT_CREDITED", idempotencyKey: `rental-earnings-not-credited-${row.id}`,
+        details: { rentalPayoutId: row.id, ownerId, amount: net.toFixed(2), currency, reason: "earnings are not in the wallet currency; paid out by hand" },
+      }).onConflictDoNothing();
+      const shortName = itemName.length > 20 ? `${itemName.slice(0, 20)}…` : itemName;
+      await tx.insert(notifications).values({
+        userId: ownerId, type: "payment_processing", title: "Rental payment being processed",
+        message: `$${net.toFixed(2)} earned from "${shortName}". We are processing this payment and will pay it to you directly; you don't need to do anything.`,
+        itemId, requestId, isRead: false,
+      });
+      return net;
+    }
     // The earnings first pay any chargeback debt the owner has (oldest first); only the rest reaches the wallet balance.
     const paidToDebts = await payDebtsFromCredit(tx, ownerId, toCents(net), currency, rentalEarningKey(row.id));
     const toBalance = ((toCents(net) - paidToDebts) / 100).toFixed(2);
@@ -232,7 +249,7 @@ export async function releaseHeldRentalPayout(args: {
     // Reaching here again for a payout that is already released is normal (a retry, a sweep, a second path),
     // so it is not an error. Only a request that never had a held payout is worth a log line.
     const [already] = await db.select({ id: rentalPayouts.id }).from(rentalPayouts)
-      .where(and(eq(rentalPayouts.requestId, requestId), eq(rentalPayouts.status, "released"))).limit(1);
+      .where(and(eq(rentalPayouts.requestId, requestId), inArray(rentalPayouts.status, ["released", "needs_review"]))).limit(1);
     if (already) console.log(`[${logTag}] request ${requestId}: rental earnings were already released`);
     else console.error(`[${logTag}] request ${requestId} has no held rental payout; the owner was not credited (never held)`);
     return false;

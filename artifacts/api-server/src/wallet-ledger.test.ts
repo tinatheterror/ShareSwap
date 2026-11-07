@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { eq, inArray } from "drizzle-orm";
-import { db, depositSettlementOperations, itemRequests, items, notifications, pool, rentalPayouts, securityClaims, users, walletTransactions } from "@workspace/db";
+import { and, eq, inArray } from "drizzle-orm";
+import { db, depositSettlementOperations, itemRequests, items, notifications, pool, rentalPayouts, requestLifecycleEvents, securityClaims, users, walletTransactions } from "@workspace/db";
 import { releaseHeldRentalPayout, reservePayout, sendPayout } from "./rental-payout-service.js";
 import { applyWalletBackfill, planWalletBackfill } from "./wallet-ledger-backfill.js";
 
@@ -43,6 +43,7 @@ before(async () => {
 after(async () => {
   await db.delete(walletTransactions).where(eq(walletTransactions.userId, ownerId));
   await db.delete(rentalPayouts).where(eq(rentalPayouts.userId, ownerId));
+  if (requestIds.length) await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, requestIds));
   if (requestIds.length) await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
   if (requestIds.length) await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
   await db.delete(items).where(eq(items.id, itemId));
@@ -52,17 +53,33 @@ after(async () => {
 
 test("releasing rental earnings writes one rental_payout row in the request's currency, and releasing again writes no more", async () => {
   await db.update(users).set({ rentalBalance: "0.00" }).where(eq(users.id, ownerId));
-  const { requestId, payout } = await heldRental("95.00", "usd");
+  const { requestId, payout } = await heldRental("95.00", "cad");
   assert.equal(await releaseHeldRentalPayout({ requestId, ownerId, itemId, itemName: "Drill", logTag: "test" }), true);
   assert.equal(await releaseHeldRentalPayout({ requestId, ownerId, itemId, itemName: "Drill", logTag: "test" }), false);
   const rows = await ledger();
   assert.equal(rows.length, 1);
   assert.deepEqual(
     { kind: rows[0].kind, cents: rows[0].amountCents, currency: rows[0].currency, request: rows[0].requestId, payout: rows[0].rentalPayoutId, key: rows[0].idempotencyKey },
-    { kind: "rental_payout", cents: 9500, currency: "usd", request: requestId, payout: payout.id, key: `rental-earning-${payout.id}` },
+    { kind: "rental_payout", cents: 9500, currency: "cad", request: requestId, payout: payout.id, key: `rental-earning-${payout.id}` },
   );
   assert.equal(await balanceCents(), 9500);
   assert.equal(await sumCents(), await balanceCents(), "the ledger explains the balance");
+});
+
+test("earnings charged in another currency are never credited to the wallet: the payout goes to review, the owner is told, the balance is untouched", async () => {
+  const before = await balanceCents();
+  const ledgerBefore = (await ledger()).length;
+  const { requestId, payout } = await heldRental("40.00", "usd");
+  assert.equal(await releaseHeldRentalPayout({ requestId, ownerId, itemId, itemName: "Drill", logTag: "test" }), true);
+  assert.equal(await releaseHeldRentalPayout({ requestId, ownerId, itemId, itemName: "Drill", logTag: "test" }), false, "a second call does nothing");
+  assert.equal(await balanceCents(), before, "no USD cents were added to the CAD balance");
+  assert.equal((await ledger()).length, ledgerBefore, "and nothing was written to the wallet ledger");
+  const [row] = await db.select().from(rentalPayouts).where(eq(rentalPayouts.id, payout.id));
+  assert.equal(row.status, "needs_review");
+  const [event] = await db.select().from(requestLifecycleEvents).where(eq(requestLifecycleEvents.idempotencyKey, `rental-earnings-not-credited-${payout.id}`));
+  assert.equal((event.details as any).currency, "usd");
+  const [note] = await db.select().from(notifications).where(and(eq(notifications.requestId, requestId), eq(notifications.type, "payment_processing")));
+  assert.match(note.message, /processing this payment and will pay it to you directly/);
 });
 
 test("a withdrawal is a negative row, a refused transfer adds the reversal, and the ledger keeps matching the balance", async () => {

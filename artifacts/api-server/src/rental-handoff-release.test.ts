@@ -65,7 +65,7 @@ async function rentalAwaitingBorrower(opts: { held: boolean }) {
     itemId: item.id, requesterId: borrowerId, requestType: "RENT", status: "AWAITING_HANDOFF_CONFIRM",
     startDate: new Date("2026-10-03T00:00:00.000Z"), endDate: new Date("2026-10-06T00:00:00.000Z"),
     depositMethod: "in_app", depositPaymentIntentId: "pi_deposit_hold", depositStatus: "authorized", depositMode: "authorization",
-    trustDepositAmount: "10.00", rentalAmount: "100.00", ownerConfirmedHandoff: true, ownerConfirmedHandoffAt: CLOCK,
+    trustDepositAmount: "10.00", rentalAmount: "100.00", paymentCurrency: "cad", ownerConfirmedHandoff: true, ownerConfirmedHandoffAt: CLOCK,
   } as any).returning({ id: itemRequests.id });
   if (opts.held) {
     await db.insert(rentalPayouts).values({

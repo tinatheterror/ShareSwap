@@ -13,6 +13,8 @@
     "migrate-push-tokens": "tsx src/scripts/migrate-push-tokens.ts",
     "reviews:duplicates": "tsx src/scripts/repair-duplicate-reviews.ts",
     "badges:duplicates": "tsx src/scripts/reconcile-duplicate-badges.ts",
+    "wallet:backfill": "tsx src/scripts/backfill-wallet-transactions.ts",
+    "wallet:convert": "tsx src/scripts/convert-wallet-currency.ts",
     "test": "tsx ../../lib/db/src/test-database-guard-cli.ts && TERMS_ENFORCEMENT=off tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {

@@ -209,3 +209,30 @@ test("the dispute webhook fails closed: no secret, no signature, no raw body or 
   await make({ handle: async () => { throw new Error("boom"); } })({ headers: { "stripe-signature": "t=1" }, body: raw } as any, res);
   assert.equal(res.statusCode, 500, "a processing failure is a 500 so Stripe retries");
 });
+
+test("Stripe's real test-mode dispute payloads: the disputed amount comes back on a win and the fee does not, even when the balance transactions arrive as ids", async () => {
+  // Captured from a CAD test-mode dispute (payment of 20.00, card pm_card_createDispute) that was then won.
+  const withdrawal = { type: "adjustment", reporting_category: "dispute", amount: -2000, fee: 1500, net: -3500, currency: "cad" };
+  const reinstated = { type: "adjustment", reporting_category: "dispute_reversal", amount: 2000, fee: 0, net: 2000, currency: "cad" };
+  const created = { status: "needs_response", amount: 2000, currency: "cad", balance_transactions: [withdrawal] };
+  const won = { status: "won", amount: 2000, currency: "cad", balance_transactions: [withdrawal, reinstated] };
+  assert.equal(disputeFeeCents(created), 1500);
+  assert.equal(disputeReturnedCents(created), 0);
+  assert.equal(disputeReturnedCents(won), 2000, "only the reinstated amount; the withdrawal and its fee are negative");
+
+  await setWallet("100.00");
+  const id = dispute();
+  await recordChargeback(input(id, 2000));
+  await handleDisputeEvent({ type: "charge.dispute.funds_withdrawn", data: { object: { id, ...created } } } as any);
+  assert.equal(await balanceCents(), 10_000 - 2000 - 1500);
+  const byId: Record<string, unknown> = { txn_withdrawal: withdrawal, txn_reinstated: reinstated };
+  const lookedUp: string[] = [];
+  const outcome = await handleDisputeEvent(
+    { type: "charge.dispute.closed", data: { object: { id, ...won, balance_transactions: ["txn_withdrawal", "txn_reinstated"] } } } as any,
+    async (txn) => { lookedUp.push(txn); return byId[txn]; },
+  );
+  assert.equal(outcome, "won");
+  assert.deepEqual(lookedUp, ["txn_withdrawal", "txn_reinstated"]);
+  assert.equal(await balanceCents(), 10_000 - 1500, "the 20.00 is back; the 15.00 fee Stripe kept stays with the member");
+  assert.equal(await ledgerSum(), await balanceCents());
+});

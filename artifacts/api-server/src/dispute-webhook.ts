@@ -14,7 +14,7 @@ import { closeChargeback, recordChargeback, recordChargebackFee } from "./wallet
  */
 export const DISPUTE_WEBHOOK_SECRET_ENV = "STRIPE_DISPUTE_WEBHOOK_SECRET";
 
-export type DisputeWebhookStripe = Pick<Stripe, "webhooks">;
+export type DisputeWebhookStripe = Pick<Stripe, "webhooks"> & Partial<Pick<Stripe, "balanceTransactions">>;
 
 export interface DisputeLiability {
   userId: number;
@@ -66,10 +66,16 @@ export function disputeReturnedCents(dispute: any): number {
   return transactions.reduce((total, bt) => total + (Number(bt?.net) > 0 ? Number(bt.net) : 0), 0);
 }
 
-export async function handleDisputeEvent(event: Pick<Stripe.Event, "type" | "data">): Promise<string> {
-  const dispute: any = event.data.object;
+/** Looks up one balance transaction by id, for a dispute whose balance_transactions arrived as ids instead of objects. */
+export type BalanceTransactionLookup = (id: string) => Promise<unknown>;
+
+export async function handleDisputeEvent(event: Pick<Stripe.Event, "type" | "data">, lookupBalanceTransaction?: BalanceTransactionLookup): Promise<string> {
+  const dispute: any = { ...(event.data.object as any) };
   const disputeId = String(dispute?.id ?? "");
   if (!disputeId) return "ignored: no dispute id";
+  if (Array.isArray(dispute.balance_transactions) && lookupBalanceTransaction) {
+    dispute.balance_transactions = await Promise.all(dispute.balance_transactions.map((bt: unknown) => (typeof bt === "string" ? lookupBalanceTransaction(bt) : bt)));
+  }
 
   if (event.type === "charge.dispute.created") {
     const paymentIntentId = typeof dispute.payment_intent === "string" ? dispute.payment_intent : dispute.payment_intent?.id;
@@ -113,7 +119,11 @@ export function disputeWebhookHandler(deps: { getStripe?: () => Promise<DisputeW
       return res.status(400).json({ error: "Invalid signature" });
     }
     try {
-      const outcome = await handle(event);
+      const stripeForLookup = (await getStripe()) as Partial<Stripe>;
+      const lookup: BalanceTransactionLookup | undefined = stripeForLookup.balanceTransactions
+        ? (id) => stripeForLookup.balanceTransactions!.retrieve(id)
+        : undefined;
+      const outcome = await handle(event, lookup);
       console.log(`[dispute-webhook] ${event.type} ${(event.data.object as any)?.id}: ${outcome}`);
       return res.json({ received: true });
     } catch (error) {

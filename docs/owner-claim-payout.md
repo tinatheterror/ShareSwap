@@ -30,7 +30,7 @@ else we owe a user.
 
 **Recommendation: a general `wallet_transactions` table**, not claim awards in `rental_payouts`.
 
-`rental_payouts` is shaped like a rental: `platform_fee`, `processing_fee`, `hold_until`, statuses `held` and
+`rental_payouts` is shaped like a rental: `platform_fee`, `processing_fee`, statuses `held` and
 `released`, and a request that was *rented*. Withdrawals already strain it (`request_id` null, `paid_out`, and now
 `pending_payout`, `failed`, `manual_review`). A claim award has no fee, belongs to a claim, and has no hold. Putting
 it there means a new `claim_id`, a `kind` column and a partial unique index, and the wallet history still cannot be

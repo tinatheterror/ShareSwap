@@ -308,6 +308,18 @@ export async function ensureWalletTransactionsTable() {
   }
 }
 
+const DROP_HOLD_UNTIL_FILE = "lib/db/scripts/0020_drop_rental_payouts_hold_until.sql";
+
+/** Drops rental_payouts.hold_until (0020), which nothing reads. Only runs while the column is still there. */
+export async function ensureRentalPayoutHoldUntilDropped() {
+  const { rows } = await pool.query(
+    `SELECT EXISTS (SELECT 1 FROM information_schema.columns
+                     WHERE table_schema = current_schema() AND table_name = 'rental_payouts' AND column_name = 'hold_until') AS present`,
+  );
+  if (rows[0]?.present !== true) return;
+  await runMigrationFile(DROP_HOLD_UNTIL_FILE);
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -322,6 +334,7 @@ export async function applyStartupMigrations() {
   await ensureAppleSignInTables();
   await ensureClaimAwardCreditColumns();
   await ensureWalletTransactionsTable();
+  await ensureRentalPayoutHoldUntilDropped();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();
   await ensureJobSwitchesAttributionConstraint();

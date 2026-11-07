@@ -769,7 +769,6 @@ export const rentalPayouts = pgTable("rental_payouts", {
   status: text("status").default("pending"), // 'pending', 'held', 'released', 'paid_out', 'disputed'
   stripePaymentIntentId: text("stripe_payment_intent_id"),
   stripeTransferId: text("stripe_transfer_id"),
-  holdUntil: timestamp("hold_until"),
   releasedAt: timestamp("released_at"),
   paidOutAt: timestamp("paid_out_at"),
   disputeStatus: text("dispute_status"),

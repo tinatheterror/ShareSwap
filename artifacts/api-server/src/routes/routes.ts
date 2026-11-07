@@ -1726,7 +1726,6 @@ export async function confirmRentalDeposit({
         netAmount: netAmount.toFixed(2),
         status: 'held',
         stripePaymentIntentId: rentalPaymentIntentId ?? paymentIntentId,
-        holdUntil: request.item_requests.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
 
       // Add to owner's pending balance
@@ -1737,7 +1736,7 @@ export async function confirmRentalDeposit({
         })
         .where(eq(users.id, request.items.ownerId!));
 
-      console.log(`Created escrow for $${netAmount.toFixed(2)} rental earnings (held until return) for owner ${request.items.ownerId}`);
+      console.log(`Created escrow for $${netAmount.toFixed(2)} rental earnings (held until the handoff is confirmed) for owner ${request.items.ownerId}`);
     }
 
     // Notify both parties that the deposit authorization is in place

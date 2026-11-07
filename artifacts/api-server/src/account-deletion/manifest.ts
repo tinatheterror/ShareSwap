@@ -286,7 +286,7 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     retention: "financial",
     note: "Payout ledger.",
     userColumns: ["user_id"],
-    keep: ["id", "user_id", "request_id", "amount", "rental_amount", "platform_fee", "processing_fee", "net_amount", "status", "stripe_payment_intent_id", "stripe_transfer_id", "hold_until", "released_at", "paid_out_at", "dispute_status", "dispute_reason", "created_at"],
+    keep: ["id", "user_id", "request_id", "amount", "rental_amount", "platform_fee", "processing_fee", "net_amount", "status", "stripe_payment_intent_id", "stripe_transfer_id", "released_at", "paid_out_at", "dispute_status", "dispute_reason", "created_at"],
     anonymize: [],
     delete: [],
   },

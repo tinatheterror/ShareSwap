@@ -196,7 +196,9 @@ export async function cardIsUsableBeforeCharge(stripe: CardSyncStripe, store: Ca
   try {
     return (await syncCardWithStripe(stripe, store, userId)).state !== "cleared";
   } catch (error) {
-    console.warn("[card-sync] pre-charge card check skipped:", (error as Error)?.message);
+    // The charge goes ahead, but a skipped check is a defect or an outage to look at, never a quiet warning: this once hid a
+    // missing method (customers.retrieve is not a function) on every real charge.
+    console.error(`[card-sync] PRE-CHARGE CARD CHECK SKIPPED for user ${userId}; the charge proceeds unchecked: ${(error as Error)?.name ?? "Error"}: ${(error as Error)?.message}`);
     return true;
   }
 }

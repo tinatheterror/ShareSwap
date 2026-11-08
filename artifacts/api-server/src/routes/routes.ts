@@ -1,4 +1,5 @@
 import { ensureUsableCustomer } from "../stripe-customer.js";
+import { createLazyStripe } from "../stripe-lazy-client";
 import { attachAsDefault, CardOwnershipError, dbCardStore, syncCardWithStripe, cardIsUsableBeforeCharge, READD_CARD_MESSAGE } from "../card-sync";
 import sharp from 'sharp';
 import type { Express } from "express";
@@ -838,104 +839,7 @@ async function getStripe(): Promise<Stripe> {
 }
 
 // Legacy alias for existing code - proxy to async stripe client
-const stripe = {
-  customers: {
-    create: async (...args: Parameters<Stripe['customers']['create']>) => {
-      const s = await getStripe();
-      return s.customers.create(...args);
-    },
-  },
-  setupIntents: {
-    create: async (...args: Parameters<Stripe['setupIntents']['create']>) => {
-      const s = await getStripe();
-      return s.setupIntents.create(...args);
-    },
-  },
-  paymentIntents: {
-    create: async (...args: Parameters<Stripe['paymentIntents']['create']>) => {
-      const s = await getStripe();
-      return s.paymentIntents.create(...args);
-    },
-    retrieve: async (...args: Parameters<Stripe['paymentIntents']['retrieve']>) => {
-      const s = await getStripe();
-      return s.paymentIntents.retrieve(...args);
-    },
-    update: async (...args: Parameters<Stripe['paymentIntents']['update']>) => {
-      const s = await getStripe();
-      return s.paymentIntents.update(...args);
-    },
-    cancel: async (...args: Parameters<Stripe['paymentIntents']['cancel']>) => {
-      const s = await getStripe();
-      return s.paymentIntents.cancel(...args);
-    },
-    capture: async (...args: Parameters<Stripe['paymentIntents']['capture']>) => {
-      const s = await getStripe();
-      return s.paymentIntents.capture(...args);
-    },
-  },
-  paymentMethods: {
-    retrieve: async (...args: Parameters<Stripe['paymentMethods']['retrieve']>) => {
-      const s = await getStripe();
-      return s.paymentMethods.retrieve(...args);
-    },
-    attach: async (...args: Parameters<Stripe['paymentMethods']['attach']>) => {
-      const s = await getStripe();
-      return s.paymentMethods.attach(...args);
-    },
-    detach: async (...args: Parameters<Stripe['paymentMethods']['detach']>) => {
-      const s = await getStripe();
-      return s.paymentMethods.detach(...args);
-    },
-  },
-  refunds: {
-    create: async (...args: Parameters<Stripe["refunds"]["create"]>) => {
-      const s = await getStripe();
-      return s.refunds.create(...args);
-    },
-    list: async (...args: Parameters<Stripe["refunds"]["list"]>) => {
-      const s = await getStripe();
-      return s.refunds.list(...args);
-    },
-    retrieve: async (...args: Parameters<Stripe["refunds"]["retrieve"]>) => {
-      const s = await getStripe();
-      return s.refunds.retrieve(...args);
-    },
-  },
-  checkout: {
-    sessions: {
-      create: async (...args: Parameters<Stripe['checkout']['sessions']['create']>) => {
-        const s = await getStripe();
-        return s.checkout.sessions.create(...args);
-      },
-      retrieve: async (...args: Parameters<Stripe['checkout']['sessions']['retrieve']>) => {
-        const s = await getStripe();
-        return s.checkout.sessions.retrieve(...args);
-      },
-    },
-  },
-  accounts: {
-    create: async (...args: Parameters<Stripe['accounts']['create']>) => {
-      const s = await getStripe();
-      return s.accounts.create(...args);
-    },
-    retrieve: async (...args: Parameters<Stripe['accounts']['retrieve']>) => {
-      const s = await getStripe();
-      return s.accounts.retrieve(...args);
-    },
-  },
-  accountLinks: {
-    create: async (...args: Parameters<Stripe['accountLinks']['create']>) => {
-      const s = await getStripe();
-      return s.accountLinks.create(...args);
-    },
-  },
-  transfers: {
-    create: async (...args: Parameters<Stripe['transfers']['create']>) => {
-      const s = await getStripe();
-      return s.transfers.create(...args);
-    },
-  },
-};
+const stripe = createLazyStripe(getStripe);
 
 // Type extension for Passport.js session data
 declare module 'express-session' {

@@ -54,9 +54,9 @@ async function start() {
   requireSubscriptionWebhookSecret();
 
   // The dispute webhook secret only warns (names only): the app must be able to deploy before the Stripe endpoint exists.
-  // Until it is set the endpoint rejects every request and chargebacks are not recovered from wallets.
+  // Until it is set the endpoint rejects every request, so no dispute is recorded, no admin is alerted and no evidence is requested.
   if (!process.env[DISPUTE_WEBHOOK_SECRET_ENV]?.trim()) {
-    logger.warn(`${DISPUTE_WEBHOOK_SECRET_ENV} is not set: Stripe dispute events are rejected and chargebacks are not recovered from wallets.`);
+    logger.warn(`${DISPUTE_WEBHOOK_SECRET_ENV} is not set: Stripe dispute events are rejected, so disputes are not recorded and no admin is alerted.`);
   }
 
   // Missing Stripe keys stop the boot; a failed account lookup only warns. Otherwise log test/live and the account id (never the keys).

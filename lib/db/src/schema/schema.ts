@@ -1239,6 +1239,9 @@ export const platformDisputes = pgTable("platform_disputes", {
   evidenceDueBy: timestamp("evidence_due_by"),
   evidenceRequestedAt: timestamp("evidence_requested_at"),
   evidenceSubmittedToStripeAt: timestamp("evidence_submitted_to_stripe_at"),
+  // Set when the admins were alerted that Stripe's evidence deadline, or the deposit authorization, is within 48 hours (0023).
+  evidenceDueAlertSentAt: timestamp("evidence_due_alert_sent_at"),
+  authExpiryAlertSentAt: timestamp("auth_expiry_alert_sent_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   closedAt: timestamp("closed_at"),
 }, (table) => ({

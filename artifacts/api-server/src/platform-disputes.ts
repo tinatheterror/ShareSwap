@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lte, notInArray, or, sql } from "drizzle-orm";
 import {
   accountReviewFlags, db, itemRequests, items, notifications, PLATFORM_CURRENCY, platformDisputes, rentalPayouts, users, type PlatformDispute,
 } from "@workspace/db";
@@ -214,10 +214,96 @@ export async function markDisputeReviewed(input: { disputeId: string; adminId: n
   });
 }
 
-export async function listPlatformDisputes(filter: { reviewStatus?: string } = {}): Promise<PlatformDispute[]> {
-  return db.select().from(platformDisputes)
-    .where(filter.reviewStatus ? inArray(platformDisputes.reviewStatus, [filter.reviewStatus]) : undefined)
-    .orderBy(desc(platformDisputes.createdAt)).limit(200);
+/** The admin list: every dispute with Stripe's evidence deadline and the rental's deposit authorization expiry beside it. */
+export async function listPlatformDisputes(filter: { reviewStatus?: string } = {}) {
+  return db.select({
+    dispute: platformDisputes,
+    itemName: items.name,
+    requestStatus: itemRequests.status,
+    depositStatus: itemRequests.depositStatus,
+    depositAuthorizationExpiresAt: itemRequests.depositAuthorizationExpiresAt,
+  }).from(platformDisputes)
+    .leftJoin(itemRequests, eq(itemRequests.id, platformDisputes.requestId))
+    .leftJoin(items, eq(items.id, itemRequests.itemId))
+    .where(filter.reviewStatus ? eq(platformDisputes.reviewStatus, filter.reviewStatus) : undefined)
+    .orderBy(desc(platformDisputes.createdAt)).limit(200)
+    .then((rows) => rows.map((r) => ({
+      ...r.dispute,
+      itemName: r.itemName,
+      requestStatus: r.requestStatus,
+      depositStatus: r.depositStatus,
+      /** Stripe's deadline for our evidence (the dispute's evidence_details.due_by). */
+      evidenceDueBy: r.dispute.evidenceDueBy,
+      /** When the card-network authorization behind the rental's deposit hold runs out; after it the deposit can no longer be captured. */
+      depositAuthorizationExpiresAt: r.depositAuthorizationExpiresAt,
+    })));
+}
+
+export const DISPUTE_ALERT_WINDOW_MS = 48 * 3_600_000;
+export const EVIDENCE_DUE_ALERT_TYPE = "admin_dispute_evidence_due";
+export const AUTH_EXPIRY_ALERT_TYPE = "admin_dispute_auth_expiring";
+
+/**
+ * Alerts every admin, once per dispute and kind, when Stripe's evidence deadline or the deposit authorization of the disputed rental
+ * falls within the next 48 hours. Evidence: only while the dispute is open and the evidence has not been marked as sent to Stripe.
+ * Authorization: only while the dispute is unreviewed and the deposit is still an uncaptured authorization on an open rental.
+ * The stamp is claimed with an UPDATE ... WHERE it is null, so two sweeps running at once cannot alert twice. Called from the
+ * durable reminder sweep; returns how many alerts it made.
+ */
+export async function alertDisputeDeadlines(now: Date = new Date()): Promise<{ evidence: number; authorization: number }> {
+  const horizon = new Date(now.getTime() + DISPUTE_ALERT_WINDOW_MS);
+  const counts = { evidence: 0, authorization: 0 };
+  const day = (d: Date) => d.toISOString().slice(0, 16).replace("T", " ") + " UTC";
+
+  const evidenceDue = await db.select().from(platformDisputes).where(and(
+    eq(platformDisputes.outcome, "open"), isNull(platformDisputes.evidenceSubmittedToStripeAt), isNull(platformDisputes.evidenceDueAlertSentAt),
+    gt(platformDisputes.evidenceDueBy, now), lte(platformDisputes.evidenceDueBy, horizon),
+  ));
+  for (const d of evidenceDue) {
+    const sent = await db.transaction(async (tx) => {
+      const [claimed] = await tx.update(platformDisputes).set({ evidenceDueAlertSentAt: now })
+        .where(and(eq(platformDisputes.id, d.id), isNull(platformDisputes.evidenceDueAlertSentAt))).returning({ id: platformDisputes.id });
+      if (!claimed) return false;
+      const admins = await adminUserIds(tx);
+      if (admins.length) {
+        await tx.insert(notifications).values(admins.map((userId) => ({
+          userId, type: EVIDENCE_DUE_ALERT_TYPE, requestId: d.requestId, isRead: false,
+          title: "Dispute evidence is due within 48 hours",
+          message: `Stripe needs the evidence for dispute ${d.disputeId} by ${day(d.evidenceDueBy!)}. It has not been marked as sent. The bundle is at /api/admin/chargebacks/${d.disputeId}/evidence.`,
+        })));
+      }
+      return true;
+    });
+    if (sent) counts.evidence++;
+  }
+
+  const expiring = await db.select({ d: platformDisputes, expires: itemRequests.depositAuthorizationExpiresAt }).from(platformDisputes)
+    .innerJoin(itemRequests, eq(itemRequests.id, platformDisputes.requestId))
+    .where(and(
+      eq(platformDisputes.reviewStatus, DISPUTE_REVIEW_PENDING), isNull(platformDisputes.authExpiryAlertSentAt),
+      eq(itemRequests.depositMode, "authorization"),
+      notInArray(itemRequests.status, [...TERMINAL_REQUEST_STATUSES]),
+      sql`COALESCE(${itemRequests.depositStatus}, '') NOT IN ('captured', 'settled', 'released', 'EXPIRED_UNSECURED')`,
+      gt(itemRequests.depositAuthorizationExpiresAt, now), lte(itemRequests.depositAuthorizationExpiresAt, horizon),
+    ));
+  for (const { d, expires } of expiring) {
+    const sent = await db.transaction(async (tx) => {
+      const [claimed] = await tx.update(platformDisputes).set({ authExpiryAlertSentAt: now })
+        .where(and(eq(platformDisputes.id, d.id), isNull(platformDisputes.authExpiryAlertSentAt))).returning({ id: platformDisputes.id });
+      if (!claimed) return false;
+      const admins = await adminUserIds(tx);
+      if (admins.length) {
+        await tx.insert(notifications).values(admins.map((userId) => ({
+          userId, type: AUTH_EXPIRY_ALERT_TYPE, requestId: d.requestId, isRead: false,
+          title: "A disputed rental's deposit hold expires within 48 hours",
+          message: `The deposit authorization on request #${d.requestId} runs out at ${day(expires!)} and dispute ${d.disputeId} has not been reviewed. After that the deposit can no longer be captured. Review the case and decide before then.`,
+        })));
+      }
+      return true;
+    });
+    if (sent) counts.authorization++;
+  }
+  return counts;
 }
 
 /** Open account-review flags, newest first (what an admin works through). */

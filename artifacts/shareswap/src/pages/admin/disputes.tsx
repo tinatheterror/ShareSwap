@@ -20,6 +20,7 @@ import { formatMoney } from "@/lib/deposit-copy";
 import { AlertTriangle, CheckCircle, Star, Package, User, DollarSign, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
+import { CardDisputes } from "@/components/admin/card-disputes";
 
 interface Dispute {
   id: number;
@@ -123,6 +124,7 @@ export default function AdminDisputesPage() {
             {disputes.length} open
           </Badge>
         </div>
+        <CardDisputes />
         <section className="space-y-4 mb-8">
           <h2 className="font-semibold text-lg">Security claims</h2>
           {isLoadingClaims ? <div data-testid="claims-loading" className="text-sm text-muted-foreground">Loading claims…</div> : claims.length === 0 ? <Card><CardContent className="py-6 text-sm text-muted-foreground" data-testid="claims-empty">No security claims awaiting review.</CardContent></Card> : claims.map((claim) => {

@@ -355,6 +355,18 @@ export async function ensurePlatformDisputes() {
   }
 }
 
+const DISPUTE_ALERT_COLUMNS_FILE = "lib/db/scripts/0023_dispute_deadline_alerts.sql";
+
+/** platform_disputes.evidence_due_alert_sent_at / auth_expiry_alert_sent_at (0023). The reminder sweep reads them, so they must exist. */
+export async function ensureDisputeAlertColumns() {
+  const { rows } = await pool.query(
+    `SELECT (SELECT count(*) FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'platform_disputes'
+              AND column_name IN ('evidence_due_alert_sent_at', 'auth_expiry_alert_sent_at')) = 2 AS present`,
+  );
+  if (rows[0]?.present === true) return;
+  await runMigrationFile(DISPUTE_ALERT_COLUMNS_FILE);
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -371,6 +383,7 @@ export async function applyStartupMigrations() {
   await ensureWalletTransactionsTable();
   await ensureWalletChargebacksTable();
   await ensurePlatformDisputes();
+  await ensureDisputeAlertColumns();
   await ensureRentalPayoutHoldUntilDropped();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();

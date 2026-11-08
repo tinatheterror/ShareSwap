@@ -10,7 +10,7 @@ import { handleDisputeEvent } from "./dispute-webhook.js";
 import { claimDepositTerminalAction, releaseDepositTerminalClaim } from "./deposit-renewal-service.js";
 import { confirmApprovedReturn } from "./return-recovery-service.js";
 import { buildEvidenceBundle, ownerEvidenceRequests, submitOwnerEvidence } from "./dispute-evidence.js";
-import { DISPUTE_HOLD_MESSAGE, disputeLoss, markDisputeReviewed } from "./platform-disputes.js";
+import { alertDisputeDeadlines, DISPUTE_HOLD_MESSAGE, disputeLoss, markDisputeReviewed } from "./platform-disputes.js";
 import { createRecoveryDebt, openDebtCents, openRecoveryDebtCents, payDebtsFromCredit, RecoveryDebtBlocksWithdrawal } from "./wallet-chargebacks.js";
 import { reservePayout } from "./rental-payout-service.js";
 
@@ -86,13 +86,13 @@ after(async () => {
     await db.delete(walletChargebacks).where(inArray(walletChargebacks.userId, ids));
     await db.delete(walletTransactions).where(inArray(walletTransactions.userId, ids));
     await db.delete(notifications).where(inArray(notifications.userId, ids));
-    if (requestIds.length) {
     // Alerts go to every admin in the database, including ones other test files are using at the same time.
     if (requestIds.length) await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
+    if (requestIds.length) {
       await db.delete(messages).where(inArray(messages.requestId, requestIds));
       await db.delete(rentalPayouts).where(inArray(rentalPayouts.requestId, requestIds));
-      await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
       await db.delete(rentalPayouts).where(eq(rentalPayouts.userId, ownerId));
+      await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
     }
     await db.delete(items).where(eq(items.id, itemId));
     await db.delete(users).where(inArray(users.id, ids));
@@ -213,9 +213,9 @@ test("a recovery debt needs a real reason, a valid amount, the platform currency
   assert.equal((await createRecoveryDebt({ ...base, userId: 999_999_999 })).status, "member_not_found");
   assert.equal((await createRecoveryDebt({ ...base, requestId: 999_999_999 })).status, "request_not_found");
   assert.equal(await openDebtCents(ownerId), 0, "nothing was recorded by the failures");
-
   assert.equal(await walletCents(), 5000, "and nothing was taken");
 });
+
 const resetWallet = async (balance: string) => {
   await db.delete(walletChargebacks).where(eq(walletChargebacks.userId, ownerId));
   await db.delete(walletTransactions).where(eq(walletTransactions.userId, ownerId));
@@ -348,4 +348,46 @@ test("the HTTP routes: admin only where they should be, a reason is required, an
   assert.equal((await admin.post(reviewPath, { note: "Checked the record, evidence sent." })).status, 200);
   assert.equal((await row(id)).reviewStatus, "reviewed");
   assert.equal(requestId > 0, true);
+});
+
+test("admins are alerted once, 48 hours before Stripe's evidence deadline and before the deposit authorization runs out, and the admin list shows both dates", async () => {
+  const now = new Date();
+  const hours = (h: number) => new Date(now.getTime() + h * 3_600_000);
+  const near = await rental();
+  await db.update(itemRequests).set({ depositMode: "authorization", depositStatus: "held", depositAuthorizationExpiresAt: hours(36) }).where(eq(itemRequests.id, near.requestId));
+  const nearId = disputeId();
+  await handleDisputeEvent(evt("charge.dispute.created", payload(nearId, near.pi, { evidence_details: { due_by: Math.floor(hours(24).getTime() / 1000) } })));
+
+  const far = await rental();
+  await db.update(itemRequests).set({ depositMode: "authorization", depositStatus: "held", depositAuthorizationExpiresAt: hours(24 * 5) }).where(eq(itemRequests.id, far.requestId));
+  await handleDisputeEvent(evt("charge.dispute.created", payload(disputeId(), far.pi, { evidence_details: { due_by: Math.floor(hours(24 * 5).getTime() / 1000) } })));
+
+  const sent = await rental();
+  await db.update(itemRequests).set({ depositMode: "authorization", depositStatus: "released", depositAuthorizationExpiresAt: hours(10) }).where(eq(itemRequests.id, sent.requestId));
+  const sentId = disputeId();
+  await handleDisputeEvent(evt("charge.dispute.created", payload(sentId, sent.pi, { evidence_details: { due_by: Math.floor(hours(10).getTime() / 1000) } })));
+  await markDisputeReviewed({ disputeId: sentId, adminId, note: "Evidence already sent to Stripe", evidenceSubmittedToStripe: true });
+
+  const first = await alertDisputeDeadlines(now);
+  assert.ok(first.evidence >= 1 && first.authorization >= 1);
+  const typesFor = async (requestId: number) => (await db.select().from(notifications).where(and(eq(notifications.userId, adminId), eq(notifications.requestId, requestId)))).map((n) => n.type).sort();
+  assert.deepEqual(await typesFor(near.requestId), ["admin_dispute_auth_expiring", "admin_dispute_evidence_due", "admin_dispute_review"]);
+  assert.deepEqual(await typesFor(far.requestId), ["admin_dispute_review"], "five days away: not yet");
+  assert.deepEqual(await typesFor(sent.requestId), ["admin_dispute_review"], "evidence sent and dispute reviewed: nothing to alert");
+  const message = (await db.select().from(notifications).where(and(eq(notifications.userId, adminId), eq(notifications.type, "admin_dispute_auth_expiring"), eq(notifications.requestId, near.requestId))))[0].message;
+  assert.match(message, new RegExp(`request #${near.requestId}`));
+
+  const second = await alertDisputeDeadlines(now);
+  assert.deepEqual(second, { evidence: 0, authorization: 0 }, "once each");
+  assert.equal((await typesFor(near.requestId)).length, 3);
+  // Five days later the far one is inside the window and is alerted once.
+  const later = await alertDisputeDeadlines(hours(24 * 4));
+  assert.ok(later.evidence >= 1 && later.authorization >= 1);
+  assert.equal((await typesFor(far.requestId)).length, 3);
+
+  const list: any = await (await admin.get("/api/admin/chargebacks")).json();
+  const listed = list.disputes.find((d: any) => d.disputeId === nearId);
+  assert.ok(Math.abs(new Date(listed.evidenceDueBy).getTime() - hours(24).getTime()) < 2000, "Stripe's due_by");
+  assert.equal(new Date(listed.depositAuthorizationExpiresAt).getTime(), hours(36).getTime(), "the authorization expiry");
+  assert.equal(listed.itemName, `${unique}-item`);
 });

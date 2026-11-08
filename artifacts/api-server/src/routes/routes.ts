@@ -1,7 +1,7 @@
 import { ensureUsableCustomer } from "../stripe-customer.js";
 import { createLazyStripe } from "../stripe-lazy-client";
 import { buildEvidenceBundle, ownerEvidenceRequests, submitOwnerEvidence } from "../dispute-evidence";
-import { listOpenAccountFlags, listPlatformDisputes, markDisputeReviewed } from "../platform-disputes";
+import { alertDisputeDeadlines, listOpenAccountFlags, listPlatformDisputes, markDisputeReviewed } from "../platform-disputes";
 import { createRecoveryDebt, RECOVERY_DEBT_WITHDRAWAL_CODE, RecoveryDebtBlocksWithdrawal } from "../wallet-chargebacks";
 import { attachAsDefault, CardOwnershipError, dbCardStore, syncCardWithStripe, cardIsUsableBeforeCharge, READD_CARD_MESSAGE } from "../card-sync";
 import sharp from 'sharp';
@@ -12455,6 +12455,12 @@ Respond with ONLY the category name, nothing else.`
       // DB-only reconciliation of actual, previously persisted authorization
       // deadlines. It cannot renew, capture, cancel, refund, or call Stripe.
       await reconcileClaimDeadlines(now);
+      // Admins hear 48 hours before Stripe's evidence deadline, or a disputed rental's deposit authorization, runs out. DB-only.
+      try {
+        await alertDisputeDeadlines(now);
+      } catch (error) {
+        console.error("[dispute-alerts] could not check dispute deadlines:", error);
+      }
       // "Today" and "two days from now" are calendar days in the request zone. Dates are stored as
       // UTC-midnight timestamps, so the window ends at the UTC midnight of that calendar day.
       const sweepZone = timezoneForRequest();

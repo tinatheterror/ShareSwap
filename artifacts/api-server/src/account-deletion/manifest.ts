@@ -286,7 +286,7 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     retention: "financial",
     note: "Stripe disputes and the platform's loss on them; the books keep them.",
     userColumns: ["owner_id", "borrower_id", "reviewed_by"],
-    keep: ["id", "dispute_id", "payment_intent_id", "request_id", "owner_id", "borrower_id", "reason", "amount_cents", "currency", "fee_cents", "outcome", "returned_cents", "loss_amount_cents", "loss_fee_cents", "rental_was_open", "review_status", "reviewed_by", "reviewed_at", "evidence_due_by", "evidence_requested_at", "evidence_submitted_to_stripe_at", "created_at", "closed_at", "review_note"],
+    keep: ["id", "dispute_id", "payment_intent_id", "request_id", "owner_id", "borrower_id", "reason", "amount_cents", "currency", "fee_cents", "outcome", "returned_cents", "loss_amount_cents", "loss_fee_cents", "rental_was_open", "review_status", "reviewed_by", "reviewed_at", "evidence_due_by", "evidence_requested_at", "evidence_submitted_to_stripe_at", "evidence_due_alert_sent_at", "auth_expiry_alert_sent_at", "created_at", "closed_at", "review_note"],
     anonymize: [],
     delete: [],
   },

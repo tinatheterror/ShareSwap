@@ -11,7 +11,8 @@ import { claimDepositTerminalAction, releaseDepositTerminalClaim } from "./depos
 import { confirmApprovedReturn } from "./return-recovery-service.js";
 import { buildEvidenceBundle, ownerEvidenceRequests, submitOwnerEvidence } from "./dispute-evidence.js";
 import { DISPUTE_HOLD_MESSAGE, disputeLoss, markDisputeReviewed } from "./platform-disputes.js";
-import { createRecoveryDebt, openDebtCents, payDebtsFromCredit } from "./wallet-chargebacks.js";
+import { createRecoveryDebt, openDebtCents, openRecoveryDebtCents, payDebtsFromCredit, RecoveryDebtBlocksWithdrawal } from "./wallet-chargebacks.js";
+import { reservePayout } from "./rental-payout-service.js";
 
 const unique = `platform-disputes-${Date.now()}`;
 const PASSWORD = "PlatformDisputes!42";
@@ -86,9 +87,12 @@ after(async () => {
     await db.delete(walletTransactions).where(inArray(walletTransactions.userId, ids));
     await db.delete(notifications).where(inArray(notifications.userId, ids));
     if (requestIds.length) {
+    // Alerts go to every admin in the database, including ones other test files are using at the same time.
+    if (requestIds.length) await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
       await db.delete(messages).where(inArray(messages.requestId, requestIds));
       await db.delete(rentalPayouts).where(inArray(rentalPayouts.requestId, requestIds));
       await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
+      await db.delete(rentalPayouts).where(eq(rentalPayouts.userId, ownerId));
     }
     await db.delete(items).where(eq(items.id, itemId));
     await db.delete(users).where(inArray(users.id, ids));
@@ -201,7 +205,7 @@ test("while a dispute on an open rental is unreviewed, nothing releases the depo
   if (allowed.status === "claimed") await releaseDepositTerminalClaim(allowed);
 });
 
-test("a recovery debt needs a real reason, a valid amount, the platform currency and another member; it is paid from later credits first", async () => {
+test("a recovery debt needs a real reason, a valid amount, the platform currency and another member", async () => {
   const base = { adminId, userId: ownerId, amountCents: 1200, reason: "Confirmed a handoff that never happened (request 1234)." };
   for (const bad of [{ reason: "" }, { reason: "too short" }, { amountCents: 0 }, { amountCents: 12.5 }, { amountCents: -5 }, { currency: "usd" }, { userId: adminId }]) {
     assert.equal((await createRecoveryDebt({ ...base, ...bad })).status, "invalid", JSON.stringify(bad));
@@ -210,20 +214,68 @@ test("a recovery debt needs a real reason, a valid amount, the platform currency
   assert.equal((await createRecoveryDebt({ ...base, requestId: 999_999_999 })).status, "request_not_found");
   assert.equal(await openDebtCents(ownerId), 0, "nothing was recorded by the failures");
 
-  const before = await walletCents();
-  const made = await createRecoveryDebt(base);
-  assert.equal(made.status, "created");
+  assert.equal(await walletCents(), 5000, "and nothing was taken");
+});
+const resetWallet = async (balance: string) => {
+  await db.delete(walletChargebacks).where(eq(walletChargebacks.userId, ownerId));
+  await db.delete(walletTransactions).where(eq(walletTransactions.userId, ownerId));
+  await db.delete(rentalPayouts).where(and(eq(rentalPayouts.userId, ownerId), eq(rentalPayouts.status, "pending_payout")));
+  await db.update(users).set({ rentalBalance: balance, pendingRentalBalance: "0.00" }).where(eq(users.id, ownerId));
+};
+const base = () => ({ adminId, userId: ownerId, amountCents: 1200, reason: "Confirmed a handoff that never happened (request 1234)." });
+
+test("a recovery debt the balance covers is taken right away, recorded in the ledger, and blocks nothing", async () => {
+  await resetWallet("50.00");
+  const made = await createRecoveryDebt(base());
+  assert.deepEqual([made.status, (made as any).collectedCents, (made as any).owedCents], ["created", 1200, 0]);
+  assert.equal(await walletCents(), 3800);
   const debt = (await db.select().from(walletChargebacks).where(eq(walletChargebacks.userId, ownerId)))[0];
-  assert.deepEqual([debt.kind, debt.status, debt.principalCents, debt.createdBy, debt.reason], ["recovery", "lost", 1200, adminId, base.reason]);
-  assert.equal(await walletCents(), before, "nothing is taken from the balance now");
-  assert.equal(await openDebtCents(ownerId), 1200);
-  assert.equal(await noteCount(ownerId, "wallet_chargeback", 0), 0);
-  const told = (await db.select().from(notifications).where(and(eq(notifications.userId, ownerId), eq(notifications.type, "wallet_chargeback"))));
-  assert.match(told.at(-1)!.message, /Confirmed a handoff that never happened/);
+  assert.deepEqual([debt.kind, debt.status, debt.principalCents, debt.collectedCents, debt.createdBy, debt.reason], ["recovery", "lost", 1200, 1200, adminId, base().reason]);
+  const ledger = await db.select().from(walletTransactions).where(eq(walletTransactions.userId, ownerId));
+  assert.deepEqual(ledger.map((r) => [r.kind, r.amountCents]), [["debt_payment", -1200]]);
+  assert.equal(await openDebtCents(ownerId), 0);
+  assert.equal(await openRecoveryDebtCents(ownerId), 0);
+  const told = (await db.select().from(notifications).where(and(eq(notifications.userId, ownerId), eq(notifications.type, "wallet_chargeback")))).at(-1)!;
+  assert.match(told.message, /Confirmed a handoff that never happened/);
+  assert.match(told.message, /12\.00 was taken from your wallet now/);
+  assert.match(told.message, /paid in full/);
+  const reserved = await reservePayout(ownerId, 1000);
+  assert.ok(reserved, "fully collected: the member can withdraw what is left");
+});
+
+test("what the balance cannot cover stays owed, blocks withdrawals until paid, and later earnings pay it first", async () => {
+  await resetWallet("7.00");
+  const made = await createRecoveryDebt(base());
+  assert.deepEqual([(made as any).collectedCents, (made as any).owedCents], [700, 500]);
+  assert.equal(await walletCents(), 0, "never below zero");
+  assert.equal(await openDebtCents(ownerId), 500);
+  assert.equal(await openRecoveryDebtCents(ownerId), 500);
+
+  // Money arrives some way that does not go through the debt (so the block itself is what is tested).
+  await db.update(users).set({ rentalBalance: "50.00" }).where(eq(users.id, ownerId));
+  await assert.rejects(() => reservePayout(ownerId, 1000), (e: unknown) => e instanceof RecoveryDebtBlocksWithdrawal && e.owedCents === 500);
+  assert.equal(await walletCents(), 5000, "the refused withdrawal took nothing");
+  assert.equal((await db.select().from(rentalPayouts).where(and(eq(rentalPayouts.userId, ownerId), eq(rentalPayouts.status, "pending_payout")))).length, 0);
+
+  await db.update(users).set({ stripeConnectedAccountId: "acct_test_recovery" }).where(eq(users.id, ownerId));
+  const refused = await owner.post("/api/rental-balance/payout", { amount: 10 });
+  assert.equal(refused.status, 403);
+  assert.equal(((await refused.json()) as any).code, "RECOVERY_DEBT");
 
   const used = await db.transaction((tx) => payDebtsFromCredit(tx, ownerId, 5000, "cad", `${unique}-credit`));
-  assert.equal(used, 1200);
-  assert.equal(await openDebtCents(ownerId), 0);
+  assert.equal(used, 500, "the next credit pays the debt first");
+  assert.equal(await openRecoveryDebtCents(ownerId), 0);
+  assert.ok(await reservePayout(ownerId, 1000), "paid off: withdrawals work again");
+  await db.update(users).set({ stripeConnectedAccountId: null }).where(eq(users.id, ownerId));
+});
+
+test("an ordinary chargeback debt never blocks a withdrawal", async () => {
+  await resetWallet("50.00");
+  await db.insert(walletChargebacks).values({ userId: ownerId, disputeId: disputeId(), currency: "cad", principalCents: 1000, status: "lost", kind: "dispute" });
+  assert.equal(await openDebtCents(ownerId), 1000);
+  assert.equal(await openRecoveryDebtCents(ownerId), 0);
+  assert.ok(await reservePayout(ownerId, 1000));
+  await resetWallet("50.00");
 });
 
 test("owner evidence: only the owner of the disputed rental can send it, input is checked, and the admin bundle has everything", async () => {
@@ -278,8 +330,8 @@ test("the HTTP routes: admin only where they should be, a reason is required, an
   assert.equal((await admin.post("/api/admin/members/999999999/recovery-debts", debt)).status, 404);
   const ok = await admin.post(debtPath, debt);
   assert.equal(ok.status, 201);
-  assert.equal(await openDebtCents(ownerId), 500);
-  await db.delete(walletChargebacks).where(eq(walletChargebacks.userId, ownerId));
+  assert.deepEqual(await ok.json(), { success: true, id: (await db.select().from(walletChargebacks).where(eq(walletChargebacks.userId, ownerId)))[0].id, collectedCents: 500, owedCents: 0 });
+  await resetWallet("50.00");
 
   const evidencePath = `/api/disputes/${id}/evidence`;
   assert.equal((await anonymous.post(evidencePath, { note: "x" })).status === 401 || true, true);

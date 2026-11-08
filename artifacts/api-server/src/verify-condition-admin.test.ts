@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { eq, inArray } from "drizzle-orm";
-import { db, itemConditionVerifications, items, pool, users } from "@workspace/db";
+import { db, itemConditionVerifications, items, notifications, pool, users } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { Client, startApp } from "./auth-test-client.js";
 
@@ -52,7 +52,11 @@ after(async () => {
       await db.delete(itemConditionVerifications).where(inArray(itemConditionVerifications.itemId, itemIds));
       await db.delete(items).where(inArray(items.id, itemIds));
     }
-    if (userIds.length) await db.delete(users).where(inArray(users.id, userIds));
+    if (userIds.length) {
+      // Other test files run alongside this one and anything that notifies every admin reaches the admin made here.
+      await db.delete(notifications).where(inArray(notifications.userId, userIds));
+      await db.delete(users).where(inArray(users.id, userIds));
+    }
   } finally {
     await closeServer?.();
     await pool.end();

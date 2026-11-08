@@ -2,7 +2,7 @@ import { ensureUsableCustomer } from "../stripe-customer.js";
 import { createLazyStripe } from "../stripe-lazy-client";
 import { buildEvidenceBundle, ownerEvidenceRequests, submitOwnerEvidence } from "../dispute-evidence";
 import { listOpenAccountFlags, listPlatformDisputes, markDisputeReviewed } from "../platform-disputes";
-import { createRecoveryDebt } from "../wallet-chargebacks";
+import { createRecoveryDebt, RECOVERY_DEBT_WITHDRAWAL_CODE, RecoveryDebtBlocksWithdrawal } from "../wallet-chargebacks";
 import { attachAsDefault, CardOwnershipError, dbCardStore, syncCardWithStripe, cardIsUsableBeforeCharge, READD_CARD_MESSAGE } from "../card-sync";
 import sharp from 'sharp';
 import type { Express } from "express";
@@ -8982,6 +8982,12 @@ Respond with ONLY the category name, nothing else.`
         },
       });
     } catch (error: any) {
+      if (error instanceof RecoveryDebtBlocksWithdrawal) {
+        return res.status(403).json({
+          error: `You owe ShareSwap $${(error.owedCents / 100).toFixed(2)} (recorded by our team), so withdrawals are paused until it is paid. Your new earnings pay it off first.`,
+          code: RECOVERY_DEBT_WITHDRAWAL_CODE,
+        });
+      }
       console.error("Error processing payout:", error);
       res.status(500).json({ error: "Failed to process payout" });
     }
@@ -14638,7 +14644,7 @@ Respond with ONLY the category name, nothing else.`
       if (result.status === "invalid") return res.status(400).json({ message: result.error });
       if (result.status !== "created") return res.status(404).json({ message: result.status === "member_not_found" ? "Member not found" : "Request not found" });
       console.warn(`[recovery-debt] admin ${(req.user as { id: number }).id} recorded debt ${result.debtId} against user ${userId}`);
-      return res.status(201).json({ success: true, id: result.id });
+      return res.status(201).json({ success: true, id: result.id, collectedCents: result.collectedCents, owedCents: result.owedCents });
     } catch (err) {
       console.error("Admin recovery debt error:", err);
       return res.status(500).json({ message: "Failed to record the debt" });

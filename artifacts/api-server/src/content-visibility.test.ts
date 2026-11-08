@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { eq, inArray } from "drizzle-orm";
 import { WebSocket } from "ws";
-import { db, itemRequests, items, moderationActions, pool, userPushTokens, users, wishlists } from "@workspace/db";
+import { db, itemRequests, items, moderationActions, notifications, pool, userPushTokens, users, wishlists } from "@workspace/db";
 import { accountIsBlocked, hashPassword } from "./auth.js";
 import { HIDDEN_ACCOUNT_STATUSES, accountIsPubliclyVisible, itemIsPubliclyVisible } from "./content-visibility.js";
 import { Client, startApp } from "./auth-test-client.js";
@@ -72,6 +72,8 @@ after(async () => {
     }
     if (userIds.length) {
       await db.delete(userPushTokens).where(inArray(userPushTokens.userId, userIds));
+      // Anything that notifies every admin (a dispute, say) reaches the admin this file makes.
+      await db.delete(notifications).where(inArray(notifications.userId, userIds));
       await db.delete(users).where(inArray(users.id, userIds));
     }
     await pool.query("DELETE FROM rate_limit_store WHERE key LIKE 'auth:%'");

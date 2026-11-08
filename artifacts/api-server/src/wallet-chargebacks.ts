@@ -3,6 +3,14 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, itemRequests, notifications, PLATFORM_CURRENCY, users, walletChargebacks, type WalletChargeback } from "@workspace/db";
 import { chargebackFeeKey, chargebackKey, chargebackReversalKey, debtPaymentKey, recordWalletEntry, toCents } from "./wallet-ledger";
 
+export const RECOVERY_DEBT_WITHDRAWAL_CODE = "RECOVERY_DEBT";
+/** Thrown inside the withdrawal transaction (so it rolls back) while the member owes an admin-recorded recovery debt. */
+export class RecoveryDebtBlocksWithdrawal extends Error {
+  constructor(readonly owedCents: number) {
+    super(`A recovery debt of ${(owedCents / 100).toFixed(2)} is unpaid`);
+  }
+}
+
 /**
  * LAUNCH POLICY (chargeback-policy.ts): ShareSwap absorbs dispute losses and fees, so recordChargeback / recordChargebackFee /
  * closeChargeback below run only when CHARGEBACK_RECOVERY_FROM_OWNERS is "true" (off by default). They are kept, not deleted. The one
@@ -176,16 +184,18 @@ export const RECOVERY_REASON_MAX_LENGTH = 2000;
 export const RECOVERY_MAX_CENTS = 10_000_000;
 
 export type RecoveryDebtResult =
-  | { status: "created"; id: number; debtId: string }
+  | { status: "created"; id: number; debtId: string; collectedCents: number; owedCents: number }
   | { status: "invalid"; error: string }
   | { status: "member_not_found" | "request_not_found" };
 
 /**
  * An admin records a recovery debt against a member, for PROVEN fraud or misconduct only (a false handoff confirmation, a fake listing).
  * Never called by a webhook or any job. The reason is required and kept with the debt and the admin who recorded it; it is also shown
- * to the member, so write it as something the member may read. Nothing is taken from the balance now: the debt is paid out of the
- * member's later credits first, like any other (payDebtsFromCredit), and they are told. The platform currency only: a debt in
- * another currency could never be paid from a wallet that never receives it.
+ * to the member, so write it as something the member may read. What the balance holds is taken RIGHT AWAY (never below zero, recorded
+ * as a debt_payment ledger row); the rest stays owed and is paid out of the member's later credits first (payDebtsFromCredit).
+ * While any of it is owed, the member cannot withdraw (reservePayout refuses); this applies to recovery debts only, ordinary
+ * chargeback debts never block a withdrawal. The platform currency only: a debt in another currency could never be paid from a
+ * wallet that never receives it.
  */
 export async function createRecoveryDebt(input: { adminId: number; userId: number; amountCents: number; currency?: string; reason: string; requestId?: number | null }): Promise<RecoveryDebtResult> {
   const reason = typeof input.reason === "string" ? input.reason.trim() : "";
@@ -208,10 +218,28 @@ export async function createRecoveryDebt(input: { adminId: number; userId: numbe
       userId: input.userId, disputeId: debtId, paymentIntentId: null, requestId: input.requestId ?? null, currency,
       principalCents: input.amountCents, status: "lost", kind: "recovery", reason, createdBy: input.adminId,
     }).returning({ id: walletChargebacks.id });
+    const taken = await takeFromBalance(tx, input.userId, input.amountCents);
+    if (taken > 0) {
+      await recordWalletEntry(tx, {
+        userId: input.userId, kind: "debt_payment", amountCents: -taken, currency, requestId: input.requestId ?? null, idempotencyKey: debtPaymentKey(row.id, "recorded"),
+      });
+      await tx.update(walletChargebacks).set({ collectedCents: taken }).where(eq(walletChargebacks.id, row.id));
+    }
+    const owed = input.amountCents - taken;
     await tx.insert(notifications).values({
       userId: input.userId, type: "wallet_chargeback", title: "An amount was recorded as owed to ShareSwap", requestId: input.requestId ?? null, isRead: false,
-      message: `${money(input.amountCents)} was recorded as owed to ShareSwap. Reason: ${reason} Your next earnings will pay it off first. If you think this is a mistake, contact support.`,
+      message: `${money(input.amountCents)} was recorded as owed to ShareSwap. Reason: ${reason} `
+        + (taken > 0 ? `${money(taken)} was taken from your wallet now. ` : "")
+        + (owed > 0 ? `You still owe ${money(owed)}: withdrawals are paused until it is paid, and your next earnings pay it off first. ` : "It is paid in full. ")
+        + "If you think this is a mistake, contact support.",
     } as any);
-    return { status: "created" as const, id: row.id, debtId };
+    return { status: "created" as const, id: row.id, debtId, collectedCents: taken, owedCents: owed };
   });
+}
+
+/** What the member still owes on admin-recorded recovery debts, in cents. Ordinary chargeback debts are not counted: they never block a withdrawal. */
+export async function openRecoveryDebtCents(userId: number, executor: Pick<typeof db, "select"> = db): Promise<number> {
+  const rows = await executor.select().from(walletChargebacks)
+    .where(and(eq(walletChargebacks.userId, userId), eq(walletChargebacks.kind, "recovery"), inArray(walletChargebacks.status, ["open", "lost"])));
+  return rows.reduce((total, row) => total + owedOf(row), 0);
 }

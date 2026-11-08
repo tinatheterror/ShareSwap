@@ -2,7 +2,7 @@ import { and, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
 import { db, itemRequests, items, notifications, PLATFORM_CURRENCY, rentalPayouts, requestLifecycleEvents, users } from "@workspace/db";
 import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
 import { recordCurrency } from "./payment-currency";
-import { payDebtsFromCredit } from "./wallet-chargebacks";
+import { openRecoveryDebtCents, payDebtsFromCredit, RecoveryDebtBlocksWithdrawal } from "./wallet-chargebacks";
 import { recordWalletEntry, rentalEarningKey, toCents, withdrawalKey, withdrawalReversalKey } from "./wallet-ledger";
 
 export type PayoutStripeClient = {
@@ -38,6 +38,9 @@ export async function reservePayout(userId: number, cents: number): Promise<Payo
       .where(and(eq(users.id, userId), sql`COALESCE(${users.rentalBalance}, 0) >= ${amount}::numeric`))
       .returning({ id: users.id });
     if (reserved.length === 0) return null;
+    // The row is locked by the update above, and recording a recovery debt takes the same lock, so this read cannot miss one.
+    const owed = await openRecoveryDebtCents(userId, tx);
+    if (owed > 0) throw new RecoveryDebtBlocksWithdrawal(owed);
     const [row] = await tx.insert(rentalPayouts).values({
       userId,
       requestId: null,

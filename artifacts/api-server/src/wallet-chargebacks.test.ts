@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { eq, inArray } from "drizzle-orm";
-import { db, itemRequests, items, notifications, pool, rentalPayouts, users, walletChargebacks, walletTransactions } from "@workspace/db";
+import { accountReviewFlags, db, itemRequests, items, notifications, platformDisputes, pool, rentalPayouts, users, walletChargebacks, walletTransactions } from "@workspace/db";
 import { disputeFeeCents, disputeReturnedCents, disputeWebhookHandler, findDisputeLiability, handleDisputeEvent } from "./dispute-webhook.js";
 import { releaseHeldRentalPayout, reservePayout } from "./rental-payout-service.js";
 import { closeChargeback, openDebtCents, recordChargeback, recordChargebackFee } from "./wallet-chargebacks.js";
+
+// These tests cover the OLD behaviour (charging owners), which is now behind a switch that is off by default.
+process.env.CHARGEBACK_RECOVERY_FROM_OWNERS = "true";
 
 const unique = `wallet-chargebacks-${Date.now()}`;
 let ownerId: number;
@@ -45,6 +48,10 @@ before(async () => {
 
 after(async () => {
   await db.delete(notifications).where(inArray(notifications.userId, [ownerId, borrowerId]));
+  // Every dispute is also recorded on the platform side, with a flag, and notices to any admin: they point at these requests.
+  if (requestIds.length) await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
+  await db.delete(accountReviewFlags).where(inArray(accountReviewFlags.userId, [ownerId, borrowerId]));
+  await db.delete(platformDisputes).where(inArray(platformDisputes.ownerId, [ownerId]));
   await db.delete(walletChargebacks).where(eq(walletChargebacks.userId, ownerId));
   await db.delete(walletTransactions).where(eq(walletTransactions.userId, ownerId));
   await db.delete(rentalPayouts).where(eq(rentalPayouts.userId, ownerId));

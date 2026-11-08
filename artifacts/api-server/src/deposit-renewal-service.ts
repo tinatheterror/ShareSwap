@@ -4,6 +4,7 @@ import { db, itemRequests, items, notifications } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { sendPushToUser } from "./push-notifications";
 import * as depositCopy from "./deposit-copy";
+import { DISPUTE_HOLD_MESSAGE, holdForDisputeReview } from "./platform-disputes";
 
 const RENEWAL_WINDOW_MS = 36 * 60 * 60 * 1000;
 const ACTIVE_DEPOSIT_STATUSES = ["authorized", "held", "disputed"];
@@ -55,6 +56,12 @@ export async function claimDepositTerminalAction(
       .where(eq(itemRequests.id, requestId))
       .limit(1);
     if (!request) return { status: "not_found", reason: "Request not found" };
+
+    // The borrower filed a dispute on this rental and no admin has reviewed it yet: nothing may release their deposit hold.
+    // Every caller treats a non-"claimed" result as "nothing happened" and stops. A capture (a claim against the deposit) is not a release.
+    if (operationType === "cancel" && await holdForDisputeReview(requestId, tx)) {
+      return { status: "busy", reason: DISPUTE_HOLD_MESSAGE };
+    }
 
     const claimIsFresh =
       request.depositRenewalStatus === "renewing" &&

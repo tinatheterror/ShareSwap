@@ -12,6 +12,7 @@ import {
 import { drizzle } from "drizzle-orm/node-postgres";
 import { and, asc, eq, inArray, isNull, like, lte, or, sql } from "drizzle-orm";
 import * as depositCopy from "./deposit-copy";
+import { DISPUTE_HOLD_MESSAGE, holdForDisputeReview } from "./platform-disputes";
 
 const RETURN_OPERATION_TYPE = "return_release";
 const RETURN_OPERATION_PREFIX = "return-release-";
@@ -717,6 +718,8 @@ async function prepareApprovedReturn(
       ))
       .limit(1);
     if (activeClaim) return { kind: "conflict" as const, error: "An active security claim is holding the deposit" };
+    // A return that has not started releasing yet waits while a dispute on this rental is unreviewed. One already under way finishes.
+    if (!operation && await holdForDisputeReview(requestId, tx)) return { kind: "conflict" as const, error: DISPUTE_HOLD_MESSAGE };
 
     if (operation) {
       if (

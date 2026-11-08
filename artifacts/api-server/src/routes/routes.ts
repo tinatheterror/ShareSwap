@@ -1,5 +1,8 @@
 import { ensureUsableCustomer } from "../stripe-customer.js";
 import { createLazyStripe } from "../stripe-lazy-client";
+import { buildEvidenceBundle, ownerEvidenceRequests, submitOwnerEvidence } from "../dispute-evidence";
+import { listOpenAccountFlags, listPlatformDisputes, markDisputeReviewed } from "../platform-disputes";
+import { createRecoveryDebt } from "../wallet-chargebacks";
 import { attachAsDefault, CardOwnershipError, dbCardStore, syncCardWithStripe, cardIsUsableBeforeCharge, READD_CARD_MESSAGE } from "../card-sync";
 import sharp from 'sharp';
 import type { Express } from "express";
@@ -14567,6 +14570,103 @@ Respond with ONLY the category name, nothing else.`
     } catch (err) {
       console.error("Admin unban error:", err);
       return res.status(500).json({ message: "Failed to unban user" });
+    }
+  });
+
+  // ── Admin: Stripe disputes (chargebacks). The platform absorbs the loss; see chargeback-policy.ts ──
+  app.get("/api/admin/chargebacks", requireAdmin, async (req, res) => {
+    try {
+      const status = typeof req.query.status === "string" ? req.query.status : undefined;
+      return res.json({ disputes: await listPlatformDisputes({ reviewStatus: status }) });
+    } catch (err) {
+      console.error("Admin disputes list error:", err);
+      return res.status(500).json({ message: "Failed to load disputes" });
+    }
+  });
+
+  // The bundle for submitting evidence to Stripe by hand: what the platform knows plus what the owner sent, with a paste-ready summary.
+  app.get("/api/admin/chargebacks/:disputeId/evidence", requireAdmin, async (req, res) => {
+    try {
+      const bundle = await buildEvidenceBundle(String(req.params.disputeId));
+      if (!bundle) return res.status(404).json({ message: "Dispute not found" });
+      return res.json(bundle);
+    } catch (err) {
+      console.error("Admin dispute evidence error:", err);
+      return res.status(500).json({ message: "Failed to build the evidence bundle" });
+    }
+  });
+
+  // An admin has looked at the case: this is what lets the rental's deposit hold be released again.
+  app.post("/api/admin/chargebacks/:disputeId/review", requireAdmin, csrfProtection, async (req, res) => {
+    try {
+      const { note, evidenceSubmittedToStripe, clearBorrowerFlag } = (req.body ?? {}) as { note?: string; evidenceSubmittedToStripe?: boolean; clearBorrowerFlag?: boolean };
+      const result = await markDisputeReviewed({
+        disputeId: String(req.params.disputeId), adminId: (req.user as { id: number }).id, note: String(note ?? ""),
+        evidenceSubmittedToStripe: evidenceSubmittedToStripe === true, clearBorrowerFlag: clearBorrowerFlag === true,
+      });
+      if (result.status === "not_found") return res.status(404).json({ message: "Dispute not found" });
+      if (result.status === "note_required") return res.status(400).json({ message: "A note saying what you checked and decided is required" });
+      return res.json({ success: true, status: result.status });
+    } catch (err) {
+      console.error("Admin dispute review error:", err);
+      return res.status(500).json({ message: "Failed to record the review" });
+    }
+  });
+
+  app.get("/api/admin/account-flags", requireAdmin, async (_req, res) => {
+    try {
+      return res.json({ flags: await listOpenAccountFlags() });
+    } catch (err) {
+      console.error("Admin account flags error:", err);
+      return res.status(500).json({ message: "Failed to load account flags" });
+    }
+  });
+
+  // A recovery debt for PROVEN fraud or misconduct only (false handoff confirmation, fake listings). Never automatic. The reason is
+  // required and is shown to the member.
+  app.post("/api/admin/members/:id/recovery-debts", requireAdmin, csrfProtection, async (req, res) => {
+    try {
+      const userId = Number.parseInt(String(req.params.id), 10);
+      if (!Number.isSafeInteger(userId)) return res.status(400).json({ message: "Invalid user id" });
+      const body = (req.body ?? {}) as { amountCents?: unknown; currency?: unknown; reason?: unknown; requestId?: unknown };
+      const requestId = body.requestId == null ? null : Number(body.requestId);
+      if (requestId != null && !Number.isSafeInteger(requestId)) return res.status(400).json({ message: "Invalid request id" });
+      const result = await createRecoveryDebt({
+        adminId: (req.user as { id: number }).id, userId, amountCents: body.amountCents as number,
+        currency: typeof body.currency === "string" ? body.currency : undefined, reason: typeof body.reason === "string" ? body.reason : "", requestId,
+      });
+      if (result.status === "invalid") return res.status(400).json({ message: result.error });
+      if (result.status !== "created") return res.status(404).json({ message: result.status === "member_not_found" ? "Member not found" : "Request not found" });
+      console.warn(`[recovery-debt] admin ${(req.user as { id: number }).id} recorded debt ${result.debtId} against user ${userId}`);
+      return res.status(201).json({ success: true, id: result.id });
+    } catch (err) {
+      console.error("Admin recovery debt error:", err);
+      return res.status(500).json({ message: "Failed to record the debt" });
+    }
+  });
+
+  // ── Owner: evidence for a dispute on a payment they received. They are never charged; this only helps the platform answer Stripe ──
+  app.get("/api/disputes/evidence-requests", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      return res.json({ requests: await ownerEvidenceRequests((req.user as { id: number }).id) });
+    } catch (err) {
+      console.error("Evidence requests error:", err);
+      return res.status(500).json({ message: "Failed to load evidence requests" });
+    }
+  });
+
+  app.post("/api/disputes/:disputeId/evidence", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const body = (req.body ?? {}) as { note?: unknown; photoUrls?: unknown };
+      const result = await submitOwnerEvidence({ disputeId: String(req.params.disputeId), userId: (req.user as { id: number }).id, note: body.note, photoUrls: body.photoUrls });
+      if (result.status === "invalid") return res.status(400).json({ message: result.error });
+      if (result.status !== "saved") return res.status(404).json({ message: "Dispute not found" });
+      return res.status(201).json({ success: true, id: result.id });
+    } catch (err) {
+      console.error("Dispute evidence error:", err);
+      return res.status(500).json({ message: "Failed to save your evidence" });
     }
   });
 

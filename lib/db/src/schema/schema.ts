@@ -1199,12 +1199,81 @@ export const walletChargebacks = pgTable("wallet_chargebacks", {
   status: text("status").notNull().default("open"), // 'open' | 'won' | 'lost'
   createdAt: timestamp("created_at").notNull().defaultNow(),
   closedAt: timestamp("closed_at"),
+  // 'dispute': taken because of a Stripe dispute (only while CHARGEBACK_RECOVERY_FROM_OWNERS is on).
+  // 'recovery': an admin recorded it against the member for proven fraud or misconduct (0022); reason and created_by say why and who.
+  kind: text("kind").notNull().default("dispute"),
+  reason: text("reason"),
+  createdBy: integer("created_by").references(() => users.id),
 }, (table) => ({
   disputeIdUniq: uniqueIndex("wallet_chargebacks_dispute_id_uniq").on(table.disputeId),
   userIdx: index("wallet_chargebacks_user_idx").on(table.userId, table.status),
 }));
 
 export type WalletChargeback = typeof walletChargebacks.$inferSelect;
+
+/**
+ * Every Stripe dispute, kept on the PLATFORM side (0022). ShareSwap absorbs the loss: loss_amount_cents and loss_fee_cents are what
+ * the platform is out of pocket, and nothing here touches a member's wallet. review_status 'pending_admin' keeps the rental's deposit
+ * hold in place (see claimDepositTerminalAction) until an admin has looked at the case.
+ */
+export const platformDisputes = pgTable("platform_disputes", {
+  id: serial("id").primaryKey(),
+  disputeId: text("dispute_id").notNull(),
+  paymentIntentId: text("payment_intent_id"),
+  requestId: integer("request_id").references(() => itemRequests.id),
+  ownerId: integer("owner_id").references(() => users.id),
+  borrowerId: integer("borrower_id").references(() => users.id),
+  reason: text("reason"), // Stripe's reason code, e.g. fraudulent, product_not_received
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull(),
+  feeCents: integer("fee_cents").notNull().default(0),
+  outcome: text("outcome").notNull().default("open"), // 'open' | 'won' | 'lost'
+  returnedCents: integer("returned_cents").notNull().default(0), // what Stripe gave back to the platform when it was won
+  lossAmountCents: integer("loss_amount_cents").notNull().default(0), // the disputed amount the platform is out
+  lossFeeCents: integer("loss_fee_cents").notNull().default(0), // Stripe's dispute fee the platform is out
+  rentalWasOpen: boolean("rental_was_open").notNull().default(false),
+  reviewStatus: text("review_status").notNull().default("pending_admin"), // 'pending_admin' | 'reviewed'
+  reviewNote: text("review_note"),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  evidenceDueBy: timestamp("evidence_due_by"),
+  evidenceRequestedAt: timestamp("evidence_requested_at"),
+  evidenceSubmittedToStripeAt: timestamp("evidence_submitted_to_stripe_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  closedAt: timestamp("closed_at"),
+}, (table) => ({
+  disputeIdUniq: uniqueIndex("platform_disputes_dispute_id_uniq").on(table.disputeId),
+  requestIdx: index("platform_disputes_request_idx").on(table.requestId, table.reviewStatus),
+}));
+
+export type PlatformDispute = typeof platformDisputes.$inferSelect;
+
+/** A member's account flagged for an admin to look at (0022); for now only a dispute on their payment raises one. */
+export const accountReviewFlags = pgTable("account_review_flags", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  source: text("source").notNull(), // 'dispute'
+  disputeId: text("dispute_id").notNull(),
+  requestId: integer("request_id").references(() => itemRequests.id),
+  reason: text("reason").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: integer("resolved_by").references(() => users.id),
+}, (table) => ({
+  userDisputeUniq: uniqueIndex("account_review_flags_user_dispute_uniq").on(table.userId, table.disputeId),
+}));
+
+/** What the owner sent in answer to the request for evidence on a dispute (0022). */
+export const disputeEvidence = pgTable("dispute_evidence", {
+  id: serial("id").primaryKey(),
+  disputeId: text("dispute_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  note: text("note"),
+  photoUrls: text("photo_urls").array(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  disputeIdx: index("dispute_evidence_dispute_idx").on(table.disputeId),
+}));
 
 export const itemAvailabilitySubscribers = pgTable("item_availability_subscribers", {
   id: serial("id").primaryKey(),

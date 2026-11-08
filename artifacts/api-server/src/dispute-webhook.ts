@@ -5,9 +5,14 @@ import { db, itemRequests, PLATFORM_CURRENCY, rentalPayouts, walletTransactions 
 import { getUncachableStripeClient } from "./stripe.server";
 import { recordCurrency } from "./payment-currency";
 import { closeChargeback, recordChargeback, recordChargebackFee } from "./wallet-chargebacks";
+import { ownerChargebackRecoveryEnabled } from "./chargeback-policy";
+import { applyPlatformDisputeFee, closePlatformDispute, recordPlatformDispute } from "./platform-disputes";
 
 /**
- * Stripe dispute (chargeback) events, charged back to the member who received the money (see wallet-chargebacks.ts).
+ * Stripe dispute (chargeback) events. Launch policy (chargeback-policy.ts): ShareSwap absorbs the loss and the dispute fee, so every
+ * event is recorded on the platform side (platform-disputes.ts) and no member's wallet is touched. Only when
+ * CHARGEBACK_RECOVERY_FROM_OWNERS is "true" is the old behaviour ALSO run: the disputed amount and fee are charged back to the member
+ * who received the money (wallet-chargebacks.ts).
  * Events handled: charge.dispute.created, charge.dispute.funds_withdrawn, charge.dispute.closed.
  * Fails closed like the subscription webhook: without the secret, a signature header, a raw body and a valid signature
  * nothing is read or changed. Expects the raw body (see app.ts).
@@ -77,8 +82,13 @@ export async function handleDisputeEvent(event: Pick<Stripe.Event, "type" | "dat
     dispute.balance_transactions = await Promise.all(dispute.balance_transactions.map((bt: unknown) => (typeof bt === "string" ? lookupBalanceTransaction(bt) : bt)));
   }
 
+  const recoverFromOwners = ownerChargebackRecoveryEnabled();
+
   if (event.type === "charge.dispute.created") {
     const paymentIntentId = typeof dispute.payment_intent === "string" ? dispute.payment_intent : dispute.payment_intent?.id;
+    // Always recorded, with or without a payment intent or a matching request: the platform needs to know about every dispute.
+    const { created } = await recordPlatformDispute(dispute);
+    if (!recoverFromOwners) return created ? "recorded: platform loss, no wallet change" : "duplicate";
     if (!paymentIntentId) return "ignored: dispute has no payment intent";
     const liability = await findDisputeLiability(paymentIntentId, Number(dispute.amount) || 0);
     if (!liability || liability.principalCents <= 0) {
@@ -88,10 +98,15 @@ export async function handleDisputeEvent(event: Pick<Stripe.Event, "type" | "dat
     return recordChargeback({ ...liability, disputeId, paymentIntentId });
   }
   if (event.type === "charge.dispute.funds_withdrawn") {
-    return recordChargebackFee(disputeId, disputeFeeCents(dispute));
+    const fee = disputeFeeCents(dispute);
+    const platform = await applyPlatformDisputeFee(dispute, fee);
+    return recoverFromOwners ? recordChargebackFee(disputeId, fee) : platform === "recorded" ? "recorded: platform loss, no wallet change" : "duplicate";
   }
   if (event.type === "charge.dispute.closed") {
-    return closeChargeback(disputeId, dispute.status === "lost" ? "lost" : "won", { returnedCents: disputeReturnedCents(dispute), disputeAmountCents: Number(dispute.amount) || 0 });
+    const outcome = dispute.status === "lost" ? "lost" : "won";
+    const stripeReturn = { returnedCents: disputeReturnedCents(dispute), disputeAmountCents: Number(dispute.amount) || 0 };
+    const platform = await closePlatformDispute(dispute, outcome, stripeReturn);
+    return recoverFromOwners ? closeChargeback(disputeId, outcome, stripeReturn) : platform;
   }
   return "ignored: event type not handled";
 }

@@ -1,8 +1,14 @@
+import { randomUUID } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { db, notifications, users, walletChargebacks, type WalletChargeback } from "@workspace/db";
+import { db, itemRequests, notifications, PLATFORM_CURRENCY, users, walletChargebacks, type WalletChargeback } from "@workspace/db";
 import { chargebackFeeKey, chargebackKey, chargebackReversalKey, debtPaymentKey, recordWalletEntry, toCents } from "./wallet-ledger";
 
 /**
+ * LAUNCH POLICY (chargeback-policy.ts): ShareSwap absorbs dispute losses and fees, so recordChargeback / recordChargebackFee /
+ * closeChargeback below run only when CHARGEBACK_RECOVERY_FROM_OWNERS is "true" (off by default). They are kept, not deleted. The one
+ * thing that always works is createRecoveryDebt at the end: an admin records a debt against a member for proven fraud or misconduct.
+ * Both kinds share this table, so debts of either kind are paid from the member's later credits first (payDebtsFromCredit).
+ *
  * Recovering a Stripe dispute (chargeback) from the member who received the money.
  *   created        : the member's share of the disputed payment is taken from the wallet balance (never below zero). Whatever
  *                    the balance cannot cover stays owed (a debt); it is not an error and the dispute is still recorded.
@@ -163,4 +169,49 @@ export async function payDebtsFromCredit(tx: any, userId: number, creditCents: n
 export async function openDebtCents(userId: number): Promise<number> {
   const rows = await db.select().from(walletChargebacks).where(and(eq(walletChargebacks.userId, userId), inArray(walletChargebacks.status, ["open", "lost"])));
   return rows.reduce((total, row) => total + owedOf(row), 0);
+}
+
+export const RECOVERY_REASON_MIN_LENGTH = 10;
+export const RECOVERY_REASON_MAX_LENGTH = 2000;
+export const RECOVERY_MAX_CENTS = 10_000_000;
+
+export type RecoveryDebtResult =
+  | { status: "created"; id: number; debtId: string }
+  | { status: "invalid"; error: string }
+  | { status: "member_not_found" | "request_not_found" };
+
+/**
+ * An admin records a recovery debt against a member, for PROVEN fraud or misconduct only (a false handoff confirmation, a fake listing).
+ * Never called by a webhook or any job. The reason is required and kept with the debt and the admin who recorded it; it is also shown
+ * to the member, so write it as something the member may read. Nothing is taken from the balance now: the debt is paid out of the
+ * member's later credits first, like any other (payDebtsFromCredit), and they are told. The platform currency only: a debt in
+ * another currency could never be paid from a wallet that never receives it.
+ */
+export async function createRecoveryDebt(input: { adminId: number; userId: number; amountCents: number; currency?: string; reason: string; requestId?: number | null }): Promise<RecoveryDebtResult> {
+  const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+  if (reason.length < RECOVERY_REASON_MIN_LENGTH) return { status: "invalid", error: `A reason of at least ${RECOVERY_REASON_MIN_LENGTH} characters is required: say what was proven (fraud or misconduct) and where.` };
+  if (reason.length > RECOVERY_REASON_MAX_LENGTH) return { status: "invalid", error: `The reason is too long (${RECOVERY_REASON_MAX_LENGTH} characters at most).` };
+  if (!Number.isInteger(input.amountCents) || input.amountCents <= 0 || input.amountCents > RECOVERY_MAX_CENTS) return { status: "invalid", error: "amountCents must be a whole number of cents above zero." };
+  const currency = (input.currency ?? PLATFORM_CURRENCY).toLowerCase();
+  if (currency !== PLATFORM_CURRENCY) return { status: "invalid", error: `Only ${PLATFORM_CURRENCY.toUpperCase()} debts can be recorded.` };
+  if (input.userId === input.adminId) return { status: "invalid", error: "You cannot record a debt against yourself." };
+
+  return db.transaction(async (tx) => {
+    const [member] = await tx.select({ id: users.id }).from(users).where(eq(users.id, input.userId)).limit(1);
+    if (!member) return { status: "member_not_found" as const };
+    if (input.requestId != null) {
+      const [request] = await tx.select({ id: itemRequests.id }).from(itemRequests).where(eq(itemRequests.id, input.requestId)).limit(1);
+      if (!request) return { status: "request_not_found" as const };
+    }
+    const debtId = `recovery-${randomUUID()}`;
+    const [row] = await tx.insert(walletChargebacks).values({
+      userId: input.userId, disputeId: debtId, paymentIntentId: null, requestId: input.requestId ?? null, currency,
+      principalCents: input.amountCents, status: "lost", kind: "recovery", reason, createdBy: input.adminId,
+    }).returning({ id: walletChargebacks.id });
+    await tx.insert(notifications).values({
+      userId: input.userId, type: "wallet_chargeback", title: "An amount was recorded as owed to ShareSwap", requestId: input.requestId ?? null, isRead: false,
+      message: `${money(input.amountCents)} was recorded as owed to ShareSwap. Reason: ${reason} Your next earnings will pay it off first. If you think this is a mistake, contact support.`,
+    } as any);
+    return { status: "created" as const, id: row.id, debtId };
+  });
 }

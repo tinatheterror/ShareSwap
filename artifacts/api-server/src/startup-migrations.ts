@@ -335,6 +335,26 @@ export async function ensureWalletChargebacksTable() {
   }
 }
 
+const PLATFORM_DISPUTES_FILE = "lib/db/scripts/0022_platform_disputes.sql";
+
+/**
+ * platform_disputes, account_review_flags, dispute_evidence and wallet_chargebacks.kind/reason/created_by (0022). The dispute webhook
+ * and the deposit-release guard read platform_disputes, so a missing table would fail both. Runs while any of the objects is missing.
+ */
+export async function ensurePlatformDisputes() {
+  const { rows } = await pool.query(
+    `SELECT to_regclass('platform_disputes') IS NOT NULL AND to_regclass('account_review_flags') IS NOT NULL AND to_regclass('dispute_evidence') IS NOT NULL
+            AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'wallet_chargebacks' AND column_name = 'created_by') AS present`,
+  );
+  if (rows[0]?.present === true) return;
+  try {
+    await runMigrationFile(PLATFORM_DISPUTES_FILE);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code !== "42P07" && code !== "23505" && code !== "42710") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -350,6 +370,7 @@ export async function applyStartupMigrations() {
   await ensureClaimAwardCreditColumns();
   await ensureWalletTransactionsTable();
   await ensureWalletChargebacksTable();
+  await ensurePlatformDisputes();
   await ensureRentalPayoutHoldUntilDropped();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();

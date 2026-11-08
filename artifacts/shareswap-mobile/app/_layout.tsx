@@ -134,6 +134,10 @@ function RootLayoutNav() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="dispute-evidence"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="referrals"
         options={{ headerShown: false }}
       />

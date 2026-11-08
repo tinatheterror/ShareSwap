@@ -54,6 +54,11 @@ export default function NotificationsPage() {
       return;
     }
 
+    if (notification.type === "dispute_evidence_requested") {
+      navigate(notification.requestId ? `/dispute-evidence?requestId=${notification.requestId}` : "/dispute-evidence");
+      return;
+    }
+
     if (notification.type === "trust_score_changed") {
       navigate("/score-history");
       return;

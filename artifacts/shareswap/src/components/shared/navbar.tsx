@@ -210,6 +210,7 @@ function NotificationBell() {
       navigate("/achievements");
       return;
     }
+    if (n.type === "dispute_evidence_requested") { navigate(n.requestId ? `/dispute-evidence?requestId=${n.requestId}` : "/dispute-evidence"); return; }
     if (n.type === "sharecoin_earned") { navigate("/wallet"); return; }
     if (["dispute_resolved", "security_deposit_released", "payment_received"].includes(n.type)) {
       navigate("/my-balance");

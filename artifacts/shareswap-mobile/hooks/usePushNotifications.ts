@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import { DISPUTE_EVIDENCE_PATH, DISPUTE_EVIDENCE_TYPE } from "@/lib/disputeEvidence";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type * as NotificationsType from "expo-notifications";
 import Constants from "expo-constants";
@@ -365,6 +366,12 @@ async function navigateFromPushData(
   const chatUserId = data.chatUserId as string | number | undefined;
 
   try {
+    // ── 0. The owner is asked for evidence on a payment dispute ──
+    if (data.type === DISPUTE_EVIDENCE_TYPE) {
+      router.push(DISPUTE_EVIDENCE_PATH as any);
+      return;
+    }
+
     // ── 1. Direct chat deep-link (new notifications have chatUserId set) ──
     if (chatUserId) {
       const chatPath = buildNotificationChatPath(chatUserId, requestId);

@@ -6,6 +6,7 @@ import {
   Star, TrendingUp, Truck, Undo2, Unlock, UserCheck, Users,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { DISPUTE_EVIDENCE_PATH, DISPUTE_EVIDENCE_TYPE } from "@/lib/disputeEvidence";
 import React from "react";
 import {
   Pressable,
@@ -158,6 +159,10 @@ export default function NotificationsScreen() {
     if (!notif.isRead) markRead(notif.id);
 
     // Type-specific deep-links (matches web notifications-page.tsx routing)
+    if (notif.type === DISPUTE_EVIDENCE_TYPE) {
+      router.push(DISPUTE_EVIDENCE_PATH as never);
+      return;
+    }
     if (notif.type === "trust_score_changed") {
       router.push("/score-history" as never);
       return;

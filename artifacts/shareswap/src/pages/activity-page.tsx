@@ -29,7 +29,7 @@ const TRANSACTION_TYPES = new Set([
   "dispute_opened", "dispute_resolved", "security_claim_opened", "claim_decided", "claim_settled",
   "security_deposit_charged", "security_claim_opened_owner", "security_deposit_refunded", "security_deposit_retained", "deposit_hold_released",
   "delivery_confirmed", "courier_issue",
-  "gift_handoff_pending", "gift_completed",
+  "gift_handoff_pending", "gift_completed", "dispute_evidence_requested",
 ]);
 
 const TRUST_TYPES = new Set([
@@ -64,6 +64,7 @@ function matchesTab(type: string, tab: Tab): boolean {
 // ─── Smart routing (single source of truth) ───────────────────────────────────
 
 export function getNotificationRoute(n: SelectNotification): { type: "chat"; requestId: number } | { type: "url"; url: string } | null {
+  if (n.type === "dispute_evidence_requested") return { type: "url", url: n.requestId ? `/dispute-evidence?requestId=${n.requestId}` : "/dispute-evidence" };
   if (n.type === "trust_score_changed") return { type: "url", url: "/score-history" };
   if (["milestone_achieved", "badge_earned", "level_up"].includes(n.type)) {
     return { type: "url", url: "/achievements" };

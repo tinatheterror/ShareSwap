@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 /** Pages that must stay readable while the screen is up: it links to them. */
-const READABLE = ["/terms", "/privacy", "/community-guidelines", "/delete-account"];
+const READABLE = ["/terms", "/privacy", "/community-guidelines", "/help/chargebacks", "/delete-account"];
 
 /**
  * A screen nobody can dismiss until they accept the current Terms and Community Guidelines and have confirmed their age:

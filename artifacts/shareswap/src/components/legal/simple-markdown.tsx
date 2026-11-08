@@ -1,13 +1,16 @@
 import { Fragment, type ReactNode } from "react";
 
 // Just enough markdown for the legal documents in docs/legal: headings, paragraphs, bullet lists, block quotes, **bold**
-// and email addresses. Nothing else is interpreted, and nothing is ever injected as HTML.
+// email addresses and links to a path on this site, [text](/path). Anything else is plain text. Nothing else is interpreted, and nothing is ever injected as HTML.
 
-const INLINE = /(\*\*[^*]+\*\*|[\w.+-]+@[\w-]+(?:\.[\w-]+)+)/g;
+const LINK = /^\[([^\]]+)\]\((\/[\w\-/]*)\)$/;
+const INLINE = /(\*\*[^*]+\*\*|\[[^\]]+\]\(\/[\w\-/]*\)|[\w.+-]+@[\w-]+(?:\.[\w-]+)+)/g;
 
 export function renderInline(text: string): ReactNode[] {
   return text.split(INLINE).filter((part) => part !== "").map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) return <strong key={i}>{part.slice(2, -2)}</strong>;
+    const link = LINK.exec(part);
+    if (link) return <a key={i} href={link[2]} className="text-teal-600 underline">{link[1]}</a>;
     if (/^[\w.+-]+@[\w-]+(?:\.[\w-]+)+$/.test(part)) return <a key={i} href={`mailto:${part}`} className="text-teal-600 underline">{part}</a>;
     return <Fragment key={i}>{part}</Fragment>;
   });

@@ -37,6 +37,7 @@ import VerifyItemsPage from "@/pages/admin/verify-items";
 import AdminDisputesPage from "@/pages/admin/disputes";
 import AdminReportsPage from "@/pages/admin/reports";
 import CommunityGuidelinesPage from "@/pages/community-guidelines-page";
+import ChargebacksPage from "@/pages/chargebacks-page";
 import { TermsGate } from "@/components/terms-gate";
 import { AiConsentProvider } from "@/components/ai-consent";
 import AdminDashboardPage from "@/pages/admin/index";
@@ -135,6 +136,7 @@ function Router() {
       <ProtectedRoute path="/wishlists" component={WishlistsPage} />
       <ProtectedRoute path="/community-wishlists" component={CommunityWishlistsPage} />
       <Route path="/sharecoins-info" component={ShareCoinsInfoPage} />
+      <Route path="/help/chargebacks" component={ChargebacksPage} />
       <Route path="/help" component={FAQPage} />
       <Route path="/faq" component={FAQPage} />
       <Route path="/privacy" component={PrivacyPage} />

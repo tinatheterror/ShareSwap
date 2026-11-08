@@ -17,6 +17,8 @@ export interface FakeStripeOptions {
   charges?: Record<string, { amount: number; fee: number }>;
   /** Fee (cents) Stripe hands back on a refund, keyed by refund id (re_1, re_2, ...). */
   returnedFees?: Record<string, number>;
+  /** A charged payment: what retrieve reports (amount, status via intentStatus, refunded cents, livemode). */
+  intents?: Record<string, { amount: number; refunded?: number; livemode?: boolean }>;
   /** Make reading the balance transaction fail. */
   failFeeRead?: () => boolean;
   /** Refund ids are `${refundIdPrefix}${n}`. Give each test its own: the ledger keeps refund ids unique. */
@@ -38,6 +40,13 @@ export function fakeStripe(options: FakeStripeOptions = {}) {
       retrieve: async (id: string, params?: { expand?: string[] }) => {
         calls.retrieve.push(id);
         const base: Record<string, unknown> = { id, status: intentStatus.get(id) ?? "requires_capture" };
+        const known = options.intents?.[id];
+        if (known) {
+          base.amount = known.amount;
+          base.amount_received = base.status === "succeeded" ? known.amount : 0;
+          base.livemode = known.livemode ?? false;
+          base.latest_charge = { id: `ch_for_${id}`, amount: known.amount, amount_refunded: known.refunded ?? 0 };
+        }
         const charge = options.charges?.[id];
         if (charge && params?.expand?.includes("latest_charge.balance_transaction")) {
           if (options.failFeeRead?.()) throw new Error("balance transaction unavailable");

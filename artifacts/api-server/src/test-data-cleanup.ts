@@ -19,7 +19,15 @@ import { recordWalletEntry, toCents } from "./wallet-ledger";
  *     were already charged are NOT refunded.
  *   - every wallet balance is set to zero with an 'adjustment' ledger row (minus the balance, in usd, key
  *     test-data-adjustment-<user>); pending earnings are cleared. A user who also has CAD activity is skipped, never zeroed.
- * Live needs --confirm <hash>: if anything changed since the plan was shown, the hash differs and nothing is touched.
+ *   - --close-without-hold <id,id>: the named open USD requests are closed WITHOUT any Stripe call for the deposit hold (for
+ *     intents Stripe does not know, like a fake test id). They are listed in the plan as close_without_hold; nothing is
+ *     assumed about the intent. A named id that is not an open USD request makes live refuse. The deposit_status of such a
+ *     request is left as it was (we do not claim a release that did not happen); the lifecycle event records it.
+ *   - Rental payments (rental_payouts.stripe_payment_intent_id) of the requests being closed are READ from Stripe in every dry
+ *     run and listed with amount and intent id. They are refunded only with --refund-rental-payments (off by default), in full
+ *     (what is not yet refunded), with the key test-cleanup-refund-<request>-<intent>.
+ * Live needs --confirm <hash>: if anything changed since the plan was shown, the hash differs and nothing is touched. The
+ * options are part of the hash, so pass the same options to the dry run and the live run.
  */
 export interface CleanupRequest {
   id: number;
@@ -33,8 +41,25 @@ export interface CleanupRequest {
   depositPaymentIntentId: string | null;
   /** What Stripe says the deposit intent is (read-only lookup), or null when it was not looked up or does not exist. */
   stripeIntentStatus: string | null;
-  /** release_hold: a deposit is released in Stripe. close_only: nothing to release in Stripe. */
-  action: "release_hold" | "close_only";
+  /**
+   * release_hold: a deposit is released in Stripe. close_only: nothing to release in Stripe.
+   * close_without_hold: named with --close-without-hold; closed without trying to release any hold.
+   */
+  action: "release_hold" | "close_only" | "close_without_hold";
+  /** Rental payments charged for this request (read from Stripe), whether or not they will be refunded. */
+  rentalPayments: RentalPayment[];
+}
+export interface RentalPayment {
+  paymentIntentId: string;
+  /** What was charged, in cents (0 when Stripe could not be read). */
+  amountCents: number;
+  /** Already refunded, in cents. */
+  refundedCents: number;
+  /** Stripe's status for the intent, or null when it could not be read. */
+  status: string | null;
+  livemode: boolean | null;
+  /** Charged (succeeded) and not yet fully refunded: what --refund-rental-payments would refund. */
+  refundableCents: number;
 }
 export interface CleanupUser {
   userId: number;
@@ -46,13 +71,38 @@ export interface CleanupUser {
   /** Set when the user is left alone, and why. */
   skipped: string | null;
 }
-export interface CleanupPlan { requests: CleanupRequest[]; users: CleanupUser[]; hash: string }
+export interface CleanupPlan {
+  requests: CleanupRequest[];
+  users: CleanupUser[];
+  /** Ids named with --close-without-hold that are not open USD requests. Live refuses while there are any. */
+  unmatchedCloseWithoutHold: number[];
+  refundRentalPayments: boolean;
+  hash: string;
+}
 
-export interface CleanupScope { onlyRequestIds?: number[]; onlyUserIds?: number[] }
+export interface CleanupScope { onlyRequestIds?: number[]; onlyUserIds?: number[]; closeWithoutHold?: number[] }
+export interface PlanOptions { refundRentalPayments?: boolean }
 
 const OPEN_DEPOSIT_STATUSES = ["authorized", "held", "disputed", "SECURED_REFUNDABLE", "secured_refundable"];
 
-export async function planTestDataCleanup(stripe?: Pick<DepositRenewalStripeClient, "paymentIntents">, scope: CleanupScope = {}): Promise<CleanupPlan> {
+async function readRentalPayment(stripe: Pick<DepositRenewalStripeClient, "paymentIntents"> | undefined, paymentIntentId: string): Promise<RentalPayment> {
+  const unknown: RentalPayment = { paymentIntentId, amountCents: 0, refundedCents: 0, status: null, livemode: null, refundableCents: 0 };
+  if (!stripe) return unknown;
+  try {
+    const intent: any = await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["latest_charge"] });
+    const status: string | null = intent.status ?? null;
+    const amountCents = Number(status === "succeeded" ? (intent.amount_received ?? intent.amount) : (intent.amount ?? 0)) || 0;
+    const refundedCents = Number(intent.latest_charge?.amount_refunded ?? 0) || 0;
+    return {
+      paymentIntentId, amountCents, refundedCents, status, livemode: typeof intent.livemode === "boolean" ? intent.livemode : null,
+      refundableCents: status === "succeeded" ? Math.max(0, amountCents - refundedCents) : 0,
+    };
+  } catch {
+    return unknown;
+  }
+}
+
+export async function planTestDataCleanup(stripe?: Pick<DepositRenewalStripeClient, "paymentIntents">, scope: CleanupScope = {}, options: PlanOptions = {}): Promise<CleanupPlan> {
   const rows = await db
     .select({ r: itemRequests, ownerId: items.ownerId })
     .from(itemRequests)
@@ -64,9 +114,20 @@ export async function planTestDataCleanup(stripe?: Pick<DepositRenewalStripeClie
     ))
     .orderBy(itemRequests.id);
 
+  const withoutHold = new Set(scope.closeWithoutHold ?? []);
+  const unmatchedCloseWithoutHold = [...withoutHold].filter(id => !rows.some(({ r }) => r.id === id)).sort((a, b) => a - b);
+  const paymentRows = rows.length
+    ? await db.selectDistinct({ requestId: rentalPayouts.requestId, paymentIntentId: rentalPayouts.stripePaymentIntentId }).from(rentalPayouts)
+        .where(and(inArray(rentalPayouts.requestId, rows.map(({ r }) => r.id)), sql`${rentalPayouts.stripePaymentIntentId} IS NOT NULL`))
+        .orderBy(rentalPayouts.requestId, rentalPayouts.stripePaymentIntentId)
+    : [];
+
   const requests: CleanupRequest[] = [];
   for (const { r, ownerId } of rows) {
-    const hasHold = Boolean(r.depositPaymentIntentId) && r.depositMethod !== "in_person" && OPEN_DEPOSIT_STATUSES.includes(r.depositStatus ?? "");
+    const named = withoutHold.has(r.id);
+    const hasHold = !named && Boolean(r.depositPaymentIntentId) && r.depositMethod !== "in_person" && OPEN_DEPOSIT_STATUSES.includes(r.depositStatus ?? "");
+    const rentalPayments: RentalPayment[] = [];
+    for (const row of paymentRows.filter(p => p.requestId === r.id)) rentalPayments.push(await readRentalPayment(stripe, row.paymentIntentId!));
     let stripeIntentStatus: string | null = null;
     if (hasHold && stripe) {
       try {
@@ -77,7 +138,8 @@ export async function planTestDataCleanup(stripe?: Pick<DepositRenewalStripeClie
     }
     requests.push({
       id: r.id, status: r.status, requestType: r.requestType, ownerId, borrowerId: r.requesterId, depositMethod: r.depositMethod, depositMode: r.depositMode,
-      depositStatus: r.depositStatus, depositPaymentIntentId: r.depositPaymentIntentId, stripeIntentStatus, action: hasHold ? "release_hold" : "close_only",
+      depositStatus: r.depositStatus, depositPaymentIntentId: r.depositPaymentIntentId, stripeIntentStatus,
+      action: named ? "close_without_hold" : hasHold ? "release_hold" : "close_only", rentalPayments,
     });
   }
 
@@ -110,18 +172,20 @@ export async function planTestDataCleanup(stripe?: Pick<DepositRenewalStripeClie
   }
 
   const stable = JSON.stringify({
-    requests: requests.map(r => [r.id, r.status, r.depositPaymentIntentId, r.action]),
+    requests: requests.map(r => [r.id, r.status, r.depositPaymentIntentId, r.action, r.rentalPayments.map(p => [p.paymentIntentId, p.amountCents, p.refundedCents, p.status])]),
+    unmatched: unmatchedCloseWithoutHold,
+    refund: Boolean(options.refundRentalPayments),
     users: cleanupUsers.map(u => [u.userId, u.balanceCents, u.pendingCents, u.skipped]),
   });
-  return { requests, users: cleanupUsers, hash: createHash("sha256").update(stable).digest("hex").slice(0, 16) };
+  return { requests, users: cleanupUsers, unmatchedCloseWithoutHold, refundRentalPayments: Boolean(options.refundRentalPayments), hash: createHash("sha256").update(stable).digest("hex").slice(0, 16) };
 }
 
 export interface CleanupResult {
-  requests: Array<{ id: number; outcome: "closed" | "failed" | "skipped"; detail: string }>;
+  requests: Array<{ id: number; outcome: "closed" | "failed" | "skipped"; detail: string; refunds?: Array<{ paymentIntentId: string; refundId: string | null; amountCents: number }> }>;
   users: Array<{ userId: number; outcome: "zeroed" | "skipped" | "changed"; detail: string }>;
 }
 
-async function closeRequest(req: CleanupRequest, stripe: DepositRenewalStripeClient, now: Date): Promise<CleanupResult["requests"][number]> {
+async function closeRequest(req: CleanupRequest, stripe: DepositRenewalStripeClient, now: Date, refundRentalPayments: boolean): Promise<CleanupResult["requests"][number]> {
   const claim = await claimDepositTerminalAction(req.id, "cancel", now);
   if (claim.status !== "claimed") return { id: req.id, outcome: "failed", detail: `busy: ${claim.reason}` };
   const request = claim.request;
@@ -130,14 +194,33 @@ async function closeRequest(req: CleanupRequest, stripe: DepositRenewalStripeCli
     return { id: req.id, outcome: "skipped", detail: `no longer open or no longer usd (${request.status})` };
   }
   let released: string[] = [];
-  try {
-    const releases = await resolveClaimedDepositIntents(claim, stripe, "cancel", { cancelIdempotencyKey: (paymentIntentId) => `test-cleanup-${req.id}-${paymentIntentId}` });
-    released = releases.map(r => `${r.action} ${r.paymentIntentId}`);
-  } catch (error) {
-    await releaseDepositTerminalClaim(claim).catch(() => {});
-    return { id: req.id, outcome: "failed", detail: `Stripe did not release the hold; left open: ${(error as Error).message?.slice(0, 120)}` };
+  const withoutHold = req.action === "close_without_hold";
+  if (!withoutHold) {
+    try {
+      const releases = await resolveClaimedDepositIntents(claim, stripe, "cancel", { cancelIdempotencyKey: (paymentIntentId) => `test-cleanup-${req.id}-${paymentIntentId}` });
+      released = releases.map(r => `${r.action} ${r.paymentIntentId}`);
+    } catch (error) {
+      await releaseDepositTerminalClaim(claim).catch(() => {});
+      return { id: req.id, outcome: "failed", detail: `Stripe did not release the hold; left open: ${(error as Error).message?.slice(0, 120)}` };
+    }
   }
-  const hadDeposit = Boolean(request.depositPaymentIntentId);
+  // Optional: refund the rental payments that were charged. The key is stable, so a re-run after a later failure repeats nothing.
+  const refunds: NonNullable<CleanupResult["requests"][number]["refunds"]> = [];
+  if (refundRentalPayments) {
+    for (const payment of req.rentalPayments.filter(p => p.refundableCents > 0)) {
+      try {
+        const refund: any = await stripe.refunds!.create(
+          { payment_intent: payment.paymentIntentId, amount: payment.refundableCents, metadata: { reason: "test_data_cleanup", request_id: String(req.id) } },
+          { idempotencyKey: `test-cleanup-refund-${req.id}-${payment.paymentIntentId}` },
+        );
+        refunds.push({ paymentIntentId: payment.paymentIntentId, refundId: refund?.id ?? null, amountCents: payment.refundableCents });
+      } catch (error) {
+        await releaseDepositTerminalClaim(claim).catch(() => {});
+        return { id: req.id, outcome: "failed", detail: `Stripe did not refund ${payment.paymentIntentId}; left open: ${(error as Error).message?.slice(0, 120)}`, refunds };
+      }
+    }
+  }
+  const hadDeposit = Boolean(request.depositPaymentIntentId) && !withoutHold;
   const closed = await db.transaction(async (tx) => {
     const [updated] = await tx.update(itemRequests).set({
       status: "CANCELLED", depositStatus: hadDeposit ? "released" : request.depositStatus, depositReleasedAt: hadDeposit ? now : request.depositReleasedAt,
@@ -161,7 +244,7 @@ async function closeRequest(req: CleanupRequest, stripe: DepositRenewalStripeCli
             AND o.status NOT IN (${sql.join(TERMINAL_REQUEST_STATUSES.map(s => sql`${s}`), sql`, `)})
         )`);
     await tx.insert(requestLifecycleEvents).values({
-      requestId: req.id, eventType: "TEST_DATA_CLEANUP", idempotencyKey: `test-data-cleanup-${req.id}`, details: { fromStatus: request.status, released },
+      requestId: req.id, eventType: "TEST_DATA_CLEANUP", idempotencyKey: `test-data-cleanup-${req.id}`, details: { fromStatus: request.status, released, closedWithoutHold: withoutHold, ...(withoutHold ? { unreleasedDepositIntent: request.depositPaymentIntentId } : {}), refunds },
     }).onConflictDoNothing();
     return true;
   });
@@ -169,7 +252,12 @@ async function closeRequest(req: CleanupRequest, stripe: DepositRenewalStripeCli
     await releaseDepositTerminalClaim(claim).catch(() => {});
     return { id: req.id, outcome: "failed", detail: "the hold was released but the request could not be closed; running it again finishes it" };
   }
-  return { id: req.id, outcome: "closed", detail: released.length ? released.join(", ") : "no deposit to release" };
+  const notes = [
+    ...(released.length ? [released.join(", ")] : []),
+    ...(withoutHold ? ["closed without releasing any hold"] : []),
+    ...refunds.map(r => `refunded ${(r.amountCents / 100).toFixed(2)} on ${r.paymentIntentId}`),
+  ];
+  return { id: req.id, outcome: "closed", detail: notes.length ? notes.join("; ") : "no deposit to release", ...(refunds.length ? { refunds } : {}) };
 }
 
 async function zeroUser(user: CleanupUser, now: Date): Promise<CleanupResult["users"][number]> {
@@ -190,17 +278,18 @@ async function zeroUser(user: CleanupUser, now: Date): Promise<CleanupResult["us
 
 export async function applyTestDataCleanup(plan: CleanupPlan, stripe: DepositRenewalStripeClient, now: Date = new Date()): Promise<CleanupResult> {
   const result: CleanupResult = { requests: [], users: [] };
-  for (const req of plan.requests) result.requests.push(await closeRequest(req, stripe, now));
+  for (const req of plan.requests) result.requests.push(await closeRequest(req, stripe, now, plan.refundRentalPayments));
   for (const user of plan.users) result.users.push(await zeroUser(user, now));
   return result;
 }
 
-export interface RunOptions { live: boolean; confirm?: string; scope?: CleanupScope; now?: Date }
+export interface RunOptions { live: boolean; confirm?: string; scope?: CleanupScope; now?: Date; refundRentalPayments?: boolean }
 
 /** The one entry point: always plans; applies only when live with the matching hash. */
 export async function runTestDataCleanup(stripe: DepositRenewalStripeClient, options: RunOptions): Promise<{ mode: "dry-run" | "live"; plan: CleanupPlan; result?: CleanupResult; refused?: string }> {
-  const plan = await planTestDataCleanup(stripe, options.scope);
+  const plan = await planTestDataCleanup(stripe, options.scope, { refundRentalPayments: options.refundRentalPayments });
   if (!options.live) return { mode: "dry-run", plan };
+  if (plan.unmatchedCloseWithoutHold.length) return { mode: "live", plan, refused: `--close-without-hold names request(s) that are not open USD requests: ${plan.unmatchedCloseWithoutHold.join(", ")}` };
   if (!options.confirm) return { mode: "live", plan, refused: "live needs --confirm <hash> from a dry run" };
   if (options.confirm !== plan.hash) return { mode: "live", plan, refused: `the plan changed since the dry run (confirm ${options.confirm}, now ${plan.hash}); run the dry run again` };
   return { mode: "live", plan, result: await applyTestDataCleanup(plan, stripe, options.now) };

@@ -24,18 +24,40 @@ export async function queuePersonaRedactions(executor: Executor, userId: number)
   return ids.length;
 }
 
-/** The real call. Resolves when the inquiry is redacted or Persona has no such inquiry; throws (with no secrets in the message) otherwise. */
+const PERSONA_API = "https://api.withpersona.com/api/v1";
+
+function personaHeaders(apiKey: string) {
+  return { Authorization: `Bearer ${apiKey}`, "Persona-Version": "2023-01-05", "Key-Inflection": "camel" };
+}
+
+/** Persona's `redacted-at` (camelCase with Key-Inflection: camel). The docs do not say what a redacted object looks like, so this reads it either way. */
+function redactedAtOf(body: any): string | null {
+  const attributes = body?.data?.attributes ?? {};
+  return attributes.redactedAt ?? attributes["redacted-at"] ?? null;
+}
+
+/**
+ * The real call. Resolves when Persona says the inquiry is redacted. A 404 is NOT taken at face value (it may mean a wrong endpoint rather
+ * than "gone"): the inquiry is fetched, and the redaction counts as done only if Persona shows it redacted (`redacted-at` set) or says it
+ * does not exist. If the inquiry is there and not redacted, the redact call did not work: that throws, and is logged loudly.
+ */
 export function createPersonaRedactor(options: { env?: NodeJS.ProcessEnv; fetchImpl?: typeof fetch } = {}): PersonaRedactor {
   return async (inquiryId) => {
     const apiKey = (options.env ?? process.env).PERSONA_API_KEY;
     if (!apiKey) throw new Error("Persona is not configured (PERSONA_API_KEY is not set)");
-    const response = await (options.fetchImpl ?? fetch)(`https://api.withpersona.com/api/v1/inquiries/${encodeURIComponent(inquiryId)}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${apiKey}`, "Persona-Version": "2023-01-05", "Key-Inflection": "camel" },
-    });
-    // 404: Persona has no such inquiry (already redacted or never existed): nothing is left to redact.
-    if (response.ok || response.status === 404) return;
-    throw new Error(`Persona answered ${response.status} to the redaction of ${inquiryId}`);
+    const doFetch = options.fetchImpl ?? fetch;
+    const url = `${PERSONA_API}/inquiries/${encodeURIComponent(inquiryId)}`;
+    const response = await doFetch(url, { method: "DELETE", headers: personaHeaders(apiKey) });
+    if (response.ok) return;
+    if (response.status !== 404) throw new Error(`Persona answered ${response.status} to the redaction of ${inquiryId}`);
+
+    const check = await doFetch(url, { method: "GET", headers: personaHeaders(apiKey) });
+    if (check.status === 404) return; // Persona has no such inquiry: nothing is left to redact.
+    if (!check.ok) throw new Error(`Persona answered 404 to the redaction of ${inquiryId} and ${check.status} when it was fetched to confirm; not treating it as redacted`);
+    if (redactedAtOf(await check.json().catch(() => null))) return; // already redacted
+    const message = `Persona answered 404 to DELETE ${url} but the inquiry exists and is NOT redacted. The redact endpoint is probably wrong or the key lacks permission; the inquiry's personal data is still at Persona.`;
+    console.error(`[persona-redaction] ALERT: ${message}`);
+    throw new Error(message);
   };
 }
 

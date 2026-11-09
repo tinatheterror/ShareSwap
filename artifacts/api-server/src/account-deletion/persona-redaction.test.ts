@@ -35,24 +35,72 @@ after(async () => {
   }
 });
 
-test("the redactor calls Persona's Redact an Inquiry endpoint (DELETE /api/v1/inquiries/{id}) with the server key, and treats 404 as already gone", async () => {
+test("the redactor calls Persona's Redact an Inquiry endpoint (DELETE /api/v1/inquiries/{id}) with the server key", async () => {
   const calls: { url: string; init: any }[] = [];
   const respond = (status: number) => (async (url: any, init: any) => { calls.push({ url: String(url), init }); return new Response("{}", { status }); }) as typeof fetch;
   const env = { PERSONA_API_KEY: "persona_secret_key" };
 
   await createPersonaRedactor({ env, fetchImpl: respond(200) })("inq_abc");
+  assert.equal(calls.length, 1, "a 200 is believed: one call");
   assert.equal(calls[0].url, "https://api.withpersona.com/api/v1/inquiries/inq_abc");
   assert.equal(calls[0].init.method, "DELETE");
   assert.equal(calls[0].init.headers.Authorization, "Bearer persona_secret_key");
-  await createPersonaRedactor({ env, fetchImpl: respond(404) })("inq_gone");
   await createPersonaRedactor({ env, fetchImpl: respond(200) })("inq_a/b?x=1");
-  assert.equal(calls[2].url, "https://api.withpersona.com/api/v1/inquiries/inq_a%2Fb%3Fx%3D1", "the id is encoded into the path");
+  assert.equal(calls[1].url, "https://api.withpersona.com/api/v1/inquiries/inq_a%2Fb%3Fx%3D1", "the id is encoded into the path");
 
   for (const status of [401, 409, 429, 500]) {
     await assert.rejects(createPersonaRedactor({ env, fetchImpl: respond(status) })("inq_x"), (e: Error) => e.message.includes(String(status)) && !e.message.includes("persona_secret_key"));
   }
   await assert.rejects(createPersonaRedactor({ env: {}, fetchImpl: respond(200) })("inq_x"), /not configured/);
   await assert.rejects(createPersonaRedactor({ env, fetchImpl: (async () => { throw new Error("socket hang up"); }) as typeof fetch })("inq_x"), /socket hang up/);
+});
+
+/** A fake Persona: DELETE answers `del`, GET answers `get` (a status, or a status with a body). */
+function persona(del: number, get: number | [number, unknown]) {
+  const calls: string[] = [];
+  const fetchImpl = (async (url: any, init: any) => {
+    calls.push(`${init.method} ${String(url).replace("https://api.withpersona.com/api/v1", "")}`);
+    if (init.method === "DELETE") return new Response("{}", { status: del });
+    const [status, body] = Array.isArray(get) ? get : [get, {}];
+    return new Response(JSON.stringify(body), { status });
+  }) as typeof fetch;
+  return { calls, redact: createPersonaRedactor({ env: { PERSONA_API_KEY: "k" }, fetchImpl }) };
+}
+
+test("a 404 is checked, not believed: done only when Persona shows the inquiry redacted or says it does not exist", async () => {
+  const redacted = persona(404, [200, { data: { attributes: { redactedAt: "2026-11-10T00:00:00Z" } } }]);
+  await redacted.redact("inq_1");
+  assert.deepEqual(redacted.calls, ["DELETE /inquiries/inq_1", "GET /inquiries/inq_1"]);
+
+  const kebab = persona(404, [200, { data: { attributes: { "redacted-at": "2026-11-10T00:00:00Z" } } }]);
+  await kebab.redact("inq_1");
+
+  const missing = persona(404, 404);
+  await missing.redact("inq_1");
+  assert.deepEqual(missing.calls, ["DELETE /inquiries/inq_1", "GET /inquiries/inq_1"]);
+});
+
+test("a 404 on a live, unredacted inquiry fails loudly: the redact call did not work", async () => {
+  const errors: string[] = [];
+  const original = console.error;
+  console.error = (...args: unknown[]) => void errors.push(args.join(" "));
+  try {
+    for (const body of [{ data: { attributes: { redactedAt: null, status: "approved" } } }, { data: { attributes: { "redacted-at": null } } }, {}]) {
+      const live = persona(404, [200, body]);
+      await assert.rejects(live.redact("inq_live"), /exists and is NOT redacted/);
+    }
+  } finally {
+    console.error = original;
+  }
+  assert.equal(errors.filter((e) => e.includes("ALERT") && e.includes("NOT redacted")).length, 3, "each one is logged as an alert");
+});
+
+test("a 404 that cannot be confirmed is a failure, so it is retried instead of marked done", async () => {
+  for (const status of [401, 429, 500]) {
+    await assert.rejects(persona(404, status).redact("inq_x"), (e: Error) => e.message.includes(String(status)) && e.message.includes("not treating it as redacted"));
+  }
+  const network = createPersonaRedactor({ env: { PERSONA_API_KEY: "k" }, fetchImpl: (async (_u: any, init: any) => { if (init.method === "DELETE") return new Response("{}", { status: 404 }); throw new Error("socket hang up"); }) as typeof fetch });
+  await assert.rejects(network("inq_x"), /socket hang up/);
 });
 
 test("deleting an account redacts each of its Persona inquiries once, logs the result, and scrubs the verification rows", async () => {

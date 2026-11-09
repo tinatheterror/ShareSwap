@@ -8,7 +8,7 @@ import { hashPassword } from "./auth.js";
 import { isProductionRuntime, nonProductionOnly } from "./non-production-gate.js";
 import { registerRoutes } from "./routes/routes.js";
 
-const UNIQUE = `verify-approve-gate-${Date.now()}`;
+const UNIQUE = `non-production-gate-${Date.now()}`;
 const PASSWORD = "VerifyApproveGate!42";
 const userIds: number[] = [];
 
@@ -101,12 +101,15 @@ test("isProductionRuntime fails closed on NODE_ENV=production or a Replit deploy
   assert.equal(isProductionRuntime({}), false);
 });
 
-test("POST /api/verify/approve is a 404 in production and leaves the verification untouched", async () => {
-  for (const env of [{ NODE_ENV: "production", REPLIT_DEPLOYMENT: undefined }, { NODE_ENV: "development", REPLIT_DEPLOYMENT: "1" }]) {
-    const response = await withEnv(env, () => call("/api/verify/approve", { method: "POST", body: "{}" }));
-    assert.equal(response.status, 404);
-    assert.equal(await verificationStatus(), "pending");
+test("the removed verification endpoints answer 404 for a signed-in user, in production and outside it", async () => {
+  for (const env of [{ NODE_ENV: "production", REPLIT_DEPLOYMENT: undefined }, { NODE_ENV: "development", REPLIT_DEPLOYMENT: undefined }]) {
+    for (const path of ["/api/verify", "/api/verify-identity", "/api/verify/approve"]) {
+      const response = await withEnv(env, () => call(path, { method: "POST", body: JSON.stringify({ fullName: "A B", idNumber: "x", cardNumber: "4242424242424242", expiry: "12/30", cvv: "123" }) }));
+      assert.equal(response.status, 404, `${path} (${env.NODE_ENV})`);
+    }
+    assert.equal(await verificationStatus(), "pending", "nothing was approved or created");
   }
+  assert.equal((await db.select().from(verifications).where(eq(verifications.userId, userId))).length, 1);
 });
 
 test("nonProductionOnly lets the request through outside production", async () => {

@@ -96,6 +96,40 @@ export async function uploadToStorage(
   }
 }
 
+/**
+ * Private files: never reachable by URL. They live under a random key that the public /storage route refuses (PRIVATE_PREFIX) and,
+ * without Object Storage, in a folder that is not served statically. Only code that checks who is asking reads them back.
+ */
+export const PRIVATE_PREFIX = "private/";
+const privateDir = "./private-uploads";
+
+export async function savePrivateFile(fileBuffer: Buffer, ext: string): Promise<string> {
+  const key = `${PRIVATE_PREFIX}${randomBytes(16).toString("hex")}${ext}`;
+  const storageClient = await getClient();
+  if (storageClient) {
+    const result = await storageClient.uploadFromBytes(key, fileBuffer);
+    if (result.ok) return key;
+    console.error("[Storage] Private upload to Object Storage failed, falling back to local:", result.error);
+  }
+  fs.mkdirSync(privateDir, { recursive: true });
+  fs.writeFileSync(path.join(privateDir, path.basename(key)), fileBuffer, { mode: 0o600 });
+  return key;
+}
+
+export async function readPrivateFile(key: string): Promise<Buffer | null> {
+  if (!key.startsWith(PRIVATE_PREFIX) || key.includes("..")) return null;
+  const local = path.join(privateDir, path.basename(key));
+  if (fs.existsSync(local)) return fs.readFileSync(local);
+  return getFromStorage(key);
+}
+
+export async function deletePrivateFile(key: string): Promise<void> {
+  if (!key.startsWith(PRIVATE_PREFIX) || key.includes("..")) return;
+  const local = path.join(privateDir, path.basename(key));
+  if (fs.existsSync(local)) fs.unlinkSync(local);
+  await deleteFromStorage(key);
+}
+
 export async function uploadFileToStorage(filePath: string): Promise<string> {
   const fileBuffer = fs.readFileSync(filePath);
   const filename = path.basename(filePath);
@@ -178,6 +212,8 @@ export function setupStorageRoutes(app: Express): void {
   
   app.get("/storage/*path", async (req: Request, res: Response) => {
     const storageKey = req.path.replace("/storage/", "");
+    // Private files are only served by the route that checks who is asking.
+    if (decodeURIComponent(storageKey).startsWith(PRIVATE_PREFIX)) return res.status(404).send("File not found");
     
     const storageClient = await getClient();
     if (!storageClient) {

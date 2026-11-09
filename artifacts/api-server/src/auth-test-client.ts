@@ -33,6 +33,13 @@ export class Client {
     return this.send(path, { method: "POST", headers, body: JSON.stringify(body) });
   }
 
+  /** A multipart upload (the body is a FormData; fetch sets the boundary). */
+  postForm(path: string, body: FormData) {
+    const headers: Record<string, string> = {};
+    if (this.csrfToken) headers["x-csrf-token"] = this.csrfToken;
+    return this.send(path, { method: "POST", headers, body });
+  }
+
   delete(path: string) {
     const headers: Record<string, string> = {};
     if (this.csrfToken) headers["x-csrf-token"] = this.csrfToken;

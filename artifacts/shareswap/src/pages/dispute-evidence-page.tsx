@@ -36,7 +36,7 @@ function EvidenceCard({ request, focused }: { request: EvidenceRequest; focused:
       for (const photo of photos) {
         const formData = new FormData();
         formData.append("photo", photo);
-        const uploadRes = await fetch("/api/uploads/claim-evidence", { method: "POST", credentials: "include", headers: { "x-csrf-token": csrfToken }, body: formData });
+        const uploadRes = await fetch("/api/uploads/dispute-evidence", { method: "POST", credentials: "include", headers: { "x-csrf-token": csrfToken }, body: formData });
         if (!uploadRes.ok) throw new Error((await uploadRes.json().catch(() => ({}))).error || "Could not upload a photo");
         photoUrls.push((await uploadRes.json()).url);
       }

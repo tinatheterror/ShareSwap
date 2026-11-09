@@ -97,6 +97,7 @@ export function scrubSteps(userId: number): ScrubStep[] {
     delivery(["special_instructions", "qr_code_data", "uber_tracking_url"], sql`r.requester_id = ${U} OR i.owner_id = ${U}`),
     { table: "extension_requests", columns: ["message"], where: sql`t.borrower_id = ${U}` },
     { table: "dispute_evidence", columns: ["note", "photo_urls"], where: sql`t.user_id = ${U}` },
+    { table: "evidence_uploads", columns: ["token", "storage_key", "content_type"], where: sql`t.user_id = ${U}` },
     { table: "item_condition_verifications", columns: ["notes", "photos"], where: sql`t.verifier_id = ${U}` },
     {
       table: "items",

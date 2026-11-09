@@ -1,3 +1,4 @@
+import { allUploadedBy } from "./dispute-evidence-files";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import {
   db, disputeEvidence, itemConditionVerifications, itemRequests, items, messages, platformDisputes, requestLifecycleEvents, users,
@@ -17,18 +18,6 @@ export type EvidenceSubmitResult =
   | { status: "invalid"; error: string }
   | { status: "not_found" | "forbidden" };
 
-/** Photos are the app's own upload paths or https links; anything else (javascript:, data:, relative tricks) is refused. */
-function validPhotoUrl(value: unknown): value is string {
-  if (typeof value !== "string" || value.length === 0 || value.length > 600) return false;
-  if (value.startsWith("/") && !value.startsWith("//") && !value.includes("..") && !/[\s<>"']/.test(value)) return true;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" && !/[\s<>"']/.test(value);
-  } catch {
-    return false;
-  }
-}
-
 /** The owner of the disputed payment's item sends evidence. Anyone else, or an unknown dispute, gets nothing (and learns nothing). */
 export async function submitOwnerEvidence(input: { disputeId: string; userId: number; note?: unknown; photoUrls?: unknown }): Promise<EvidenceSubmitResult> {
   const [dispute] = await db.select({ id: platformDisputes.id, ownerId: platformDisputes.ownerId }).from(platformDisputes).where(eq(platformDisputes.disputeId, input.disputeId)).limit(1);
@@ -37,8 +26,12 @@ export async function submitOwnerEvidence(input: { disputeId: string; userId: nu
   if (input.note != null && typeof input.note !== "string") return { status: "invalid", error: "note must be text." };
   if (note.length > EVIDENCE_NOTE_MAX) return { status: "invalid", error: `The note is too long (${EVIDENCE_NOTE_MAX} characters at most).` };
   const photos = input.photoUrls == null ? [] : input.photoUrls;
-  if (!Array.isArray(photos) || photos.length > EVIDENCE_PHOTOS_MAX || !photos.every(validPhotoUrl)) {
-    return { status: "invalid", error: `photoUrls must be at most ${EVIDENCE_PHOTOS_MAX} uploaded photo paths or https links.` };
+  if (!Array.isArray(photos) || photos.length > EVIDENCE_PHOTOS_MAX || !photos.every((p) => typeof p === "string")) {
+    return { status: "invalid", error: `photoUrls must be at most ${EVIDENCE_PHOTOS_MAX} photos uploaded for dispute evidence.` };
+  }
+  // Only photos this member uploaded for dispute evidence: no other path, no outside link, and nobody else's upload.
+  if (!(await allUploadedBy(photos as string[], input.userId))) {
+    return { status: "invalid", error: "Every photo must be one you uploaded for this evidence." };
   }
   if (!note && photos.length === 0) return { status: "invalid", error: "Send a note, photos, or both." };
   const [row] = await db.insert(disputeEvidence).values({ disputeId: input.disputeId, userId: input.userId, note: note || null, photoUrls: photos as string[] }).returning({ id: disputeEvidence.id });

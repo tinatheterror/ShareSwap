@@ -2,13 +2,15 @@ import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { and, eq, inArray } from "drizzle-orm";
 import {
-  accountReviewFlags, db, depositSettlementOperations, disputeEvidence, itemRequests, items, messages, notifications, platformDisputes, pool, rentalPayouts, requestLifecycleEvents, users, walletChargebacks, walletTransactions,
+  accountReviewFlags, db, depositSettlementOperations, disputeEvidence, evidenceUploads, itemRequests, items, messages, notifications, platformDisputes, pool, rentalPayouts, requestLifecycleEvents, users, walletChargebacks, walletTransactions,
 } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { Client, startApp } from "./auth-test-client.js";
 import { handleDisputeEvent } from "./dispute-webhook.js";
 import { claimDepositTerminalAction, releaseDepositTerminalClaim } from "./deposit-renewal-service.js";
 import { confirmApprovedReturn } from "./return-recovery-service.js";
+import { deletePrivateFile } from "./storage.js";
+import { evidenceTokenOf, saveEvidenceUpload } from "./dispute-evidence-files.js";
 import { buildEvidenceBundle, ownerEvidenceRequests, submitOwnerEvidence } from "./dispute-evidence.js";
 import { alertDisputeDeadlines, completeRentalOperationally, DEPOSIT_UNCOLLECTIBLE_ALERT_TYPE, DISPUTE_HOLD_MESSAGE, disputeLoss, holdForDisputeReview, markDisputeReviewed } from "./platform-disputes.js";
 import { reconcileClaimDeadlines } from "./security-claims-service.js";
@@ -81,6 +83,9 @@ after(async () => {
   const ids = [ownerId, borrowerId, adminId, plainId];
   try {
     await db.delete(disputeEvidence).where(inArray(disputeEvidence.userId, ids));
+    // Remove the uploaded test files from storage too, then their rows.
+    for (const u of await db.select({ key: evidenceUploads.storageKey }).from(evidenceUploads).where(inArray(evidenceUploads.userId, ids))) if (u.key) await deletePrivateFile(u.key);
+    await db.delete(evidenceUploads).where(inArray(evidenceUploads.userId, ids));
     await db.delete(accountReviewFlags).where(inArray(accountReviewFlags.userId, ids));
     await db.delete(platformDisputes).where(inArray(platformDisputes.borrowerId, ids));
     await db.delete(platformDisputes).where(inArray(platformDisputes.ownerId, ids));
@@ -293,10 +298,13 @@ test("owner evidence: only the owner of the disputed rental can send it, input i
   assert.deepEqual((await ownerEvidenceRequests(ownerId)).map((r) => r.disputeId).includes(id), true);
   assert.equal((await submitOwnerEvidence({ disputeId: id, userId: borrowerId, note: "x" })).status, "not_found");
   assert.equal((await submitOwnerEvidence({ disputeId: "none", userId: ownerId, note: "x" })).status, "not_found");
-  for (const bad of [{}, { note: "  " }, { photoUrls: ["javascript:alert(1)"], note: "x" }, { photoUrls: ["//evil.example/x.jpg"] }, { photoUrls: ["/uploads/../etc"] }, { photoUrls: Array(11).fill("/a.jpg") }, { note: 5 }, { note: "x".repeat(4001) }]) {
+  for (const bad of [{}, { note: "  " }, { photoUrls: ["javascript:alert(1)"], note: "x" }, { photoUrls: ["//evil.example/x.jpg"] }, { photoUrls: ["/uploads/../etc"] }, { photoUrls: ["/uploads/handoff.jpg"], note: "x" }, { photoUrls: ["https://example.com/a.jpg"], note: "x" }, { photoUrls: Array(11).fill("/a.jpg") }, { note: 5 }, { note: "x".repeat(4001) }]) {
     assert.equal((await submitOwnerEvidence({ disputeId: id, userId: ownerId, ...bad })).status, "invalid", JSON.stringify(bad).slice(0, 60));
   }
-  assert.equal((await submitOwnerEvidence({ disputeId: id, userId: ownerId, note: "Borrower signed for it in person.", photoUrls: ["/uploads/handoff.jpg"] })).status, "saved");
+  const mine = await saveEvidenceUpload(ownerId, { buffer: Buffer.from("owner-photo"), originalname: "handoff.jpg" });
+  const theirs = await saveEvidenceUpload(borrowerId, { buffer: Buffer.from("borrower-photo"), originalname: "other.jpg" });
+  assert.equal((await submitOwnerEvidence({ disputeId: id, userId: ownerId, note: "x", photoUrls: [theirs] })).status, "invalid", "another member's upload cannot be attached");
+  assert.equal((await submitOwnerEvidence({ disputeId: id, userId: ownerId, note: "Borrower signed for it in person.", photoUrls: [mine] })).status, "saved");
   assert.equal((await ownerEvidenceRequests(ownerId)).map((r) => r.disputeId).includes(id), false, "answered");
 
   const bundle = (await buildEvidenceBundle(id))!;
@@ -304,7 +312,7 @@ test("owner evidence: only the owner of the disputed rental can send it, input i
   assert.deepEqual([bundle.owner, bundle.borrower], [`${unique}-owner`, `${unique}-borrower`]);
   assert.equal((bundle.request as any).handoff.ownerConfirmed, true);
   assert.deepEqual(bundle.conversation.map((m) => m.text), ["I am outside, in a red coat", "Handed over the drill"]);
-  assert.deepEqual(bundle.photos.sort(), ["/uploads/handoff.jpg", "/uploads/item-1.jpg"]);
+  assert.deepEqual(bundle.photos.sort(), [mine, "/uploads/item-1.jpg"].sort());
   assert.match(bundle.summaryText, /Borrower signed for it in person/);
   assert.match(bundle.summaryText, /Handed over the drill/);
   assert.equal(await buildEvidenceBundle("missing"), null);
@@ -488,4 +496,66 @@ test("an admin can mark the rental operationally complete while the dispute stay
   const payoutAfter = (await db.select().from(rentalPayouts).where(eq(rentalPayouts.requestId, requestId)))[0];
   assert.deepEqual([payoutAfter.status, payoutAfter.netAmount], [payoutBefore.status, payoutBefore.netAmount]);
   assert.equal((await admin.post(`/api/admin/chargebacks/${id}/complete-rental`, { note: "Hold lapsed; closing the rental out." })).status, 409, "only once");
+});
+
+
+// ── Evidence uploads are private and bound to the member who made them ──
+const photoForm = (bytes: string, name = "evidence.jpg", type = "image/jpeg") => {
+  const form = new FormData();
+  form.append("photo", new Blob([bytes], { type }), name);
+  return form;
+};
+const upload = async (client: Client, bytes: string) => {
+  const res = await client.postForm("/api/uploads/dispute-evidence", photoForm(bytes));
+  assert.equal(res.status, 200);
+  return ((await res.json()) as { url: string }).url;
+};
+
+test("evidence photos: the owner uploads, only the uploader and admins can read them, and the URL is unguessable and not public", async () => {
+  await anonymous.fetchCsrfToken();
+  assert.equal((await anonymous.postForm("/api/uploads/dispute-evidence", photoForm("x"))).status, 401);
+  assert.equal((await owner.postForm("/api/uploads/dispute-evidence", photoForm("x", "evil.html", "text/html"))).status, 500, "only images");
+
+  const url = await upload(owner, "private-bytes");
+  const token = evidenceTokenOf(url)!;
+  assert.match(token, /^[0-9a-f]{32}$/, "128 random bits, not a counter or a timestamp");
+  assert.ok(!url.includes("evidence.jpg"), "the file name is not in the URL");
+
+  const read = await owner.get(url);
+  assert.equal(read.status, 200);
+  assert.equal(await read.text(), "private-bytes");
+  assert.equal(read.headers.get("cache-control"), "private, no-store");
+  assert.equal(read.headers.get("access-control-allow-origin"), null);
+  assert.equal((await admin.get(url)).status, 200, "admins can read it");
+  assert.equal((await plain.get(url)).status, 404, "another member cannot, and learns nothing");
+  assert.equal((await anonymous.get(url)).status, 401);
+  assert.equal((await owner.get(`${url.slice(0, -4)}0000`)).status, 404);
+  assert.equal((await owner.get("/api/dispute-evidence/files/..%2f..%2fetc")).status, 404);
+
+  const [stored] = await db.select().from(evidenceUploads).where(eq(evidenceUploads.token, token));
+  assert.ok(stored.storageKey!.startsWith("private/"));
+  for (const probe of [`/storage/${stored.storageKey}`, `/uploads/${stored.storageKey!.slice("private/".length)}`, `/uploads/private/${stored.storageKey!.slice("private/".length)}`]) {
+    assert.equal((await anonymous.get(probe)).status, 404, `${probe} must not be public`);
+    assert.equal((await owner.get(probe)).status, 404, `${probe} must not be public even when signed in`);
+  }
+});
+
+test("the evidence endpoint takes only the dispute owner's own uploads, over HTTP too", async () => {
+  const { pi } = await rental();
+  const id = disputeId();
+  await handleDisputeEvent(evt("charge.dispute.created", payload(id, pi)));
+  const ownerUrl = await upload(owner, "owner-file");
+  const plainUrl = await upload(plain, "plain-file");
+  const path = `/api/disputes/${id}/evidence`;
+  await anonymous.fetchCsrfToken();
+  assert.equal((await anonymous.post(path, { note: "hi" })).status, 401);
+  assert.equal((await plain.post(path, { note: "not my dispute", photoUrls: [plainUrl] })).status, 404, "not the dispute's owner");
+  assert.equal((await owner.post(path, { note: "x", photoUrls: [plainUrl] })).status, 400, "someone else's upload");
+  assert.equal((await owner.post(path, { note: "x", photoUrls: ["/uploads/anything.jpg"] })).status, 400, "an arbitrary path");
+  assert.equal((await owner.post(path, { note: "x", photoUrls: [`${ownerUrl}?x=1`] })).status, 400, "a decorated url");
+  assert.equal((await owner.post(path, { note: "Mine.", photoUrls: [ownerUrl] })).status, 201);
+  const bundle = await admin.get(`/api/admin/chargebacks/${id}/evidence`);
+  assert.equal(bundle.status, 200);
+  assert.deepEqual(((await bundle.json()) as any).ownerEvidence[0].photoUrls, [ownerUrl]);
+  assert.equal((await plain.get(`/api/admin/chargebacks/${id}/evidence`)).status, 403);
 });

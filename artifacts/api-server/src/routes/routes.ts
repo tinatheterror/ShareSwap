@@ -1,5 +1,6 @@
 import { ensureUsableCustomer } from "../stripe-customer.js";
 import { createLazyStripe } from "../stripe-lazy-client";
+import { readEvidenceFile, saveEvidenceUpload } from "../dispute-evidence-files";
 import { buildEvidenceBundle, ownerEvidenceRequests, submitOwnerEvidence } from "../dispute-evidence";
 import { alertDisputeDeadlines, completeRentalOperationally, listOpenAccountFlags, listPlatformDisputes, markDisputeReviewed, noteDepositUncollectible } from "../platform-disputes";
 import { createRecoveryDebt, RECOVERY_DEBT_WITHDRAWAL_CODE, RecoveryDebtBlocksWithdrawal } from "../wallet-chargebacks";
@@ -11112,6 +11113,32 @@ Respond with ONLY the category name, nothing else.`
     } catch (err) {
       console.error("Dispute photo upload error:", err);
       res.status(500).json({ error: "Failed to upload photo" });
+    }
+  });
+
+  // Dispute evidence photos are private: recorded against the uploader, readable only by them and by admins.
+  app.post("/api/uploads/dispute-evidence", csrfProtection, upload.single("photo"), async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.file) return res.status(400).json({ error: "No photo provided" });
+    try {
+      const url = await saveEvidenceUpload((req.user as { id: number }).id, req.file);
+      res.json({ url });
+    } catch (err) {
+      console.error("Dispute evidence upload error:", err);
+      res.status(500).json({ error: "Failed to upload photo" });
+    }
+  });
+
+  app.get("/api/dispute-evidence/files/:token", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const file = await readEvidenceFile(String(req.params.token), req.user as { id: number; isAdmin?: boolean | null });
+      if (!file) return res.status(404).json({ message: "File not found" });
+      res.set({ "Content-Type": file.contentType, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'; sandbox" });
+      return res.send(file.body);
+    } catch (err) {
+      console.error("Dispute evidence file error:", err);
+      return res.status(500).json({ message: "Failed to load the file" });
     }
   });
 

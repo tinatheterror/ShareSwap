@@ -308,6 +308,15 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     anonymize: [],
     delete: ["note", "photo_urls"],
   },
+  evidence_uploads: {
+    rows: "retain",
+    retention: "financial",
+    note: "Private photos an owner sent as dispute evidence; the file reference goes with the evidence, the fact that an upload was made stays.",
+    userColumns: ["user_id"],
+    keep: ["id", "user_id", "created_at"],
+    anonymize: [],
+    delete: ["token", "storage_key", "content_type"],
+  },
   wallet_transactions: {
     rows: "retain",
     retention: "financial",

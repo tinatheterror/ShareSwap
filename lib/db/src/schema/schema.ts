@@ -1273,6 +1273,16 @@ export const accountReviewFlags = pgTable("account_review_flags", {
 }));
 
 /** What the owner sent in answer to the request for evidence on a dispute (0022). */
+// A private photo an owner uploaded as dispute evidence (0025). Only the uploader and admins can read it, through its token.
+export const evidenceUploads = pgTable("evidence_uploads", {
+  id: serial("id").primaryKey(),
+  token: text("token").unique(),
+  storageKey: text("storage_key"),
+  contentType: text("content_type"),
+  userId: integer("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const disputeEvidence = pgTable("dispute_evidence", {
   id: serial("id").primaryKey(),
   disputeId: text("dispute_id").notNull(),

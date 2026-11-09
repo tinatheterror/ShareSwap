@@ -46,7 +46,7 @@ function EvidenceCard({ request, onSent }: { request: EvidenceRequest; onSent: (
         const extension = photo.fileName?.split(".").pop()?.toLowerCase() || "jpg";
         const type = photo.mimeType || (extension === "png" ? "image/png" : "image/jpeg");
         formData.append("photo", { uri: photo.uri, type, name: photo.fileName || `dispute-evidence-${index}.${extension}` } as any);
-        const uploadRes = await apiRequest("POST", "/api/uploads/claim-evidence", formData);
+        const uploadRes = await apiRequest("POST", "/api/uploads/dispute-evidence", formData);
         const uploadData = await uploadRes.json();
         if (!uploadRes.ok || !uploadData?.url) throw new Error(uploadData?.error || "Could not upload a photo");
         photoUrls.push(uploadData.url);

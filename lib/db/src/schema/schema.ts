@@ -1242,6 +1242,12 @@ export const platformDisputes = pgTable("platform_disputes", {
   // Set when the admins were alerted that Stripe's evidence deadline, or the deposit authorization, is within 48 hours (0023).
   evidenceDueAlertSentAt: timestamp("evidence_due_alert_sent_at"),
   authExpiryAlertSentAt: timestamp("auth_expiry_alert_sent_at"),
+  // The deposit authorization expired while the dispute was unreviewed (0024): nothing can be collected through it any more.
+  urgentManualReview: boolean("urgent_manual_review").notNull().default(false),
+  depositUncollectibleAt: timestamp("deposit_uncollectible_at"),
+  // An admin closed the rental operationally while the dispute stays open (0024). No money moves.
+  rentalCompletedAt: timestamp("rental_completed_at"),
+  rentalCompletedBy: integer("rental_completed_by").references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   closedAt: timestamp("closed_at"),
 }, (table) => ({

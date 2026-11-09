@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { and, eq, inArray } from "drizzle-orm";
 import {
-  accountReviewFlags, db, disputeEvidence, itemRequests, items, messages, notifications, platformDisputes, pool, rentalPayouts, users, walletChargebacks, walletTransactions,
+  accountReviewFlags, db, depositSettlementOperations, disputeEvidence, itemRequests, items, messages, notifications, platformDisputes, pool, rentalPayouts, requestLifecycleEvents, users, walletChargebacks, walletTransactions,
 } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { Client, startApp } from "./auth-test-client.js";
@@ -10,7 +10,8 @@ import { handleDisputeEvent } from "./dispute-webhook.js";
 import { claimDepositTerminalAction, releaseDepositTerminalClaim } from "./deposit-renewal-service.js";
 import { confirmApprovedReturn } from "./return-recovery-service.js";
 import { buildEvidenceBundle, ownerEvidenceRequests, submitOwnerEvidence } from "./dispute-evidence.js";
-import { alertDisputeDeadlines, DISPUTE_HOLD_MESSAGE, disputeLoss, markDisputeReviewed } from "./platform-disputes.js";
+import { alertDisputeDeadlines, completeRentalOperationally, DEPOSIT_UNCOLLECTIBLE_ALERT_TYPE, DISPUTE_HOLD_MESSAGE, disputeLoss, holdForDisputeReview, markDisputeReviewed } from "./platform-disputes.js";
+import { reconcileClaimDeadlines } from "./security-claims-service.js";
 import { createRecoveryDebt, openDebtCents, openRecoveryDebtCents, payDebtsFromCredit, RecoveryDebtBlocksWithdrawal } from "./wallet-chargebacks.js";
 import { reservePayout } from "./rental-payout-service.js";
 
@@ -90,6 +91,8 @@ after(async () => {
     if (requestIds.length) await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
     if (requestIds.length) {
       await db.delete(messages).where(inArray(messages.requestId, requestIds));
+      await db.delete(depositSettlementOperations).where(inArray(depositSettlementOperations.requestId, requestIds));
+      await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, requestIds));
       await db.delete(rentalPayouts).where(inArray(rentalPayouts.requestId, requestIds));
       await db.delete(rentalPayouts).where(eq(rentalPayouts.userId, ownerId));
       await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
@@ -390,4 +393,99 @@ test("admins are alerted once, 48 hours before Stripe's evidence deadline and be
   assert.ok(Math.abs(new Date(listed.evidenceDueBy).getTime() - hours(24).getTime()) < 2000, "Stripe's due_by");
   assert.equal(new Date(listed.depositAuthorizationExpiresAt).getTime(), hours(36).getTime(), "the authorization expiry");
   assert.equal(listed.itemName, `${unique}-item`);
+});
+
+
+// ── A deposit authorization that runs out during an unreviewed dispute ──
+async function expiredDuringDispute() {
+  const { requestId, pi } = await rental("RETURN_REQUESTED");
+  await db.update(itemRequests).set({
+    depositMode: "authorization", depositStatus: "authorized", depositPaymentIntentId: `pi_deposit_${unique}_${requestId}`,
+    depositAuthorizationExpiresAt: new Date(Date.now() - 3_600_000),
+  }).where(eq(itemRequests.id, requestId));
+  const id = disputeId();
+  await handleDisputeEvent(evt("charge.dispute.created", payload(id, pi)));
+  return { requestId, id, pi };
+}
+const requestRow = async (requestId: number) => (await db.select().from(itemRequests).where(eq(itemRequests.id, requestId)))[0];
+
+test("an authorization that expires during an unreviewed dispute stays EXPIRED_UNSECURED, is flagged urgent, admins are told once, and nothing is charged or re-authorized", async () => {
+  const { requestId, id } = await expiredDuringDispute();
+  await db.insert(disputeEvidence).values({ disputeId: id, userId: ownerId, note: "kept", photoUrls: [] });
+  const before = await requestRow(requestId);
+  assert.equal(await holdForDisputeReview(requestId), true, "while the hold is live the guard blocks");
+  const wallet = await walletCents();
+
+  assert.deepEqual(await reconcileClaimDeadlines(new Date(), { onlyRequestIds: [requestId] }), { checked: 1, expired: 1 });
+  const after = await requestRow(requestId);
+  assert.equal(after.depositStatus, "EXPIRED_UNSECURED", "an expired authorization is never collectible");
+  assert.equal(after.depositPaymentIntentId, before.depositPaymentIntentId, "no new authorization was created");
+  assert.equal(after.depositCapturedAmount, before.depositCapturedAmount, "nothing was charged");
+
+  const d = await row(id);
+  assert.equal(d.urgentManualReview, true);
+  assert.ok(d.depositUncollectibleAt);
+  assert.deepEqual([d.reviewStatus, d.outcome, d.closedAt], ["pending_admin", "open", null], "the dispute itself stays open and unreviewed");
+  assert.equal(d.evidenceSubmittedToStripeAt, null);
+  assert.equal(await noteCount(adminId, DEPOSIT_UNCOLLECTIBLE_ALERT_TYPE, requestId), 1);
+  const events = await db.select().from(requestLifecycleEvents).where(and(eq(requestLifecycleEvents.requestId, requestId), eq(requestLifecycleEvents.eventType, "DEPOSIT_UNCOLLECTIBLE_DURING_DISPUTE")));
+  assert.equal(events.length, 1);
+  assert.equal((await db.select().from(disputeEvidence).where(eq(disputeEvidence.disputeId, id))).length, 1, "evidence history is kept");
+  assert.equal(await walletCents(), wallet);
+  assert.equal((await db.select().from(rentalPayouts).where(eq(rentalPayouts.requestId, requestId)))[0].status, "held");
+
+  await reconcileClaimDeadlines(new Date(), { onlyRequestIds: [requestId] });
+  assert.equal(await noteCount(adminId, DEPOSIT_UNCOLLECTIBLE_ALERT_TYPE, requestId), 1, "a second sweep does not alert again");
+});
+
+test("a dispute that was already reviewed is not flagged when the authorization expires", async () => {
+  const { requestId, id } = await expiredDuringDispute();
+  await markDisputeReviewed({ disputeId: id, adminId, note: "Checked it all already." });
+  await reconcileClaimDeadlines(new Date(), { onlyRequestIds: [requestId] });
+  const d = await row(id);
+  assert.deepEqual([d.urgentManualReview, d.depositUncollectibleAt], [false, null]);
+  assert.equal(await noteCount(adminId, DEPOSIT_UNCOLLECTIBLE_ALERT_TYPE, requestId), 0);
+});
+
+test("once the hold has expired the unreviewed-dispute guard stops blocking cancel and return by itself", async () => {
+  const { requestId, id } = await expiredDuringDispute();
+  assert.equal((await claimDepositTerminalAction(requestId, "cancel")).status, "busy");
+  await reconcileClaimDeadlines(new Date(), { onlyRequestIds: [requestId] });
+  assert.equal(await holdForDisputeReview(requestId), false);
+  const claim = await claimDepositTerminalAction(requestId, "cancel");
+  assert.equal(claim.status, "claimed");
+  if (claim.status === "claimed") await releaseDepositTerminalClaim(claim);
+  const ret = await confirmApprovedReturn({ requestId, stripeClient: { paymentIntents: { retrieve: async () => ({}), cancel: async () => { throw new Error("must not release"); } } } });
+  if (ret.status === "conflict") assert.doesNotMatch((ret as any).error, /deposit hold stays in place/);
+  assert.equal((await row(id)).reviewStatus, "pending_admin", "the dispute is still open");
+});
+
+test("an admin can mark the rental operationally complete while the dispute stays open, and no money moves", async () => {
+  const live = await rental("RETURN_REQUESTED");
+  await db.update(itemRequests).set({ depositMode: "authorization", depositStatus: "authorized", depositAuthorizationExpiresAt: new Date(Date.now() + 86_400_000) }).where(eq(itemRequests.id, live.requestId));
+  const liveId = disputeId();
+  await handleDisputeEvent(evt("charge.dispute.created", payload(liveId, live.pi)));
+  assert.equal((await completeRentalOperationally({ disputeId: liveId, adminId, note: "close it out" })).status, "conflict", "not while the hold is live");
+
+  const { requestId, id } = await expiredDuringDispute();
+  await reconcileClaimDeadlines(new Date(), { onlyRequestIds: [requestId] });
+  const wallet = await walletCents();
+  const payoutBefore = (await db.select().from(rentalPayouts).where(eq(rentalPayouts.requestId, requestId)))[0];
+
+  assert.equal((await plain.post(`/api/admin/chargebacks/${id}/complete-rental`, { note: "closing the rental out" })).status, 403);
+  assert.equal((await admin.post(`/api/admin/chargebacks/${id}/complete-rental`, { note: "" })).status, 400);
+  assert.equal((await admin.post(`/api/admin/chargebacks/nope/complete-rental`, { note: "closing the rental out" })).status, 404);
+  assert.equal((await admin.post(`/api/admin/chargebacks/${id}/complete-rental`, { note: "Hold lapsed; closing the rental out." })).status, 200);
+
+  const req = await requestRow(requestId);
+  assert.equal(req.status, "COMPLETED");
+  assert.equal(req.depositStatus, "EXPIRED_UNSECURED", "the deposit is untouched");
+  const d = await row(id);
+  assert.deepEqual([d.reviewStatus, d.outcome, d.closedAt, d.evidenceSubmittedToStripeAt], ["pending_admin", "open", null, null], "the financial dispute stays open");
+  assert.equal(d.rentalCompletedBy, adminId);
+  assert.ok(d.rentalCompletedAt);
+  assert.equal(await walletCents(), wallet);
+  const payoutAfter = (await db.select().from(rentalPayouts).where(eq(rentalPayouts.requestId, requestId)))[0];
+  assert.deepEqual([payoutAfter.status, payoutAfter.netAmount], [payoutBefore.status, payoutBefore.netAmount]);
+  assert.equal((await admin.post(`/api/admin/chargebacks/${id}/complete-rental`, { note: "Hold lapsed; closing the rental out." })).status, 409, "only once");
 });

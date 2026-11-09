@@ -7,6 +7,7 @@ import { payDebtsFromCredit } from "./wallet-chargebacks";
 import { claimAwardKey, recordWalletEntry, toCents } from "./wallet-ledger";
 import { stripeOutcomeIsIndeterminate } from "./stripe-outcome";
 import { claimDepositTerminalAction, getPaymentIntentCaptureBefore, releaseDepositTerminalClaim, resolveClaimedDepositIntents } from "./deposit-renewal-service";
+import { noteDepositUncollectible } from "./platform-disputes";
 import {
   HOLD_EXPIRED_BODY,
   HOLD_EXPIRED_TITLE,
@@ -240,6 +241,7 @@ export async function ensureClaimDepositCaptured(
                 .where(and(eq(itemRequests.id, request.id), eq(itemRequests.depositOperationToken, terminal.operationToken)));
               await tx.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", manualReviewReason: "HOLD_EXPIRED", updatedAt: new Date() })
                 .where(and(eq(securityClaims.id, claimId), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));
+              await noteDepositUncollectible(request.id, tx);
             });
             throw new Error("The temporary hold expired before it could be charged; manual payment review required");
           }
@@ -661,6 +663,7 @@ export async function reconcileClaimDeadlines(
         current.depositOperationToken ? eq(itemRequests.depositOperationToken, current.depositOperationToken) : isNull(itemRequests.depositOperationToken),
       )).returning({ id: itemRequests.id });
       if (!expiredRequest) return false;
+      await noteDepositUncollectible(row.id, tx, now);
         await tx.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", manualReviewReason: "HOLD_EXPIRED", updatedAt: now })
           .where(and(eq(securityClaims.requestId, row.id), inArray(securityClaims.status, ACTIVE_CLAIM_STATUSES)));
         const activeClaims = await tx.select({ ownerId: securityClaims.ownerId, borrowerId: securityClaims.borrowerId }).from(securityClaims)

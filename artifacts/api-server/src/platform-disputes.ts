@@ -1,6 +1,6 @@
 import { and, desc, eq, gt, inArray, isNull, lte, notInArray, or, sql } from "drizzle-orm";
 import {
-  accountReviewFlags, db, itemRequests, items, notifications, PLATFORM_CURRENCY, platformDisputes, rentalPayouts, users, type PlatformDispute,
+  accountReviewFlags, db, itemRequests, items, notifications, PLATFORM_CURRENCY, platformDisputes, rentalPayouts, requestLifecycleEvents, securityClaims, users, type PlatformDispute,
 } from "@workspace/db";
 import { TERMINAL_REQUEST_STATUSES } from "./account-deletion/retention";
 import { sendPushToUsers } from "./push-notifications";
@@ -187,10 +187,88 @@ export async function closePlatformDispute(
  */
 export async function holdForDisputeReview(requestId: number, executor: Pick<typeof db, "select"> = db): Promise<boolean> {
   const rows = await executor.select({ id: platformDisputes.id }).from(platformDisputes)
-    .where(and(eq(platformDisputes.requestId, requestId), eq(platformDisputes.reviewStatus, DISPUTE_REVIEW_PENDING))).limit(1);
+    .innerJoin(itemRequests, eq(itemRequests.id, platformDisputes.requestId))
+    .where(and(
+      eq(platformDisputes.requestId, requestId), eq(platformDisputes.reviewStatus, DISPUTE_REVIEW_PENDING),
+      // Once the authorization has run out there is no live hold left to protect, so the guard has nothing to guard (see noteDepositUncollectible).
+      sql`COALESCE(${itemRequests.depositStatus}, '') <> 'EXPIRED_UNSECURED'`,
+    )).limit(1);
   return rows.length > 0;
 }
 export const DISPUTE_HOLD_MESSAGE = "A payment dispute on this rental is waiting for an admin to review it, so the deposit hold stays in place for now.";
+
+export const DEPOSIT_UNCOLLECTIBLE_ALERT_TYPE = "admin_dispute_deposit_uncollectible";
+
+/**
+ * The rental's deposit authorization expired (EXPIRED_UNSECURED). If a dispute on it is still unreviewed, flag that case as urgent manual
+ * review, record on the dispute when the deposit stopped being collectible through the original authorization, note it on the rental's
+ * timeline and alert every admin, once per dispute. It only records: it never creates a new authorization, charges the card, releases
+ * anything or touches the Stripe dispute, and every transaction and piece of evidence stays as it was. Call it in the transaction
+ * that marks the deposit expired. Returns how many disputes it flagged.
+ */
+export async function noteDepositUncollectible(
+  requestId: number, executor: Pick<typeof db, "select" | "update" | "insert">, now: Date = new Date(),
+): Promise<number> {
+  const flagged = await executor.update(platformDisputes).set({ urgentManualReview: true, depositUncollectibleAt: now })
+    .where(and(
+      eq(platformDisputes.requestId, requestId), eq(platformDisputes.reviewStatus, DISPUTE_REVIEW_PENDING),
+      isNull(platformDisputes.depositUncollectibleAt),
+    )).returning({ disputeId: platformDisputes.disputeId });
+  if (flagged.length === 0) return 0;
+  const admins = await adminUserIds(executor);
+  for (const { disputeId } of flagged) {
+    await executor.insert(requestLifecycleEvents).values({
+      requestId, eventType: "DEPOSIT_UNCOLLECTIBLE_DURING_DISPUTE", idempotencyKey: `deposit-uncollectible-${disputeId}`,
+      details: { disputeId, at: now.toISOString() }, actorId: null,
+    }).onConflictDoNothing();
+    if (admins.length) {
+      await executor.insert(notifications).values(admins.map((userId) => ({
+        userId, type: DEPOSIT_UNCOLLECTIBLE_ALERT_TYPE, requestId, isRead: false,
+        title: "URGENT: a disputed rental's deposit hold has expired",
+        message: `The deposit authorization on request #${requestId} expired while dispute ${disputeId} was unreviewed. The deposit can no longer be collected through the original authorization, and nothing will be charged automatically. Review the case now.`,
+      })));
+    }
+  }
+  return flagged.length;
+}
+
+export type OperationalCompletion = { status: "completed" | "not_found" | "note_required" | "conflict"; error?: string };
+
+/**
+ * An admin closes the rental operationally while the dispute stays open. Only for a rental whose deposit authorization has expired (no live
+ * hold) and that has no claim or deposit operation in flight. It sets the request COMPLETED and stamps the dispute; it does not review or
+ * close the dispute, release or charge anything, or call Stripe.
+ */
+export async function completeRentalOperationally(input: { disputeId: string; adminId: number; note: string }): Promise<OperationalCompletion> {
+  const note = (input.note ?? "").trim();
+  if (note.length < 5) return { status: "note_required" };
+  return db.transaction(async (tx) => {
+    const [dispute] = await tx.select().from(platformDisputes).where(eq(platformDisputes.disputeId, input.disputeId)).for("update");
+    if (!dispute || !dispute.requestId) return { status: "not_found" as const };
+    if (dispute.rentalCompletedAt) return { status: "conflict" as const, error: "This rental was already marked operationally complete." };
+    await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${dispute.requestId} FOR UPDATE`);
+    const [request] = await tx.select().from(itemRequests).where(eq(itemRequests.id, dispute.requestId)).limit(1);
+    if (!request) return { status: "not_found" as const };
+    if ((TERMINAL_REQUEST_STATUSES as readonly string[]).includes(request.status)) return { status: "conflict" as const, error: "The rental has already ended." };
+    if (request.depositStatus !== "EXPIRED_UNSECURED") {
+      return { status: "conflict" as const, error: "The deposit hold is still live. Release it through the normal flow; this action is only for an expired authorization." };
+    }
+    if (request.depositOperationToken || request.depositRenewalStatus === "terminal_action") {
+      return { status: "conflict" as const, error: "A deposit operation is in progress on this rental." };
+    }
+    const [activeClaim] = await tx.select({ id: securityClaims.id }).from(securityClaims)
+      .where(and(eq(securityClaims.requestId, request.id), notInArray(securityClaims.status, ["SETTLED", "REJECTED", "CLOSED", "WITHDRAWN"]))).limit(1);
+    if (activeClaim) return { status: "conflict" as const, error: "A security claim is still open on this rental. Resolve it first." };
+    const now = new Date();
+    await tx.update(itemRequests).set({ status: "COMPLETED" }).where(eq(itemRequests.id, request.id));
+    await tx.update(platformDisputes).set({ rentalCompletedAt: now, rentalCompletedBy: input.adminId }).where(eq(platformDisputes.id, dispute.id));
+    await tx.insert(requestLifecycleEvents).values({
+      requestId: request.id, eventType: "RENTAL_COMPLETED_OPERATIONALLY", idempotencyKey: `rental-completed-operationally-${dispute.disputeId}`,
+      details: { disputeId: dispute.disputeId, previousStatus: request.status, note }, actorId: input.adminId,
+    }).onConflictDoNothing();
+    return { status: "completed" as const };
+  });
+}
 
 /** An admin has looked at the case. Releases the hold guard; optionally records that the evidence went to Stripe and clears the flag. */
 export async function markDisputeReviewed(input: { disputeId: string; adminId: number; note: string; evidenceSubmittedToStripe?: boolean; clearBorrowerFlag?: boolean }):

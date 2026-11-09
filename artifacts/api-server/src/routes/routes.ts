@@ -1,7 +1,7 @@
 import { ensureUsableCustomer } from "../stripe-customer.js";
 import { createLazyStripe } from "../stripe-lazy-client";
 import { buildEvidenceBundle, ownerEvidenceRequests, submitOwnerEvidence } from "../dispute-evidence";
-import { alertDisputeDeadlines, listOpenAccountFlags, listPlatformDisputes, markDisputeReviewed } from "../platform-disputes";
+import { alertDisputeDeadlines, completeRentalOperationally, listOpenAccountFlags, listPlatformDisputes, markDisputeReviewed, noteDepositUncollectible } from "../platform-disputes";
 import { createRecoveryDebt, RECOVERY_DEBT_WITHDRAWAL_CODE, RecoveryDebtBlocksWithdrawal } from "../wallet-chargebacks";
 import { attachAsDefault, CardOwnershipError, dbCardStore, syncCardWithStripe, cardIsUsableBeforeCharge, READD_CARD_MESSAGE } from "../card-sync";
 import sharp from 'sharp';
@@ -12029,6 +12029,7 @@ Respond with ONLY the category name, nothing else.`
         const [request] = await tx.select({ deadline: itemRequests.claimDecisionDeadlineAt }).from(itemRequests).where(eq(itemRequests.id, current.requestId)).limit(1);
         if (approved && request?.deadline && request.deadline <= now) {
           await tx.update(itemRequests).set({ depositStatus: "EXPIRED_UNSECURED" }).where(eq(itemRequests.id, current.requestId));
+          await noteDepositUncollectible(current.requestId, tx, now);
           await tx.update(securityClaims).set({ settlementStatus: "MANUAL_REVIEW", updatedAt: now }).where(eq(securityClaims.id, current.id));
           throw Object.assign(new Error("Claim decision deadline elapsed; manual review required"), { status: 409 });
         }
@@ -14622,6 +14623,21 @@ Respond with ONLY the category name, nothing else.`
     } catch (err) {
       console.error("Admin dispute review error:", err);
       return res.status(500).json({ message: "Failed to record the review" });
+    }
+  });
+
+  // The rental ends operationally while the dispute stays open. Only for an expired deposit authorization; no money moves and Stripe is not called.
+  app.post("/api/admin/chargebacks/:disputeId/complete-rental", requireAdmin, csrfProtection, async (req, res) => {
+    try {
+      const { note } = (req.body ?? {}) as { note?: string };
+      const result = await completeRentalOperationally({ disputeId: String(req.params.disputeId), adminId: (req.user as { id: number }).id, note: String(note ?? "") });
+      if (result.status === "not_found") return res.status(404).json({ message: "Dispute not found" });
+      if (result.status === "note_required") return res.status(400).json({ message: "A note saying why the rental is being closed is required" });
+      if (result.status === "conflict") return res.status(409).json({ message: result.error });
+      return res.json({ success: true, status: result.status });
+    } catch (err) {
+      console.error("Admin complete rental error:", err);
+      return res.status(500).json({ message: "Failed to complete the rental" });
     }
   });
 

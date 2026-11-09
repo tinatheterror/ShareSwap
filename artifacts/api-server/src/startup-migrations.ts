@@ -367,6 +367,18 @@ export async function ensureDisputeAlertColumns() {
   await runMigrationFile(DISPUTE_ALERT_COLUMNS_FILE);
 }
 
+const DISPUTE_DEPOSIT_EXPIRY_FILE = "lib/db/scripts/0024_dispute_deposit_expiry.sql";
+
+/** platform_disputes.urgent_manual_review / deposit_uncollectible_at / rental_completed_at / rental_completed_by (0024). The deposit expiry sweep writes them. */
+export async function ensureDisputeDepositExpiryColumns() {
+  const { rows } = await pool.query(
+    `SELECT (SELECT count(*) FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'platform_disputes'
+              AND column_name IN ('urgent_manual_review', 'deposit_uncollectible_at', 'rental_completed_at', 'rental_completed_by')) = 4 AS present`,
+  );
+  if (rows[0]?.present === true) return;
+  await runMigrationFile(DISPUTE_DEPOSIT_EXPIRY_FILE);
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -384,6 +396,7 @@ export async function applyStartupMigrations() {
   await ensureWalletChargebacksTable();
   await ensurePlatformDisputes();
   await ensureDisputeAlertColumns();
+  await ensureDisputeDepositExpiryColumns();
   await ensureRentalPayoutHoldUntilDropped();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();

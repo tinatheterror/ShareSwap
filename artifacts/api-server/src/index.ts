@@ -11,6 +11,7 @@ import { requireSubscriptionWebhookSecret } from "./subscription-webhook";
 import { DISPUTE_WEBHOOK_SECRET_ENV } from "./dispute-webhook";
 import { moderationEmail } from "./moderation-config";
 import { termsEnforcementBootWarning } from "./terms-enforcement";
+import { personaSandboxBootError } from "./persona-key-guard";
 import { timeZoneBootLine } from "./request-dates";
 import { backgroundJobsBootLine } from "./background-jobs-gate";
 import { backgroundJobs } from "./background-jobs-registry";
@@ -34,6 +35,9 @@ async function start() {
   logger.info(timeZoneBootLine());
   const termsWarning = termsEnforcementBootWarning();
   if (termsWarning) logger.error(termsWarning);
+  // A Persona sandbox key in production: log it and refuse the verification endpoints (persona-key-guard.ts); the app still boots.
+  const personaKeyError = personaSandboxBootError();
+  if (personaKeyError) logger.error(personaKeyError);
   // Only whether each is set, never the values.
   const missingEmailVars = ["RESEND_API_KEY", "EMAIL_FROM"].filter((name) => !process.env[name]?.trim());
   if (missingEmailVars.length > 0) {

@@ -67,6 +67,7 @@ import { addSimplifiedRoutes } from "../simplified-routes";
 import { requireCurrentTerms } from "../terms-enforcement";
 import { hasAiConsent, registerAiConsentRoutes, requireAiConsent } from "../ai-consent";
 import { BIOMETRIC_CONSENT_REQUIRED_CODE, BIOMETRIC_CONSENT_REQUIRED_MESSAGE, hasBiometricConsent, registerBiometricConsentRoutes } from "../biometric-consent";
+import { refuseIfPersonaSandboxInProduction } from "../persona-key-guard";
 import { computeAuthoritativeRentalPricing } from "../rental-pricing";
 import { platformConfig, calculateCommission } from "../platform-config";
 import { AntiFarmingSystem } from "../anti-farming-system";
@@ -2492,6 +2493,9 @@ export function registerRoutes(
       return res.sendStatus(401);
     }
 
+    // A sandbox key in production simulates every check: no inquiry is created (persona-key-guard.ts).
+    if (refuseIfPersonaSandboxInProduction(res, "/api/persona/create-inquiry")) return;
+
     try {
       const userId = req.user.id;
       // Persona collects ID images and a selfie for face matching: no inquiry, new or existing, without the member's explicit consent.
@@ -2606,6 +2610,9 @@ export function registerRoutes(
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
+
+    // Never approve from a sandbox inquiry: with a sandbox key in production nothing here runs, so nothing is approved (persona-key-guard.ts).
+    if (refuseIfPersonaSandboxInProduction(res, "/api/persona/inquiry-complete")) return;
 
     try {
       const { inquiryId, status } = req.body;

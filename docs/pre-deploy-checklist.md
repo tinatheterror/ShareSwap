@@ -54,16 +54,18 @@ Names only. Set them in the deployment that serves the API AND in the Scheduled 
 
 ## 5. Backfill and the USD test-data cleanup: order
 
+**Production numbers are unknown until these dry runs are run on production.** Every figure seen so far (the count of USD requests, wallet balances, the user and request ids named below such as 337 and 339, the evidence-file references) came from the workspace development database (`ep-billowing-river…`, `neondb`), which is a different Neon host from production (`ep-holy-bonus…`). Do not reuse them: run each dry run with the production environment and choose the cleanup flags (`--close-without-hold`, `--refund-rental-payments`) only from the production dry-run output. The ids in the examples below are placeholders.
+
 Why this order: the cleanup zeroes wallets with an `adjustment` row, which only keeps the ledger consistent once the ledger has been backfilled. Both scripts are dry runs by default. Run them from `artifacts/api-server` with the production environment. **Their live runs now refuse a database that is not a test database** (`wallet:backfill --live` is not guarded; `usd-test-data:clean --live` and `evidence:purge-public --apply` are): for those, add `ALLOW_NON_TEST_DATABASE=<the production database name>` to that one command, and do not export it.
 
 1. [ ] Backup (step 1) and deploy (step 2). Do not run these before the new build is live.
 2. [ ] **Backfill dry run:** `pnpm run wallet:backfill`. Read `wouldWrite`, `byKind` and `balancesNotExplainedByLedger`.
 3. [ ] **Backfill live:** `pnpm run wallet:backfill --live` (safe to repeat). Run the dry run again: `wouldWrite` is 0 and `balancesNotExplainedByLedger` is empty (anything left needs a person to look at it before the cleanup).
 4. [ ] **Cleanup dry run**, with the options you intend to use live (they are part of the hash):
-   `pnpm run usd-test-data:clean --close-without-hold 337,339 [--refund-rental-payments]`
+   `pnpm run usd-test-data:clean --close-without-hold <ids from the production dry run> [--refund-rental-payments]`
    Read: every request and whether it is `release_hold`, `close_only` or `close_without_hold`; the list of rental payments already charged (amount, intent id, live or test); any payment that says "could not be read from Stripe" (wrong keys for that payment: stop and fix `STRIPE_SECRET_KEY`); users marked skipped; the plan hash.
 5. [ ] Decide on `--refund-rental-payments`. It is off by default; with it, each charged payment is refunded for what is left, once (stable key per request and intent).
-6. [ ] **Cleanup live**, the same options, plus the hash from the dry run you just read: `pnpm run usd-test-data:clean --close-without-hold 337,339 --live --confirm <hash>`. If anything changed since, it refuses; run the dry run again. Cancelling requests and refunds cannot be undone.
+6. [ ] **Cleanup live**, the same options, plus the hash from the dry run you just read: `pnpm run usd-test-data:clean --close-without-hold <the same ids> --live --confirm <hash>`. If anything changed since, it refuses; run the dry run again. Cancelling requests and refunds cannot be undone.
 7. [ ] Dry run once more: no open USD requests left; backfill dry run again: no drift.
 8. [ ] Only then continue with the go-live checklist's "clear test-mode Stripe IDs at the switch" and the live-key switch.
 
@@ -78,3 +80,4 @@ Why this order: the cleanup zeroes wallets with an `adjustment` row, which only 
 - [ ] Claim evidence (`/api/uploads/claim-evidence`), the return-dispute photo (`/api/uploads/dispute-photo`) and dispute evidence (`/api/uploads/dispute-evidence`) now store private files readable only through `/api/private-files/:token` (the uploader, the parties it is attached to, admins). Listing, profile and condition photos stay public. Evidence uploaded before this release still has public `/storage/...` or `/uploads/...` URLs.
 - [ ] Find them: `pnpm --filter @workspace/api-server run evidence:purge-public` (a dry run: lists records and files). Decide what to do with real claim evidence before deleting anything; the script removes the files and the references (`--apply`, with the override in step 5), and keeps a file that is also a listing photo.
 - [ ] Tests never use the real bucket (`TEST_OBJECT_STORAGE_BUCKET_ID` is the only bucket a test may use). Do not set it in production.
+- [ ] Broken condition-verification photos: `pnpm --filter @workspace/api-server run condition-photos:fix` (dry run) lists verifications whose photos contain `/uploads/undefined` (the dev database has none; production is not known). `--apply` removes only those entries and keeps the verifications; it needs the override from step 5.

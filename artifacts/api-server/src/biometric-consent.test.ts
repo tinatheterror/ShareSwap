@@ -6,6 +6,7 @@ import { eq, inArray } from "drizzle-orm";
 import { biometricConsents, db, pool, users, verifications } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { Client, startApp } from "./auth-test-client.js";
+import { DELETION_GRACE_DAYS } from "./account-deletion/retention.js";
 import {
   BIOMETRIC_CHECKBOX_LABEL, BIOMETRIC_CONSENT_REQUIRED_CODE, BIOMETRIC_CONSENT_VERSION, BIOMETRIC_NOTICE, BIOMETRIC_POLICY_HEADING, BIOMETRIC_POLICY_PATH,
 } from "./biometric-consent.js";
@@ -110,7 +111,7 @@ test("with consent at the current version create-inquiry goes to Persona; an old
 test("the wording cannot change without a new version, and the Privacy Policy has the section the notice links to", () => {
   const fingerprint = createHash("sha256").update(`${BIOMETRIC_NOTICE}\n${BIOMETRIC_CHECKBOX_LABEL}`).digest("hex").slice(0, 16);
   assert.equal(
-    `${BIOMETRIC_CONSENT_VERSION}:${fingerprint}`, "2026-11-09.2:bd0de2415a923320",
+    `${BIOMETRIC_CONSENT_VERSION}:${fingerprint}`, "2026-11-09.3:b7b7ccbeed081867",
     "The consent wording changed: bump BIOMETRIC_CONSENT_VERSION (so everyone is asked again) and update this line.",
   );
   assert.match(BIOMETRIC_NOTICE, /Persona/);
@@ -122,7 +123,9 @@ test("the wording cannot change without a new version, and the Privacy Policy ha
   assert.match(BIOMETRIC_NOTICE, /detect fraud/);
   assert.match(BIOMETRIC_NOTICE, /improve its own service/);
   assert.match(BIOMETRIC_NOTICE, /about 30 days after your verification is decided/);
-  assert.match(BIOMETRIC_NOTICE, /sooner if you close your account/);
+  assert.match(BIOMETRIC_NOTICE, /If you delete your account, we ask Persona to delete them when the deletion is completed: after a 14-day grace period, or sooner if you choose to delete it immediately/);
+  assert.doesNotMatch(BIOMETRIC_NOTICE, /straight away|sooner if you close/, "Persona is asked when the deletion is completed, not when it is requested");
+  assert.equal(DELETION_GRACE_DAYS, 14, "the policy and the notice say 14 days");
   assert.equal(BIOMETRIC_CHECKBOX_LABEL, "I agree to ShareSwap and Persona collecting and using my ID and face data to verify my identity, detect fraud and improve Persona's service.");
   assert.notEqual(BIOMETRIC_CONSENT_VERSION, "2026-11-09", "the wording changed, so everyone who agreed to the earlier text is asked again");
 
@@ -132,5 +135,5 @@ test("the wording cannot change without a new version, and the Privacy Policy ha
   assert.equal(BIOMETRIC_POLICY_PATH, `/privacy#${slug}`);
   const section = policy.slice(policy.indexOf(`## ${BIOMETRIC_POLICY_HEADING}`)).split("\n## ")[0];
   for (const needle of [/Persona/, /selfie/, /face/i, /tick a box/, /version/]) assert.match(section, needle);
-  for (const needle of [/about 30 days after your verification is decided/, /straight away/, /detect fraud/, /improve its service/, /to be confirmed with Persona and counsel/]) assert.match(section, needle, "the policy says what the notice says");
+  for (const needle of [/about 30 days after your verification is decided/, /after the 14-day grace period, or sooner if you choose to delete your account immediately/, /detect fraud/, /improve its service/, /to be confirmed with Persona and counsel/]) assert.match(section, needle, "the policy says what the notice says");
 });

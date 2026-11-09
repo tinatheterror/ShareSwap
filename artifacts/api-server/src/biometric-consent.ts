@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { eq } from "drizzle-orm";
 import { biometricConsents, db } from "@workspace/db";
 import { csrfProtection } from "./csrf";
+import { DELETION_GRACE_DAYS } from "./account-deletion/retention";
 
 /**
  * Explicit consent before Persona starts an identity check. Persona collects images of the member's government ID and a selfie and
@@ -11,12 +12,13 @@ import { csrfProtection } from "./csrf";
  *
  * Change the wording (or what is collected, or who receives it) => bump BIOMETRIC_CONSENT_VERSION, so everyone is asked again.
  */
-export const BIOMETRIC_CONSENT_VERSION = "2026-11-09.2";
+export const BIOMETRIC_CONSENT_VERSION = "2026-11-09.3";
 
 export const BIOMETRIC_NOTICE =
   "To verify your identity, Persona, our verification provider, will collect images of your government ID and a selfie, and match your face to your ID photo. " +
   "Persona uses this data to verify your identity, to detect fraud, and to improve its own service. " +
-  "Persona deletes your ID images and selfie about 30 days after your verification is decided, or sooner if you close your account. " +
+  "Persona deletes your ID images and selfie about 30 days after your verification is decided. " +
+  `If you delete your account, we ask Persona to delete them when the deletion is completed: after a ${DELETION_GRACE_DAYS}-day grace period, or sooner if you choose to delete it immediately. ` +
   "ShareSwap receives only the result and your name; we do not receive or keep the ID images or the selfie.";
 
 export const BIOMETRIC_CHECKBOX_LABEL =

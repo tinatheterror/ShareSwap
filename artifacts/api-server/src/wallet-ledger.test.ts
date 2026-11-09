@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { after, before, test } from "node:test";
+import { after, afterEach, before, test } from "node:test";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, depositSettlementOperations, itemRequests, items, notifications, pool, rentalPayouts, requestLifecycleEvents, securityClaims, users, walletTransactions } from "@workspace/db";
 import { releaseHeldRentalPayout, reservePayout, sendPayout } from "./rental-payout-service.js";
@@ -38,6 +38,11 @@ before(async () => {
     ownerId, name: `${unique}-item`, description: "wallet ledger test", conditionRating: 5, photos: [], shareCoinsReward: "0",
   }).returning();
   itemId = item.id;
+});
+
+// A held payout left behind by one test could be released by a sweep another test file runs at the same time.
+afterEach(async () => {
+  await db.delete(rentalPayouts).where(and(eq(rentalPayouts.userId, ownerId), eq(rentalPayouts.status, "held")));
 });
 
 after(async () => {
@@ -122,7 +127,9 @@ test("the backfill derives rows for pre-ledger earnings, withdrawals and awards,
     await db.insert(rentalPayouts).values({ userId: other.id, requestId: request.id, amount: "9", rentalAmount: "9", netAmount: "9.00", status: "held" });
     await db.update(users).set({ rentalBalance: "27.50" }).where(eq(users.id, other.id));
 
-    const plan = await planWalletBackfill();
+    // Only this test's own member is planned and written, so rows already in the database cannot change the counts.
+    const only = { onlyUserIds: [other.id] };
+    const plan = await planWalletBackfill(undefined, only);
     const mine = plan.entries.filter(e => e.userId === other.id);
     assert.deepEqual(
       mine.map(e => [e.kind, e.amountCents, e.currency, e.idempotencyKey]),
@@ -136,15 +143,16 @@ test("the backfill derives rows for pre-ledger earnings, withdrawals and awards,
     );
     assert.equal((await ledger(other.id)).length, 0, "planning writes nothing");
     assert.equal(plan.drift.find(d => d.userId === other.id), undefined, "47.50 - 20 - 5 + 5 = 27.50 explains the balance");
+    assert.deepEqual([...new Set([...plan.entries.map(e => e.userId), ...plan.drift.map(d => d.userId)])].filter(id => id !== other.id), [], "nobody else is in the plan");
 
     assert.equal(await applyWalletBackfill(plan), plan.entries.length);
     assert.equal((await ledger(other.id)).length, 4);
-    const second = await planWalletBackfill();
-    assert.equal(second.entries.filter(e => e.userId === other.id).length, 0);
+    const second = await planWalletBackfill(undefined, only);
+    assert.equal(second.entries.length, 0);
     assert.equal(await applyWalletBackfill(second), 0);
 
     await db.update(users).set({ rentalBalance: "30.00" }).where(eq(users.id, other.id));
-    const drift = (await planWalletBackfill()).drift.find(d => d.userId === other.id);
+    const drift = (await planWalletBackfill(undefined, only)).drift.find(d => d.userId === other.id);
     assert.deepEqual(drift && [drift.balanceCents, drift.ledgerCents, drift.differenceCents], [3000, 2750, 250], "a balance the ledger cannot explain is reported, not papered over");
   } finally {
     await db.delete(walletTransactions).where(eq(walletTransactions.userId, other.id));
@@ -164,11 +172,32 @@ test("the claim-award tests' counterpart: a settled operation that was credited 
     walletCreditedAmount: "30.00", walletCreditedAt: new Date("2026-11-05T00:00:00Z"),
   });
   try {
-    const plan = await planWalletBackfill();
+    const plan = await planWalletBackfill(undefined, { onlyUserIds: [ownerId] });
     const entry = plan.entries.find(e => e.claimId === claim.id)!;
     assert.deepEqual([entry.kind, entry.amountCents, entry.currency, entry.idempotencyKey], ["claim_award", 3000, "cad", `claim-award-${claim.id}`]);
   } finally {
     await db.delete(depositSettlementOperations).where(eq(depositSettlementOperations.requestId, request.id));
     await db.delete(securityClaims).where(eq(securityClaims.id, claim.id));
+  }
+});
+
+test("planWalletBackfill with onlyUserIds ignores everyone else's rows, so leftover data cannot change a test's counts", async () => {
+  const stray = (await db.insert(users).values({ username: `${unique}-stray`, rentalBalance: "12.00" }).returning())[0];
+  try {
+    const [request] = await db.insert(itemRequests).values({ itemId, requesterId: borrowerId, requestType: "RENT", status: "COMPLETED", paymentCurrency: "cad" } as any).returning({ id: itemRequests.id });
+    requestIds.push(request.id);
+    await db.insert(rentalPayouts).values({ userId: stray.id, requestId: request.id, amount: "12", rentalAmount: "12", netAmount: "12.00", status: "released", releasedAt: new Date("2026-08-01T00:00:00Z") });
+
+    const everyone = await planWalletBackfill();
+    assert.equal(everyone.entries.filter(e => e.userId === stray.id).length, 1, "the whole-database plan (what the script uses) sees the stray earning");
+    assert.ok(everyone.drift.every(d => d.userId !== stray.id), "and its balance is explained by it");
+
+    const scoped = await planWalletBackfill(undefined, { onlyUserIds: [ownerId] });
+    assert.deepEqual(scoped.entries.filter(e => e.userId !== ownerId), []);
+    assert.deepEqual(scoped.drift.filter(d => d.userId !== ownerId), []);
+    assert.deepEqual((await planWalletBackfill(undefined, { onlyUserIds: [] })).entries, [], "an empty list plans nothing");
+  } finally {
+    await db.delete(rentalPayouts).where(eq(rentalPayouts.userId, stray.id));
+    await db.delete(users).where(eq(users.id, stray.id));
   }
 });

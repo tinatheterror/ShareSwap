@@ -16,7 +16,17 @@ type Query = (text: string, values?: any[]) => Promise<{ rows: any[] }>;
 
 const WITHDRAWAL_STATUSES = ["pending_payout", "manual_review", "paid_out", "failed"];
 
-export async function planWalletBackfill(query: Query = (text, values) => pool.query(text, values)): Promise<WalletBackfillPlan> {
+export interface WalletBackfillOptions {
+  /** Plan only for these members: their rows, their ledger and their balance. Tests use it so other rows in the database cannot change the result. */
+  onlyUserIds?: number[];
+}
+
+export async function planWalletBackfill(
+  query: Query = (text, values) => pool.query(text, values),
+  options: WalletBackfillOptions = {},
+): Promise<WalletBackfillPlan> {
+  const only = options.onlyUserIds ? new Set(options.onlyUserIds) : null;
+  const mine = (userId: number) => !only || only.has(userId);
   const candidates: WalletEntry[] = [];
 
   const earnings = await query(
@@ -24,7 +34,7 @@ export async function planWalletBackfill(query: Query = (text, values) => pool.q
        FROM rental_payouts p LEFT JOIN item_requests r ON r.id = p.request_id
       WHERE p.request_id IS NOT NULL AND p.status = 'released' ORDER BY p.id`,
   );
-  for (const row of earnings.rows) {
+  for (const row of earnings.rows.filter((r) => mine(r.user_id))) {
     candidates.push({
       userId: row.user_id, kind: "rental_payout", amountCents: toCents(row.net_amount), currency: String(row.currency).toLowerCase(),
       requestId: row.request_id, rentalPayoutId: row.id, idempotencyKey: rentalEarningKey(row.id), createdAt: row.at,
@@ -35,7 +45,7 @@ export async function planWalletBackfill(query: Query = (text, values) => pool.q
     `SELECT id, user_id, net_amount, status, created_at FROM rental_payouts WHERE request_id IS NULL AND status = ANY($1) ORDER BY id`,
     [WITHDRAWAL_STATUSES],
   );
-  for (const row of withdrawals.rows) {
+  for (const row of withdrawals.rows.filter((r) => mine(r.user_id))) {
     const cents = toCents(row.net_amount);
     candidates.push({
       userId: row.user_id, kind: "withdrawal", amountCents: -cents, currency: PLATFORM_CURRENCY, rentalPayoutId: row.id,
@@ -56,7 +66,7 @@ export async function planWalletBackfill(query: Query = (text, values) => pool.q
        JOIN item_requests r ON r.id = o.request_id
       WHERE o.wallet_credited_at IS NOT NULL AND o.wallet_credited_amount > 0 ORDER BY o.id`,
   );
-  for (const row of awards.rows) {
+  for (const row of awards.rows.filter((r) => mine(r.owner_id))) {
     candidates.push({
       userId: row.owner_id, kind: "claim_award", amountCents: toCents(row.wallet_credited_amount), currency: String(row.currency).toLowerCase(),
       requestId: row.request_id, claimId: row.claim_id, idempotencyKey: claimAwardKey(row.claim_id), createdAt: row.wallet_credited_at,
@@ -68,10 +78,10 @@ export async function planWalletBackfill(query: Query = (text, values) => pool.q
   const entries = candidates.filter(c => !have.has(c.idempotencyKey) && c.amountCents !== 0);
 
   const ledger = new Map<number, number>();
-  for (const r of existing.rows) ledger.set(r.user_id, (ledger.get(r.user_id) ?? 0) + Number(r.amount_cents));
+  for (const r of existing.rows.filter((r) => mine(r.user_id))) ledger.set(r.user_id, (ledger.get(r.user_id) ?? 0) + Number(r.amount_cents));
   for (const e of entries) ledger.set(e.userId, (ledger.get(e.userId) ?? 0) + e.amountCents);
   const balances = await query(`SELECT id, rental_balance FROM users WHERE COALESCE(rental_balance, 0) <> 0`);
-  const balanceOf = new Map<number, number>(balances.rows.map(r => [r.id, toCents(r.rental_balance)]));
+  const balanceOf = new Map<number, number>(balances.rows.filter((r) => mine(r.id)).map(r => [r.id, toCents(r.rental_balance)]));
   const drift: WalletDrift[] = [];
   for (const userId of new Set([...ledger.keys(), ...balanceOf.keys()])) {
     const balanceCents = balanceOf.get(userId) ?? 0;

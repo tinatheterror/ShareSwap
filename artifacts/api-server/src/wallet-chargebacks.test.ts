@@ -20,6 +20,8 @@ const dispute = () => `du_${unique}_${++counter}`;
 async function setWallet(balance: string) {
   await db.delete(walletChargebacks).where(eq(walletChargebacks.userId, ownerId));
   await db.delete(walletTransactions).where(eq(walletTransactions.userId, ownerId));
+  // Held payouts left by an earlier test could be released by a sweep another test file runs at the same time and credit this wallet.
+  await db.delete(rentalPayouts).where(eq(rentalPayouts.userId, ownerId));
   await db.update(users).set({ rentalBalance: balance, pendingRentalBalance: "0.00" }).where(eq(users.id, ownerId));
   if (Number(balance) > 0) {
     await db.insert(walletTransactions).values({ userId: ownerId, kind: "rental_payout", amountCents: Math.round(Number(balance) * 100), currency: "cad", idempotencyKey: `${unique}-opening-${++counter}` });

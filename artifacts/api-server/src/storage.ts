@@ -3,6 +3,9 @@ import path from "path";
 import fs from "fs";
 import type { Express, Request, Response } from "express";
 import { randomBytes } from "crypto";
+import os from "os";
+import { isTestProcess } from "@workspace/db/test-database-guard";
+import { chooseStorage, TestStorageGuardError } from "./storage-guard";
 
 let client: Client | null = null;
 let storageAvailable = false;
@@ -12,7 +15,14 @@ async function getClient(): Promise<Client | null> {
   if (client !== null) return storageAvailable ? client : null;
   
   try {
-    const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+    // A test never touches the real bucket: see storage-guard.ts (it throws for a test bucket that is the real one).
+    const choice = chooseStorage();
+    if (choice.kind === "local") {
+      client = null;
+      storageAvailable = false;
+      return null;
+    }
+    const bucketId = choice.bucketId;
     client = bucketId ? new Client({ bucketId }) : new Client();
     // Mark available immediately — avoid using list() as a probe because it can
     // return ok:false on transient errors or with certain bucket configurations,
@@ -21,6 +31,7 @@ async function getClient(): Promise<Client | null> {
     storageAvailable = true;
     console.log("[Storage] ✓ Object Storage client initialized - images will persist across redeploys");
   } catch (error: any) {
+    if (error instanceof TestStorageGuardError) throw error; // a refusal is not a reason to fall back quietly
     const errorMessage = error?.message || String(error);
     if (errorMessage.includes("bucket name is needed") || errorMessage.includes("REPLIT_OBJECT_STORE_BUCKET_ID")) {
       console.log("[Storage] ⚠ Object Storage not configured. Using local fallback (images may not persist).");
@@ -101,7 +112,8 @@ export async function uploadToStorage(
  * without Object Storage, in a folder that is not served statically. Only code that checks who is asking reads them back.
  */
 export const PRIVATE_PREFIX = "private/";
-const privateDir = "./private-uploads";
+// Tests keep private files out of the repository folder.
+const privateDir = !isTestProcess() ? "./private-uploads" : path.join(os.tmpdir(), "shareswap-test-private-uploads");
 
 export async function savePrivateFile(fileBuffer: Buffer, ext: string): Promise<string> {
   const key = `${PRIVATE_PREFIX}${randomBytes(16).toString("hex")}${ext}`;
@@ -126,7 +138,10 @@ export async function readPrivateFile(key: string): Promise<Buffer | null> {
 export async function deletePrivateFile(key: string): Promise<void> {
   if (!key.startsWith(PRIVATE_PREFIX) || key.includes("..")) return;
   const local = path.join(privateDir, path.basename(key));
-  if (fs.existsSync(local)) fs.unlinkSync(local);
+  if (fs.existsSync(local)) {
+    fs.unlinkSync(local);
+    return;
+  }
   await deleteFromStorage(key);
 }
 

@@ -9,7 +9,7 @@ import { deletePrivateFile } from "./storage.js";
 
 const unique = `private-files-${Date.now()}`;
 const PASSWORD = "PrivateFiles!42";
-let ownerId: number, borrowerId: number, strangerId: number, adminId: number, itemId: number, requestId: number;
+let ownerId: number, borrowerId: number, strangerId: number, itemId: number, requestId: number;
 let server: Awaited<ReturnType<typeof startApp>>;
 const clients: Record<string, Client> = {};
 const claimIds: number[] = [];
@@ -28,15 +28,16 @@ const upload = async (who: string, path: string, bytes: string) => {
 before(async () => {
   const password = await hashPassword(PASSWORD);
   const created = await db.insert(users).values(
-    ["owner", "borrower", "stranger", "admin"].map((name) => ({ username: `${unique}-${name}`, password, emailVerified: true, isAdmin: name === "admin" })),
+    ["owner", "borrower", "stranger"].map((name) => ({ username: `${unique}-${name}`, password, emailVerified: true })),
   ).returning();
-  [ownerId, borrowerId, strangerId, adminId] = created.map((u) => u.id);
+  [ownerId, borrowerId, strangerId] = created.map((u) => u.id);
+  // No admin user is created: every admin in the database is alerted by other suites, and deleting one mid-run would break them.
   const [item] = await db.insert(items).values({ ownerId, name: `${unique}-item`, description: "private files", conditionRating: 5, photos: [], shareCoinsReward: "0" }).returning();
   itemId = item.id;
   const [request] = await db.insert(itemRequests).values({ itemId, requesterId: borrowerId, requestType: "RENT", status: "RETURN_REQUESTED", paymentCurrency: "cad", depositMethod: "in_person" } as any).returning();
   requestId = request.id;
   server = await startApp();
-  for (const [i, name] of ["owner", "borrower", "stranger", "admin"].entries()) {
+  for (const [i, name] of ["owner", "borrower", "stranger"].entries()) {
     const c = new Client(server.baseUrl);
     assert.equal((await c.post("/api/login", { username: created[i].username, password: PASSWORD })).status, 200);
     await c.fetchCsrfToken();
@@ -46,7 +47,7 @@ before(async () => {
 
 after(async () => {
   try {
-    const ids = [ownerId, borrowerId, strangerId, adminId];
+    const ids = [ownerId, borrowerId, strangerId];
     for (const u of await db.select({ key: evidenceUploads.storageKey }).from(evidenceUploads).where(inArray(evidenceUploads.userId, ids))) if (u.key) await deletePrivateFile(u.key);
     await db.delete(evidenceUploads).where(inArray(evidenceUploads.userId, ids));
     await db.delete(notifications).where(inArray(notifications.userId, ids));
@@ -79,7 +80,7 @@ test("a claim photo can be read by its uploader, the two parties of the claim an
   const token = privateTokenOf(url)!;
   // Not yet attached to a claim: only the uploader and admins.
   assert.equal((await clients.owner.get(url)).status, 200);
-  assert.equal((await clients.admin.get(url)).status, 200);
+  assert.ok(await readPrivateUpload(token, { id: strangerId + 1_000_000, isAdmin: true }), "an admin can read it");
   assert.equal((await clients.borrower.get(url)).status, 404);
 
   const [claim] = await db.insert(securityClaims).values({

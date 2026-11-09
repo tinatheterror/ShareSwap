@@ -3,7 +3,7 @@ import { pool } from "@workspace/db";
 import { assertDestructiveDatabaseAllowed } from "@workspace/db/test-database-guard";
 import { applySandboxReset, describeResetPlan, findSandboxApprovedVerifications } from "../persona-sandbox-reset";
 
-// Takes members whose verification was approved by a Persona SANDBOX key back to "not verified", and notifies them to verify again.
+// Takes members whose verification was approved by a Persona SANDBOX key back to "not verified", and notifies and emails them to verify again.
 //   pnpm --filter @workspace/api-server run persona:reset-sandbox                                   (dry run: reads only)
 //   ALLOW_NON_TEST_DATABASE=<database name> pnpm --filter @workspace/api-server run persona:reset-sandbox --apply --before=<ISO time>
 // --before is the moment the production key went live (verifications created after it are real and are never touched); --apply refuses without it.

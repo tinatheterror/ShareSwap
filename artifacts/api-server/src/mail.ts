@@ -379,6 +379,33 @@ export async function sendAccountDeletedEmail(toEmail: string, displayName?: str
   }
 }
 
+// Tells a member their earlier identity verification was simulated (a Persona sandbox key was live) and has been reset, and asks them to verify again.
+// Sent by the one-off sandbox reset (persona-sandbox-reset.ts), once per member, to their own address only.
+export async function sendVerificationResetEmail(toEmail: string, displayName?: string) {
+  try {
+    const { client, fromEmail } = await getMailClient();
+    const greeting = `Hi ${displayName || 'there'},`;
+    const verifyUrl = `${appBaseUrl()}/verification`;
+    const lines = [
+      `Your earlier identity verification on ShareSwap was recorded in a test mode, so your ID was not actually checked. That was our mistake, and we are sorry.`,
+      `We have removed the verified status, and the trust points and ShareCoins, that it gave you. Nothing else on your account has changed.`,
+      `To earn them back, verify your identity again: open the ShareSwap app, or go to <a href="${verifyUrl}">${verifyUrl}</a>. Before the check starts you will be asked to agree to how your ID and face data are handled.`,
+    ];
+    await client.send({
+      to: toEmail,
+      from: fromEmail,
+      subject: 'ShareSwap: please verify your identity again',
+      text: `${greeting}\n\nYour earlier identity verification on ShareSwap was recorded in a test mode, so your ID was not actually checked. That was our mistake, and we are sorry.\n\nWe have removed the verified status, and the trust points and ShareCoins, that it gave you. Nothing else on your account has changed.\n\nTo earn them back, verify your identity again: open the ShareSwap app, or go to ${verifyUrl}. Before the check starts you will be asked to agree to how your ID and face data are handled.\n\nBest,\nThe ShareSwap Team`,
+      html: emailShell(greeting, lines),
+    });
+    console.log('[Mail] Verification reset email sent');
+    return true;
+  } catch (error) {
+    console.error('[Mail] Error sending verification reset email:', error);
+    return false;
+  }
+}
+
 // Tells the moderation inbox that a report is waiting in the queue. Carries the reason and a short excerpt, never the
 // reporter's identity.
 export async function sendModerationAlertEmail(

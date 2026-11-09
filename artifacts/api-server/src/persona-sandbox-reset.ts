@@ -1,6 +1,8 @@
 import { and, eq, inArray, isNotNull, lt, or } from "drizzle-orm";
 import { db, notifications, reputationActivities, shareCoinsTransactions, users, verifications } from "@workspace/db";
 import { trustLevelForScore } from "./trust-score-service";
+import { sendVerificationResetEmail } from "./mail";
+import { verificationRecipient } from "./verification";
 
 /**
  * Production ran with a Persona SANDBOX key, so every "approved" verification was simulated: nobody's ID was checked. This finds those
@@ -44,6 +46,9 @@ export type ResetCandidate = {
   firstCreatedAt: Date | null;
   lastCreatedAt: Date | null;
   isVerified: boolean;
+  /** Where the email goes (the member's own address), or null: no address, or a deleted or banned account. */
+  emailTo: string | null;
+  displayName: string | null;
   /** Grants not yet reversed, oldest first. */
   trustGrants: Grant[];
   coinGrants: Grant[];
@@ -59,7 +64,7 @@ export async function findSandboxApprovedVerifications(options: { before?: Date 
   const rows = await db
     .select({
       id: verifications.id, userId: verifications.userId, inquiryId: verifications.personaInquiryId, createdAt: verifications.createdAt,
-      username: users.username, isVerified: users.isVerified,
+      username: users.username, isVerified: users.isVerified, email: users.email, displayName: users.displayName, accountStatus: users.accountStatus,
     })
     .from(verifications)
     .innerJoin(users, eq(users.id, verifications.userId))
@@ -71,7 +76,8 @@ export async function findSandboxApprovedVerifications(options: { before?: Date 
     .orderBy(verifications.userId, verifications.id);
   const byUser = new Map<number, ResetCandidate>();
   for (const row of rows) {
-    const entry = byUser.get(row.userId) ?? { userId: row.userId, username: row.username, verificationIds: [], inquiryIds: [], firstCreatedAt: null, lastCreatedAt: null, isVerified: row.isVerified === true, trustGrants: [], coinGrants: [] };
+    const entry = byUser.get(row.userId) ?? { userId: row.userId, username: row.username, verificationIds: [], inquiryIds: [], firstCreatedAt: null, lastCreatedAt: null, isVerified: row.isVerified === true, displayName: row.displayName,
+      emailTo: row.accountStatus === "deleted" || row.accountStatus === "banned" ? null : verificationRecipient({ email: row.email, username: row.username }), trustGrants: [], coinGrants: [] };
     entry.verificationIds.push(row.id);
     if (row.inquiryId) entry.inquiryIds.push(row.inquiryId);
     if (row.createdAt && (!entry.firstCreatedAt || row.createdAt < entry.firstCreatedAt)) entry.firstCreatedAt = row.createdAt;
@@ -120,6 +126,8 @@ export function describeResetPlan(candidates: ResetCandidate[], options: { befor
       `takes back ${plannedReversal(c).trust} trust points and ${plannedReversal(c).coins} ShareCoins`);
   }
   const totals = candidates.reduce((t, c) => { const p = plannedReversal(c); return { trust: t.trust + p.trust, coins: t.coins + p.coins }; }, { trust: 0, coins: 0 });
+  const emailable = candidates.filter((c) => c.emailTo).length;
+  lines.push(`Each member gets an in-app notification; ${emailable} of ${candidates.length} will also be emailed (${candidates.length - emailable} have no usable address or a deleted or banned account).`);
   lines.push(`Total to take back: ${totals.trust} trust points and ${totals.coins} ShareCoins (a score or balance never goes below 0, so a member who has spent the coins loses less; the run reports any shortfall).`);
   if (!options.before) {
     lines.push(`\nNo cutoff given, so this is EVERY Persona approval. --apply needs --before=<ISO time>: the moment the production key went live, ` +
@@ -137,6 +145,10 @@ export type ResetResult = {
   shareCoinsTakenBack: number;
   /** Members who had less than the plan (the score or balance hit 0): what was missing. */
   shortfalls: Array<{ userId: number; trust: number; coins: number }>;
+  emailed: number;
+  /** Members who were reset but whose email was not sent (the in-app notification was): follow up by hand, a second run does not find them. */
+  emailFailed: number[];
+  noEmailAddress: number[];
   failed: Array<{ userId: number; error: string }>;
 };
 
@@ -144,9 +156,10 @@ export type ResetResult = {
  * Resets exactly the given candidates (nothing else), one transaction per member so a failure leaves the others done and this one untouched.
  * Safe to run twice: a reset row is no longer "approved", so a second run finds nothing and notifies nobody again.
  */
-export async function applySandboxReset(candidates: ResetCandidate[]): Promise<ResetResult> {
-  const result: ResetResult = { members: 0, verificationsReset: 0, badgesCleared: 0, notified: 0, trustPointsTakenBack: 0, shareCoinsTakenBack: 0, shortfalls: [], failed: [] };
+export async function applySandboxReset(candidates: ResetCandidate[], deps: { sendEmail: (to: string, displayName?: string) => Promise<boolean> } = { sendEmail: sendVerificationResetEmail }): Promise<ResetResult> {
+  const result: ResetResult = { members: 0, verificationsReset: 0, badgesCleared: 0, notified: 0, trustPointsTakenBack: 0, shareCoinsTakenBack: 0, shortfalls: [], emailed: 0, emailFailed: [], noEmailAddress: [], failed: [] };
   for (const candidate of candidates) {
+    let didReset = false;
     try {
       await db.transaction(async (tx) => {
         // Re-checks "approved" inside the transaction, so a row changed since the dry run is skipped, not overwritten.
@@ -200,10 +213,17 @@ export async function applySandboxReset(candidates: ResetCandidate[]): Promise<R
         result.verificationsReset += reset.length;
         result.badgesCleared += cleared;
         result.notified += 1;
+        didReset = true;
       });
     } catch (error) {
       result.failed.push({ userId: candidate.userId, error: error instanceof Error ? error.message : String(error) });
+      continue;
     }
+    // After the commit, never inside it: a mail failure must not undo a reset, and a rolled-back reset must not have sent a mail.
+    if (!didReset) continue;
+    if (!candidate.emailTo) result.noEmailAddress.push(candidate.userId);
+    else if (await deps.sendEmail(candidate.emailTo, candidate.displayName ?? undefined)) result.emailed += 1;
+    else result.emailFailed.push(candidate.userId);
   }
   return result;
 }

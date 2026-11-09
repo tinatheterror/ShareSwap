@@ -6,6 +6,7 @@ import {
   applySandboxReset, APPROVAL_ACTIVITY_TYPE, APPROVAL_COINS_DESCRIPTION, describeResetPlan, findSandboxApprovedVerifications, plannedReversal, RESET_NOTIFICATION_MESSAGE,
   RESET_NOTIFICATION_TYPE, RESET_REASON, RESET_STATUS, REVERSAL_TYPE,
 } from "./persona-sandbox-reset.js";
+import { sendVerificationResetEmail } from "./mail.js";
 import { parseArgs } from "./scripts/reset-sandbox-verifications.js";
 import { getIdVerificationSummary } from "./verification.js";
 
@@ -15,6 +16,11 @@ const daysAgo = (n: number) => new Date(Date.now() - n * DAY);
 const cutoff = daysAgo(1); // "the production key went live a day ago"
 const KEYS = ["plain", "mixed", "pending", "rejected", "legacy", "double", "prior"] as const;
 // Score and ShareCoins before the reset. double has less than the grants (the score 80 < 100, coins already spent: 3 < 10); prior was reversed before.
+// Who can be emailed: plain and prior have an address; mixed has none (its username is not an address); double has one but is banned.
+const MAIL: Record<(typeof KEYS)[number], { email?: string; displayName?: string; accountStatus?: string }> = {
+  plain: { email: `plain-${unique}@example.test`, displayName: "Plain Pat" }, mixed: {}, pending: {}, rejected: {}, legacy: {},
+  double: { email: `double-${unique}@example.test`, accountStatus: "banned" }, prior: { email: `prior-${unique}@example.test` },
+};
 const START: Record<(typeof KEYS)[number], { score: number; coins: string }> = {
   plain: { score: 60, coins: "7.00" }, mixed: { score: 120, coins: "12.00" }, pending: { score: 33, coins: "1.00" }, rejected: { score: 44, coins: "2.00" },
   legacy: { score: 70, coins: "9.00" }, double: { score: 80, coins: "3.00" }, prior: { score: 10, coins: "4.00" },
@@ -28,7 +34,7 @@ const approved = (userId: number, inquiry: string | null, createdAt: Date) =>
 before(async () => {
   for (const key of KEYS) {
     const verified = key !== "double" && key !== "pending" && key !== "rejected" && key !== "prior";
-    const [u] = await db.insert(users).values({ username: `${unique}-${key}`, password: "x", emailVerified: true, isVerified: verified, verifiedAt: verified ? daysAgo(2) : null, trustScore: START[key].score, reputationLevel: "Newcomer", shareCoins: START[key].coins }).returning();
+    const [u] = await db.insert(users).values({ username: `${unique}-${key}`, password: "x", emailVerified: true, isVerified: verified, verifiedAt: verified ? daysAgo(2) : null, trustScore: START[key].score, reputationLevel: "Newcomer", shareCoins: START[key].coins, ...MAIL[key] }).returning();
     ids[key] = u.id;
   }
   await db.insert(verifications).values([
@@ -90,6 +96,7 @@ test("the dry run lists Persona approvals before the cutoff, and only those", as
   assert.match(text, new RegExp(`user ${ids.double} .*takes back 100 trust points and 10 ShareCoins`));
   assert.match(text, new RegExp(`user ${ids.mixed} .*takes back 50 trust points and 5 ShareCoins`), "mixed's real grant after the cutoff is not planned");
   assert.match(text, new RegExp(`user ${ids.prior} .*takes back 0 trust points and 0 ShareCoins`), "already reversed once");
+  assert.match(text, /Each member gets an in-app notification; 2 of 4 will also be emailed \(2 have no usable address or a deleted or banned account\)/);
   assert.match(text, /Total to take back: \d+ trust points and \d+ ShareCoins/);
   const plans = Object.fromEntries(found.map((c) => [c.userId, plannedReversal(c)]));
   assert.deepEqual([plans[ids.plain], plans[ids.mixed], plans[ids.double], plans[ids.prior]], [{ trust: 50, coins: 5 }, { trust: 50, coins: 5 }, { trust: 100, coins: 10 }, { trust: 0, coins: 0 }]);
@@ -109,12 +116,24 @@ test("the options: --apply and a valid --before", () => {
   assert.match(parseArgs(["--before=yesterday"]).error ?? "", /ISO time/);
 });
 
+const mailed: Array<{ to: string; name?: string; statusWhenSent: string | undefined }> = [];
+// A fake mailer that looks at the database when it is called: the reset must already be committed. prior's mail "fails".
+const fakeMailer = async (to: string, name?: string) => {
+  const userId = to.startsWith("plain-") ? ids.plain : to.startsWith("prior-") ? ids.prior : -1;
+  mailed.push({ to, name, statusWhenSent: (await rowsOf(userId))[0]?.status ?? undefined });
+  return !to.startsWith("prior-");
+};
+
 test("--apply resets the approvals, clears the badge, records the reason and notifies each member once", async () => {
-  const result = await applySandboxReset(await mine({ before: cutoff }));
+  const result = await applySandboxReset(await mine({ before: cutoff }), { sendEmail: fakeMailer });
   assert.deepEqual(result, {
     members: 4, verificationsReset: 5, badgesCleared: 1, notified: 4, trustPointsTakenBack: 50 + 50 + 80 + 0, shareCoinsTakenBack: 5 + 5 + 3 + 0,
-    shortfalls: [{ userId: ids.double, trust: 20, coins: 7 }], failed: [],
+    shortfalls: [{ userId: ids.double, trust: 20, coins: 7 }], emailed: 1, emailFailed: [ids.prior], noEmailAddress: [ids.mixed, ids.double].sort((a, b) => a - b), failed: [],
   });
+  // Email: to the member's own address only, after the commit; none for an addressless or banned account; a failed send is reported.
+  assert.deepEqual(mailed.map((m) => [m.to, m.name, m.statusWhenSent]).sort(), [
+    [`plain-${unique}@example.test`, "Plain Pat", RESET_STATUS], [`prior-${unique}@example.test`, null, RESET_STATUS],
+  ].map(([a, b, c]) => [a, b ?? undefined, c]).sort());
 
   const [plain] = await rowsOf(ids.plain);
   assert.deepEqual([plain.status, plain.idNumber], [RESET_STATUS, RESET_REASON]);
@@ -168,8 +187,38 @@ test("--apply resets the approvals, clears the badge, records the reason and not
 test("running it again finds nothing and notifies nobody twice", async () => {
   assert.deepEqual(await mine({ before: cutoff }), []);
   // Even the old candidate list, applied again, changes nothing: rows that are no longer "approved" are skipped.
-  const stale = [{ userId: ids.plain, username: null, verificationIds: [(await rowsOf(ids.plain))[0].id], inquiryIds: [], firstCreatedAt: null, lastCreatedAt: null, isVerified: true, trustGrants: [{ id: 1, amount: 50 }], coinGrants: [{ id: 1, amount: 5 }] }];
-  assert.deepEqual(await applySandboxReset(stale), { members: 0, verificationsReset: 0, badgesCleared: 0, notified: 0, trustPointsTakenBack: 0, shareCoinsTakenBack: 0, shortfalls: [], failed: [] });
+  const stale = [{ userId: ids.plain, username: null, verificationIds: [(await rowsOf(ids.plain))[0].id], inquiryIds: [], firstCreatedAt: null, lastCreatedAt: null, isVerified: true, emailTo: `plain-${unique}@example.test`, displayName: null, trustGrants: [{ id: 1, amount: 50 }], coinGrants: [{ id: 1, amount: 5 }] }];
+  mailed.length = 0;
+  assert.deepEqual(await applySandboxReset(stale, { sendEmail: fakeMailer }), { members: 0, verificationsReset: 0, badgesCleared: 0, notified: 0, trustPointsTakenBack: 0, shareCoinsTakenBack: 0, shortfalls: [], emailed: 0, emailFailed: [], noEmailAddress: [], failed: [] });
+  assert.deepEqual(mailed, [], "nobody is emailed twice");
   assert.equal((await notesOf(ids.plain)).length, 1);
   assert.deepEqual(await walletOf(ids.plain), { score: 10, level: "Newcomer", coins: "2.00" }, "a second run takes nothing more");
+});
+
+test("the email: sent through Resend to the member's own address, with the wording and the verification link", async () => {
+  const saved = [process.env.RESEND_API_KEY, process.env.EMAIL_FROM];
+  process.env.RESEND_API_KEY = "re_test_key";
+  process.env.EMAIL_FROM = "support@shareswap.test";
+  const realFetch = globalThis.fetch;
+  const sent: any[] = [];
+  globalThis.fetch = (async (input: any, init?: any) => {
+    if (String(input?.url ?? input).includes("api.resend.com")) { sent.push(JSON.parse(init.body)); return new Response("{}", { status: 200 }); }
+    return realFetch(input, init);
+  }) as typeof fetch;
+  try {
+    assert.equal(await sendVerificationResetEmail("member@example.test", "Pat"), true);
+    assert.equal(sent.length, 1);
+    const [mail] = sent;
+    assert.deepEqual([mail.to, mail.from, mail.subject], ["member@example.test", "support@shareswap.test", "ShareSwap: please verify your identity again"]);
+    for (const part of [mail.text, mail.html]) {
+      for (const needle of [/Hi Pat,/, /recorded in a test mode, so your ID was not actually checked/, /our mistake, and we are sorry/, /trust points and ShareCoins/, /\/verification/, /agree to how your ID and face data are handled/]) assert.match(part, needle);
+    }
+    assert.doesNotMatch(mail.subject + mail.text, /csrf|token|sandbox/i, "no jargon in front of the member");
+    assert.match(mail.text, /^Hi Pat,\n\n/);
+    process.env.RESEND_API_KEY = "";
+    assert.equal(await sendVerificationResetEmail("member@example.test"), false, "a failed send reports false and does not throw");
+  } finally {
+    globalThis.fetch = realFetch;
+    for (const [i, name] of ["RESEND_API_KEY", "EMAIL_FROM"].entries()) { if (saved[i] === undefined) delete process.env[name]; else process.env[name] = saved[i]; }
+  }
 });

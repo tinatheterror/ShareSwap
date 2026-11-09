@@ -8,7 +8,8 @@ import { applySandboxReset, describeResetPlan, findSandboxApprovedVerifications 
 //   ALLOW_NON_TEST_DATABASE=<database name> pnpm --filter @workspace/api-server run persona:reset-sandbox --apply --before=<ISO time>
 // --before is the moment the production key went live (verifications created after it are real and are never touched); --apply refuses without it.
 // --apply is refused unless DATABASE_URL is a test database or ALLOW_NON_TEST_DATABASE names this database (same rule as the other cleanups).
-// Not undone: the trust score and ShareCoins the simulated approval granted. See src/persona-sandbox-reset.ts.
+// It also takes back the trust score and ShareCoins each simulated approval granted (never below 0; the dry run shows the amounts), with a ledger row
+// per grant, so verifying again does not give them twice. See src/persona-sandbox-reset.ts.
 
 export function parseArgs(argv: string[]): { apply: boolean; before?: Date; error?: string } {
   const apply = argv.includes("--apply");

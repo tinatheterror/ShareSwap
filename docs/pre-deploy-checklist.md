@@ -43,11 +43,13 @@ Names only. Set them in the deployment that serves the API AND in the Scheduled 
 | **`STRIPE_DISPUTE_WEBHOOK_SECRET`** | **set before real payments**; the signing secret of the dispute endpoint in step 4. Without it the boot logs a warning and every dispute event is rejected: nothing is recorded, no admin is alerted, no owner is asked for evidence | new behaviour depends on it |
 | **`CHARGEBACK_RECOVERY_FROM_OWNERS`** | **unset.** Only the exact value `true` turns on charging owners' wallets for chargebacks, so never set it at launch (not even to `false`; unset is the clean state). The launch policy is that ShareSwap absorbs the loss and the fee | policy |
 | `BIOMETRIC_CONSENT_RETAIN_AFTER_DELETION` | unset (the minimal consent record is kept after an account is deleted); `false` deletes it with the account. Counsel's call, see go-live-checklist | new |
-| `PERSONA_API_KEY` | set in the API deployment **and** the scheduled deletion job (account deletion redacts the member's Persona inquiries with it) | existing key, new use |
+| **`PERSONA_API_KEY`** | **the production key (`persona_production_...`)**, in the API deployment **and** the scheduled deletion job (account deletion redacts the member's Persona inquiries with it). A `persona_sandbox_` key in production simulates every check, so the server refuses it: the boot log has an error line starting `[persona] PERSONA_API_KEY is a SANDBOX key` and `/api/persona/create-inquiry` and `/api/persona/inquiry-complete` answer 503 | existing key, new use |
+| `PERSONA_TEMPLATE_ID` | the inquiry template as it exists in Persona's **Production** environment (a template id from the sandbox may not exist there) | existing |
 | `TERMS_ENFORCEMENT` | unset | existing |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `MODERATION_EMAIL`, `BANNED_EMAIL_HASH_KEY` | set | existing |
 | `SCHEDULED_JOBS_EXPIRY_MODE`, `SCHEDULED_JOBS_HANDOFF_MODE` | your decision (default is dry-run) | existing |
 
+- [ ] **Persona is real, not simulated:** Persona plan active, production key (`persona_production_`) set, template confirmed in Production, 30-day auto-redaction set by Persona. Until all four are true, do not let members verify: the consent text and Privacy Policy promise deletion about 30 days after a decision. After the deploy, the boot log has no `[persona] PERSONA_API_KEY is a SANDBOX key` line. Then run section 10 (reset the verifications a sandbox key approved).
 - [ ] The `overdue-reminders` job must be running live: the 48-hour dispute alerts are sent from the same sweep (every 6 hours in the scheduled job, so an alert arrives 42 to 48 hours ahead). Check there is no `job_switches` row for `overdue-reminders` set to `off` or `dry-run`.
 - [ ] `TERMS_VERSION` is not changed by this release. Bump it later, after counsel, per go-live-checklist.
 
@@ -100,7 +102,7 @@ WHERE EXISTS (SELECT 1 FROM verifications v WHERE v.user_id = u.id AND v.status 
   AND NOT EXISTS (SELECT 1 FROM biometric_consents c WHERE c.user_id = u.id);
 ```
 
-Add `AND u.account_status IS DISTINCT FROM 'deleted'` to leave out deleted accounts. To see who (ids only, no names), replace `count(*) AS verified_without_consent` with `u.id, (SELECT min(v.created_at) FROM verifications v WHERE v.user_id = u.id AND v.status = 'approved') AS verified_at` and add `ORDER BY verified_at`. A member who agreed at an older version of the wording does have a row, so they are not counted here; to count them too, change the last line to `AND NOT EXISTS (SELECT 1 FROM biometric_consents c WHERE c.user_id = u.id AND c.version = '2026-11-09')` (the current `BIOMETRIC_CONSENT_VERSION`). Nothing is changed for these members: the consent only gates starting a new Persona inquiry. What to do about them is on the counsel list in go-live-checklist.md.
+Add `AND u.account_status IS DISTINCT FROM 'deleted'` to leave out deleted accounts. To see who (ids only, no names), replace `count(*) AS verified_without_consent` with `u.id, (SELECT min(v.created_at) FROM verifications v WHERE v.user_id = u.id AND v.status = 'approved') AS verified_at` and add `ORDER BY verified_at`. A member who agreed at an older version of the wording does have a row, so they are not counted here; to count them too, change the last line to `AND NOT EXISTS (SELECT 1 FROM biometric_consents c WHERE c.user_id = u.id AND c.version = '2026-11-09.2')` (the current `BIOMETRIC_CONSENT_VERSION`; check biometric-consent.ts, it changes whenever the wording does). Nothing is changed for these members: the consent only gates starting a new Persona inquiry. What to do about them is on the counsel list in go-live-checklist.md.
 
 ## 9. Persona sandbox check (once, before launch)
 
@@ -114,3 +116,12 @@ It creates a test inquiry (reference id `user_sandbox_<time>`), finds its accoun
 
 - [ ] Every step passes. A FAIL on "find the account by reference id" means accounts are not tied to `user_<id>` as assumed (deletion will then redact inquiries only; send the output to whoever maintains the deletion code). A FAIL after "redact the inquiry" means the endpoint or the key's permissions are wrong, and deletions will end in `failed` rows and admin notices.
 
+## 10. Reset verifications that a sandbox key approved (production, once)
+
+Production ran with a `persona_sandbox_` key, so every verification so far was simulated: nobody's ID was checked. After the production key is live, take those members back to "not verified" and tell them to verify again. Run it from `artifacts/api-server` with the production environment; the script is a dry run by default.
+
+1. [ ] **Dry run:** `pnpm run persona:reset-sandbox`. It lists every member whose verification was approved through Persona (status `approved` with an inquiry id; older approvals without one are not Persona's and are never touched) and prints the `--before` value to use.
+2. [ ] Decide the cutoff. `--before=<ISO time>` is the moment the production key went live: a verification created after it is real and is never reset. If you run this before any member has verified with the production key, "now" is right; otherwise use the time of the switch. `--apply` refuses without it.
+3. [ ] **Apply:** `ALLOW_NON_TEST_DATABASE=<the production database name> pnpm run persona:reset-sandbox --apply --before=<ISO time>` (the override on that one command only, as in step 5). For each member it sets the verification to status `reset` with `id_number` `SANDBOX_RESET` (that is the recorded reason), clears `is_verified` and `verified_at` unless the member still has another approved ID, and adds one in-app notification ("Please verify your identity again"). It prints the counts and any member it failed on; running it again is safe (a reset row is no longer approved, so nobody is notified twice).
+4. [ ] Not undone by the script: the +50 trust score and 5 ShareCoins that each simulated approval granted. Decide whether to reverse them by hand.
+5. [ ] The notice is an in-app notification only (the same as the approval and failure notices): no push or email is sent.

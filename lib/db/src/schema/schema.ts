@@ -201,12 +201,14 @@ export const personaRedactions = pgTable("persona_redactions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
   inquiryId: text("inquiry_id").notNull(),
-  status: text("status").notNull().default("pending"), // 'pending' | 'redacted'
+  status: text("status").notNull().default("pending"), // 'pending' | 'redacted' | 'failed' (gave up after the cap, 0031)
   attempts: integer("attempts").notNull().default(0),
   lastError: text("last_error"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastAttemptAt: timestamp("last_attempt_at"),
   redactedAt: timestamp("redacted_at"),
+  failedAt: timestamp("failed_at"),
+  adminNotifiedAt: timestamp("admin_notified_at"),
 }, (table) => ({
   inquiryUidx: uniqueIndex("persona_redactions_inquiry_uidx").on(table.inquiryId),
 }));

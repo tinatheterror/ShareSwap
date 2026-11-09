@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { and, eq, inArray } from "drizzle-orm";
-import { db, personaRedactions, pool, users, verifications } from "@workspace/db";
+import { db, notifications, personaRedactions, pool, users, verifications } from "@workspace/db";
 import { hashPassword } from "../auth.js";
-import { createPersonaRedactor, queuePersonaRedactions, runPersonaRedactions } from "./persona-redaction.js";
+import {
+  createPersonaRedactor, PERSONA_REDACTION_FAILED_NOTIFICATION, PERSONA_REDACTION_MAX_ATTEMPTS, PERSONA_REDACTION_MAX_AGE_MS, queuePersonaRedactions, runPersonaRedactions,
+} from "./persona-redaction.js";
 import { finalizeDeletion, finalizeDueDeletions, type DeletionDeps } from "./service.js";
 
 const UNIQUE = `persona-redaction-${Date.now()}`;
@@ -26,6 +28,7 @@ before(() => {});
 after(async () => {
   try {
     if (userIds.length) {
+      await db.delete(notifications).where(inArray(notifications.userId, userIds));
       await db.delete(personaRedactions).where(inArray(personaRedactions.userId, userIds));
       await db.delete(verifications).where(inArray(verifications.userId, userIds));
       await db.delete(users).where(inArray(users.id, userIds));
@@ -126,7 +129,7 @@ test("when Persona is down the deletion still completes, the inquiries stay pend
   assert.deepEqual(rows.map((r) => [r.status, r.attempts, r.lastError]), [["pending", 1, "Persona answered 503"], ["pending", 1, "Persona answered 503"]]);
 
   // Still down: another pass records another attempt.
-  assert.deepEqual(await runPersonaRedactions(down.redactPersonaInquiry, { userId }), { tried: 2, redacted: 0, failed: 2 });
+  assert.deepEqual(await runPersonaRedactions(down.redactPersonaInquiry, { userId }), { tried: 2, redacted: 0, failed: 2, gaveUp: 0 });
   assert.deepEqual((await tasks(userId)).map((r) => r.attempts), [2, 2]);
 
   // Persona is back: the next live deletion sweep redacts what is pending (and only a live run does).
@@ -140,7 +143,7 @@ test("when Persona is down the deletion still completes, the inquiries stay pend
   assert.deepEqual(rows.map((r) => [r.status, r.attempts, r.lastError]), [["redacted", 3, null], ["redacted", 3, null]]);
 
   seen.length = 0;
-  assert.deepEqual(await runPersonaRedactions(back, { userId }), { tried: 0, redacted: 0, failed: 0 }, "redacted ones are not tried again");
+  assert.deepEqual(await runPersonaRedactions(back, { userId }), { tried: 0, redacted: 0, failed: 0, gaveUp: 0 }, "redacted ones are not tried again");
   assert.deepEqual(seen, []);
 });
 
@@ -154,7 +157,7 @@ test("one failing inquiry does not stop the others, and without a configured cli
   const other = await member([inq("noclient")]);
   await finalizeDeletion(other, baseDeps);
   assert.deepEqual((await tasks(other)).map((r) => [r.status, r.attempts]), [["pending", 0]], "queued, not attempted, so a later run with a client can do it");
-  assert.deepEqual(await runPersonaRedactions(undefined, { userId: other }), { tried: 0, redacted: 0, failed: 0 });
+  assert.deepEqual(await runPersonaRedactions(undefined, { userId: other }), { tried: 0, redacted: 0, failed: 0, gaveUp: 0 });
 });
 
 test("queueing is repeatable: the same inquiry is never queued twice, and a member with no inquiries queues nothing", async () => {
@@ -165,4 +168,76 @@ test("queueing is repeatable: the same inquiry is never queued twice, and a memb
   const none = await member([null]);
   assert.equal(await queuePersonaRedactions(db, none), 0);
   assert.equal((await tasks(none)).length, 0);
+});
+
+
+// ── The retry cap: 10 attempts or 7 days, then failed, and the admins are told once ──
+async function queued(label: string) {
+  const userId = await member([inq(label)]);
+  await db.update(users).set({ accountStatus: "deleted" }).where(eq(users.id, userId));
+  await queuePersonaRedactions(db, userId);
+  return userId;
+}
+const fails = async () => { throw new Error("Persona answered 503"); };
+const noteCount = async (userId: number) => (await db.select().from(notifications).where(eq(notifications.userId, userId))).filter((n) => n.type === PERSONA_REDACTION_FAILED_NOTIFICATION).length;
+
+test("the 10th failed attempt marks the row failed and notifies the admins once; failed rows are never tried again", async () => {
+  const userId = await queued("cap-attempts");
+  const admin = userId; // a real user standing in for an admin, so no admin account is created for other suites to alert
+  const adminIds = async () => [admin];
+  await db.update(personaRedactions).set({ attempts: PERSONA_REDACTION_MAX_ATTEMPTS - 2 }).where(eq(personaRedactions.userId, userId));
+
+  const ninth = await runPersonaRedactions(fails, { userId, adminIds });
+  assert.deepEqual([ninth.failed, ninth.gaveUp], [1, 0]);
+  assert.deepEqual((await tasks(userId)).map((r) => [r.status, r.attempts]), [["pending", PERSONA_REDACTION_MAX_ATTEMPTS - 1]]);
+  assert.equal(await noteCount(admin), 0, "not yet");
+
+  const tenth = await runPersonaRedactions(fails, { userId, adminIds });
+  assert.deepEqual([tenth.failed, tenth.gaveUp], [1, 1]);
+  const [row] = await tasks(userId);
+  assert.deepEqual([row.status, row.attempts, row.lastError], ["failed", PERSONA_REDACTION_MAX_ATTEMPTS, "Persona answered 503"]);
+  assert.ok(row.failedAt && row.adminNotifiedAt);
+  assert.equal(await noteCount(admin), 1);
+  const [note] = (await db.select().from(notifications).where(eq(notifications.userId, admin))).filter((n) => n.type === PERSONA_REDACTION_FAILED_NOTIFICATION);
+  assert.match(note.message, new RegExp(inq("cap-attempts")));
+  assert.match(note.message, /Persona dashboard/);
+
+  const calls: string[] = [];
+  assert.deepEqual(await runPersonaRedactions(async (id) => void calls.push(id), { userId, adminIds }), { tried: 0, redacted: 0, failed: 0, gaveUp: 0 });
+  assert.deepEqual(calls, [], "a failed row is not retried");
+  assert.equal(await noteCount(admin), 1, "and nobody is told twice");
+});
+
+test("a row queued for 7 days is given up on at its next failure, even with few attempts", async () => {
+  const userId = await queued("cap-age");
+  const now = new Date();
+  await db.update(personaRedactions).set({ createdAt: new Date(now.getTime() - PERSONA_REDACTION_MAX_AGE_MS - 1000) }).where(eq(personaRedactions.userId, userId));
+  const result = await runPersonaRedactions(fails, { userId, now: () => now, adminIds: async () => [userId] });
+  assert.equal(result.gaveUp, 1);
+  const [row] = await tasks(userId);
+  assert.deepEqual([row.status, row.attempts], ["failed", 1]);
+  assert.equal(await noteCount(userId), 1);
+
+  const young = await queued("cap-young");
+  await db.update(personaRedactions).set({ createdAt: new Date(now.getTime() - PERSONA_REDACTION_MAX_AGE_MS + 3_600_000) }).where(eq(personaRedactions.userId, young));
+  assert.equal((await runPersonaRedactions(fails, { userId: young, now: () => now, adminIds: async () => [young] })).gaveUp, 0, "an hour short of 7 days keeps trying");
+  assert.equal((await tasks(young))[0].status, "pending");
+});
+
+test("success on the last allowed attempt, or long after queueing, is still a success", async () => {
+  const userId = await queued("cap-success");
+  await db.update(personaRedactions).set({ attempts: PERSONA_REDACTION_MAX_ATTEMPTS - 1, createdAt: new Date(Date.now() - 30 * 86_400_000) }).where(eq(personaRedactions.userId, userId));
+  const result = await runPersonaRedactions(async () => {}, { userId, adminIds: async () => [userId] });
+  assert.deepEqual([result.redacted, result.gaveUp], [1, 0]);
+  assert.deepEqual((await tasks(userId)).map((r) => [r.status, r.attempts]), [["redacted", PERSONA_REDACTION_MAX_ATTEMPTS]]);
+  assert.equal(await noteCount(userId), 0);
+});
+
+test("two sweeps giving up on the same row at once notify once", async () => {
+  const userId = await queued("cap-race");
+  await db.update(personaRedactions).set({ attempts: PERSONA_REDACTION_MAX_ATTEMPTS - 1 }).where(eq(personaRedactions.userId, userId));
+  const adminIds = async () => [userId];
+  await Promise.all([runPersonaRedactions(fails, { userId, adminIds }), runPersonaRedactions(fails, { userId, adminIds })]);
+  assert.equal(await noteCount(userId), 1);
+  assert.equal((await tasks(userId))[0].status, "failed");
 });

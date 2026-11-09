@@ -426,16 +426,24 @@ export async function ensureBiometricConsentsTable() {
 
 const PERSONA_REDACTIONS_FILE = "lib/db/scripts/0030_persona_redactions.sql";
 
-/** persona_redactions (0030): account deletion writes to it in the same transaction as the erasure, so a missing table would stop every deletion. */
+const PERSONA_REDACTION_CAPS_FILE = "lib/db/scripts/0031_persona_redaction_caps.sql";
+
+/** persona_redactions (0030) and its failed_at / admin_notified_at columns (0031): account deletion writes to it in the same transaction as the erasure. */
 export async function ensurePersonaRedactionsTable() {
   const { rows } = await pool.query(`SELECT to_regclass('persona_redactions') IS NOT NULL AS present`);
-  if (rows[0]?.present === true) return;
-  try {
-    await runMigrationFile(PERSONA_REDACTIONS_FILE);
-  } catch (err) {
-    const code = (err as { code?: string }).code;
-    if (code !== "42P07" && code !== "23505") throw err;
+  if (rows[0]?.present !== true) {
+    try {
+      await runMigrationFile(PERSONA_REDACTIONS_FILE);
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      if (code !== "42P07" && code !== "23505") throw err;
+    }
   }
+  const caps = await pool.query(
+    `SELECT (SELECT count(*) FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'persona_redactions'
+              AND column_name IN ('failed_at', 'admin_notified_at')) = 2 AS present`,
+  );
+  if (caps.rows[0]?.present !== true) await runMigrationFile(PERSONA_REDACTION_CAPS_FILE);
 }
 
 export async function applyStartupMigrations() {

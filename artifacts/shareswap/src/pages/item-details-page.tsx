@@ -504,7 +504,7 @@ export default function ItemDetailsPage() {
                       </Link>
                       <div className="shadow-sm rounded-full">
                         <UserBadges
-                          idVerified={(item as any).owner.idVerified}
+                          isVerified={(item as any).owner.isVerified}
                           reputationLevel={(item as any).owner.reputationLevel}
                           size="sm"
                         />

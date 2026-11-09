@@ -60,7 +60,7 @@ interface BrowseItem {
     id: number;
     username: string;
     displayName?: string | null;
-    idVerified: boolean;
+    isVerified: boolean;
   };
   recommendationReasons?: string[];
 }
@@ -411,7 +411,7 @@ function GiftCard({ item, colors, router }: { item: BrowseItem; colors: any; rou
             <Text style={{ fontFamily: "Inter_600SemiBold" }}>Condition:</Text>{" "}
             {item.conditionRating ?? 8}/10
           </Text>
-          {item.owner?.idVerified && (
+          {item.owner?.isVerified && (
             <View style={gcard.verifiedPill}>
               <Text style={gcard.verifiedText}>Verified Owner</Text>
             </View>

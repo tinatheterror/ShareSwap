@@ -2,14 +2,14 @@ import { BadgeCheck, Award, Star, Crown, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface UserBadgesProps {
-  idVerified?: boolean;
+  isVerified?: boolean;
   reputationLevel?: string;
   size?: "sm" | "md" | "lg";
   showLabels?: boolean;
 }
 
 export function UserBadges({ 
-  idVerified = false, 
+  isVerified = false, 
   reputationLevel = "Newcomer",
   size = "md",
   showLabels = false
@@ -52,8 +52,11 @@ export function UserBadges({
 
   return (
     <div className="flex items-center gap-1">
-      {idVerified && (
-        <BadgeCheck aria-label="ID verified" role="img" className={`${size === "sm" ? "h-6 w-6" : size === "md" ? "h-8 w-8" : "h-10 w-10"} fill-[#0DCEA1] stroke-white hover:scale-110 transition-transform cursor-pointer`} />
+      {isVerified && (
+        <span title="ID and payment method verified" className="inline-flex items-center gap-1">
+          <BadgeCheck aria-label="ID and payment method verified" role="img" className={`${size === "sm" ? "h-6 w-6" : size === "md" ? "h-8 w-8" : "h-10 w-10"} fill-[#0DCEA1] stroke-white hover:scale-110 transition-transform cursor-pointer`} />
+          {showLabels && <span className="text-xs font-medium">Verified</span>}
+        </span>
       )}
       {reputationBadge && (
         <Badge className={`${reputationBadge.color} ${badgeSize}`}>

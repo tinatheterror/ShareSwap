@@ -34,7 +34,7 @@ interface PublicProfile {
   displayName?: string;
   bio?: string;
   profilePhoto?: string;
-  idVerified?: boolean;
+  isVerified?: boolean;
   trustScore?: number;
   location?: string;
   neighbourhood?: string;
@@ -76,7 +76,7 @@ interface Review {
     displayName?: string | null;
     profilePhoto?: string | null;
     handle?: string | null;
-    idVerified?: boolean;
+    isVerified?: boolean;
     reputationLevel?: string | null;
   };
 }
@@ -400,8 +400,8 @@ function ReviewsCarousel({
                     >
                       {reviewerName}
                     </Text>
-                    {review.reviewer.idVerified ? (
-                      <View style={{ width: 16, height: 16 }}>
+                    {review.reviewer.isVerified ? (
+                      <View style={{ width: 16, height: 16 }} accessibilityRole="image" accessibilityLabel="ID and payment method verified">
                         <MaterialCommunityIcons name="check-decagram" size={20} color="white" style={{ position: "absolute", top: -2, left: -2 }} />
                         <MaterialCommunityIcons name="check-decagram" size={16} color="#0DCEA1" style={{ position: "absolute" }} />
                       </View>
@@ -578,8 +578,8 @@ export default function PublicProfileScreen() {
                 >
                   {displayName}
                 </Text>
-                {profile.idVerified ? (
-                  <View style={{ width: 20, height: 20 }} accessibilityRole="image" accessibilityLabel="ID verified">
+                {profile.isVerified ? (
+                  <View style={{ width: 20, height: 20 }} accessibilityRole="image" accessibilityLabel="ID and payment method verified">
                     <MaterialCommunityIcons name="check-decagram" size={24} color="white" style={{ position: "absolute", top: -2, left: -2 }} />
                     <MaterialCommunityIcons name="check-decagram" size={20} color="#0DCEA1" style={{ position: "absolute" }} />
                   </View>

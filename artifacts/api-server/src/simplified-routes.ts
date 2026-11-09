@@ -237,7 +237,6 @@ export function addSimplifiedRoutes(app: Express) {
           username: users.username,
           displayName: users.displayName,
           isVerified: users.isVerified,
-          idVerified: users.idVerified,
         })
         .from(wishlists)
         .innerJoin(users, eq(users.id, wishlists.userId))
@@ -305,7 +304,6 @@ export function addSimplifiedRoutes(app: Express) {
         rating: 4.8,
         totalTransactions: 20,
         isVerified: true,
-        idVerified: true,
         subscription: "ShareSwap Premium"
       };
 
@@ -341,7 +339,6 @@ export function addSimplifiedRoutes(app: Express) {
         rating: 4.8,
         totalTransactions: 20,
         isVerified: true,
-        idVerified: true,
         subscription: "ShareSwap Premium"
       };
 

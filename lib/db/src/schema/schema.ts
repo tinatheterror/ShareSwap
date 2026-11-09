@@ -22,8 +22,7 @@ export const users = pgTable("users", {
   pendingEmail: text("pending_email"), // New email awaiting confirmation via link
   passwordResetToken: text("password_reset_token"),
   passwordResetExpires: timestamp("password_reset_expires"),
-  isVerified: boolean("is_verified").default(false), // ID approved AND a card on file (gates borrowing and renting)
-  idVerified: boolean("id_verified").notNull().default(false), // an approved ID verification, card or not (the "ID verified" badge; 0027)
+  isVerified: boolean("is_verified").default(false),
   verifiedAt: timestamp("verified_at"),
   profilePhoto: text("profile_photo"), // URL to uploaded profile photo
   hasUploadedProfilePhoto: boolean("has_uploaded_profile_photo").default(false), // For one-time bonus tracking

@@ -50,7 +50,7 @@ interface ItemWithDistance extends SelectItem {
   owner?: {
     id: number;
     username: string;
-    idVerified: boolean;
+    isVerified: boolean;
     reputationLevel: string;
   };
 }
@@ -730,7 +730,7 @@ export default function BorrowPage() {
                             <span className="font-medium">Condition:</span>{" "}
                             {filteredGiftItems[giftCarouselIndex].conditionRating || 8}/10
                           </span>
-                          {filteredGiftItems[giftCarouselIndex].owner?.idVerified && (
+                          {filteredGiftItems[giftCarouselIndex].owner?.isVerified && (
                             <span className="text-[10px] px-1 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
                               Verified Owner
                             </span>
@@ -830,7 +830,7 @@ export default function BorrowPage() {
                           <span className="font-medium">Condition:</span>{" "}
                           {item.conditionRating || 8}/10
                         </span>
-                        {item.owner?.idVerified && (
+                        {item.owner?.isVerified && (
                           <span className="text-[10px] md:text-xs px-1 md:px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
                             Verified Owner
                           </span>
@@ -1021,7 +1021,7 @@ export default function BorrowPage() {
                                     </span>{" "}
                                     {currentItem.conditionRating || 8}/10
                                   </span>
-                                  {currentItem.owner?.idVerified && (
+                                  {currentItem.owner?.isVerified && (
                                     <span className="text-[10px] px-1 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
                                       Verified Owner
                                     </span>
@@ -1222,7 +1222,7 @@ export default function BorrowPage() {
                             <span className="font-medium">Condition:</span>{" "}
                             {item.conditionRating || 8}/10
                           </span>
-                          {item.owner?.idVerified && (
+                          {item.owner?.isVerified && (
                             <span className="text-[10px] md:text-xs px-1 md:px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
                               Verified Owner
                             </span>

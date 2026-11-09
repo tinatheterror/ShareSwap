@@ -61,7 +61,7 @@ interface PublicProfile {
   username: string;
   displayName: string | null;
   profilePhoto: string | null;
-  idVerified: boolean;
+  isVerified: boolean;
   trustScore: number;
   lastActiveAt: string | null;
   reviewCount: number;
@@ -1430,8 +1430,8 @@ export default function ChatScreen() {
                 >
                   {partnerName || "Loading…"}
                 </Text>
-                {partner?.idVerified && (
-                  <View style={{ width: 18, height: 18 }}>
+                {partner?.isVerified && (
+                  <View style={{ width: 18, height: 18 }} accessibilityRole="image" accessibilityLabel="ID and payment method verified">
                     <MaterialCommunityIcons name="check-decagram" size={22} color="white" style={{ position: "absolute", top: -2, left: -2 }} />
                     <MaterialCommunityIcons name="check-decagram" size={18} color="#0DCEA1" style={{ position: "absolute" }} />
                   </View>

@@ -42,7 +42,7 @@ interface WishlistItem {
   // flat user fields returned by /api/all-wishlists (community tab)
   username?: string;
   displayName?: string;
-  idVerified?: boolean;
+  isVerified?: boolean;
 }
 
 const NEED_TYPES = [

@@ -40,6 +40,7 @@ interface UserProfile {
   reputationLevel?: string;
   paymentMethodLast4?: string | null;
   idVerified?: boolean;
+  isVerified?: boolean;
   profilePhoto?: string | null;
 }
 
@@ -250,8 +251,8 @@ export default function ProfileScreen() {
                 <Text style={[styles.displayName, { color: colors.foreground }]}>
                   {displayName}
                 </Text>
-                {user.idVerified ? (
-                  <View style={{ width: 18, height: 18 }} accessibilityRole="image" accessibilityLabel="ID verified">
+                {user.isVerified ? (
+                  <View style={{ width: 18, height: 18 }} accessibilityRole="image" accessibilityLabel="ID and payment method verified">
                     <MaterialCommunityIcons name="check-decagram" size={22} color="white" style={{ position: "absolute", top: -2, left: -2 }} />
                     <MaterialCommunityIcons name="check-decagram" size={18} color="#0DCEA1" style={{ position: "absolute" }} />
                   </View>
@@ -307,7 +308,7 @@ export default function ProfileScreen() {
         {/* Verification Status card */}
         <View style={[
           styles.sectionCard,
-          user.idVerified
+          user.isVerified
             ? { backgroundColor: "#D4F7F1" }
             : { backgroundColor: "#FFFBEB" },
         ]}>
@@ -316,7 +317,7 @@ export default function ProfileScreen() {
               <Feather
                 name="shield"
                 size={18}
-                color={user.idVerified ? "#16a34a" : "#d97706"}
+                color={user.isVerified ? "#16a34a" : "#d97706"}
               />
               <Text style={[styles.sectionCardTitle, { color: colors.foreground }]}>
                 Verification Status
@@ -324,11 +325,11 @@ export default function ProfileScreen() {
             </View>
             <View style={[
               styles.verifiedChip,
-              { backgroundColor: user.idVerified ? "#dcfce7" : "#fef3c7",
-                borderColor: user.idVerified ? "#86efac" : "#fcd34d" },
+              { backgroundColor: user.isVerified ? "#dcfce7" : "#fef3c7",
+                borderColor: user.isVerified ? "#86efac" : "#fcd34d" },
             ]}>
-              <Text style={[styles.verifiedChipText, { color: user.idVerified ? "#15803d" : "#92400e" }]}>
-                {user.idVerified ? "ID verified" : "ID not verified"}
+              <Text style={[styles.verifiedChipText, { color: user.isVerified ? "#15803d" : "#92400e" }]}>
+                {user.isVerified ? "Verified" : "Not verified"}
               </Text>
             </View>
           </View>

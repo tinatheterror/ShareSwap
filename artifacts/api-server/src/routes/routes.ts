@@ -2171,7 +2171,6 @@ export function registerRoutes(
                 password: passwordHash,
                 emailVerified: true,
                 isVerified: true,
-                idVerified: true,
                 hasCompletedLocationSetup: true,
                 shareCoins: "20",
                 // Already agreed to the current Terms, so the acceptance screen does not cover the page under test.
@@ -2187,7 +2186,6 @@ export function registerRoutes(
                 password: passwordHash,
                 emailVerified: true,
                 isVerified: true,
-                idVerified: true,
                 hasCompletedLocationSetup: true,
                 shareCoins: "20",
                 // Already agreed to the current Terms, so the acceptance screen does not cover the page under test.
@@ -2678,7 +2676,6 @@ export function registerRoutes(
           .update(users)
           .set({
             isVerified: hasPaymentMethod,
-            idVerified: true,
             verifiedAt: hasPaymentMethod ? new Date() : null,
             fullName: fullName || undefined,
             trustScore: verifiedScore,
@@ -4384,7 +4381,6 @@ Respond with ONLY the category name, nothing else.`
               username: true,
               handle: true,
               isVerified: true,
-              idVerified: true,
               reputationLevel: true,
               accountStatus: true,
             }
@@ -4479,7 +4475,6 @@ Respond with ONLY the category name, nothing else.`
               username: true,
               handle: true,
               isVerified: true,
-              idVerified: true,
               reputationLevel: true,
               accountStatus: true,
             }
@@ -4621,7 +4616,6 @@ Respond with ONLY the category name, nothing else.`
           handle: users.handle,
           displayName: users.displayName,
           isVerified: users.isVerified,
-          idVerified: users.idVerified,
           reputationLevel: users.reputationLevel,
         })
         .from(wishlists)
@@ -4648,7 +4642,7 @@ Respond with ONLY the category name, nothing else.`
           isExpired = new Date(w.neededDate) < today;
         }
 
-        const { username, handle, displayName, isVerified, idVerified, reputationLevel, ...rest } = w;
+        const { username, handle, displayName, isVerified, reputationLevel, ...rest } = w;
         
         return {
           ...rest,
@@ -4661,7 +4655,6 @@ Respond with ONLY the category name, nothing else.`
             handle,
             displayName,
             isVerified,
-            idVerified,
             reputationLevel,
           },
         };
@@ -5179,7 +5172,6 @@ Respond with ONLY the category name, nothing else.`
           handle: users.handle,
           displayName: users.displayName,
           isVerified: users.isVerified,
-          idVerified: users.idVerified,
           isPremium: users.isPremium,
           reputationLevel: users.reputationLevel,
         },
@@ -5623,7 +5615,6 @@ Respond with ONLY the category name, nothing else.`
         displayName: users.displayName,
         profilePhoto: users.profilePhoto,
         isVerified: users.isVerified,
-        idVerified: users.idVerified,
         trustScore: users.trustScore,
         lastActiveAt: users.lastActiveAt,
         bio: users.bio,
@@ -5946,7 +5937,6 @@ Respond with ONLY the category name, nothing else.`
             displayName: users.displayName,
             profilePhoto: users.profilePhoto,
             isVerified: users.isVerified,
-            idVerified: users.idVerified,
             lastActiveAt: users.lastActiveAt,
           })
           .from(users)
@@ -6015,7 +6005,6 @@ Respond with ONLY the category name, nothing else.`
         partnerDisplayName: partner?.displayName || null,
         partnerPhoto: partner?.profilePhoto || null,
         partnerIsVerified: partner?.isVerified || false,
-        partnerIdVerified: partner?.idVerified || false,
         partnerLastActiveAt: partner?.lastActiveAt || null,
         partnerActiveStatus: partnerActiveStatusMap.get(partnerId) || null,
         partnerResponseTime: partnerResponseTimeMap.get(partnerId) || null,
@@ -6869,7 +6858,6 @@ Respond with ONLY the category name, nothing else.`
         reqHandle: users.handle,
         reqDisplayName: users.displayName,
         reqIsVerified: users.isVerified,
-        reqIdVerified: users.idVerified,
         reqReputationLevel: users.reputationLevel,
         ownerUsername: sql<string | null>`(SELECT username FROM users WHERE id = ${items.ownerId})`,
         ownerHandle: sql<string | null>`(SELECT handle FROM users WHERE id = ${items.ownerId})`,
@@ -6973,7 +6961,6 @@ Respond with ONLY the category name, nothing else.`
         handle: r.reqHandle,
         displayName: r.reqDisplayName,
         isVerified: r.reqIsVerified,
-        idVerified: r.reqIdVerified,
         reputationLevel: r.reqReputationLevel,
       },
       owner: {
@@ -11560,7 +11547,6 @@ Respond with ONLY the category name, nothing else.`
           ownerHandle: ownerAlias.handle,
           ownerDisplayName: ownerAlias.displayName,
           ownerIsVerified: ownerAlias.isVerified,
-          ownerIdVerified: ownerAlias.idVerified,
           ownerReputationLevel: ownerAlias.reputationLevel,
           ownerTrustScore: ownerAlias.trustScore,
           ownerAvatar: ownerAlias.avatarUrl,
@@ -11570,7 +11556,6 @@ Respond with ONLY the category name, nothing else.`
           requesterHandle: requesterAlias.handle,
           requesterDisplayName: requesterAlias.displayName,
           requesterIsVerified: requesterAlias.isVerified,
-          requesterIdVerified: requesterAlias.idVerified,
           requesterReputationLevel: requesterAlias.reputationLevel,
           requesterTrustScore: requesterAlias.trustScore,
           requesterAvatar: requesterAlias.avatarUrl,
@@ -13112,7 +13097,6 @@ Respond with ONLY the category name, nothing else.`
           phone: users.phone,
           profilePhoto: users.profilePhoto,
           isVerified: users.isVerified,
-          idVerified: users.idVerified,
           shareCoins: users.shareCoins,
           trustScore: users.trustScore,
           reputationLevel: users.reputationLevel,
@@ -13299,7 +13283,6 @@ Respond with ONLY the category name, nothing else.`
           phone: users.phone,
           profilePhoto: users.profilePhoto,
           isVerified: users.isVerified,
-          idVerified: users.idVerified,
           shareCoins: users.shareCoins,
           trustScore: users.trustScore,
           reputationLevel: users.reputationLevel,
@@ -13330,7 +13313,6 @@ Respond with ONLY the category name, nothing else.`
           phone: users.phone,
           profilePhoto: users.profilePhoto,
           isVerified: users.isVerified,
-          idVerified: users.idVerified,
           shareCoins: users.shareCoins,
           trustScore: users.trustScore,
           reputationLevel: users.reputationLevel,
@@ -14312,7 +14294,6 @@ Respond with ONLY the category name, nothing else.`
           accountStatus: users.accountStatus,
           isAdmin: users.isAdmin,
           isVerified: users.isVerified,
-          idVerified: users.idVerified,
           isPremium: users.isPremium,
           shareCoins: users.shareCoins,
           trustScore: users.trustScore,
@@ -15362,7 +15343,6 @@ Respond with ONLY the category name, nothing else.`
         handle: users.handle,
         displayName: users.displayName,
         isVerified: users.isVerified,
-        idVerified: users.idVerified,
         trustScore: users.trustScore,
         reputationLevel: users.reputationLevel,
         isPremium: users.isPremium,
@@ -15382,7 +15362,6 @@ Respond with ONLY the category name, nothing else.`
           handle: users.handle,
           displayName: users.displayName,
           isVerified: users.isVerified,
-          idVerified: users.idVerified,
           trustScore: users.trustScore,
           reputationLevel: users.reputationLevel,
           isPremium: users.isPremium,
@@ -15483,7 +15462,6 @@ Respond with ONLY the category name, nothing else.`
             username: true,
             handle: true,
             isVerified: true,
-            idVerified: true,
             reputationLevel: true,
           }
         }
@@ -15533,7 +15511,6 @@ Respond with ONLY the category name, nothing else.`
           profilePhoto: users.profilePhoto,
           handle: users.handle,
           isVerified: users.isVerified,
-          idVerified: users.idVerified,
           reputationLevel: users.reputationLevel,
         },
       })

@@ -83,7 +83,7 @@ paymentCurrency?: string | null;
   ownerUsername: string;
   ownerHandle: string | null;
   ownerDisplayName: string | null;
-  ownerIdVerified: boolean;
+  ownerIsVerified: boolean;
   ownerReputationLevel: string | null;
   ownerTrustScore: number | null;
   ownerAvatar: string | null;
@@ -91,7 +91,7 @@ paymentCurrency?: string | null;
   requesterUsername: string;
   requesterHandle: string | null;
   requesterDisplayName: string | null;
-  requesterIdVerified: boolean;
+  requesterIsVerified: boolean;
   requesterReputationLevel: string | null;
   requesterTrustScore: number | null;
   requesterAvatar: string | null;
@@ -279,7 +279,7 @@ function PartyCard({
     id: number;
     username: string;
     displayName: string | null;
-    idVerified: boolean;
+    isVerified: boolean;
     reputationLevel: string | null;
     trustScore: number | null;
     avatar: string | null;
@@ -306,7 +306,7 @@ function PartyCard({
           >
             {displayName}
           </Link>
-          {user.idVerified && <BadgeCheck className="h-4 w-4 text-primary flex-shrink-0" />}
+          {user.isVerified && <span title="ID and payment method verified" className="inline-flex flex-shrink-0"><BadgeCheck aria-label="ID and payment method verified" role="img" className="h-4 w-4 text-primary" /></span>}
         </div>
         <p className="text-xs text-muted-foreground">{role}</p>
         {user.trustScore !== null && (
@@ -467,7 +467,7 @@ export default function TransactionDetailPage() {
                   id: tx.ownerId,
                   username: tx.ownerUsername,
                   displayName: tx.ownerDisplayName,
-                  idVerified: tx.ownerIdVerified,
+                  isVerified: tx.ownerIsVerified,
                   reputationLevel: tx.ownerReputationLevel,
                   trustScore: tx.ownerTrustScore,
                   avatar: tx.ownerAvatar,
@@ -479,7 +479,7 @@ export default function TransactionDetailPage() {
                   id: tx.requesterId,
                   username: tx.requesterUsername,
                   displayName: tx.requesterDisplayName,
-                  idVerified: tx.requesterIdVerified,
+                  isVerified: tx.requesterIsVerified,
                   reputationLevel: tx.requesterReputationLevel,
                   trustScore: tx.requesterTrustScore,
                   avatar: tx.requesterAvatar,

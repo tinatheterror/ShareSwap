@@ -17,7 +17,7 @@ interface ItemDetails {
   photos: string[] | null;
   owner?: {
     username: string;
-    idVerified: boolean;
+    isVerified: boolean;
   };
 }
 
@@ -320,11 +320,11 @@ export default function NotificationsPage() {
                             <span className="font-medium">
                               {matchedItemDetails.owner.username}
                             </span>
-                            {matchedItemDetails.owner.idVerified && (
+                            {matchedItemDetails.owner.isVerified && (
                               <Shield className="h-4 w-4 text-teal-500" />
                             )}
                           </div>
-                          {matchedItemDetails.owner.idVerified ? (
+                          {matchedItemDetails.owner.isVerified ? (
                             <span className="text-xs text-teal-600">Verified user</span>
                           ) : (
                             <span className="text-xs text-gray-500">Not verified</span>

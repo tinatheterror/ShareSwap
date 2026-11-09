@@ -28,7 +28,7 @@ export interface InboxItem {
   partnerUsername: string;
   partnerDisplayName: string | null;
   partnerPhoto: string | null;
-  partnerIdVerified: boolean;
+  partnerIsVerified: boolean;
   partnerLastActiveAt: string | null;
   partnerActiveStatus: string | null;
   lastActivityTime: string;
@@ -127,8 +127,8 @@ export function InboxRow({ item, onPress }: { item: InboxItem; onPress: () => vo
             >
               {partnerName}
             </Text>
-            {item.partnerIdVerified ? (
-              <View style={{ width: 16, height: 16 }}>
+            {item.partnerIsVerified ? (
+              <View style={{ width: 16, height: 16 }} accessibilityRole="image" accessibilityLabel="ID and payment method verified">
                 <MaterialCommunityIcons name="check-decagram" size={20} color="white" style={{ position: "absolute", top: -2, left: -2 }} />
                 <MaterialCommunityIcons name="check-decagram" size={16} color="#0DCEA1" style={{ position: "absolute" }} />
               </View>

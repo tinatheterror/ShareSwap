@@ -56,7 +56,7 @@ export interface Item {
     avatarUrl?: string | null;
     trustScore?: number;
     trustLevel?: string;
-    idVerified?: boolean;
+    isVerified?: boolean;
     reputationLevel?: string;
   };
 }
@@ -149,7 +149,7 @@ export function ItemCard({ item, compact = false }: ItemCardProps) {
               <Text style={{ fontFamily: "Inter_600SemiBold" }}>Condition:</Text> {condLabel}
             </Text>
           ) : null}
-          {item.owner?.idVerified ? (
+          {item.owner?.isVerified ? (
             <View style={[styles.verifiedPill, { borderColor: colors.primary + "30" }]}>
               <Feather name="check-circle" size={9} color={colors.primary} />
               <Text style={[styles.verifiedText, { color: colors.primary }]}>Verified Owner</Text>

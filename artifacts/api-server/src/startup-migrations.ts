@@ -399,15 +399,15 @@ export async function ensureEvidenceUploadsTable() {
   if (purpose.rows[0]?.present !== true) await runMigrationFile(EVIDENCE_UPLOAD_PURPOSE_FILE);
 }
 
-const ID_VERIFIED_FILE = "lib/db/scripts/0027_id_verified.sql";
+const DROP_ID_VERIFIED_FILE = "lib/db/scripts/0028_drop_id_verified.sql";
 
-/** users.id_verified (0027), backfilled from approved verifications. Runs while the column is missing; the badge queries read it. */
-export async function ensureIdVerifiedColumn() {
+/** Drops users.id_verified (0028) wherever the withdrawn migration 0027 had added it. Cheap no-op once the column is gone. */
+export async function ensureIdVerifiedColumnDropped() {
   const { rows } = await pool.query(
     `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'id_verified') AS present`,
   );
-  if (rows[0]?.present === true) return;
-  await runMigrationFile(ID_VERIFIED_FILE);
+  if (rows[0]?.present !== true) return;
+  await runMigrationFile(DROP_ID_VERIFIED_FILE);
 }
 
 export async function applyStartupMigrations() {
@@ -429,7 +429,7 @@ export async function applyStartupMigrations() {
   await ensureDisputeAlertColumns();
   await ensureDisputeDepositExpiryColumns();
   await ensureEvidenceUploadsTable();
-  await ensureIdVerifiedColumn();
+  await ensureIdVerifiedColumnDropped();
   await ensureRentalPayoutHoldUntilDropped();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();

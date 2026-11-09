@@ -148,7 +148,7 @@ describe("ItemCard — null / missing field resilience", () => {
         displayName: null as unknown as string,
         avatarUrl: null,
         trustScore: undefined,
-        idVerified: undefined,
+        isVerified: undefined,
       },
     };
     expect(() => render(item)).not.toThrow();
@@ -215,16 +215,16 @@ describe("ItemCard — sharing flag variations", () => {
   });
 });
 
-describe("ItemCard — the Verified Owner pill follows an approved ID, not ID plus card", () => {
+describe("ItemCard — the Verified Owner pill needs an approved ID and a card (isVerified)", () => {
   const owner = { id: 9, username: "olive", displayName: "Olive", avatarUrl: null, trustScore: 80 };
   const text = (item: Item) => JSON.stringify(render(item).toJSON());
 
-  it("shows it for an owner with an approved ID (idVerified), whether or not they have a card", () => {
-    expect(text({ ...BASE_ITEM, owner: { ...owner, idVerified: true } })).toContain("Verified Owner");
+  it("shows it for an owner with ID and card", () => {
+    expect(text({ ...BASE_ITEM, owner: { ...owner, isVerified: true } })).toContain("Verified Owner");
   });
 
-  it("hides it for an owner without one, and ignores the older isVerified flag", () => {
-    expect(text({ ...BASE_ITEM, owner: { ...owner, idVerified: false } })).not.toContain("Verified Owner");
-    expect(text({ ...BASE_ITEM, owner: { ...owner, isVerified: true } as any })).not.toContain("Verified Owner");
+  it("hides it for an owner without both, including one with an approved ID but no card", () => {
+    expect(text({ ...BASE_ITEM, owner: { ...owner, isVerified: false } })).not.toContain("Verified Owner");
+    expect(text({ ...BASE_ITEM, owner: { ...owner, idVerified: true, isVerified: false } as any })).not.toContain("Verified Owner");
   });
 });

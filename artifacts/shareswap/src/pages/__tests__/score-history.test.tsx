@@ -18,7 +18,7 @@ vi.mock("@/hooks/use-auth", () => ({
       id: 7,
       username: "sam",
       trustScore: 142,
-      idVerified: true,
+      isVerified: true,
     },
   }),
 }));

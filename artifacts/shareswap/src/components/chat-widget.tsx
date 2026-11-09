@@ -90,7 +90,7 @@ type InboxItem = {
   partnerUsername: string;
   partnerDisplayName: string | null;
   partnerPhoto: string | null;
-  partnerIdVerified: boolean;
+  partnerIsVerified: boolean;
   partnerLastActiveAt: string | null;
   partnerActiveStatus: string | null;
   partnerResponseTime: string | null;
@@ -115,7 +115,7 @@ type PublicProfile = {
   handle: string | null;
   displayName: string | null;
   profilePhoto: string | null;
-  idVerified: boolean;
+  isVerified: boolean;
   trustScore: number;
   lastActiveAt: string | null;
   bio: string | null;
@@ -1778,8 +1778,8 @@ export function ChatWidget() {
                                   <span className={`text-sm font-semibold truncate ${item.unreadCount > 0 || needsAction ? "text-gray-900" : "text-gray-700"}`}>
                                     {partnerName}
                                   </span>
-                                  {item.partnerIdVerified && (
-                                    <BadgeCheck className="h-5 w-5 fill-[#0DCEA1] stroke-white flex-shrink-0" />
+                                  {item.partnerIsVerified && (
+                                    <span title="ID and payment method verified" className="inline-flex flex-shrink-0"><BadgeCheck aria-label="ID and payment method verified" role="img" className="h-5 w-5 fill-[#0DCEA1] stroke-white" /></span>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -1879,8 +1879,8 @@ export function ChatWidget() {
                         requests.find(r => r.item.ownerId === user?.id && r.requesterId === selectedConversation)?.requester?.username
                       )}
                     </Link>
-                    {partnerProfile?.idVerified && (
-                      <BadgeCheck className="h-5 w-5 fill-[#0DCEA1] stroke-white flex-shrink-0" />
+                    {partnerProfile?.isVerified && (
+                      <span title="ID and payment method verified" className="inline-flex flex-shrink-0"><BadgeCheck aria-label="ID and payment method verified" role="img" className="h-5 w-5 fill-[#0DCEA1] stroke-white" /></span>
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground flex-nowrap overflow-hidden">

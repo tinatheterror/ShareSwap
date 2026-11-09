@@ -21,7 +21,7 @@ interface SwappableItem extends SelectItem {
   owner?: {
     id: number;
     username: string;
-    idVerified: boolean;
+    isVerified: boolean;
     reputationLevel: string;
   };
 }
@@ -267,7 +267,7 @@ export default function SwapPage() {
                     <h3 className="font-semibold text-sm line-clamp-1 mb-1">{item.name}</h3>
                     <div className="flex items-center justify-center gap-1 mb-2">
                       <Badge className="bg-teal-100 text-teal-800 text-xs">Swappable</Badge>
-                      {item.owner?.idVerified && (
+                      {item.owner?.isVerified && (
                         <span className="text-[10px] px-1 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
                           Verified Owner
                         </span>

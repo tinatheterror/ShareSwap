@@ -93,7 +93,7 @@ interface UserProfile {
   trustScore?: number;
   onTimeReturnRate?: number | null;
   totalTransactions: number;
-  idVerified: boolean;
+  isVerified: boolean;
   subscription?: string;
   activeStatus?: string | null;
   responseTime?: string | null;
@@ -732,7 +732,7 @@ export default function ProfilePage() {
                         publicProfile.username.split("@")[0]}
                     </CardTitle>
                     <UserBadges
-                      idVerified={publicProfile.idVerified}
+                      isVerified={publicProfile.isVerified}
                       reputationLevel={publicProfile.reputationLevel}
                       size="md"
                       showLabels
@@ -1026,7 +1026,7 @@ export default function ProfilePage() {
                               <Link href={`/profile/${group.reviewer.handle || group.reviewer.username}`} className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">
                                 {displayName}
                               </Link>
-                              <UserBadges idVerified={group.reviewer.idVerified} reputationLevel={group.reviewer.reputationLevel} size="sm" />
+                              <UserBadges isVerified={group.reviewer.isVerified} reputationLevel={group.reviewer.reputationLevel} size="sm" />
                             </div>
                             {/* Summary row */}
                             <div className="flex items-center gap-1 mb-1">
@@ -1133,7 +1133,7 @@ export default function ProfilePage() {
                       <span className="font-semibold text-slate-800 truncate">
                         {(user as any).displayName || (user as any).handle || user.username}
                       </span>
-                      <UserBadges idVerified={profile?.idVerified || false} size="sm" />
+                      <UserBadges isVerified={profile?.isVerified || false} size="sm" />
                     </div>
                     <p className="text-sm text-slate-500 truncate">
                       @{(user as any).handle || user.username.split("@")[0]}
@@ -1334,35 +1334,35 @@ export default function ProfilePage() {
             {/* Verification Status - Mobile Only (shown above Premium) */}
             <Card
               className={`lg:hidden mt-6 ${
-                profile?.idVerified
+                profile?.isVerified
                   ? "border-0"
                   : "border-amber-200 bg-amber-50"
               }`}
-              style={profile?.idVerified ? { backgroundColor: "#D4F7F1" } : undefined}
+              style={profile?.isVerified ? { backgroundColor: "#D4F7F1" } : undefined}
             >
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <BadgeCheck
-                        className={`h-5 w-5 flex-shrink-0 ${profile?.idVerified ? "text-green-600" : "text-amber-600"}`}
+                        className={`h-5 w-5 flex-shrink-0 ${profile?.isVerified ? "text-green-600" : "text-amber-600"}`}
                       />
                       <span>Verification Status</span>
                     </div>
-                    {!profile?.idVerified && (
+                    {!profile?.isVerified && (
                       <Badge
                         variant="outline"
                         className="flex-shrink-0 bg-amber-100 text-amber-700 border-amber-300"
                       >
-                        ID not verified
+                        Not verified
                       </Badge>
                     )}
-                    {profile?.idVerified && (
+                    {profile?.isVerified && (
                       <Badge
                         variant="outline"
                         className="flex-shrink-0 bg-green-100 text-green-700 border-green-300"
                       >
-                        ID verified
+                        Verified
                       </Badge>
                     )}
                   </div>
@@ -1770,35 +1770,35 @@ export default function ProfilePage() {
             <Card
               id="verification-status"
               className={`hidden lg:block ${
-                profile?.idVerified
+                profile?.isVerified
                   ? "border-0"
                   : "border-amber-200 bg-amber-50"
               }`}
-              style={profile?.idVerified ? { backgroundColor: "#D4F7F1" } : undefined}
+              style={profile?.isVerified ? { backgroundColor: "#D4F7F1" } : undefined}
             >
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <BadgeCheck
-                        className={`h-5 w-5 flex-shrink-0 ${profile?.idVerified ? "text-green-600" : "text-amber-600"}`}
+                        className={`h-5 w-5 flex-shrink-0 ${profile?.isVerified ? "text-green-600" : "text-amber-600"}`}
                       />
                       <span>Verification Status</span>
                     </div>
-                    {!profile?.idVerified && (
+                    {!profile?.isVerified && (
                       <Badge
                         variant="outline"
                         className="flex-shrink-0 bg-amber-100 text-amber-700 border-amber-300"
                       >
-                        ID not verified
+                        Not verified
                       </Badge>
                     )}
-                    {profile?.idVerified && (
+                    {profile?.isVerified && (
                       <Badge
                         variant="outline"
                         className="flex-shrink-0 bg-green-100 text-green-700 border-green-300"
                       >
-                        ID verified
+                        Verified
                       </Badge>
                     )}
                   </div>

@@ -86,7 +86,7 @@ const BASE_ITEM: InboxItem = {
   partnerUsername: "alice",
   partnerDisplayName: "Alice Smith",
   partnerPhoto: null,
-  partnerIsVerified: false,
+  partnerIdVerified: false,
   partnerLastActiveAt: null,
   partnerActiveStatus: null,
   lastActivityTime: "2025-06-15T09:30:00.000Z",

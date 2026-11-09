@@ -90,7 +90,7 @@ type InboxItem = {
   partnerUsername: string;
   partnerDisplayName: string | null;
   partnerPhoto: string | null;
-  partnerIsVerified: boolean;
+  partnerIdVerified: boolean;
   partnerLastActiveAt: string | null;
   partnerActiveStatus: string | null;
   partnerResponseTime: string | null;
@@ -115,7 +115,7 @@ type PublicProfile = {
   handle: string | null;
   displayName: string | null;
   profilePhoto: string | null;
-  isVerified: boolean;
+  idVerified: boolean;
   trustScore: number;
   lastActiveAt: string | null;
   bio: string | null;
@@ -1778,7 +1778,7 @@ export function ChatWidget() {
                                   <span className={`text-sm font-semibold truncate ${item.unreadCount > 0 || needsAction ? "text-gray-900" : "text-gray-700"}`}>
                                     {partnerName}
                                   </span>
-                                  {item.partnerIsVerified && (
+                                  {item.partnerIdVerified && (
                                     <BadgeCheck className="h-5 w-5 fill-[#0DCEA1] stroke-white flex-shrink-0" />
                                   )}
                                 </div>
@@ -1879,7 +1879,7 @@ export function ChatWidget() {
                         requests.find(r => r.item.ownerId === user?.id && r.requesterId === selectedConversation)?.requester?.username
                       )}
                     </Link>
-                    {partnerProfile?.isVerified && (
+                    {partnerProfile?.idVerified && (
                       <BadgeCheck className="h-5 w-5 fill-[#0DCEA1] stroke-white flex-shrink-0" />
                     )}
                   </div>

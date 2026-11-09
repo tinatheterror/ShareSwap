@@ -148,7 +148,7 @@ describe("ItemCard — null / missing field resilience", () => {
         displayName: null as unknown as string,
         avatarUrl: null,
         trustScore: undefined,
-        isVerified: undefined,
+        idVerified: undefined,
       },
     };
     expect(() => render(item)).not.toThrow();
@@ -212,5 +212,19 @@ describe("ItemCard — sharing flag variations", () => {
 
   it("renders when no sharing flags are set at all", () => {
     expect(() => render({ id: 12 })).not.toThrow();
+  });
+});
+
+describe("ItemCard — the Verified Owner pill follows an approved ID, not ID plus card", () => {
+  const owner = { id: 9, username: "olive", displayName: "Olive", avatarUrl: null, trustScore: 80 };
+  const text = (item: Item) => JSON.stringify(render(item).toJSON());
+
+  it("shows it for an owner with an approved ID (idVerified), whether or not they have a card", () => {
+    expect(text({ ...BASE_ITEM, owner: { ...owner, idVerified: true } })).toContain("Verified Owner");
+  });
+
+  it("hides it for an owner without one, and ignores the older isVerified flag", () => {
+    expect(text({ ...BASE_ITEM, owner: { ...owner, idVerified: false } })).not.toContain("Verified Owner");
+    expect(text({ ...BASE_ITEM, owner: { ...owner, isVerified: true } as any })).not.toContain("Verified Owner");
   });
 });

@@ -399,6 +399,17 @@ export async function ensureEvidenceUploadsTable() {
   if (purpose.rows[0]?.present !== true) await runMigrationFile(EVIDENCE_UPLOAD_PURPOSE_FILE);
 }
 
+const ID_VERIFIED_FILE = "lib/db/scripts/0027_id_verified.sql";
+
+/** users.id_verified (0027), backfilled from approved verifications. Runs while the column is missing; the badge queries read it. */
+export async function ensureIdVerifiedColumn() {
+  const { rows } = await pool.query(
+    `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'id_verified') AS present`,
+  );
+  if (rows[0]?.present === true) return;
+  await runMigrationFile(ID_VERIFIED_FILE);
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -418,6 +429,7 @@ export async function applyStartupMigrations() {
   await ensureDisputeAlertColumns();
   await ensureDisputeDepositExpiryColumns();
   await ensureEvidenceUploadsTable();
+  await ensureIdVerifiedColumn();
   await ensureRentalPayoutHoldUntilDropped();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();

@@ -912,7 +912,7 @@ export default function ItemDetailScreen() {
                   <Text style={[styles.sharedByNameText, { color: colors.primary }]}>
                     {item.owner.displayName ?? item.owner.username}
                   </Text>
-                  {(item.owner as any).isVerified ? (
+                  {(item.owner as any).idVerified ? (
                     <BadgeCheck size={16} fill="#0DCEA1" color="white" strokeWidth={1.5} />
                   ) : null}
                 </Pressable>

@@ -82,7 +82,7 @@ jest.mock("@/context/AuthContext", () => ({
       email: "sam@example.com",
       trustScore: 142,
       trustLevel: "Neighbour",
-      isVerified: true,
+      idVerified: true,
     },
   }),
 }));

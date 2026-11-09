@@ -29,6 +29,8 @@ interface User {
   location?: string;
   neighbourhood?: string;
   isVerified?: boolean;
+  /** An approved ID verification, with or without a card (the "ID verified" badge). */
+  idVerified?: boolean;
   defaultCity?: string | null;
   defaultPostalCode?: string | null;
   locationRadius?: number | null;

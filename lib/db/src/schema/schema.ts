@@ -200,7 +200,9 @@ export const connectCleanupFailures = pgTable("connect_cleanup_failures", {
 export const personaRedactions = pgTable("persona_redactions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
+  // What to redact: an inquiry id, a Persona account id, or (for kind 'account_lookup') the reference id user_<id> to find the accounts of.
   inquiryId: text("inquiry_id").notNull(),
+  kind: text("kind").notNull().default("inquiry"), // 'inquiry' | 'account_lookup' | 'account' (0032)
   status: text("status").notNull().default("pending"), // 'pending' | 'redacted' | 'failed' (gave up after the cap, 0031)
   attempts: integer("attempts").notNull().default(0),
   lastError: text("last_error"),

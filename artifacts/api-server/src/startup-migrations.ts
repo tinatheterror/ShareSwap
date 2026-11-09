@@ -426,6 +426,7 @@ export async function ensureBiometricConsentsTable() {
 
 const PERSONA_REDACTIONS_FILE = "lib/db/scripts/0030_persona_redactions.sql";
 
+const PERSONA_REDACTION_KIND_FILE = "lib/db/scripts/0032_persona_redaction_kind.sql";
 const PERSONA_REDACTION_CAPS_FILE = "lib/db/scripts/0031_persona_redaction_caps.sql";
 
 /** persona_redactions (0030) and its failed_at / admin_notified_at columns (0031): account deletion writes to it in the same transaction as the erasure. */
@@ -444,6 +445,10 @@ export async function ensurePersonaRedactionsTable() {
               AND column_name IN ('failed_at', 'admin_notified_at')) = 2 AS present`,
   );
   if (caps.rows[0]?.present !== true) await runMigrationFile(PERSONA_REDACTION_CAPS_FILE);
+  const kind = await pool.query(
+    `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'persona_redactions' AND column_name = 'kind') AS present`,
+  );
+  if (kind.rows[0]?.present !== true) await runMigrationFile(PERSONA_REDACTION_KIND_FILE);
 }
 
 export async function applyStartupMigrations() {

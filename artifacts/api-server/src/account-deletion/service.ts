@@ -6,7 +6,7 @@ import { appleLinks, bannedAppleHashes, bannedEmailHashes, connectCleanupFailure
 import { sendAccountDeletedEmail, sendAccountDeletionRequestedEmail } from "../mail";
 import { publicName } from "../public-identity";
 import { anonymizeUser } from "./anonymize";
-import { queuePersonaRedactions, runPersonaRedactions, type PersonaRedactor } from "./persona-redaction";
+import { queuePersonaRedactions, runPersonaRedactions, type PersonaClient } from "./persona-redaction";
 import { AppleCleanupUnavailableError, type AppleCleanupTarget } from "./apple-cleanup";
 import { hashBannedAppleSub } from "./banned-apple";
 import { accountEmail, hashBannedEmail } from "./banned-email";
@@ -47,8 +47,8 @@ export type DeletionDeps = {
   sendRequestedEmail?: (to: string, deleteOn: Date, name?: string) => Promise<unknown>;
   sendDeletedEmail?: (to: string, name?: string) => Promise<unknown>;
   removeUpload?: (publicPath: string) => Promise<void>;
-  /** Redacts one Persona inquiry (ID images, selfie, face-match data). Must be safe to repeat. A failure never blocks the deletion: it is retried. */
-  redactPersonaInquiry?: PersonaRedactor;
+  /** Redacts the member's Persona inquiries and accounts (ID images, selfie, face-match data, personal details). Safe to repeat. A failure never blocks the deletion: it is retried. */
+  persona?: PersonaClient;
 };
 
 export type DeletionState = {
@@ -292,7 +292,7 @@ export async function finalizeDeletion(userId: number, deps: DeletionDeps = {}):
   }
   // First attempt at the Persona redaction; what fails stays queued and is retried by every live deletion sweep.
   try {
-    await runPersonaRedactions(deps.redactPersonaInquiry, { userId, now: deps.now });
+    await runPersonaRedactions(deps.persona, { userId, now: deps.now });
   } catch (error) {
     console.error("[account-deletion] Persona redaction step failed:", error instanceof Error ? error.message : error);
   }
@@ -353,7 +353,7 @@ export async function finalizeDueDeletions(deps: DeletionDeps & { dryRun?: boole
     }
     // Persona inquiries that could not be redacted on earlier runs are tried again too.
     try {
-      await runPersonaRedactions(deps.redactPersonaInquiry, { now: deps.now });
+      await runPersonaRedactions(deps.persona, { now: deps.now });
     } catch (error) {
       console.error("[account-deletion] could not retry Persona redactions:", error instanceof Error ? error.message : error);
     }

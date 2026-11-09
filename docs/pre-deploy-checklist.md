@@ -86,3 +86,16 @@ Why this order: the cleanup zeroes wallets with an `adjustment` row, which only 
 - [ ] Find them: `pnpm --filter @workspace/api-server run evidence:purge-public` (a dry run: lists records and files). Decide what to do with real claim evidence before deleting anything; the script removes the files and the references (`--apply`, with the override in step 5), and keeps a file that is also a listing photo.
 - [ ] Tests never use the real bucket (`TEST_OBJECT_STORAGE_BUCKET_ID` is the only bucket a test may use). Do not set it in production.
 - [ ] Broken condition-verification photos: `pnpm --filter @workspace/api-server run condition-photos:fix` (dry run) lists verifications whose photos contain `/uploads/undefined` (the dev database has none; production is not known). `--apply` removes only those entries and keeps the verifications; it needs the override from step 5.
+
+## 8. Members verified before consent was required (read-only, run on production)
+
+Members whose ID was approved before the biometric consent screen shipped have an approved verification and no `biometric_consents` row. How many (this only reads):
+
+```sql
+SELECT count(*) AS verified_without_consent
+FROM users u
+WHERE EXISTS (SELECT 1 FROM verifications v WHERE v.user_id = u.id AND v.status = 'approved')
+  AND NOT EXISTS (SELECT 1 FROM biometric_consents c WHERE c.user_id = u.id);
+```
+
+Add `AND u.account_status IS DISTINCT FROM 'deleted'` to leave out deleted accounts. To see who (ids only, no names), replace `count(*) AS verified_without_consent` with `u.id, (SELECT min(v.created_at) FROM verifications v WHERE v.user_id = u.id AND v.status = 'approved') AS verified_at` and add `ORDER BY verified_at`. A member who agreed at an older version of the wording does have a row, so they are not counted here; to count them too, change the last line to `AND NOT EXISTS (SELECT 1 FROM biometric_consents c WHERE c.user_id = u.id AND c.version = '2026-11-09')` (the current `BIOMETRIC_CONSENT_VERSION`). Nothing is changed for these members: the consent only gates starting a new Persona inquiry. What to do about them is on the counsel list in go-live-checklist.md.

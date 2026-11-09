@@ -1,6 +1,6 @@
 # Pre-deploy checklist: chargeback policy, recovery debts, dispute alerts, private evidence
 
-For the release that contains migrations 0022 to 0026. It complements docs/go-live-checklist.md (live keys, legal text, TERMS_VERSION), which is not repeated here. Do the steps in order; each says what to look for before you go on.
+For the release that contains migrations 0022 to 0027. It complements docs/go-live-checklist.md (live keys, legal text, TERMS_VERSION), which is not repeated here. Do the steps in order; each says what to look for before you go on.
 
 ## 1. Database backup (first, before anything else)
 
@@ -9,7 +9,7 @@ For the release that contains migrations 0022 to 0026. It complements docs/go-li
 - [ ] Prove it is readable: `pg_restore --list shareswap-pre-0022-*.dump | head -n 20` shows the tables, and ideally restore it into a scratch database once.
 - [ ] Note the row counts you will compare afterwards: `select count(*) from users, item_requests, wallet_transactions, wallet_chargebacks` (run each count separately) and `select coalesce(sum(rental_balance),0) from users`.
 
-## 2. Migrations 0022 to 0026
+## 2. Migrations 0022 to 0027
 
 **How production migrations run.** The API's production build is the esbuild bundle (`artifacts/api-server/.replit-artifact/artifact.toml`: build `pnpm --filter @workspace/api-server run build`, run `node artifacts/api-server/dist/index.mjs`). Nothing in the build, the run command or `[deployment.postBuild]` calls drizzle. On every boot, before any route or job starts, `applyStartupMigrations()` (`artifacts/api-server/src/index.ts`) runs the numbered SQL files in `lib/db/scripts` through the `ensure…` functions; if one fails the process exits and the deploy does not go live. The files are idempotent and only add things. **Never run `drizzle-kit push` against production**: `lib/db/drizzle.config.ts` now refuses any database that is not a test database unless `ALLOW_NON_TEST_DATABASE=<database name>` is set, so a push at production fails by itself.
 
@@ -20,9 +20,10 @@ For the release that contains migrations 0022 to 0026. It complements docs/go-li
 - 0024 (`lib/db/scripts/0024_dispute_deposit_expiry.sql`, `ensureDisputeDepositExpiryColumns`): `urgent_manual_review` (default false), `deposit_uncollectible_at`, `rental_completed_at`, `rental_completed_by` on `platform_disputes`. Written when a deposit authorization expires during an unreviewed dispute, and by the admin "close the rental, dispute stays open" action.
 - 0025 (`lib/db/scripts/0025_evidence_uploads.sql`, `ensureEvidenceUploadsTable`): table `evidence_uploads` (token, storage key, uploader) for private evidence photos.
 - 0026 (`lib/db/scripts/0026_evidence_upload_purpose.sql`, same ensure function): `evidence_uploads.purpose` (default `dispute_evidence`; also `claim_evidence`, `return_dispute`).
+- 0027 (`lib/db/scripts/0027_id_verified.sql`, `ensureIdVerifiedColumn`): `users.id_verified` (default false) and a one-time backfill from approved `verifications` rows. It drives the "ID verified" badge (an approved ID, card or not); `users.is_verified` (ID and card) is unchanged and still what the older sort and highlight code reads. Borrow and rent gating uses `getVerificationForUser`, not either column.
 
 - [ ] Deploy with the environment from step 3. Read the boot log: no error from either ensure function.
-- [ ] Check: `select to_regclass('platform_disputes'), to_regclass('account_review_flags'), to_regclass('dispute_evidence'), to_regclass('evidence_uploads');` returns four names, `select column_name from information_schema.columns where table_name='platform_disputes' and column_name in ('urgent_manual_review','deposit_uncollectible_at','rental_completed_at','rental_completed_by');` returns four rows, `select column_name from information_schema.columns where table_name='evidence_uploads' and column_name='purpose';` returns one row, and `select column_name from information_schema.columns where table_name='wallet_chargebacks' and column_name in ('kind','reason','created_by');` returns three rows.
+- [ ] Check: `select to_regclass('platform_disputes'), to_regclass('account_review_flags'), to_regclass('dispute_evidence'), to_regclass('evidence_uploads');` returns four names, `select count(*) from users where id_verified` equals `select count(distinct user_id) from verifications where status='approved'`, `select column_name from information_schema.columns where table_name='platform_disputes' and column_name in ('urgent_manual_review','deposit_uncollectible_at','rental_completed_at','rental_completed_by');` returns four rows, `select column_name from information_schema.columns where table_name='evidence_uploads' and column_name='purpose';` returns one row, and `select column_name from information_schema.columns where table_name='wallet_chargebacks' and column_name in ('kind','reason','created_by');` returns three rows.
 - [ ] The counts from step 1 are unchanged.
 - Rollback: redeploy the previous build. The new tables and columns are harmless to it (the new columns have defaults). Drop them only if you need to (and only after the old build is serving again): `drop table evidence_uploads; alter table platform_disputes drop column urgent_manual_review, drop column deposit_uncollectible_at, drop column rental_completed_at, drop column rental_completed_by; drop table dispute_evidence, account_review_flags, platform_disputes; alter table wallet_chargebacks drop column kind, drop column reason, drop column created_by;`.
 

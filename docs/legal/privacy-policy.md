@@ -22,7 +22,9 @@ ShareSwap is for people who have reached the age of majority where they live: 19
 
 **Payments.** Payments are handled by Stripe. We store your Stripe customer identifier, the brand, last four digits and expiry of your saved card, deposit and fee records, rental payouts and your wallet balance. We never see or store your full card number. If you earn money from rentals, Stripe Connect holds your payout account and the identity and bank details Stripe collects to pay you; we store only the connected account identifier.
 
-**Identity verification.** If you choose to verify, Persona collects your name, ID document and a selfie on our behalf. We keep your name, ID number, the Persona inquiry reference and the result.
+**Identity verification.** If you choose to verify, the check is run by Persona (Persona Identities, Inc.), our ID verification provider, in Persona's own screens. Persona collects images of your government-issued ID and a selfie, and compares your face in the selfie with the photo on the ID (face matching) to decide whether you are the person on the ID. ShareSwap does not receive or store the ID images or the selfie. What ShareSwap receives from Persona is the result (approved, declined or failed) and the name on your ID, and we keep that name, the result, the Persona inquiry reference and a note that Persona verified you. Other members see an "ID verified" badge on your profile and listings once you are approved; they do not see your name from the ID or any of the images. Persona keeps the ID images, the selfie and the face-match data under Persona's own retention schedule and privacy policy (https://withpersona.com/legal/privacy-policy), not ours. *[Before launch: confirm the retention period configured for our Persona account and state it here.]*
+
+*[For counsel review.]* Face matching creates biometric information. Counsel should settle the consent and retention wording for the laws that cover it, including Illinois (BIPA), Texas, Washington and Quebec, and whether a separate explicit consent screen, a written retention schedule and a Persona deletion request on account closure are needed before we offer verification in those places. Today the app explains the steps and shows "Powered by Persona" next to the Start Verification button, but it does not ask for a separate consent before Persona starts.
 
 **Devices and technical data.** Push notification tokens and your notification preferences; a session cookie that keeps you signed in; on the web, a device fingerprint built from browser characteristics (screen size, time zone, language, platform), used only to spot repeat sign-ups and referral abuse; your IP address, held in a counter for about 15 minutes to limit repeated sign-in attempts, and in our server logs. We do not use advertising trackers or analytics services, and we do not sell personal information.
 
@@ -38,7 +40,7 @@ We use your information to run your account; to show listings and wishlists near
 - **Stripe and Stripe Connect** (payments, deposits, subscriptions and payouts).
 - **Google** (sign-in with Google).
 - **Apple** (sign-in with Apple; Apple also tells us if you stop using ShareSwap with your Apple ID or delete your Apple ID, and we then sign you out or start the deletion of your ShareSwap account).
-- **Persona** (identity verification).
+- **Persona** (identity verification): your ID images and selfie go to Persona directly, not through us; we get back the result and your name (see "Identity verification" above).
 - **Uber Direct** (delivery): the pickup and drop-off names, addresses and phone numbers, and a description of the parcel.
 - **Resend** (email): your email address and the content of emails we send, such as verification and password reset.
 - **Expo** (push notifications): your push token and the notification text, passed on to Apple or Google to reach your device.

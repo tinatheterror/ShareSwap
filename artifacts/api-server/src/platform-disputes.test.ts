@@ -10,7 +10,7 @@ import { handleDisputeEvent } from "./dispute-webhook.js";
 import { claimDepositTerminalAction, releaseDepositTerminalClaim } from "./deposit-renewal-service.js";
 import { confirmApprovedReturn } from "./return-recovery-service.js";
 import { deletePrivateFile } from "./storage.js";
-import { evidenceTokenOf, saveEvidenceUpload } from "./dispute-evidence-files.js";
+import { privateTokenOf, savePrivateUpload } from "./private-files.js";
 import { buildEvidenceBundle, ownerEvidenceRequests, submitOwnerEvidence } from "./dispute-evidence.js";
 import { alertDisputeDeadlines, completeRentalOperationally, DEPOSIT_UNCOLLECTIBLE_ALERT_TYPE, DISPUTE_HOLD_MESSAGE, disputeLoss, holdForDisputeReview, markDisputeReviewed } from "./platform-disputes.js";
 import { reconcileClaimDeadlines } from "./security-claims-service.js";
@@ -301,8 +301,8 @@ test("owner evidence: only the owner of the disputed rental can send it, input i
   for (const bad of [{}, { note: "  " }, { photoUrls: ["javascript:alert(1)"], note: "x" }, { photoUrls: ["//evil.example/x.jpg"] }, { photoUrls: ["/uploads/../etc"] }, { photoUrls: ["/uploads/handoff.jpg"], note: "x" }, { photoUrls: ["https://example.com/a.jpg"], note: "x" }, { photoUrls: Array(11).fill("/a.jpg") }, { note: 5 }, { note: "x".repeat(4001) }]) {
     assert.equal((await submitOwnerEvidence({ disputeId: id, userId: ownerId, ...bad })).status, "invalid", JSON.stringify(bad).slice(0, 60));
   }
-  const mine = await saveEvidenceUpload(ownerId, { buffer: Buffer.from("owner-photo"), originalname: "handoff.jpg" });
-  const theirs = await saveEvidenceUpload(borrowerId, { buffer: Buffer.from("borrower-photo"), originalname: "other.jpg" });
+  const mine = await savePrivateUpload(ownerId, { buffer: Buffer.from("owner-photo"), originalname: "handoff.jpg" }, "dispute_evidence");
+  const theirs = await savePrivateUpload(borrowerId, { buffer: Buffer.from("borrower-photo"), originalname: "other.jpg" }, "dispute_evidence");
   assert.equal((await submitOwnerEvidence({ disputeId: id, userId: ownerId, note: "x", photoUrls: [theirs] })).status, "invalid", "another member's upload cannot be attached");
   assert.equal((await submitOwnerEvidence({ disputeId: id, userId: ownerId, note: "Borrower signed for it in person.", photoUrls: [mine] })).status, "saved");
   assert.equal((await ownerEvidenceRequests(ownerId)).map((r) => r.disputeId).includes(id), false, "answered");
@@ -517,7 +517,7 @@ test("evidence photos: the owner uploads, only the uploader and admins can read 
   assert.equal((await owner.postForm("/api/uploads/dispute-evidence", photoForm("x", "evil.html", "text/html"))).status, 500, "only images");
 
   const url = await upload(owner, "private-bytes");
-  const token = evidenceTokenOf(url)!;
+  const token = privateTokenOf(url)!;
   assert.match(token, /^[0-9a-f]{32}$/, "128 random bits, not a counter or a timestamp");
   assert.ok(!url.includes("evidence.jpg"), "the file name is not in the URL");
 
@@ -530,7 +530,7 @@ test("evidence photos: the owner uploads, only the uploader and admins can read 
   assert.equal((await plain.get(url)).status, 404, "another member cannot, and learns nothing");
   assert.equal((await anonymous.get(url)).status, 401);
   assert.equal((await owner.get(`${url.slice(0, -4)}0000`)).status, 404);
-  assert.equal((await owner.get("/api/dispute-evidence/files/..%2f..%2fetc")).status, 404);
+  assert.equal((await owner.get("/api/private-files/..%2f..%2fetc")).status, 404);
 
   const [stored] = await db.select().from(evidenceUploads).where(eq(evidenceUploads.token, token));
   assert.ok(stored.storageKey!.startsWith("private/"));

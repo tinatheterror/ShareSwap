@@ -1279,6 +1279,8 @@ export const evidenceUploads = pgTable("evidence_uploads", {
   token: text("token").unique(),
   storageKey: text("storage_key"),
   contentType: text("content_type"),
+  // What it is for (0026): dispute_evidence, claim_evidence or return_dispute. Each flow only accepts its own.
+  purpose: text("purpose").notNull().default("dispute_evidence"),
   userId: integer("user_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

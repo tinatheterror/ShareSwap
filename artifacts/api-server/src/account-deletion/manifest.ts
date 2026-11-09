@@ -311,9 +311,9 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
   evidence_uploads: {
     rows: "retain",
     retention: "financial",
-    note: "Private photos an owner sent as dispute evidence; the file reference goes with the evidence, the fact that an upload was made stays.",
+    note: "Private evidence photos. Dispute-evidence uploads go with the evidence they were sent as; claim and return-dispute uploads are evidence of a booking and stay (their column is only read through the booking they belong to).",
     userColumns: ["user_id"],
-    keep: ["id", "user_id", "created_at"],
+    keep: ["id", "user_id", "purpose", "created_at"],
     anonymize: [],
     delete: ["token", "storage_key", "content_type"],
   },

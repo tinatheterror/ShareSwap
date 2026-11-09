@@ -1,4 +1,4 @@
-import { allUploadedBy } from "./dispute-evidence-files";
+import { allUploadedBy } from "./private-files";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import {
   db, disputeEvidence, itemConditionVerifications, itemRequests, items, messages, platformDisputes, requestLifecycleEvents, users,
@@ -30,7 +30,7 @@ export async function submitOwnerEvidence(input: { disputeId: string; userId: nu
     return { status: "invalid", error: `photoUrls must be at most ${EVIDENCE_PHOTOS_MAX} photos uploaded for dispute evidence.` };
   }
   // Only photos this member uploaded for dispute evidence: no other path, no outside link, and nobody else's upload.
-  if (!(await allUploadedBy(photos as string[], input.userId))) {
+  if (!(await allUploadedBy(photos as string[], input.userId, "dispute_evidence"))) {
     return { status: "invalid", error: "Every photo must be one you uploaded for this evidence." };
   }
   if (!note && photos.length === 0) return { status: "invalid", error: "Send a note, photos, or both." };

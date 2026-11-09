@@ -1,4 +1,5 @@
 import { unlink } from "node:fs/promises";
+import { deletePrivateFile } from "../storage";
 import path from "node:path";
 import { and, eq, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { appleLinks, bannedAppleHashes, bannedEmailHashes, connectCleanupFailures, db, items, notifications, requestLifecycleEvents, users } from "@workspace/db";
@@ -290,6 +291,7 @@ export async function finalizeDeletion(userId: number, deps: DeletionDeps = {}):
 
 /** "/uploads/x.jpg" is served from the server's uploads folder; anything else (a data: or http URL) is not ours to remove. */
 async function removeUploadedFile(publicPath: string) {
+  if (publicPath.startsWith("private/")) return deletePrivateFile(publicPath);
   const file = path.basename(publicPath);
   if (!file || file !== publicPath.slice("/uploads/".length)) return;
   try {

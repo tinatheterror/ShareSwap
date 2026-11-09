@@ -380,17 +380,23 @@ export async function ensureDisputeDepositExpiryColumns() {
 }
 
 const EVIDENCE_UPLOADS_FILE = "lib/db/scripts/0025_evidence_uploads.sql";
+const EVIDENCE_UPLOAD_PURPOSE_FILE = "lib/db/scripts/0026_evidence_upload_purpose.sql";
 
-/** evidence_uploads (0025): the upload route and the evidence validation read it, so a missing table would fail both. */
+/** evidence_uploads (0025) and its purpose column (0026): the upload routes and the evidence validation read them. */
 export async function ensureEvidenceUploadsTable() {
   const { rows } = await pool.query(`SELECT to_regclass('evidence_uploads') IS NOT NULL AS present`);
-  if (rows[0]?.present === true) return;
-  try {
-    await runMigrationFile(EVIDENCE_UPLOADS_FILE);
-  } catch (err) {
-    const code = (err as { code?: string }).code;
-    if (code !== "42P07" && code !== "23505" && code !== "42710") throw err;
+  if (rows[0]?.present !== true) {
+    try {
+      await runMigrationFile(EVIDENCE_UPLOADS_FILE);
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      if (code !== "42P07" && code !== "23505" && code !== "42710") throw err;
+    }
   }
+  const purpose = await pool.query(
+    `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'evidence_uploads' AND column_name = 'purpose') AS present`,
+  );
+  if (purpose.rows[0]?.present !== true) await runMigrationFile(EVIDENCE_UPLOAD_PURPOSE_FILE);
 }
 
 export async function applyStartupMigrations() {

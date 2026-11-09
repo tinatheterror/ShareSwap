@@ -97,7 +97,7 @@ export function scrubSteps(userId: number): ScrubStep[] {
     delivery(["special_instructions", "qr_code_data", "uber_tracking_url"], sql`r.requester_id = ${U} OR i.owner_id = ${U}`),
     { table: "extension_requests", columns: ["message"], where: sql`t.borrower_id = ${U}` },
     { table: "dispute_evidence", columns: ["note", "photo_urls"], where: sql`t.user_id = ${U}` },
-    { table: "evidence_uploads", columns: ["token", "storage_key", "content_type"], where: sql`t.user_id = ${U}` },
+    { table: "evidence_uploads", columns: ["token", "storage_key", "content_type"], where: sql`t.user_id = ${U} AND t.purpose = 'dispute_evidence'` },
     { table: "item_condition_verifications", columns: ["notes", "photos"], where: sql`t.verifier_id = ${U}` },
     {
       table: "items",
@@ -152,7 +152,7 @@ export type AnonymizeResult = {
 };
 
 const uploadPaths = (values: unknown[]): string[] =>
-  values.flat().filter((v): v is string => typeof v === "string" && v.startsWith("/uploads/"));
+  values.flat().filter((v): v is string => typeof v === "string" && (v.startsWith("/uploads/") || v.startsWith("private/")));
 
 export async function anonymizeUser(tx: DeletionTx, userId: number): Promise<AnonymizeResult> {
   const U = sql`${userId}`;
@@ -166,7 +166,9 @@ export async function anonymizeUser(tx: DeletionTx, userId: number): Promise<Ano
     WHERE i.owner_id = ${U} AND t.return_dispute_photo_url IS NOT NULL
       AND NOT (COALESCE(t.handoff_dispute_triggered, false) OR COALESCE(t.return_dispute_triggered, false)
                OR EXISTS (SELECT 1 FROM security_claims c WHERE c.request_id = t.id))`);
-  const uploads = uploadPaths([profile, itemPhotos, verifierPhotos, disputePhotos].flatMap((r) => r.rows.map((row) => (row as { p: unknown }).p)));
+  // Private dispute-evidence files go with the evidence rows that are scrubbed below (claim and return photos are booking evidence and stay).
+  const evidenceFiles = await tx.execute(sql`SELECT storage_key AS p FROM evidence_uploads WHERE user_id = ${U} AND purpose = 'dispute_evidence' AND storage_key IS NOT NULL`);
+  const uploads = uploadPaths([profile, itemPhotos, verifierPhotos, disputePhotos, evidenceFiles].flatMap((r) => r.rows.map((row) => (row as { p: unknown }).p)));
 
   // 1. Rows that belong to the user alone.
   const also = ALSO_DELETE_WHERE(userId);

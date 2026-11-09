@@ -1,6 +1,6 @@
 import { ensureUsableCustomer } from "../stripe-customer.js";
 import { createLazyStripe } from "../stripe-lazy-client";
-import { readEvidenceFile, saveEvidenceUpload } from "../dispute-evidence-files";
+import { allUploadedBy, readPrivateUpload, savePrivateUpload, type PrivateFilePurpose } from "../private-files";
 import { buildEvidenceBundle, ownerEvidenceRequests, submitOwnerEvidence } from "../dispute-evidence";
 import { alertDisputeDeadlines, completeRentalOperationally, listOpenAccountFlags, listPlatformDisputes, markDisputeReviewed, noteDepositUncollectible } from "../platform-disputes";
 import { createRecoveryDebt, RECOVERY_DEBT_WITHDRAWAL_CODE, RecoveryDebtBlocksWithdrawal } from "../wallet-chargebacks";
@@ -5585,9 +5585,8 @@ Respond with ONLY the category name, nothing else.`
     async (req, res) => {
       const itemId = parseInt(req.params.itemId);
       const files = req.files as Express.Multer.File[];
-      const photoUrls = files
-        ? files.map((file) => `/uploads/${file.filename}`)
-        : [];
+      // Memory storage gives files no name on disk; store them like listing photos (public: they show an item's condition).
+      const photoUrls = files ? await Promise.all(files.map((file) => uploadToStorage(file.buffer, file.originalname))) : [];
 
       const [verification] = await db
         .insert(itemConditionVerifications)
@@ -11102,58 +11101,37 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // Lender confirms return (releases deposit, updates trust score)
-  // Upload a dispute evidence photo
-  app.post("/api/uploads/dispute-photo", csrfProtection, upload.single("photo"), async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    if (!req.file) return res.status(400).json({ error: "No photo provided" });
-    try {
-      const url = await uploadToStorage(req.file.buffer, req.file.originalname);
-      res.json({ url });
-    } catch (err) {
-      console.error("Dispute photo upload error:", err);
-      res.status(500).json({ error: "Failed to upload photo" });
-    }
-  });
+  // ── Private evidence uploads (see private-files.ts): readable only by the uploader, the parties it is attached to, and admins ──
+  const privateUpload = (path: string, purpose: PrivateFilePurpose, label: string) =>
+    app.post(path, csrfProtection, upload.single("photo"), async (req, res) => {
+      if (!req.isAuthenticated()) return res.sendStatus(401);
+      if (!req.file) return res.status(400).json({ error: "No photo provided" });
+      try {
+        const url = await savePrivateUpload((req.user as { id: number }).id, req.file, purpose);
+        return res.json({ url });
+      } catch (err) {
+        console.error(`${label} upload error:`, err);
+        return res.status(500).json({ error: "Failed to upload photo" });
+      }
+    });
+  privateUpload("/api/uploads/dispute-photo", "return_dispute", "Return dispute photo");
+  privateUpload("/api/uploads/dispute-evidence", "dispute_evidence", "Dispute evidence");
+  privateUpload("/api/uploads/claim-evidence", "claim_evidence", "Claim evidence");
 
-  // Dispute evidence photos are private: recorded against the uploader, readable only by them and by admins.
-  app.post("/api/uploads/dispute-evidence", csrfProtection, upload.single("photo"), async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    if (!req.file) return res.status(400).json({ error: "No photo provided" });
-    try {
-      const url = await saveEvidenceUpload((req.user as { id: number }).id, req.file);
-      return res.json({ url });
-    } catch (err) {
-      console.error("Dispute evidence upload error:", err);
-      return res.status(500).json({ error: "Failed to upload photo" });
-    }
-  });
-
-  app.get("/api/dispute-evidence/files/:token", async (req, res) => {
+  const servePrivateFile: express.RequestHandler = async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
-      const file = await readEvidenceFile(String(req.params.token), req.user as { id: number; isAdmin?: boolean | null });
+      const file = await readPrivateUpload(String(req.params.token), req.user as { id: number; isAdmin?: boolean | null });
       if (!file) return res.status(404).json({ message: "File not found" });
       res.set({ "Content-Type": file.contentType, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'; sandbox" });
       return res.send(file.body);
     } catch (err) {
-      console.error("Dispute evidence file error:", err);
+      console.error("Private file error:", err);
       return res.status(500).json({ message: "Failed to load the file" });
     }
-  });
-
-  // Upload security-claim evidence to private object storage.
-  app.post("/api/uploads/claim-evidence", csrfProtection, upload.single("photo"), async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    if (!req.file) return res.status(400).json({ error: "No photo provided" });
-    try {
-      const url = await uploadToStorage(req.file.buffer, req.file.originalname);
-      res.json({ url });
-    } catch (err) {
-      console.error("Claim evidence upload error:", err);
-      res.status(500).json({ error: "Failed to upload evidence photo" });
-    }
-  });
+  };
+  app.get("/api/private-files/:token", servePrivateFile);
+  app.get("/api/dispute-evidence/files/:token", servePrivateFile);
 
   app.post("/api/requests/:requestId/confirm-return", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -11163,6 +11141,10 @@ Respond with ONLY the category name, nothing else.`
     try {
       const requestId = parseInt(req.params.requestId);
       const { conditionRating, conditionNotes, sameCondition, triggerDispute, disputePhotoUrl } = req.body;
+      // The photo is private evidence: it must be one this member uploaded for a return report.
+      if (disputePhotoUrl && !(await allUploadedBy([String(disputePhotoUrl)], (req.user as { id: number }).id, "return_dispute"))) {
+        return res.status(400).json({ error: "The photo must be one you uploaded for this report." });
+      }
       
       const [request] = await db
         .select()
@@ -11943,6 +11925,11 @@ Respond with ONLY the category name, nothing else.`
     const claimType = String(req.body.claimType || "") === "missing_components" ? "missing_parts" : String(req.body.claimType || "");
     if (!["damage", "missing_parts", "lost", "non_return", "other"].includes(claimType) || !Array.isArray(req.body.evidence) || req.body.evidence.length === 0)
       return res.status(400).json({ error: "An allowlisted claimType and nonempty evidence are required" });
+    // Files in the evidence list are private uploads of this member's own; a link to a public upload or to someone else's file is refused.
+    const fileEntries = (req.body.evidence as unknown[]).filter((e) => typeof e === "string" && /^\/(storage|uploads|api\/private-files|api\/dispute-evidence)\//.test(e)) as string[];
+    if (fileEntries.length && !(await allUploadedBy(fileEntries, (req.user as { id: number }).id, "claim_evidence"))) {
+      return res.status(400).json({ error: "Evidence photos must be uploaded through the claim evidence upload, by you." });
+    }
     try {
       const claim = await db.transaction(async tx => {
         await tx.execute(sql`SELECT 1 FROM ${itemRequests} WHERE ${itemRequests.id} = ${requestId} FOR UPDATE`);

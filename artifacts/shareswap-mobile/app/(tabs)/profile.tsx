@@ -40,7 +40,6 @@ interface UserProfile {
   reputationLevel?: string;
   paymentMethodLast4?: string | null;
   idVerified?: boolean;
-  idVerified?: boolean;
   profilePhoto?: string | null;
 }
 

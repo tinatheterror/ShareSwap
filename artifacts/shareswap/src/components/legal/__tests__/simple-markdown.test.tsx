@@ -33,3 +33,13 @@ describe("SimpleMarkdown", () => {
     expect(screen.getByText("Body")).toBeTruthy();
   });
 });
+
+describe("heading anchors", () => {
+  it("gives each section heading an id so /privacy#identity-verification-and-face-matching can scroll to it", async () => {
+    const { headingId } = await import("../simple-markdown");
+    expect(headingId("Identity verification and face matching")).toBe("identity-verification-and-face-matching");
+    expect(headingId("Who can use ShareSwap?")).toBe("who-can-use-shareswap");
+    render(<SimpleMarkdown source={"## Identity verification and face matching\n\ntext"} />);
+    expect(screen.getByRole("heading", { name: "Identity verification and face matching" }).id).toBe("identity-verification-and-face-matching");
+  });
+});

@@ -410,6 +410,20 @@ export async function ensureIdVerifiedColumnDropped() {
   await runMigrationFile(DROP_ID_VERIFIED_FILE);
 }
 
+const BIOMETRIC_CONSENTS_FILE = "lib/db/scripts/0029_biometric_consents.sql";
+
+/** biometric_consents (0029): POST /api/persona/create-inquiry reads it, so a missing table would stop every verification. */
+export async function ensureBiometricConsentsTable() {
+  const { rows } = await pool.query(`SELECT to_regclass('biometric_consents') IS NOT NULL AS present`);
+  if (rows[0]?.present === true) return;
+  try {
+    await runMigrationFile(BIOMETRIC_CONSENTS_FILE);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code !== "42P07" && code !== "23505") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -430,6 +444,7 @@ export async function applyStartupMigrations() {
   await ensureDisputeDepositExpiryColumns();
   await ensureEvidenceUploadsTable();
   await ensureIdVerifiedColumnDropped();
+  await ensureBiometricConsentsTable();
   await ensureRentalPayoutHoldUntilDropped();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();

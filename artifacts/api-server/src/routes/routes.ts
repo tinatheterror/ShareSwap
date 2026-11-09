@@ -65,6 +65,7 @@ import { recommendationEngine } from "../recommendation-engine";
 import { addSimplifiedRoutes } from "../simplified-routes";
 import { requireCurrentTerms } from "../terms-enforcement";
 import { hasAiConsent, registerAiConsentRoutes, requireAiConsent } from "../ai-consent";
+import { BIOMETRIC_CONSENT_REQUIRED_CODE, BIOMETRIC_CONSENT_REQUIRED_MESSAGE, hasBiometricConsent, registerBiometricConsentRoutes } from "../biometric-consent";
 import { computeAuthoritativeRentalPricing } from "../rental-pricing";
 import { platformConfig, calculateCommission } from "../platform-config";
 import { AntiFarmingSystem } from "../anti-farming-system";
@@ -1910,6 +1911,7 @@ export function registerRoutes(
   // Write actions wait on acceptance of the current Terms (see terms-enforcement.ts).
   app.use("/api", requireCurrentTerms);
   registerAiConsentRoutes(app);
+  registerBiometricConsentRoutes(app);
   app.use(usernameScrubMiddleware);
 
   if (e2eTestModeEnabled()) {
@@ -2491,6 +2493,10 @@ export function registerRoutes(
 
     try {
       const userId = req.user.id;
+      // Persona collects ID images and a selfie for face matching: no inquiry, new or existing, without the member's explicit consent.
+      if (!(await hasBiometricConsent(userId))) {
+        return res.status(403).json({ code: BIOMETRIC_CONSENT_REQUIRED_CODE, message: BIOMETRIC_CONSENT_REQUIRED_MESSAGE });
+      }
       const personaApiKey = process.env.PERSONA_API_KEY;
       const templateId = process.env.PERSONA_TEMPLATE_ID;
 

@@ -30,6 +30,41 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 
+export interface BiometricConsent {
+  version: string;
+  notice: string;
+  checkboxLabel: string;
+  policyPath: string;
+  consented: boolean;
+  consentedAt: string | null;
+}
+
+/** The notice and the required checkbox shown before Start Verification. Already agreed at the current wording: just says so. */
+export function BiometricConsentNotice({ consent, agreed, onAgreedChange }: { consent: BiometricConsent | undefined; agreed: boolean; onAgreedChange: (value: boolean) => void }) {
+  if (!consent) return null;
+  return (
+    <div className="space-y-3 rounded-lg border border-teal-100 bg-teal-50/50 p-4" data-testid="biometric-consent">
+      <p className="text-sm text-gray-700" data-testid="biometric-notice">
+        {consent.notice}{" "}
+        <a href={consent.policyPath} target="_blank" rel="noreferrer" className="text-teal-700 underline" data-testid="biometric-policy-link">
+          Read the Privacy Policy section
+        </a>
+        .
+      </p>
+      {consent.consented ? (
+        <p className="text-xs text-gray-500" data-testid="biometric-agreed">
+          You agreed to this{consent.consentedAt ? ` on ${new Date(consent.consentedAt).toLocaleDateString()}` : ""}.
+        </p>
+      ) : (
+        <label className="flex items-start gap-2 text-sm text-gray-800">
+          <input type="checkbox" className="mt-1 h-4 w-4" checked={agreed} onChange={(e) => onAgreedChange(e.target.checked)} data-testid="biometric-checkbox" />
+          <span>{consent.checkboxLabel}</span>
+        </label>
+      )}
+    </div>
+  );
+}
+
 type VerificationStatus = "unverified" | "pending" | "verified" | "failed";
 
 interface VerificationData {
@@ -83,10 +118,14 @@ export default function VerificationPage() {
   const [personaLoading, setPersonaLoading] = useState(false);
   const [personaError, setPersonaError] = useState<string | null>(null);
   const returnCheckDone = useRef(false);
+  const [agreed, setAgreed] = useState(false);
 
   const { data: verification, isLoading } = useQuery<VerificationData>({
     queryKey: ["/api/verification-status"],
   });
+
+  // The notice, the checkbox wording and whether this member already agreed come from the server (biometric-consent.ts).
+  const { data: consent } = useQuery<BiometricConsent>({ queryKey: ["/api/biometric-consent"] });
 
   const createInquiryMutation = useMutation({
     mutationFn: async () => {
@@ -158,6 +197,12 @@ export default function VerificationPage() {
     setPersonaError(null);
 
     try {
+      // Persona collects ID images and a selfie for face matching: the server refuses to start without the member's consent.
+      if (!consent?.consented) {
+        if (!consent || !agreed) throw new Error("Please tick the box to agree before you start.");
+        await apiRequest("POST", "/api/biometric-consent", { version: consent.version, agreed: true });
+        await queryClient.invalidateQueries({ queryKey: ["/api/biometric-consent"] });
+      }
       const result = await createInquiryMutation.mutateAsync();
       const inquiryId = result.inquiryId;
 
@@ -177,7 +222,7 @@ export default function VerificationPage() {
       setPersonaError(err.message || "Failed to start verification");
       setPersonaLoading(false);
     }
-  }, [createInquiryMutation]);
+  }, [createInquiryMutation, consent, agreed, queryClient]);
 
   const isVerified = verification?.status === "verified";
   const isPending = verification?.status === "pending";
@@ -472,9 +517,11 @@ export default function VerificationPage() {
                   </div>
                 </div>
 
+                <BiometricConsentNotice consent={consent} agreed={agreed} onAgreedChange={setAgreed} />
+
                 <Button
                   onClick={startPersonaVerification}
-                  disabled={personaLoading || createInquiryMutation.isPending}
+                  disabled={personaLoading || createInquiryMutation.isPending || !consent || (!consent.consented && !agreed)}
                   className="w-full text-white"
                   style={{ backgroundColor: "#0DCEA1" }}
                   size="lg"

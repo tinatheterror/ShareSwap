@@ -961,6 +961,16 @@ export const aiConsents = pgTable("ai_consents", {
   userFeatureUidx: uniqueIndex("ai_consents_user_feature_uidx").on(table.userId, table.feature),
 }));
 
+// Explicit consent to ID and face data being collected for identity verification, with the version of the text agreed to (0029).
+export const biometricConsents = pgTable("biometric_consents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  version: text("version").notNull(),
+  consentedAt: timestamp("consented_at").defaultNow().notNull(),
+}, (table) => ({
+  userUidx: uniqueIndex("biometric_consents_user_uidx").on(table.userId),
+}));
+
 export const CONTENT_REPORT_TARGET_TYPES = ["user", "item", "message", "review", "wishlist"] as const;
 export const CONTENT_REPORT_REASONS = ["spam", "harassment", "hate", "sexual", "violence", "illegal", "scam", "other"] as const;
 

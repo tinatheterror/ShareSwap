@@ -20,6 +20,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiRequest, BASE_URL } from "@/lib/api";
 import { fmtDate } from "@/lib/dateUtils";
+import { BiometricConsentNotice, type BiometricConsent } from "@/components/BiometricConsentNotice";
 
 type VerificationStatus = "unverified" | "pending" | "verified" | "failed";
 
@@ -46,6 +47,14 @@ export default function VerificationScreen() {
   const pendingInquiryId = useRef<string | null>(null);
   const hasOpenedPersona = useRef(false);
   const appState = useRef(AppState.currentState);
+
+  const [agreed, setAgreed] = useState(false);
+  // The notice, the checkbox wording and whether this member already agreed come from the server (biometric-consent.ts).
+  const { data: consent } = useQuery<BiometricConsent>({
+    queryKey: ["biometric-consent"],
+    queryFn: () => apiGet("/api/biometric-consent"),
+    enabled: !!user,
+  });
 
   const { data: verification, isLoading, refetch } = useQuery<VerificationData>({
     queryKey: ["verification-status"],
@@ -119,6 +128,13 @@ export default function VerificationScreen() {
     setPersonaError(null);
 
     try {
+      // Persona collects ID images and a selfie for face matching: the server refuses to start without the member's consent.
+      if (!consent?.consented) {
+        if (!consent || !agreed) throw new Error("Please tick the box to agree before you start.");
+        const res = await apiRequest("POST", "/api/biometric-consent", { version: consent.version, agreed: true });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.message || "Could not record your agreement");
+        await queryClient.invalidateQueries({ queryKey: ["biometric-consent"] });
+      }
       const result = await createInquiryMutation.mutateAsync();
       const inquiryId = result.inquiryId;
 
@@ -349,13 +365,16 @@ export default function VerificationScreen() {
                 </View>
               ))}
 
+              <BiometricConsentNotice consent={consent} agreed={agreed} onAgreedChange={setAgreed} />
+
               <Pressable
+                testID="start-verification"
                 style={({ pressed }) => [
                   styles.primaryBtn,
-                  { opacity: pressed || personaLoading || createInquiryMutation.isPending ? 0.8 : 1 },
+                  { opacity: pressed || personaLoading || createInquiryMutation.isPending || !consent || (!consent.consented && !agreed) ? 0.5 : 1 },
                 ]}
                 onPress={startPersonaVerification}
-                disabled={personaLoading || createInquiryMutation.isPending}
+                disabled={personaLoading || createInquiryMutation.isPending || !consent || (!consent.consented && !agreed)}
               >
                 {personaLoading || createInquiryMutation.isPending ? (
                   <><ActivityIndicator color="#fff" size="small" /><Text style={styles.primaryBtnText}>  Starting Verification...</Text></>

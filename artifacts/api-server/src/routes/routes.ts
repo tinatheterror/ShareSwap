@@ -71,7 +71,7 @@ import { AntiFarmingSystem } from "../anti-farming-system";
 import { sendPushToUser, sendPushToUsers } from "../push-notifications";
 import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChangeAlertEmail } from "../mail";
 import { fullVerificationRejection } from "../verification-gate";
-import { computeVerification, getVerificationForUser } from "../verification";
+import { computeVerification, getIdVerificationSummary, getVerificationForUser } from "../verification";
 import { getDeletionEligibility } from "../account-deletion/eligibility";
 import { classifyRequestLane, deriveCompletedAt } from "../request-lanes";
 import { pendingExtensionRequestIds, reviewedRequestIds } from "../request-lane-data";
@@ -2480,46 +2480,8 @@ export function registerRoutes(
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
-
-    const [verification] = await db
-      .select()
-      .from(verifications)
-      .where(eq(verifications.userId, req.user.id))
-      .orderBy(desc(verifications.createdAt))
-      .limit(1);
-
-    if (!verification) {
-      return res.json({
-        status: 'unverified',
-        legalFullName: null,
-        submittedAt: null,
-        verifiedAt: null,
-        failureReason: null,
-      });
-    }
-
-    // Map database status to frontend status
-    // personaStatus "created" means the inquiry was started but the user never submitted it —
-    // treat it as unverified so they can retry rather than being stuck on "Under Review".
-    let status: 'unverified' | 'pending' | 'verified' | 'failed' = 'unverified';
-    if (verification.status === 'pending' && verification.personaStatus !== 'created') status = 'pending';
-    else if (verification.status === 'approved') status = 'verified';
-    else if (verification.status === 'rejected') status = 'failed';
-
-    // Get verifiedAt from user record if verified
-    const [user] = await db
-      .select({ verifiedAt: users.verifiedAt })
-      .from(users)
-      .where(eq(users.id, req.user.id))
-      .limit(1);
-
-    res.json({
-      status,
-      legalFullName: verification.fullName,
-      submittedAt: verification.createdAt,
-      verifiedAt: user?.verifiedAt || null,
-      failureReason: status === 'failed' ? 'Document could not be verified. Please upload a clearer image.' : null,
-    });
+    // The same rule as getVerificationForUser (verification.ts): an approved ID wins over any later row.
+    return res.json(await getIdVerificationSummary(req.user.id));
   });
 
   app.post("/api/persona/create-inquiry", async (req, res) => {

@@ -6,6 +6,7 @@ import { appleLinks, bannedAppleHashes, bannedEmailHashes, connectCleanupFailure
 import { sendAccountDeletedEmail, sendAccountDeletionRequestedEmail } from "../mail";
 import { publicName } from "../public-identity";
 import { anonymizeUser } from "./anonymize";
+import { queuePersonaRedactions, runPersonaRedactions, type PersonaRedactor } from "./persona-redaction";
 import { AppleCleanupUnavailableError, type AppleCleanupTarget } from "./apple-cleanup";
 import { hashBannedAppleSub } from "./banned-apple";
 import { accountEmail, hashBannedEmail } from "./banned-email";
@@ -46,6 +47,8 @@ export type DeletionDeps = {
   sendRequestedEmail?: (to: string, deleteOn: Date, name?: string) => Promise<unknown>;
   sendDeletedEmail?: (to: string, name?: string) => Promise<unknown>;
   removeUpload?: (publicPath: string) => Promise<void>;
+  /** Redacts one Persona inquiry (ID images, selfie, face-match data). Must be safe to repeat. A failure never blocks the deletion: it is retried. */
+  redactPersonaInquiry?: PersonaRedactor;
 };
 
 export type DeletionState = {
@@ -261,6 +264,8 @@ export async function finalizeDeletion(userId: number, deps: DeletionDeps = {}):
         .onConflictDoNothing();
     }
 
+    // Persona holds the ID images and selfie: queue every inquiry for redaction before the verification rows are scrubbed.
+    await queuePersonaRedactions(tx, userId);
     const { uploads } = await anonymizeUser(tx, userId);
     if (bannedHash) await tx.insert(bannedEmailHashes).values({ emailHash: bannedHash }).onConflictDoNothing();
     if (bannedAppleHash) await tx.insert(bannedAppleHashes).values({ subHash: bannedAppleHash }).onConflictDoNothing();
@@ -284,6 +289,12 @@ export async function finalizeDeletion(userId: number, deps: DeletionDeps = {}):
     } catch (error) {
       console.error("[account-deletion] could not remove an uploaded file:", error);
     }
+  }
+  // First attempt at the Persona redaction; what fails stays queued and is retried by every live deletion sweep.
+  try {
+    await runPersonaRedactions(deps.redactPersonaInquiry, { userId, now: deps.now });
+  } catch (error) {
+    console.error("[account-deletion] Persona redaction step failed:", error instanceof Error ? error.message : error);
   }
   if (email) await tryEmail(() => (deps.sendDeletedEmail ?? sendAccountDeletedEmail)(email, publicName(user) ?? undefined));
   return { deleted: true, alreadyDeleted: false, requestsCancelled: outcome.requestsCancelled };
@@ -339,6 +350,12 @@ export async function finalizeDueDeletions(deps: DeletionDeps & { dryRun?: boole
       connectResolved = retried.resolved;
     } catch (error) {
       console.error("[account-deletion] could not retry Connect cleanups:", error instanceof Error ? error.message : error);
+    }
+    // Persona inquiries that could not be redacted on earlier runs are tried again too.
+    try {
+      await runPersonaRedactions(deps.redactPersonaInquiry, { now: deps.now });
+    } catch (error) {
+      console.error("[account-deletion] could not retry Persona redactions:", error instanceof Error ? error.message : error);
     }
   }
   const cutoff = new Date(clock(deps).getTime() - DELETION_GRACE_DAYS * DAY_MS);

@@ -118,6 +118,15 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     anonymize: [],
     delete: [],
   },
+  persona_redactions: {
+    rows: "retain",
+    retention: null,
+    note: "Work list and log of Persona inquiries to redact after an account is deleted: an inquiry id, the attempts and when Persona confirmed. No personal data.",
+    userColumns: ["user_id"],
+    keep: ["id", "user_id", "inquiry_id", "status", "attempts", "last_error", "created_at", "last_attempt_at", "redacted_at"],
+    anonymize: [],
+    delete: [],
+  },
   community_challenges: {
     rows: "retain",
     retention: null,

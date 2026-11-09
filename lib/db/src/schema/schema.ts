@@ -196,6 +196,21 @@ export const connectCleanupFailures = pgTable("connect_cleanup_failures", {
   resolvedAt: timestamp("resolved_at"),
 })
 
+// Persona inquiries to redact after an account is deleted (0030): retried until Persona confirms. Holds an inquiry id, no personal data.
+export const personaRedactions = pgTable("persona_redactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  inquiryId: text("inquiry_id").notNull(),
+  status: text("status").notNull().default("pending"), // 'pending' | 'redacted'
+  attempts: integer("attempts").notNull().default(0),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  redactedAt: timestamp("redacted_at"),
+}, (table) => ({
+  inquiryUidx: uniqueIndex("persona_redactions_inquiry_uidx").on(table.inquiryId),
+}));
+
 export const verifications = pgTable("verifications", {
   id: serial("id").primaryKey(),
   userId: serial("user_id").notNull().references(() => users.id),

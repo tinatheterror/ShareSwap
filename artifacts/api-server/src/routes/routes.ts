@@ -1,5 +1,6 @@
 import { ensureUsableCustomer } from "../stripe-customer.js";
 import { createLazyStripe } from "../stripe-lazy-client";
+import { createPersonaRedactor } from "../account-deletion/persona-redaction";
 import { allUploadedBy, readPrivateUpload, savePrivateUpload, type PrivateFilePurpose } from "../private-files";
 import { buildEvidenceBundle, ownerEvidenceRequests, submitOwnerEvidence } from "../dispute-evidence";
 import { alertDisputeDeadlines, completeRentalOperationally, listOpenAccountFlags, listPlatformDisputes, markDisputeReviewed, noteDepositUncollectible } from "../platform-disputes";
@@ -16164,6 +16165,7 @@ Respond with ONLY the category name, nothing else.`
     stripeCleanup: createStripeCleanup(async () => (await getUncachableStripeClient()) as unknown as StripeCleanupClient),
     appleCleanup: createAppleCleanup(),
     deleteConnectAccount: createConnectDeleter(async () => (await getUncachableStripeClient()) as unknown as StripeCleanupClient),
+    redactPersonaInquiry: createPersonaRedactor(),
     ...options.accountDeletion,
   });
   const sendDeletionError = (res: import("express").Response, error: unknown, fallback: string) => {

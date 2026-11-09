@@ -424,6 +424,20 @@ export async function ensureBiometricConsentsTable() {
   }
 }
 
+const PERSONA_REDACTIONS_FILE = "lib/db/scripts/0030_persona_redactions.sql";
+
+/** persona_redactions (0030): account deletion writes to it in the same transaction as the erasure, so a missing table would stop every deletion. */
+export async function ensurePersonaRedactionsTable() {
+  const { rows } = await pool.query(`SELECT to_regclass('persona_redactions') IS NOT NULL AS present`);
+  if (rows[0]?.present === true) return;
+  try {
+    await runMigrationFile(PERSONA_REDACTIONS_FILE);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code !== "42P07" && code !== "23505") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -445,6 +459,7 @@ export async function applyStartupMigrations() {
   await ensureEvidenceUploadsTable();
   await ensureIdVerifiedColumnDropped();
   await ensureBiometricConsentsTable();
+  await ensurePersonaRedactionsTable();
   await ensureRentalPayoutHoldUntilDropped();
   await ensureScheduledJobRunsTable();
   await ensureJobSwitchesTable();

@@ -1,7 +1,8 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tanstack/react-query", () => ({ useQuery: vi.fn() }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: vi.fn(), useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
+vi.mock("@/lib/queryClient", () => ({ apiRequest: vi.fn() }));
 
 import { CardDisputeRow, type CardDispute } from "@/components/admin/card-disputes";
 
@@ -41,5 +42,12 @@ describe("a card dispute in the admin view", () => {
     expect(screen.getByTestId("card-dispute-du_1").textContent).toMatch(/not matched to a request/);
     expect(screen.getByTestId("due-by-du_1").textContent).toMatch(/not known/);
     expect(screen.queryByTestId("auth-expiry-du_1")).toBeNull();
+  });
+
+  it("flags a dispute whose deposit hold expired as urgent, and opens the review panel on request", () => {
+    render(<CardDisputeRow dispute={{ ...base, depositStatus: "EXPIRED_UNSECURED", urgentManualReview: true, depositUncollectibleAt: hours(-1) }} />);
+    expect(screen.getByTestId("urgent-du_1").textContent).toMatch(/deposit hold expired/);
+    expect(screen.queryByTestId("dispute-review-du_1")).toBeNull();
+    expect(screen.getByTestId("review-toggle-du_1").textContent).toBe("Review and evidence");
   });
 });

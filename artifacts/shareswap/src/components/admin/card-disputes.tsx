@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { DisputeReview } from "@/components/admin/dispute-review";
 
 export interface CardDispute {
   disputeId: string;
@@ -21,6 +24,11 @@ export interface CardDispute {
   /** When the card authorization behind the deposit hold runs out. */
   depositAuthorizationExpiresAt: string | null;
   depositStatus: string | null;
+  /** The deposit authorization expired while the dispute was unreviewed (nothing can be collected through it). */
+  urgentManualReview?: boolean;
+  depositUncollectibleAt?: string | null;
+  /** An admin closed the rental; the dispute stays open. */
+  rentalCompletedAt?: string | null;
   createdAt: string;
 }
 
@@ -43,6 +51,7 @@ function Deadline({ label, iso, testId, done }: { label: string; iso: string | n
 
 export function CardDisputeRow({ dispute: d }: { dispute: CardDispute }) {
   const holdLapsed = d.depositStatus === "EXPIRED_UNSECURED";
+  const [open, setOpen] = useState(false);
   return (
     <Card data-testid={`card-dispute-${d.disputeId}`} className="border-amber-200">
       <CardContent className="space-y-1.5 p-5">
@@ -63,7 +72,16 @@ export function CardDisputeRow({ dispute: d }: { dispute: CardDispute }) {
         {d.rentalWasOpen && d.reviewStatus === "pending_admin" && (
           <p className="text-xs text-muted-foreground">The rental was open when this was disputed: its deposit hold stays in place until you review the case.</p>
         )}
-        <p className="text-xs text-muted-foreground">Evidence bundle: /api/admin/chargebacks/{d.disputeId}/evidence</p>
+        {d.urgentManualReview && <Badge className="bg-red-100 text-red-800" data-testid={`urgent-${d.disputeId}`}>urgent: deposit hold expired</Badge>}
+        <Button type="button" size="sm" variant="outline" data-testid={`review-toggle-${d.disputeId}`} onClick={() => setOpen((v) => !v)}>
+          {open ? "Hide review" : d.reviewStatus === "pending_admin" ? "Review and evidence" : "View evidence"}
+        </Button>
+        {open && (
+          <DisputeReview context={{
+            disputeId: d.disputeId, reviewStatus: d.reviewStatus, depositStatus: d.depositStatus, urgentManualReview: d.urgentManualReview,
+            depositUncollectibleAt: d.depositUncollectibleAt, rentalCompletedAt: d.rentalCompletedAt,
+          }} />
+        )}
       </CardContent>
     </Card>
   );

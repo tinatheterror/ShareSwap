@@ -17,6 +17,7 @@
     "usd-test-data:clean": "tsx src/scripts/clean-usd-test-data.ts",
     "evidence:purge-public": "tsx src/scripts/purge-public-evidence.ts",
     "condition-photos:fix": "tsx src/scripts/fix-condition-photos.ts",
+    "persona:sandbox-check": "tsx src/scripts/persona-sandbox-check.ts",
     "test": "tsx ../../lib/db/src/test-database-guard-cli.ts && TERMS_ENFORCEMENT=off tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {

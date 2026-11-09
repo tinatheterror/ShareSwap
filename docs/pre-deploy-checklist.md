@@ -101,3 +101,16 @@ WHERE EXISTS (SELECT 1 FROM verifications v WHERE v.user_id = u.id AND v.status 
 ```
 
 Add `AND u.account_status IS DISTINCT FROM 'deleted'` to leave out deleted accounts. To see who (ids only, no names), replace `count(*) AS verified_without_consent` with `u.id, (SELECT min(v.created_at) FROM verifications v WHERE v.user_id = u.id AND v.status = 'approved') AS verified_at` and add `ORDER BY verified_at`. A member who agreed at an older version of the wording does have a row, so they are not counted here; to count them too, change the last line to `AND NOT EXISTS (SELECT 1 FROM biometric_consents c WHERE c.user_id = u.id AND c.version = '2026-11-09')` (the current `BIOMETRIC_CONSENT_VERSION`). Nothing is changed for these members: the consent only gates starting a new Persona inquiry. What to do about them is on the counsel list in go-live-checklist.md.
+
+## 9. Persona sandbox check (once, before launch)
+
+Account deletion redacts a member's Persona inquiries and accounts with `DELETE /api/v1/inquiries/{id}` and `DELETE /api/v1/accounts/{id}`, and finds the accounts by the reference id `user_<id>`. Persona's documentation does not say what a redacted object returns, so check it against the sandbox:
+
+```
+PERSONA_SANDBOX_API_KEY=persona_sandbox_... PERSONA_SANDBOX_TEMPLATE_ID=itmpl_... pnpm --filter @workspace/api-server run persona:sandbox-check
+```
+
+It creates a test inquiry (reference id `user_sandbox_<time>`), finds its account by reference id, redacts both with the same client deletion uses, fetches them again and prints PASS/FAIL per step, exiting 1 on any FAIL. It refuses any key that does not start with `persona_sandbox_`, never prints the key, and needs no database. Run it from `artifacts/api-server`.
+
+- [ ] Every step passes. A FAIL on "find the account by reference id" means accounts are not tied to `user_<id>` as assumed (deletion will then redact inquiries only; send the output to whoever maintains the deletion code). A FAIL after "redact the inquiry" means the endpoint or the key's permissions are wrong, and deletions will end in `failed` rows and admin notices.
+

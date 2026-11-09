@@ -2,7 +2,7 @@ import { is, sql, type SQL } from "drizzle-orm";
 import { getTableConfig, PgTable } from "drizzle-orm/pg-core";
 import * as schema from "@workspace/db";
 import { db } from "@workspace/db";
-import { DELETED_DISPLAY_NAME, REMOVED_MESSAGE_TEXT } from "./retention";
+import { biometricConsentSurvivesDeletion, DELETED_DISPLAY_NAME, REMOVED_MESSAGE_TEXT } from "./retention";
 import { DELETION_MANIFEST, RUNTIME_TABLE_MANIFEST } from "./manifest";
 
 // Applies DELETION_MANIFEST to one user. Everything here runs in the caller's transaction, so a failure leaves the
@@ -154,7 +154,7 @@ export type AnonymizeResult = {
 const uploadPaths = (values: unknown[]): string[] =>
   values.flat().filter((v): v is string => typeof v === "string" && (v.startsWith("/uploads/") || v.startsWith("private/")));
 
-export async function anonymizeUser(tx: DeletionTx, userId: number): Promise<AnonymizeResult> {
+export async function anonymizeUser(tx: DeletionTx, userId: number, options: { env?: NodeJS.ProcessEnv } = {}): Promise<AnonymizeResult> {
   const U = sql`${userId}`;
 
   // Uploaded files of the rows about to be scrubbed (the evidence ones are not scrubbed, so they are not listed).
@@ -169,6 +169,9 @@ export async function anonymizeUser(tx: DeletionTx, userId: number): Promise<Ano
   // Private dispute-evidence files go with the evidence rows that are scrubbed below (claim and return photos are booking evidence and stay).
   const evidenceFiles = await tx.execute(sql`SELECT storage_key AS p FROM evidence_uploads WHERE user_id = ${U} AND purpose = 'dispute_evidence' AND storage_key IS NOT NULL`);
   const uploads = uploadPaths([profile, itemPhotos, verifierPhotos, disputePhotos, evidenceFiles].flatMap((r) => r.rows.map((row) => (row as { p: unknown }).p)));
+
+  // The minimal consent record (user id, time, version) outlives the account unless configured otherwise.
+  if (!biometricConsentSurvivesDeletion(options.env)) await tx.execute(sql`DELETE FROM biometric_consents WHERE user_id = ${U}`);
 
   // 1. Rows that belong to the user alone.
   const also = ALSO_DELETE_WHERE(userId);

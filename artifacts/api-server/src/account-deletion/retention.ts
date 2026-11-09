@@ -73,3 +73,13 @@ export const IN_FLIGHT_SETTLEMENT_STATUSES = ["PROCESSING", "INDETERMINATE", "MA
 
 /** Wallet withdrawals and escrow rows whose money has not settled either way. */
 export const UNSETTLED_PAYOUT_STATUSES = ["held", "pending_payout", "manual_review"] as const;
+
+/**
+ * Whether the minimal record of a member's biometric consent (user id, time, version of the text; never a name) survives the deletion of
+ * their account. Kept by default, as proof the consent was asked for and given (an open point for counsel, see go-live-checklist). Set
+ * BIOMETRIC_CONSENT_RETAIN_AFTER_DELETION to "false" (or "0" / "off" / "no") to delete the record with the account instead.
+ */
+export const BIOMETRIC_CONSENT_RETAIN_ENV = "BIOMETRIC_CONSENT_RETAIN_AFTER_DELETION";
+export function biometricConsentSurvivesDeletion(env: NodeJS.ProcessEnv = process.env): boolean {
+  return !["false", "0", "off", "no"].includes((env[BIOMETRIC_CONSENT_RETAIN_ENV] ?? "").trim().toLowerCase());
+}

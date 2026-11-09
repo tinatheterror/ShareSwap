@@ -56,13 +56,13 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     delete: ["id", "user_id", "feature", "version", "consented_at"],
   },
   biometric_consents: {
-    rows: "delete",
+    rows: "retain",
     retention: null,
-    note: "The member's consent to ID and face data being collected for identity verification, and the version of the text agreed to. Removed with the account; whether proof of consent must be kept longer is an open point for counsel (go-live-checklist).",
+    note: "A member's consent to ID and face data being collected for identity verification: user id, time and the version of the text agreed to. It holds no name, and the user row it points at is anonymized. Kept by default as proof of consent; BIOMETRIC_CONSENT_RETAIN_AFTER_DELETION=false deletes it with the account instead (anonymizeUser). The retention period is an open point for counsel (go-live-checklist).",
     userColumns: ["user_id"],
-    keep: [],
+    keep: ["id", "user_id", "version", "consented_at"],
     anonymize: [],
-    delete: ["id", "user_id", "version", "consented_at"],
+    delete: [],
   },
   apple_links: {
     rows: "delete",

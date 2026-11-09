@@ -266,7 +266,7 @@ export async function finalizeDeletion(userId: number, deps: DeletionDeps = {}):
 
     // Persona holds the ID images and selfie: queue every inquiry for redaction before the verification rows are scrubbed.
     await queuePersonaRedactions(tx, userId);
-    const { uploads } = await anonymizeUser(tx, userId);
+    const { uploads } = await anonymizeUser(tx, userId, { env: deps.env });
     if (bannedHash) await tx.insert(bannedEmailHashes).values({ emailHash: bannedHash }).onConflictDoNothing();
     if (bannedAppleHash) await tx.insert(bannedAppleHashes).values({ subHash: bannedAppleHash }).onConflictDoNothing();
     // Stripe would not delete the Connect account: leave a durable note for staff, in the same transaction as the

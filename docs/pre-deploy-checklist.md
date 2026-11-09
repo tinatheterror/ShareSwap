@@ -40,6 +40,8 @@ Names only. Set them in the deployment that serves the API AND in the Scheduled 
 | `STRIPE_SUBSCRIPTION_WEBHOOK_SECRET` | set (boot stops without it) | existing |
 | **`STRIPE_DISPUTE_WEBHOOK_SECRET`** | **set before real payments**; the signing secret of the dispute endpoint in step 4. Without it the boot logs a warning and every dispute event is rejected: nothing is recorded, no admin is alerted, no owner is asked for evidence | new behaviour depends on it |
 | **`CHARGEBACK_RECOVERY_FROM_OWNERS`** | **unset.** Only the exact value `true` turns on charging owners' wallets for chargebacks, so never set it at launch (not even to `false`; unset is the clean state). The launch policy is that ShareSwap absorbs the loss and the fee | policy |
+| `BIOMETRIC_CONSENT_RETAIN_AFTER_DELETION` | unset (the minimal consent record is kept after an account is deleted); `false` deletes it with the account. Counsel's call, see go-live-checklist | new |
+| `PERSONA_API_KEY` | set in the API deployment **and** the scheduled deletion job (account deletion redacts the member's Persona inquiries with it) | existing key, new use |
 | `TERMS_ENFORCEMENT` | unset | existing |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `MODERATION_EMAIL`, `BANNED_EMAIL_HASH_KEY` | set | existing |
 | `SCHEDULED_JOBS_EXPIRY_MODE`, `SCHEDULED_JOBS_HANDOFF_MODE` | your decision (default is dry-run) | existing |

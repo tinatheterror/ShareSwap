@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 import { pool } from "@workspace/db";
+import { assertDestructiveDatabaseAllowed } from "@workspace/db/test-database-guard";
 
 // One-off cleanup of leftover test fixtures. DRY RUN unless --apply is passed.
 //
@@ -419,6 +420,8 @@ export function printPlan(plan: Plan) {
 
 async function main() {
   const apply = process.argv.slice(2).includes("--apply");
+  // A dry run only reads. Deleting needs a test database, or ALLOW_NON_TEST_DATABASE=<its name>.
+  if (apply) assertDestructiveDatabaseAllowed("delete test fixtures");
   const client = await pool.connect();
   try {
     if (!apply) {

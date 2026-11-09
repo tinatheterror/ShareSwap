@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 import { pool } from "@workspace/db";
+import { assertDestructiveDatabaseAllowed } from "@workspace/db/test-database-guard";
 import { getUncachableStripeClient } from "../stripe.server";
 import { runTestDataCleanup, type CleanupPlan } from "../test-data-cleanup";
 
@@ -39,6 +40,8 @@ export function describePayments(plan: CleanupPlan): string {
 
 async function main() {
   const args = process.argv.slice(2);
+  // A dry run only reads. A live run needs a test database, or ALLOW_NON_TEST_DATABASE=<its name>.
+  if (args.includes("--live")) assertDestructiveDatabaseAllowed("close test rentals and refund test payments");
   const confirmAt = args.indexOf("--confirm");
   const withoutHoldAt = args.indexOf("--close-without-hold");
   const out = await runTestDataCleanup((await getUncachableStripeClient()) as any, {

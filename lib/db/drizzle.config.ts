@@ -2,10 +2,15 @@ import { defineConfig } from "drizzle-kit";
 import path from "path";
 import * as schema from "./src/schema";
 import { managedTableNames } from "./src/managed-tables";
+import { assertDestructiveDatabaseAllowed } from "./src/test-database-guard";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL, ensure the database is provisioned");
 }
+
+// drizzle-kit push --force applies every drop and data-loss statement without asking. Only against a clearly named test database
+// (or one confirmed with ALLOW_NON_TEST_DATABASE=<its name>).
+assertDestructiveDatabaseAllowed("run drizzle-kit (push can drop tables and columns)");
 
 export default defineConfig({
   schema: path.join(__dirname, "./src/schema/index.ts"),

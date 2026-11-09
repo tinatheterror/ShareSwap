@@ -213,7 +213,10 @@ export function setupStorageRoutes(app: Express): void {
   app.get("/storage/*path", async (req: Request, res: Response) => {
     const storageKey = req.path.replace("/storage/", "");
     // Private files are only served by the route that checks who is asking.
-    if (decodeURIComponent(storageKey).startsWith(PRIVATE_PREFIX)) return res.status(404).send("File not found");
+    if (decodeURIComponent(storageKey).startsWith(PRIVATE_PREFIX)) {
+      res.status(404).send("File not found");
+      return;
+    }
     
     const storageClient = await getClient();
     if (!storageClient) {

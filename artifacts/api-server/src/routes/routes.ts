@@ -11122,10 +11122,10 @@ Respond with ONLY the category name, nothing else.`
     if (!req.file) return res.status(400).json({ error: "No photo provided" });
     try {
       const url = await saveEvidenceUpload((req.user as { id: number }).id, req.file);
-      res.json({ url });
+      return res.json({ url });
     } catch (err) {
       console.error("Dispute evidence upload error:", err);
-      res.status(500).json({ error: "Failed to upload photo" });
+      return res.status(500).json({ error: "Failed to upload photo" });
     }
   });
 

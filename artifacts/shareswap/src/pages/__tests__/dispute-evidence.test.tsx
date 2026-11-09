@@ -24,7 +24,7 @@ beforeEach(() => {
   fetchMock.mockReset();
   fetchMock.mockImplementation(async (url: string) => {
     if (url === "/api/csrf-token") return { ok: true, json: async () => ({ csrfToken: "tok" }) };
-    if (url === "/api/uploads/claim-evidence") return { ok: true, json: async () => ({ url: "/uploads/a.jpg" }) };
+    if (url === "/api/uploads/dispute-evidence") return { ok: true, json: async () => ({ url: "/uploads/a.jpg" }) };
     throw new Error(`unexpected ${url}`);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -67,7 +67,7 @@ describe("the owner's dispute evidence screen", () => {
     fireEvent.change(input, { target: { files: [new File(["x"], "a.jpg", { type: "image/jpeg" })] } });
     fireEvent.click(screen.getByTestId("evidence-submit"));
     await screen.findByTestId("evidence-sent");
-    const upload = fetchMock.mock.calls.find(([url]) => url === "/api/uploads/claim-evidence")!;
+    const upload = fetchMock.mock.calls.find(([url]) => url === "/api/uploads/dispute-evidence")!;
     expect(upload[1].headers).toEqual({ "x-csrf-token": "tok" });
     expect(mocks.apiRequest).toHaveBeenCalledWith("POST", "/api/disputes/du_1/evidence", { note: undefined, photoUrls: ["/uploads/a.jpg"] });
   });

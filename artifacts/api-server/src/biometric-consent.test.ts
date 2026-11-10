@@ -111,18 +111,18 @@ test("with consent at the current version create-inquiry goes to Persona; an old
 test("the wording cannot change without a new version, and the Privacy Policy has the section the notice links to", () => {
   const fingerprint = createHash("sha256").update(`${BIOMETRIC_NOTICE}\n${BIOMETRIC_CHECKBOX_LABEL}`).digest("hex").slice(0, 16);
   assert.equal(
-    `${BIOMETRIC_CONSENT_VERSION}:${fingerprint}`, "2026-11-09.3:b7b7ccbeed081867",
+    `${BIOMETRIC_CONSENT_VERSION}:${fingerprint}`, "2026-11-10.1:f85dbb624e4f63b7",
     "The consent wording changed: bump BIOMETRIC_CONSENT_VERSION (so everyone is asked again) and update this line.",
   );
   assert.match(BIOMETRIC_NOTICE, /Persona/);
   assert.match(BIOMETRIC_NOTICE, /ID/);
   assert.match(BIOMETRIC_NOTICE, /selfie/);
   assert.match(BIOMETRIC_NOTICE, /only the result and your name/);
-  // The purposes and the deletion schedule, in step with the Privacy Policy (the 30 days is still to be confirmed with Persona and counsel).
+  // The purposes and the deletion schedule, in step with the Privacy Policy.
   assert.match(BIOMETRIC_NOTICE, /verify your identity/);
   assert.match(BIOMETRIC_NOTICE, /detect fraud/);
   assert.match(BIOMETRIC_NOTICE, /improve its own service/);
-  assert.match(BIOMETRIC_NOTICE, /about 30 days after your verification is decided/);
+  assert.match(BIOMETRIC_NOTICE, /ID images, selfie and other personal data 30 days after your verification is decided, keeping only the decision/);
   assert.match(BIOMETRIC_NOTICE, /If you delete your account, we ask Persona to delete them when the deletion is completed: after a 14-day grace period, or sooner if you choose to delete it immediately/);
   assert.doesNotMatch(BIOMETRIC_NOTICE, /straight away|sooner if you close/, "Persona is asked when the deletion is completed, not when it is requested");
   assert.equal(DELETION_GRACE_DAYS, 14, "the policy and the notice say 14 days");
@@ -135,5 +135,5 @@ test("the wording cannot change without a new version, and the Privacy Policy ha
   assert.equal(BIOMETRIC_POLICY_PATH, `/privacy#${slug}`);
   const section = policy.slice(policy.indexOf(`## ${BIOMETRIC_POLICY_HEADING}`)).split("\n## ")[0];
   for (const needle of [/Persona/, /selfie/, /face/i, /tick a box/, /version/]) assert.match(section, needle);
-  for (const needle of [/about 30 days after your verification is decided/, /after the 14-day grace period, or sooner if you choose to delete your account immediately/, /detect fraud/, /improve its service/, /to be confirmed with Persona and counsel/]) assert.match(section, needle, "the policy says what the notice says");
+  for (const needle of [/ID images, selfie and other personal data 30 days after your verification is decided \(whether it was approved, declined or failed, or expired\), keeping only the decision/, /after the 14-day grace period, or sooner if you choose to delete your account immediately/, /detect fraud/, /improve its service/]) assert.match(section, needle, "the policy says what the notice says");
 });

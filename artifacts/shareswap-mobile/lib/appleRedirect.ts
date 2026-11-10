@@ -12,6 +12,13 @@ const APPLE_REDIRECT_MESSAGES: Record<string, string> = {
   unavailable: "Sign in with Apple is not available right now.",
 };
 
+/** The one-time token (and whether it only reactivates) from the server's Google redirect; ignores a trailing #fragment. */
+export function parseGoogleRedirect(url: string): { token: string | null; reactivate: boolean } {
+  const query = url.includes("?") ? url.slice(url.indexOf("?") + 1).split("#")[0] : "";
+  const params = new URLSearchParams(query);
+  return { token: params.get("token") || null, reactivate: params.get("reactivate") === "1" };
+}
+
 /** What the server's redirect back into the app means: ?token=, ?reactivate=1&token=, or ?apple=<reason>. */
 export function parseAppleRedirect(url: string): AppleRedirectResult {
   const query = url.includes("?") ? url.slice(url.indexOf("?") + 1).split("#")[0] : "";

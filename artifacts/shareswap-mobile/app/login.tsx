@@ -28,7 +28,7 @@ import { ApiEnvironmentLabel } from "@/components/ApiEnvironmentLabel";
 import { AppleSignInButton } from "@/components/AppleSignInButton";
 import { GoogleLogo } from "@/components/ProviderLogos";
 import { AppleSignInCancelled, appleSignInAvailable, requestAppleCredential } from "@/lib/appleSignIn";
-import { parseAppleRedirect } from "@/lib/appleRedirect";
+import { parseAppleRedirect, parseGoogleRedirect } from "@/lib/appleRedirect";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -181,10 +181,10 @@ export default function LoginScreen() {
           // store.  We extract the token and exchange it via a normal fetch
           // call so the session cookie is set in the right jar.
           const url = result.url;
-          const tokenMatch = url.match(/[?&]token=([^&]+)/);
-          if (/[?&]reactivate=1(&|$)/.test(url) && tokenMatch?.[1]) {
+          const redirect = parseGoogleRedirect(url);
+          if (redirect.reactivate && redirect.token) {
             // Google confirmed the account, but it is deactivated: offer to bring it back.
-            const reactivateToken = tokenMatch[1];
+            const reactivateToken = redirect.token;
             const confirmed = await new Promise<boolean>((resolve) =>
               Alert.alert(
                 "Account deactivated",
@@ -201,14 +201,14 @@ export default function LoginScreen() {
             const reactivated = await resp.json();
             if (!reactivated?.user?.id) throw new Error("Unable to reactivate your account. Please try again.");
             setUserData(reactivated.user);
-          } else if (tokenMatch?.[1]) {
+          } else if (redirect.token) {
             // Exchange the one-time token for a session cookie via a regular
             // native fetch call. The response body is the user object — we set
             // it directly so the app knows the user is logged in before
             // navigating (avoids a race where refetchUser sees 401 while the
             // cookie is still propagating through the native cookie jar).
             const resp = await apiRequest("POST", "/api/auth/exchange-token", {
-              token: tokenMatch[1],
+              token: redirect.token,
             });
             const userData = await resp.json();
             if (userData?.id) {

@@ -11,7 +11,7 @@ jest.mock("expo-crypto", () => ({
 }));
 
 import * as AppleAuthentication from "expo-apple-authentication";
-import { parseAppleRedirect } from "../appleRedirect";
+import { parseAppleRedirect, parseGoogleRedirect } from "../appleRedirect";
 import { AppleSignInCancelled, appleSignInPayload, requestAppleCredential } from "../appleSignIn";
 
 const signIn = AppleAuthentication.signInAsync as jest.Mock;
@@ -46,6 +46,16 @@ describe("requestAppleCredential", () => {
     await expect(requestAppleCredential()).rejects.toBeInstanceOf(AppleSignInCancelled);
     signIn.mockRejectedValue(new Error("network"));
     await expect(requestAppleCredential()).rejects.toThrow("network");
+  });
+});
+
+describe("parseGoogleRedirect", () => {
+  it("reads the token and ignores a trailing fragment", () => {
+    expect(parseGoogleRedirect("shareswap://?token=abc")).toEqual({ token: "abc", reactivate: false });
+    expect(parseGoogleRedirect("shareswap://?token=abc#")).toEqual({ token: "abc", reactivate: false });
+    expect(parseGoogleRedirect("exp://h/--/?token=abc&x=1#frag")).toEqual({ token: "abc", reactivate: false });
+    expect(parseGoogleRedirect("shareswap://?reactivate=1&token=reactivate-x#")).toEqual({ token: "reactivate-x", reactivate: true });
+    expect(parseGoogleRedirect("shareswap://")).toEqual({ token: null, reactivate: false });
   });
 });
 

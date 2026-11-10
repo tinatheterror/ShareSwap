@@ -26,6 +26,7 @@ import { registerPushToken } from "@/hooks/usePushNotifications";
 import { resumeDestination } from "@/lib/sessionNavigation";
 import { ApiEnvironmentLabel } from "@/components/ApiEnvironmentLabel";
 import { AppleSignInButton } from "@/components/AppleSignInButton";
+import { GoogleLogo } from "@/components/ProviderLogos";
 import { AppleSignInCancelled, appleSignInAvailable, requestAppleCredential } from "@/lib/appleSignIn";
 import { parseAppleRedirect } from "@/lib/appleRedirect";
 
@@ -263,7 +264,7 @@ export default function LoginScreen() {
             </View>
           )}
 
-          <Text style={[styles.heading, { color: colors.foreground }]}>
+          <Text style={[styles.heading, { color: colors.primaryForeground }]}>
             Sign in and discover a world of shared resources
           </Text>
 
@@ -281,12 +282,13 @@ export default function LoginScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.googleBtn,
-              { backgroundColor: colors.primary, opacity: pressed ? 0.88 : 1 },
+              { backgroundColor: "#ffffff", opacity: pressed ? 0.88 : 1 },
               lastAuthMethod === "google" && styles.googleBtnHighlighted,
             ]}
             onPress={handleGoogleLogin}
           >
-            <Text style={[styles.googleBtnText, { color: colors.primaryForeground }]}>
+            <GoogleLogo size={20} />
+            <Text style={[styles.googleBtnText, { color: "#000000" }]}>
               Continue with Google
             </Text>
             {lastAuthMethod === "google" && (
@@ -298,7 +300,7 @@ export default function LoginScreen() {
 
           {!showEmailForm ? (
             <Pressable onPress={() => setShowEmailForm(true)}>
-              <Text style={[styles.emailLink, { color: colors.foreground }]}>
+              <Text style={[styles.emailLink, { color: colors.primaryForeground }]}>
                 Continue with Email
               </Text>
             </Pressable>
@@ -355,15 +357,15 @@ export default function LoginScreen() {
               <Pressable
                 style={({ pressed }) => [
                   styles.signInBtn,
-                  { backgroundColor: colors.primary, opacity: pressed || loading ? 0.85 : 1 },
+                  { backgroundColor: colors.primaryForeground, opacity: pressed || loading ? 0.85 : 1 },
                 ]}
                 onPress={handleLogin}
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color={colors.primaryForeground} />
+                  <ActivityIndicator color="#ffffff" />
                 ) : (
-                  <Text style={[styles.signInBtnText, { color: colors.primaryForeground }]}>Sign In</Text>
+                  <Text style={[styles.signInBtnText, { color: "#ffffff" }]}>Sign In</Text>
                 )}
               </Pressable>
 
@@ -372,7 +374,7 @@ export default function LoginScreen() {
                 onPress={() => router.push("/forgot-password" as never)}
                 hitSlop={8}
               >
-                <Text style={[styles.forgotLink, { color: colors.mutedForeground }]}>
+                <Text style={[styles.forgotLink, { color: colors.primaryForeground }]}>
                   Forgot password?
                 </Text>
               </Pressable>
@@ -382,21 +384,21 @@ export default function LoginScreen() {
                 onPress={() => router.push("/register" as never)}
                 hitSlop={8}
               >
-                <Text style={[styles.forgotLink, { color: colors.primary }]}>
+                <Text style={[styles.forgotLink, { color: colors.primaryForeground, fontFamily: "Inter_700Bold" }]}>
                   New to ShareSwap? Create an account
                 </Text>
               </Pressable>
             </View>
           )}
 
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <View style={[styles.divider, { backgroundColor: "rgba(0,35,25,0.25)" }]} />
 
           <Pressable
             style={styles.referralRow}
             onPress={() => setShowReferral((v) => !v)}
           >
-            <Feather name="user" size={16} color={colors.mutedForeground} />
-            <Text style={[styles.referralLink, { color: colors.mutedForeground }]}>
+            <Feather name="user" size={16} color={colors.primaryForeground} />
+            <Text style={[styles.referralLink, { color: colors.primaryForeground }]}>
               Have a referral code?
             </Text>
           </Pressable>
@@ -422,8 +424,8 @@ export default function LoginScreen() {
           )}
 
           <View style={styles.trustRow}>
-            <Feather name="lock" size={15} color={colors.primary} />
-            <Text style={[styles.trustText, { color: colors.primary }]}>
+            <Feather name="lock" size={15} color={colors.primaryForeground} style={{ marginTop: 2.5 }} />
+            <Text style={[styles.trustText, { color: colors.primaryForeground }]}>
               Your identity helps keep ShareSwap safe and honest.
             </Text>
           </View>
@@ -446,7 +448,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
-    backgroundColor: "#fff",
+    backgroundColor: "#0DCEA1",
     borderRadius: 20,
     padding: 24,
     gap: 14,
@@ -481,8 +483,10 @@ const styles = StyleSheet.create({
   appleRow: { marginBottom: 12, width: "100%" },
   appleBadge: { position: "absolute", right: 12, top: 14 },
   googleBtn: {
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: "#000000",
+    borderRadius: 12,
+    height: 48,
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "center",
@@ -500,7 +504,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
   },
   lastUsedBadge: {
-    backgroundColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "#0DCEA1",
     borderRadius: 8,
     paddingHorizontal: 7,
     paddingVertical: 2,
@@ -508,7 +512,7 @@ const styles = StyleSheet.create({
   lastUsedBadgeText: {
     fontSize: 11,
     fontFamily: "Inter_500Medium",
-    color: "#fff",
+    color: "#002319",
   },
   emailLink: {
     fontSize: 15,
@@ -570,11 +574,12 @@ const styles = StyleSheet.create({
   },
   trustRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 8,
   },
   trustText: {
     fontSize: 14,
+    lineHeight: 20,
     fontFamily: "Inter_500Medium",
     flex: 1,
   },

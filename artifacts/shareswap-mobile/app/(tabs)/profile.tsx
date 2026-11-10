@@ -129,6 +129,12 @@ export default function ProfileScreen() {
   }
 
   async function handleLogout() {
+    // Alert.alert is a no-op on react-native-web (the Replit preview), so the button did nothing there.
+    if (isWeb) {
+      if (typeof window !== "undefined" && !window.confirm("Are you sure you want to sign out?")) return;
+      await logout();
+      return;
+    }
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
       {

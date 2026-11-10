@@ -2,6 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { markOwnConfirm, useRequestChangeHaptics } from "@/hooks/useRequestChangeHaptics";
 import React, { useState, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
@@ -389,6 +390,9 @@ export default function ChatScreen() {
   );
   const allowsPreDueExtension = lifecycle?.lifecycle.stage === "ACTIVE";
 
+  // Buzz when the OTHER side accepts the request or confirms the hand-off (our own taps buzz in their handlers).
+  useRequestChangeHaptics(reqId ?? null, request);
+
   // Auto-show review sheet on first transition to COMPLETED/COMPLETED_EARLY
   const prevStatusRef = useRef<string | null>(null);
   useEffect(() => {
@@ -438,6 +442,7 @@ export default function ChatScreen() {
   const acceptMutation = useMutation({
     mutationFn: () => apiPatch(`/api/requests/${requestId}`, { status: "ACCEPTED" }),
     onSuccess: () => {
+      markOwnConfirm();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       invalidateAll();
     },
@@ -526,6 +531,7 @@ export default function ChatScreen() {
       return apiPost(`/api/requests/${requestId}/respond-to-counter`, { accept: true });
     },
     onSuccess: () => {
+      markOwnConfirm();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       invalidateAll();
     },

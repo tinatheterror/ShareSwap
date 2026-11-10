@@ -95,12 +95,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      // Clear local state immediately so the button always works,
-      // even if the server request fails (CSRF, network, etc.).
-      queryClient.setQueryData(["/api/user"], null);
+      // End the server session first. If local state were cleared before this finished, the
+      // refetch of /api/user could still see the live session and sign the person straight back in.
+      try {
+        const res = await apiRequest("POST", "/api/logout");
+        if (!res.ok) console.error("[logout] server returned", res.status);
+      } catch (error) {
+        // Network/CSRF trouble must not trap the person: still sign out locally below.
+        console.error("[logout] request failed:", error);
+      }
+    },
+    onSettled: () => {
+      // clear() first, then set the user to null: clear() removes the query from the cache without
+      // telling the mounted useQuery, so setting null before it left the old user on screen.
       queryClient.clear();
-      // Best-effort server-side session teardown.
-      apiRequest("POST", "/api/logout").catch(() => {});
+      queryClient.setQueryData(["/api/user"], null);
     },
   });
 

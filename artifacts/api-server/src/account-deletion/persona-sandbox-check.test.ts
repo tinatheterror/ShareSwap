@@ -83,3 +83,59 @@ test("it reports the failures it exists to catch: a redact call that does nothin
     console.error = original;
   }
 });
+
+test("a failed step prints Persona's error title and detail, never the key or headers", async () => {
+  const lines: string[] = [];
+  const fetchImpl = (async () => new Response(JSON.stringify({ errors: [{ title: "Forbidden", detail: "Inquiry template itmpl_1 is not accessible with this key", status: 403 }, { title: "Second", details: "more" }] }), { status: 403, headers: { "x-secret": KEY } })) as typeof fetch;
+  const report = await runPersonaSandboxCheck({ apiKey: KEY, templateId: "itmpl_1", fetchImpl, log: (l) => lines.push(l) });
+  assert.equal(report.passed, false);
+  const detail = report.steps[0].detail;
+  assert.match(detail, /Persona answered 403 - Persona said: Forbidden: Inquiry template itmpl_1 is not accessible with this key; Second: more/);
+  assert.ok(lines.every((l) => !l.includes(KEY)));
+});
+
+test("a failure inside our client (find account) also carries Persona's error text", async () => {
+  const persona = fakePersona();
+  const fetchImpl = (async (input: any, init: any) => String(input).includes("/accounts?")
+    ? new Response(JSON.stringify({ errors: [{ title: "Not Authorized", detail: "key lacks accounts:read" }] }), { status: 403 })
+    : persona.fetchImpl(input, init)) as typeof fetch;
+  const report = await runPersonaSandboxCheck({ apiKey: KEY, templateId: "itmpl_1", fetchImpl });
+  const step = report.steps.find((s) => s.name === "find the account by reference id")!;
+  assert.equal(step.ok, false);
+  assert.match(step.detail, /Persona said: Not Authorized: key lacks accounts:read/);
+});
+
+test("with an existing inquiry id it skips creation and runs fetch, find account, redact and verify on it", async () => {
+  const persona = fakePersona();
+  // Hand-made inquiry: the fake serves inq_sb_1 with a reference id taken from the account lookup, so give it one.
+  persona.state.reference = "member_ref_1";
+  const inner = persona.fetchImpl;
+  const fetchImpl = (async (input: any, init: any) => {
+    const r = await inner(input, init);
+    if (String(input).endsWith("/inquiries/inq_sb_1") && (init?.method ?? "GET") === "GET") {
+      const body: any = await r.json();
+      body.data.attributes.referenceId = "member_ref_1";
+      return new Response(JSON.stringify(body), { status: 200 });
+    }
+    return r;
+  }) as typeof fetch;
+  const report = await runPersonaSandboxCheck({ apiKey: KEY, templateId: undefined, inquiryId: "inq_sb_1", fetchImpl });
+  assert.equal(report.passed, true, JSON.stringify(report.steps));
+  assert.ok(!persona.calls.includes("POST /inquiries"), "nothing is created");
+  assert.ok(!report.steps.some((s) => s.name === "create inquiry"));
+  assert.ok(persona.calls.includes("DELETE /inquiries/inq_sb_1") && persona.calls.includes("DELETE /accounts/act_sb_1"));
+});
+
+test("an existing inquiry without a reference id fails the lookup step honestly but still redacts its account; a malformed id is refused", async () => {
+  const persona = fakePersona();
+  const report = await runPersonaSandboxCheck({ apiKey: KEY, templateId: undefined, inquiryId: "inq_sb_1", fetchImpl: persona.fetchImpl });
+  const lookup = report.steps.find((s) => s.name === "find the account by reference id")!;
+  assert.equal(lookup.ok, false);
+  assert.match(lookup.detail, /NOT tested/);
+  assert.ok(persona.calls.includes("DELETE /accounts/act_sb_1"));
+
+  const other = fakePersona();
+  const bad = await runPersonaSandboxCheck({ apiKey: KEY, templateId: undefined, inquiryId: "not-an-id", fetchImpl: other.fetchImpl });
+  assert.equal(bad.passed, false);
+  assert.deepEqual(other.calls, []);
+});

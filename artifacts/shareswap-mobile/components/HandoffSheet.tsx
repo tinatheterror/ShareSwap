@@ -14,6 +14,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { markOwnConfirm } from "@/hooks/useRequestChangeHaptics";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost } from "@/lib/api";
 
@@ -116,6 +117,7 @@ export function HandoffSheet({
   const verifyPinMutation = useMutation({
     mutationFn: (pin: string) => apiPost(`/api/requests/${requestId}/verify-pin`, { pin }),
     onSuccess: () => {
+      markOwnConfirm();
       invalidate();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onSuccess();
@@ -141,6 +143,7 @@ export function HandoffSheet({
     mutationFn: () =>
       apiPost(`/api/requests/${requestId}/handoff`, { confirmedBy: userRole }),
     onSuccess: (data: any) => {
+      markOwnConfirm();
       invalidate();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       if (data?.disputeTriggered) {

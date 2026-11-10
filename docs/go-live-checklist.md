@@ -90,6 +90,8 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 
 Test-mode IDs mean nothing to live keys. Stripe answers "No such customer/payment method/account" and the app has to cope.
 
+*If production is launched from an empty database (docs/pre-deploy-checklist.md, "Fresh start"), no row holds a test-mode Stripe ID, so the clearing and the stale-Connect items below are not needed to launch.*
+
 - [ ] **Clear test-mode Stripe IDs at the switch.** On `users`: `stripe_customer_id`, `stripe_payment_method_id`, `payment_method_last4/brand/exp_month/exp_year/added_at`, `stripe_subscription_id`, `stripe_subscription_status`, `stripe_connected_account_id`. Reset `subscription_tier` to `free` and `is_verified` to false for users whose verification depended on a test card. Review in-flight `item_requests` (`stripe_payment_intent_id`, deposit and capture IDs) first: finish or cancel them rather than orphaning a hold. Take a backup and run in a transaction.
 - [ ] **Stale customer handling.** Checkout and the in-app upgrade already replace a stored customer that is missing, deleted or locked to another currency (`ensureUsableCustomer`). Check the other places that create or read a customer (`setup-intent`, `create-checkout-session`, the deposit and rental holds) behave the same with a missing customer.
 - [ ] **Stale card handling.** The Payment Methods screen and the deposit/fee/hold charges clear a card that is gone or on another customer (`card-sync.ts`) and show "Please re-add your card". Confirm this on a live-mode account after the clear above, with a user who still holds a test card ID.

@@ -28,3 +28,17 @@ mtime_ms = 1790969797676
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:17c64ebc-4359-4add-a3e5-c73b7d69f2c1/33ed9080-425f-454b-86cd-39455c573ed1/ff0bd1c9-80e0-4356-b2ed-af23e31bf2af"
 storage_version_token = "1790969807833229"
 content_type = "image/png"
+
+[[outputs]]
+id = "X02Gd4_6vzB8MLqs_Ujcf"
+uri = "file://attached_assets/development-qr/shareswap-dev-build.png"
+type = "image"
+title = "ShareSwap development-build QR code"
+description = "Scan with your phone to open the running development server in an installed ShareSwap development build. This is not an app installation QR code."
+logical_id = "a9283a04-ab03-40d1-a470-c2c2ff27d934"
+content_hash = "sha256:a1e52ca5ebce6bdea4f3110a28621da96dbedd544547110efcfed90b7d39d829"
+size = 6229
+mtime_ms = 1794336259250
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:17c64ebc-4359-4add-a3e5-c73b7d69f2c1/a9283a04-ab03-40d1-a470-c2c2ff27d934/d636516f-15d3-45ba-a01e-bd6087d06d87"
+storage_version_token = "1794336264062308"
+content_type = "image/png"

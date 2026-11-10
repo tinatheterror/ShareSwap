@@ -2,6 +2,84 @@
 
 For the release that contains migrations 0022 to 0032. It complements docs/go-live-checklist.md (live keys, legal text, TERMS_VERSION), which is not repeated here. Do the steps in order; each says what to look for before you go on.
 
+**Production has no real members yet (every account, request, payment and verification there is the owner's own testing), so the recommended path is the [Fresh start](#fresh-start-launch-production-with-an-empty-database) below, which replaces sections 1, 2 (the manual checks), 5, 7, 8 and 10. Sections 3, 4, 6 and 9 still apply.** Sections 1 to 10 remain for the case where production does hold real data.
+
+## Fresh start: launch production with an empty database
+
+Use this instead of backfill, the USD cleanup, the evidence purge, the condition-photo fix, the consent query and the sandbox reset. It rests on one fact: **production holds only test data**. If a real member has signed up since, stop and use sections 1 to 10 instead.
+
+**What an empty database needs (checked 2026-11-09 by rehearsing it on a throwaway local database: boot on an empty one, push with and without the override, boot twice, push again).**
+
+- The base tables come from `drizzle-kit push` of `lib/db/src/schema` (55 tables). The numbered SQL files and the `ensure…` functions that run at boot only *alter or add* to tables that already exist, so **an empty database cannot be booted without the push first**: the boot stops with `relation "item_requests" does not exist`.
+- After the push, the boot (`applyStartupMigrations`) succeeds, is safe to run any number of times, and adds `job_switches` and `scheduled_job_runs`. A second push then reports "No changes detected", so the two agree. `session`, `rate_limit_store` and `native_oauth_tokens` are created the first time the app uses them.
+- **Seed data the app needs: none that you must supply.** Created by the boot when the table is empty: `achievements` (8 rows) and `sponsored_games` (3 sample games). Categories are lists in the code, not rows. `subscription_plans` and `community_challenges` are never read or written, so they stay empty. `job_switches` is deliberately unseeded (a job with no row uses its environment default).
+- **Two things to do by hand after the first boot:**
+  1. **The first admin.** Nothing in the code makes an admin; `users.is_admin` is only ever set by SQL. Sign up through the real app (this records the Terms and age confirmation and proves Resend works), then: `UPDATE users SET is_admin = true WHERE lower(email) = lower('<your address>');` (expect `UPDATE 1`). Admins receive dispute, moderation and Persona-failure notices, so make only the people who should see them admins.
+  2. **The sample games.** The three games ("Memory Match", "Number Puzzle", "Word Quest", with invented sponsors and a CodePen link) are live: `GET /api/games/sponsored` lists them and finishing one pays ShareCoins (3.50 to 5.00). Decide whether members should see them. To hide them, `UPDATE sponsored_games SET is_active = false;`. **Do not `DELETE` them**: the boot recreates them whenever the table is empty.
+
+### A. Back up, then build the empty database
+
+Run these yourself, from a machine with `pg_dump` and `psql` (version 16 or newer; `select version()` tells you the server's). Use the **direct** connection string (the host without `-pooler`) for the dump. Nothing here is run by the assistant.
+
+1. [ ] **Back up.** `pg_dump "$PRODUCTION_DATABASE_URL" -Fc --no-owner -f shareswap-prod-final-$(date +%Y%m%d-%H%M).dump`, then `pg_restore --list shareswap-prod-final-*.dump` must list the tables. Keep the file off the Replit host. It holds your test accounts' password hashes and photos' references; delete it when you no longer need the rollback.
+2. [ ] **Check how production's `DATABASE_URL` is managed.** If it is a secret you set yourself (a Neon project of your own), use **A1** (a new database next to the old one: nothing is deleted, rollback is one secret). If Replit's database integration owns it and you cannot point it elsewhere, use **A2** (wipe in place: irreversible except from the dump).
+
+**A1. New database, old one untouched (recommended).**
+
+3. [ ] Create it: in the Neon console (Databases > New database) or `psql "<the same URL but database postgres>" -c 'CREATE DATABASE shareswap_live;'`. Use a **lower-case** name; the examples use `shareswap_live`. Same role, same host. Its URL is the old one with `/shareswap_live` as the database and the same `sslmode=verify-full`.
+4. [ ] Build the tables with the **one-command override** (never `export` it; the shell's own `DATABASE_URL` is the development database): `DATABASE_URL="<the new URL>" ALLOW_NON_TEST_DATABASE=shareswap_live pnpm --filter @workspace/db run push-force`. It must end with "Changes applied" and nothing else must be set to the old database in that command. This is the only time a push targets production; it is safe here because the target is empty (nothing can be dropped).
+5. [ ] Check: `select count(*) from pg_tables where schemaname='public';` returns **55**, and `select count(*) from users;` returns **0**.
+6. [ ] In **both** the API deployment's secrets **and** the Scheduled Deployment's (it refuses to run live without `DATABASE_URL`), change `DATABASE_URL` to the new URL. Set the rest of section 3, including `CUSTOM_DOMAIN`. Redeploy.
+7. [ ] Read the boot log: no error from any `ensure…` function, "Achievements initialized", "Sample games initialized", and no `[persona] PERSONA_API_KEY is a SANDBOX key` line. Check: `select count(*) from pg_tables where schemaname='public';` returns **57** (55 plus `job_switches` and `scheduled_job_runs`), `select count(*) from achievements;` returns 8, `sponsored_games` 3, and every other table 0 (plus `session` rows once someone has signed in).
+8. [ ] Do the two hand steps above (first admin, sample games).
+9. [ ] Rollback at any point before real members arrive: set `DATABASE_URL` back to the old URL in both places and redeploy. The old database is untouched until you drop it. Drop it (and delete the dump) only after the launch has been stable for a while.
+
+**A2. Wipe in place (only if A1 is impossible).** After step 1 (a verified dump is mandatory): `psql "$PRODUCTION_DATABASE_URL" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'`, then grant the application role what it had if the role does not own the schema (`GRANT ALL ON SCHEMA public TO <role>;`), then steps 4 (with the real database name in `ALLOW_NON_TEST_DATABASE`), 5, 7 and 8. Triple-check the URL names production: this is irreversible except from the dump.
+
+Everyone is signed out by the change (the `session` table is new), including the mobile apps; they land on the login screen.
+
+### B. Test data outside the database
+
+The database swap strands these, so clean them in this order. **Optionally, first, delete your test accounts through the app** (Settings > Delete account, or "Delete my account now") while the old database is still live: account deletion removes the Stripe Customer and Express Connect account, asks Persona to redact the inquiries and accounts, and ends the Apple link. It needs the account to have no open requests, claims, deposits or payouts, and the wallet withdrawn. It is the only cleanup that reaches all three systems, but it is slower than the manual cleanups below.
+
+- [ ] **Object Storage (Replit).** Images are keyed `images/…` (public listing and profile photos, served at `/storage/images/…`) and `private/…` (evidence). With an empty database every object is an orphan, and the private ones are personal data. In the workspace's Object Storage tool, open the bucket named by `DEFAULT_OBJECT_STORAGE_BUCKET_ID` **in the production deployment** and delete all objects. First compare that id with the one in the workspace: if both are the same bucket, deleting also removes the images the development database points to. The folders `./uploads` and `./private-uploads` are only a fallback when Object Storage fails; an autoscale deployment starts from a clean disk on every deploy, so there is nothing to clean there. Tests never use this bucket (`TEST_OBJECT_STORAGE_BUCKET_ID` is the only bucket a test may use).
+- [ ] **Stripe.** First see which mode production is on: the boot log prints "test keys" or "live keys" and the account id.
+  - *Test mode:* nothing real exists. Dashboard in test mode: delete the test data (the "Delete all test data" action; it removes test customers, payments and Connect accounts). Keep the settings that are not data: products and prices (the app finds the Member and Pro prices by `metadata.tier`/`metadata.app`) and webhook endpoints. Then do the live-mode setup in go-live-checklist.md ("Stripe dashboard (live mode)"). Live mode starts empty.
+  - *Live mode (you made real charges while testing):* Stripe never deletes charges, payment intents, refunds, transfers or payouts; they stay in reports and in the balance history for good. What you can do: refund test charges you want back (the processing fee is not returned); cancel open deposit holds (`requires_capture` payment intents; an unclaimed hold expires on its own after about 7 days, so waiting is fine); delete test **Customers** (Dashboard, or `DELETE /v1/customers/{id}`; this detaches their cards and cancels subscriptions); delete the **Express Connect accounts** you created for testing (`DELETE /v1/accounts/{id}`; allowed only for accounts your platform created and only at a zero balance, otherwise reject them in the Dashboard). Make a list from Customers and Connected accounts, filtered by created date, before the swap.
+  - Either way, the go-live items "Clear test-mode Stripe IDs at the switch" and "Stale Connect handling" are **not needed**: no row will hold an old Stripe ID.
+- [ ] **Persona.** The production key was a sandbox key, so Persona's **Production** environment holds nothing, and the Sandbox environment holds only simulated checks. If you used real photos of your own ID or face in the sandbox, redact those inquiries and their accounts in the sandbox dashboard (Inquiries, then Accounts). Otherwise leave the sandbox alone. The new `PERSONA_API_KEY` must be the production key (`persona_production_…`) with the template confirmed in Production, plan active and 30-day redaction set by Persona (the item in section 3).
+- [ ] **Resend.** The app uses Resend only to send transactional email (it stores no contacts or audiences), and sent emails cannot be deleted; they age out of the Emails log under your plan's retention. Cleanup is: remove your own test addresses from the Suppressions list if bounces or complaints put them there, and revoke any old API key before the new one goes live.
+- [ ] **Left alone on purpose:** push tokens and Apple/Google link rows (in the database, gone with it); Sign in with Apple and Google (your test sign-ins simply create a new account on first use); OpenAI (the app stores nothing there); Uber Direct (if you made test deliveries they stay in its dashboard).
+
+### C. Email for real members: the Resend sending domain
+
+What the code needs (`artifacts/api-server/src/mail.ts`): `RESEND_API_KEY` and `EMAIL_FROM` set, or every send fails with "Resend is not configured". `EMAIL_FROM` is passed to Resend unchanged as the sender, there is no Reply-To (replies go to the sender), and every link in an email is built from `CUSTOM_DOMAIN` in production.
+
+- [ ] **A verified domain in Resend.** Resend > Domains: `shareswap.app` shows **Verified** (its DNS records, SPF and DKIM, present at your DNS host; the return-path record lives on a sending subdomain, so your normal mail records are unaffected). Resend refuses to send from an address on an unverified domain.
+- [ ] **`EMAIL_FROM` is an address on that verified domain**, e.g. `support@shareswap.app`; Resend also accepts `ShareSwap <support@shareswap.app>`. A gmail.com or other foreign address is rejected.
+- [ ] **That address can receive mail.** Because replies go to it (and `SUPPORT_EMAIL` and `MODERATION_EMAIL` default to `support@` and `moderation@shareswap.app`), those inboxes must exist at your mail host. Sending through Resend does not create a mailbox.
+- [ ] **`CUSTOM_DOMAIN=shareswap.app`** is set in the API deployment. Without it the links in verification, password-reset, account-deletion and "verify again" emails point at a development or localhost address.
+- [ ] **A production-only API key**, created for the verified domain with sending access only, set as `RESEND_API_KEY` in the API deployment and the Scheduled Deployment. Check your Resend plan's daily and monthly sending limits against launch expectations.
+- [ ] **DMARC**: publish a `_dmarc` TXT record (start with `p=none` and a report address) so mailbox providers trust the domain. Recommended for a launch, not enforced by the app.
+- [ ] **Apple private relay** (members who use Sign in with Apple): register the sending domain and the sender address under Services > Sign in with Apple for Email Communication, or mail to `@privaterelay.appleid.com` addresses is dropped (already in go-live-checklist.md).
+- [ ] **Prove it**: sign up in the app with a real address you can read (the first admin does this): the verification email arrives in the inbox, not spam, from the right sender, with a link on `https://shareswap.app/…`.
+
+### D. What the fresh start makes unnecessary
+
+| Step | Fresh start |
+|---|---|
+| 1 Backup before 0022 | Replaced by A step 1 (one dump, taken before the swap) |
+| 2 Migrations 0022 to 0032: manual checks, "counts unchanged", rollback SQL | Not needed: the push builds the current schema and the boot ensures are no-ops. Still deploy and read the boot log (A7) |
+| 3 Environment | **Still needed**, plus `CUSTOM_DOMAIN` |
+| 4 Stripe dispute webhook | **Still needed** (live mode endpoint and secret) |
+| 5 Backfill and the USD cleanup | **Not needed**: no wallet balances to explain and no USD test requests. Do not run `wallet:backfill` or `usd-test-data:clean` |
+| 6 Smoke test | **Still needed**, on the new database |
+| 7 Private evidence, `evidence:purge-public`, `condition-photos:fix` | **Not needed**: no database rows point at legacy files. Empty the bucket instead (B) |
+| 8 Members verified before consent | **Not needed**: no members. The matching counsel item in go-live-checklist.md ("Consent for members verified before consent was required") is moot |
+| 9 Persona sandbox check | **Still worth running once** (it checks our redaction code against Persona, not data) |
+| 10 Reset sandbox verifications | **Not needed**: no verification exists. Do not run `persona:reset-sandbox` |
+| go-live: clear test-mode Stripe IDs, stale customer/card/Connect handling | **Not needed to launch** (no stored Stripe IDs) |
+
 ## 1. Database backup (first, before anything else)
 
 - [ ] Take a full dump of production and keep it somewhere that is not the same host:
@@ -11,7 +89,7 @@ For the release that contains migrations 0022 to 0032. It complements docs/go-li
 
 ## 2. Migrations 0022 to 0032
 
-**How production migrations run.** The API's production build is the esbuild bundle (`artifacts/api-server/.replit-artifact/artifact.toml`: build `pnpm --filter @workspace/api-server run build`, run `node artifacts/api-server/dist/index.mjs`). Nothing in the build, the run command or `[deployment.postBuild]` calls drizzle. On every boot, before any route or job starts, `applyStartupMigrations()` (`artifacts/api-server/src/index.ts`) runs the numbered SQL files in `lib/db/scripts` through the `ensure…` functions; if one fails the process exits and the deploy does not go live. The files are idempotent and only add things. **Never run `drizzle-kit push` against production**: `lib/db/drizzle.config.ts` now refuses any database that is not a test database unless `ALLOW_NON_TEST_DATABASE=<database name>` is set, so a push at production fails by itself.
+**How production migrations run.** The API's production build is the esbuild bundle (`artifacts/api-server/.replit-artifact/artifact.toml`: build `pnpm --filter @workspace/api-server run build`, run `node artifacts/api-server/dist/index.mjs`). Nothing in the build, the run command or `[deployment.postBuild]` calls drizzle. On every boot, before any route or job starts, `applyStartupMigrations()` (`artifacts/api-server/src/index.ts`) runs the numbered SQL files in `lib/db/scripts` through the `ensure…` functions; if one fails the process exits and the deploy does not go live. The files are idempotent and only add things. **Never run `drizzle-kit push` against a production database that holds data** (the one exception is building a new, empty database in the Fresh start path above): `lib/db/drizzle.config.ts` now refuses any database that is not a test database unless `ALLOW_NON_TEST_DATABASE=<database name>` is set, so a push at production fails by itself.
 
 **The `post-merge` exemption.** `scripts/post-merge.sh` (the workspace's post-merge hook, not part of a deployment) runs `drizzle-kit push --force` against the workspace development database. That is not a test database, so the script sets `ALLOW_NON_TEST_DATABASE` to that database's name (read from its own `DATABASE_URL`) and nothing else. Do not copy that line anywhere else, and do not set `ALLOW_NON_TEST_DATABASE` in the production deployment.
 
@@ -46,7 +124,8 @@ Names only. Set them in the deployment that serves the API AND in the Scheduled 
 | **`PERSONA_API_KEY`** | **the production key (`persona_production_...`)**, in the API deployment **and** the scheduled deletion job (account deletion redacts the member's Persona inquiries with it). A `persona_sandbox_` key in production simulates every check, so the server refuses it: the boot log has an error line starting `[persona] PERSONA_API_KEY is a SANDBOX key` and `/api/persona/create-inquiry` and `/api/persona/inquiry-complete` answer 503 | existing key, new use |
 | `PERSONA_TEMPLATE_ID` | the inquiry template as it exists in Persona's **Production** environment (a template id from the sandbox may not exist there) | existing |
 | `TERMS_ENFORCEMENT` | unset | existing |
-| `RESEND_API_KEY`, `EMAIL_FROM`, `MODERATION_EMAIL`, `BANNED_EMAIL_HASH_KEY` | set | existing |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `MODERATION_EMAIL`, `BANNED_EMAIL_HASH_KEY` | set; `EMAIL_FROM` is an address on a domain verified in Resend (see Fresh start, C) | existing |
+| **`CUSTOM_DOMAIN`** | `shareswap.app`. Every link in an email is built from it in production; without it they point at a development or localhost address | existing |
 | `SCHEDULED_JOBS_EXPIRY_MODE`, `SCHEDULED_JOBS_HANDOFF_MODE` | your decision (default is dry-run) | existing |
 
 - [ ] **Persona is real, not simulated:** Persona plan active, production key (`persona_production_`) set, template confirmed in Production, 30-day auto-redaction set by Persona (**done**: Persona confirmed an organisation-wide 30-day redaction policy on Sandbox and Production, 30 days after an inquiry is Completed, Failed or Expired). Until the other three are true, do not let members verify: the consent text and Privacy Policy promise deletion 30 days after a decision. After the deploy, the boot log has no `[persona] PERSONA_API_KEY is a SANDBOX key` line. Then run section 10 (reset the verifications a sandbox key approved).

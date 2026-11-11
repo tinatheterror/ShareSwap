@@ -39,7 +39,7 @@ import { blockUser, listBlockedUsers, unblockUser } from "../blocks-service";
 import { createReport, listReports, reportQueueStats, resolveReport } from "../reports-service";
 import { reportLimiter } from "../report-limit";
 import { moderationEmail } from "../moderation-config";
-import { announceReport } from "../moderation-alerts";
+import { announceReport, sweepAdminAlerts } from "../moderation-alerts";
 import { MAX_MESSAGE_LENGTH, messageLimiter } from "../message-limit";
 import { rejectDisallowedText } from "../content-policy";
 import { TERMS_VERSION } from "../legal-config";
@@ -12568,6 +12568,13 @@ Respond with ONLY the category name, nothing else.`
       return `checked=${result.checked} completed=${result.completed} pending=${result.pending}`;
     },
   });
+  // Sends the summary of report / blocked-deletion alerts that waited out the email limit (moderation-alerts.ts).
+  const runAdminAlertSweep = guardedJob({
+    name: "admin-alert-summary",
+    envMode: "live",
+    supportsDryRun: false,
+    run: async () => `sent=${(await sweepAdminAlerts()).sent}`,
+  });
   options.onScheduledJobs?.({
     runReturnRecovery: async () => {
       const { checked, completed, pending } = await recoverPendingApprovedReturns({
@@ -12593,6 +12600,7 @@ Respond with ONLY the category name, nothing else.`
       backgroundJobs.setInterval(() => void runOverdueReminderSweep(), 6 * 60 * 60 * 1000);
       void runReturnRecoverySweep();
       backgroundJobs.setInterval(() => void runReturnRecoverySweep(), 60 * 1000);
+      backgroundJobs.setInterval(() => void runAdminAlertSweep(), 60 * 1000);
 
       // Optional request-expiry sweep, OFF unless EXPIRY_SWEEP_TIMER=on (see request-expiry-timer.ts):
       // expiry is always a dry run; the 4h reminder follows SCHEDULED_JOBS_EXPIRY_REMINDERS.

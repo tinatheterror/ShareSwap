@@ -451,6 +451,20 @@ export async function ensurePersonaRedactionsTable() {
   if (kind.rows[0]?.present !== true) await runMigrationFile(PERSONA_REDACTION_KIND_FILE);
 }
 
+const ADMIN_ALERT_QUEUE_FILE = "lib/db/scripts/0033_admin_alert_queue.sql";
+
+/** admin_alert_queue (0033): report and deletion-blocked alerts wait here for the limited admin emails. */
+export async function ensureAdminAlertQueueTable() {
+  const { rows } = await pool.query(`SELECT to_regclass('admin_alert_queue') IS NOT NULL AS present`);
+  if (rows[0]?.present === true) return;
+  try {
+    await runMigrationFile(ADMIN_ALERT_QUEUE_FILE);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code !== "42P07" && code !== "23505") throw err;
+  }
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -472,6 +486,7 @@ export async function applyStartupMigrations() {
   await ensureEvidenceUploadsTable();
   await ensureIdVerifiedColumnDropped();
   await ensureBiometricConsentsTable();
+  await ensureAdminAlertQueueTable();
   await ensurePersonaRedactionsTable();
   await ensureRentalPayoutHoldUntilDropped();
   await ensureScheduledJobRunsTable();

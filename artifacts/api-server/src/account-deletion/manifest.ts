@@ -55,6 +55,15 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     anonymize: [],
     delete: ["id", "user_id", "feature", "version", "consented_at"],
   },
+  admin_alert_queue: {
+    rows: "retain",
+    retention: null,
+    note: "Sent rows are deleted after 7 days. Alerts waiting for the limited admin emails: ids and reasons only (a report id, target type and reason; a user id and blocker codes), no name or address. Not tied to a user by a column.",
+    userColumns: [],
+    keep: ["id", "kind", "payload", "created_at", "sent_at"],
+    anonymize: [],
+    delete: [],
+  },
   biometric_consents: {
     rows: "retain",
     retention: null,

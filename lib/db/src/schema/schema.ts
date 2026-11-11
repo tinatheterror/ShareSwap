@@ -990,6 +990,17 @@ export const biometricConsents = pgTable("biometric_consents", {
   userUidx: uniqueIndex("biometric_consents_user_uidx").on(table.userId),
 }));
 
+// Alerts for the admin inbox waiting to be emailed in a limited number of emails (0033). payload: ids and reasons, no personal data.
+export const adminAlertQueue = pgTable("admin_alert_queue", {
+  id: serial("id").primaryKey(),
+  kind: text("kind").notNull(),
+  payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  sentAt: timestamp("sent_at"),
+}, (table) => ({
+  unsentIdx: index("admin_alert_queue_unsent_idx").on(table.kind, table.id).where(sql`${table.sentAt} IS NULL`),
+}));
+
 export const CONTENT_REPORT_TARGET_TYPES = ["user", "item", "message", "review", "wishlist"] as const;
 export const CONTENT_REPORT_REASONS = ["spam", "harassment", "hate", "sexual", "violence", "illegal", "scam", "other"] as const;
 

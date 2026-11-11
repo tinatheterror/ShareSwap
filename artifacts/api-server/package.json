@@ -19,7 +19,7 @@
     "condition-photos:fix": "tsx src/scripts/fix-condition-photos.ts",
     "persona:sandbox-check": "tsx src/scripts/persona-sandbox-check.ts",
     "persona:reset-sandbox": "tsx src/scripts/reset-sandbox-verifications.ts",
-    "test": "tsx ../../lib/db/src/test-database-guard-cli.ts && TERMS_ENFORCEMENT=off tsx --test \"src/**/*.test.ts\""
+    "test": "tsx ../../lib/db/src/test-database-guard-cli.ts && env -u MODERATION_EMAIL TERMS_ENFORCEMENT=off tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@replit/object-storage": "^1.0.0",

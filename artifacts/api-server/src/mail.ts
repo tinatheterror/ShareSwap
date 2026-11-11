@@ -496,3 +496,23 @@ export async function sendDeletionBlockedAlertEmail(
     return false;
   }
 }
+
+// One email standing in for several alerts that were held back by the limit. Lines carry ids and reasons only.
+export async function sendAlertSummaryEmail(toEmail: string, summary: { subject: string; heading: string; lines: string[]; footer?: string[] }) {
+  try {
+    const { client, fromEmail } = await getMailClient();
+    const lines = [...summary.lines, ...(summary.footer ?? [])];
+    await client.send({
+      to: toEmail,
+      from: fromEmail,
+      subject: summary.subject,
+      text: lines.join('\n\n'),
+      html: emailShell(summary.heading, lines),
+    });
+    console.log('[Mail] Alert summary sent');
+    return true;
+  } catch (error) {
+    console.error('[Mail] Error sending alert summary:', error);
+    return false;
+  }
+}

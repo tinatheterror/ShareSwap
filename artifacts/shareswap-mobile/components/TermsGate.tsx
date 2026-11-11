@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AccountDeletionSheet } from "@/components/AccountDeletionSheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AgeFields, ageComplete, emptyAge, type AgeValue } from "@/components/AgeFields";
@@ -47,7 +47,14 @@ export function TermsGate() {
 
   return (
     <Modal visible animationType="fade" transparent={false} onRequestClose={() => {}}>
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]} testID="terms-gate">
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      {/* Scrollable, and taps and drags reach the checkbox and button while the number pad is up, then close it. */}
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}
+        testID="terms-gate"
+      >
         <Feather name="shield" size={40} color={colors.primary} />
         <Text style={[styles.title, { color: colors.foreground }]}>{termsRequired ? "Our Terms and Community Guidelines" : "Confirm your age"}</Text>
         {termsRequired ? (
@@ -101,13 +108,14 @@ export function TermsGate() {
           </Pressable>
         </View>
         {deleting ? <AccountDeletionSheet visible onClose={() => setDeleting(false)} /> : null}
-      </View>
+      </ScrollView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 24, alignItems: "center", gap: 16 },
+  container: { flexGrow: 1, paddingHorizontal: 24, alignItems: "center", gap: 16 },
   title: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
   body: { fontSize: 15, lineHeight: 22, fontFamily: "Inter_400Regular", textAlign: "center" },
   link: { textDecorationLine: "underline", color: "#0d9488" },

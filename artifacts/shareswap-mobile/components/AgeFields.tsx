@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Keyboard, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet } from "@/lib/api";
@@ -57,10 +57,17 @@ export function AgeFields({ value, onChange }: { value: AgeValue; onChange: (val
       <TextInput
         testID="age-dob"
         value={value.dateOfBirth}
-        onChangeText={(text) => onChange({ ...value, dateOfBirth: formatDobInput(text) })}
+        onChangeText={(text) => {
+          const dateOfBirth = formatDobInput(text);
+          onChange({ ...value, dateOfBirth });
+          // The number pad has no Done key, so close it once the whole date is in and the rest of the screen is reachable.
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) Keyboard.dismiss();
+        }}
         placeholder="YYYY-MM-DD"
         placeholderTextColor={colors.mutedForeground}
         keyboardType="number-pad"
+        returnKeyType="done"
+        blurOnSubmit
         maxLength={10}
         style={[styles.field, styles.input, { borderColor: colors.border, backgroundColor: colors.card, color: colors.foreground }]}
       />

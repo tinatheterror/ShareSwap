@@ -1,6 +1,7 @@
 // Email utility - sends through Resend (https://resend.com/docs/api-reference/emails/send-email).
 // Secrets: RESEND_API_KEY and EMAIL_FROM (support@shareswap.app, a domain verified in Resend).
-import { sendUnlessRelayDisabled } from './email-relay';
+import { maskAddress, sendUnlessRelayDisabled } from './email-relay';
+import { assertRealSendAllowed, chooseEmailMode } from './email-guard';
 
 const RESEND_URL = 'https://api.resend.com/emails';
 
@@ -16,7 +17,13 @@ function getCredentials() {
   return { apiKey, email };
 }
 
+// Every message a test process "sent" (the fake sender records instead of calling Resend). Tests read and clear it.
+export const sentMail: MailMessage[] = [];
+// Lets a test make the next sends fail, to check callers cope.
+export const fakeMailFailure: { error: Error | null } = { error: null };
+
 async function sendViaResend(apiKey: string, message: MailMessage) {
+  assertRealSendAllowed();
   const response = await fetch(RESEND_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -29,6 +36,22 @@ async function sendViaResend(apiKey: string, message: MailMessage) {
 }
 
 export function getMailClient() {
+  const mode = chooseEmailMode();
+  if (mode !== 'live') {
+    const fromEmail = (process.env.EMAIL_FROM ?? '').trim() || 'support@shareswap.app';
+    const client = {
+      send: async (message: MailMessage) => {
+        if (mode === 'fake') {
+          if (fakeMailFailure.error) throw fakeMailFailure.error;
+          sentMail.push({ from: fromEmail, ...message });
+          return;
+        }
+        const to = (Array.isArray(message.to) ? message.to : [message.to]).map((a) => maskAddress(String(a))).join(', ');
+        console.log(`[Mail:log] EMAIL_MODE=log, not sent. To: ${to} | Subject: ${message.subject}\n${message.text ?? ''}`);
+      },
+    };
+    return { client, fromEmail };
+  }
   const { apiKey, email } = getCredentials();
   // Every email goes through this wrapper, which skips (and logs) private-relay addresses Apple has switched off.
   const client = {

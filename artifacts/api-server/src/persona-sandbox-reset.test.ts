@@ -6,7 +6,7 @@ import {
   applySandboxReset, APPROVAL_ACTIVITY_TYPE, APPROVAL_COINS_DESCRIPTION, describeResetPlan, findSandboxApprovedVerifications, plannedReversal, RESET_NOTIFICATION_MESSAGE,
   RESET_NOTIFICATION_TYPE, RESET_REASON, RESET_STATUS, REVERSAL_TYPE,
 } from "./persona-sandbox-reset.js";
-import { sendVerificationResetEmail } from "./mail.js";
+import { fakeMailFailure, sendVerificationResetEmail, sentMail } from "./mail.js";
 import { parseArgs } from "./scripts/reset-sandbox-verifications.js";
 import { getIdVerificationSummary } from "./verification.js";
 
@@ -195,30 +195,22 @@ test("running it again finds nothing and notifies nobody twice", async () => {
   assert.deepEqual(await walletOf(ids.plain), { score: 10, level: "Newcomer", coins: "2.00" }, "a second run takes nothing more");
 });
 
-test("the email: sent through Resend to the member's own address, with the wording and the verification link", async () => {
-  const saved = [process.env.RESEND_API_KEY, process.env.EMAIL_FROM];
-  process.env.RESEND_API_KEY = "re_test_key";
-  process.env.EMAIL_FROM = "support@shareswap.test";
-  const realFetch = globalThis.fetch;
-  const sent: any[] = [];
-  globalThis.fetch = (async (input: any, init?: any) => {
-    if (String(input?.url ?? input).includes("api.resend.com")) { sent.push(JSON.parse(init.body)); return new Response("{}", { status: 200 }); }
-    return realFetch(input, init);
-  }) as typeof fetch;
+test("the email: sent (recorded by the fake sender, never Resend) to the member's own address, with the wording and the verification link", async () => {
+  sentMail.length = 0;
   try {
     assert.equal(await sendVerificationResetEmail("member@example.test", "Pat"), true);
-    assert.equal(sent.length, 1);
-    const [mail] = sent;
-    assert.deepEqual([mail.to, mail.from, mail.subject], ["member@example.test", "support@shareswap.test", "ShareSwap: please verify your identity again"]);
+    assert.equal(sentMail.length, 1);
+    const [mail] = sentMail as any[];
+    assert.deepEqual([mail.to, mail.from, mail.subject], ["member@example.test", process.env.EMAIL_FROM?.trim() || "support@shareswap.app", "ShareSwap: please verify your identity again"]);
     for (const part of [mail.text, mail.html]) {
       for (const needle of [/Hi Pat,/, /recorded in a test mode, so your ID was not actually checked/, /our mistake, and we are sorry/, /trust points and ShareCoins/, /\/verification/, /agree to how your ID and face data are handled/]) assert.match(part, needle);
     }
     assert.doesNotMatch(mail.subject + mail.text, /csrf|token|sandbox/i, "no jargon in front of the member");
     assert.match(mail.text, /^Hi Pat,\n\n/);
-    process.env.RESEND_API_KEY = "";
+    fakeMailFailure.error = new Error("Resend rejected the email");
     assert.equal(await sendVerificationResetEmail("member@example.test"), false, "a failed send reports false and does not throw");
   } finally {
-    globalThis.fetch = realFetch;
-    for (const [i, name] of ["RESEND_API_KEY", "EMAIL_FROM"].entries()) { if (saved[i] === undefined) delete process.env[name]; else process.env[name] = saved[i]; }
+    fakeMailFailure.error = null;
+    sentMail.length = 0;
   }
 });

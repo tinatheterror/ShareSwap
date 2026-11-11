@@ -76,7 +76,7 @@ What the code needs (`artifacts/api-server/src/mail.ts`): `RESEND_API_KEY` and `
 | 6 Smoke test | **Still needed**, on the new database |
 | 7 Private evidence, `evidence:purge-public`, `condition-photos:fix` | **Not needed**: no database rows point at legacy files. Empty the bucket instead (B) |
 | 8 Members verified before consent | **Not needed**: no members. The matching counsel item in go-live-checklist.md ("Consent for members verified before consent was required") is moot |
-| 9 Persona sandbox check | **Still worth running once** (it checks our redaction code against Persona, not data) |
+| 9 Persona sandbox check | **Done 2026-11-11** (passed against Persona's sandbox; no need to repeat unless the redaction code or Persona's API changes) |
 | 10 Reset sandbox verifications | **Not needed**: no verification exists. Do not run `persona:reset-sandbox` |
 | go-live: clear test-mode Stripe IDs, stale customer/card/Connect handling | **Not needed to launch** (no stored Stripe IDs) |
 
@@ -196,7 +196,8 @@ PERSONA_SANDBOX_API_KEY=persona_sandbox_... PERSONA_SANDBOX_TEMPLATE_ID=itmpl_..
 
 It creates a test inquiry (reference id `user_sandbox_<time>`), finds its account by reference id, redacts both with the same client deletion uses, fetches them again and prints PASS/FAIL per step, exiting 1 on any FAIL. It refuses any key that does not start with `persona_sandbox_`, never prints the key, and needs no database. Run it from `artifacts/api-server`.
 
-- [ ] Every step passes. A FAIL on "find the account by reference id" means accounts are not tied to `user_<id>` as assumed (deletion will then redact inquiries only; send the output to whoever maintains the deletion code). A FAIL after "redact the inquiry" means the endpoint or the key's permissions are wrong, and deletions will end in `failed` rows and admin notices.
+- [x] **Done 2026-11-11: every step passed against the real Persona sandbox.** The inquiry and the account were both redacted, `redacted-at` was set on each, and the reference-id lookup (`user_<id>`) works. The 404 path (a redaction of an object already gone) was **not exercised live**; it is covered by unit tests only. **Persona sandbox access runs until 2027-01-08, and a production plan is needed before launch** (the production key and Production environment come with it; see the Persona item in section 3).
+- If a step ever fails: a FAIL on "find the account by reference id" means accounts are not tied to `user_<id>` as assumed (deletion will then redact inquiries only; send the output to whoever maintains the deletion code). A FAIL after "redact the inquiry" means the endpoint or the key's permissions are wrong, and deletions will end in `failed` rows and admin notices.
 
 ## 10. Reset verifications that a sandbox key approved (production, once)
 

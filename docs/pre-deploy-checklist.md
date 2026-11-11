@@ -125,6 +125,8 @@ Names only. Set them in the deployment that serves the API AND in the Scheduled 
 | `PERSONA_TEMPLATE_ID` | the inquiry template as it exists in Persona's **Production** environment (a template id from the sandbox may not exist there) | existing |
 | `TERMS_ENFORCEMENT` | unset | existing |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `MODERATION_EMAIL`, `BANNED_EMAIL_HASH_KEY` | set; `EMAIL_FROM` is an address on a domain verified in Resend (see Fresh start, C) | existing |
+| `EMAIL_MODE` | optional. Production sends for real by default; anywhere else the default is `log` (printed, not sent). Set `EMAIL_MODE=live` explicitly in the API deployment and the Scheduled Deployment so a mis-detected environment can never silently swallow email. Tests ignore it and use a fake sender. | new |
+| `MODERATION_ALERT_MINUTES` | optional, default 15: at most one report-alert email per this many minutes (keeps a burst of reports inside the Resend daily quota) | new |
 | **`CUSTOM_DOMAIN`** | `shareswap.app`. Every link in an email is built from it in production; without it they point at a development or localhost address | existing |
 | `SCHEDULED_JOBS_EXPIRY_MODE`, `SCHEDULED_JOBS_HANDOFF_MODE` | your decision (default is dry-run) | existing |
 

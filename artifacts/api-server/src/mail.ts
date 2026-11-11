@@ -434,6 +434,7 @@ export async function sendVerificationResetEmail(toEmail: string, displayName?: 
 export async function sendModerationAlertEmail(
   toEmail: string,
   report: { id: number; targetType: string; reason: string; details?: string | null },
+  openReports?: number,
 ) {
   try {
     const { client, fromEmail } = await getMailClient();
@@ -448,6 +449,7 @@ export async function sendModerationAlertEmail(
     const lines = [
       `A ${report.targetType} was reported as ${report.reason}.`,
       ...(excerpt ? [`Reporter's note: ${excerpt}`] : []),
+      ...(openReports && openReports > 1 ? [`${openReports} reports are open in the queue in all. Alerts are limited, so only the first report in a while gets its own email.`] : []),
       `Review it in the queue: ${baseUrl}/admin/reports`,
       `Reports should be acted on within 24 hours.`,
     ];

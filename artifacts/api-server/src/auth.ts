@@ -54,7 +54,7 @@ import { getVerificationForUser, googleEmailIsVerified, verificationRecipient } 
 // regardless of how many store instances call init() concurrently.
 let _rateLimitTableReady: Promise<void> | null = null;
 
-function ensureRateLimitTable(): Promise<void> {
+export function ensureRateLimitTable(): Promise<void> {
   if (!_rateLimitTableReady) {
     _rateLimitTableReady = pool
       .query(`

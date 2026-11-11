@@ -39,7 +39,7 @@ import { blockUser, listBlockedUsers, unblockUser } from "../blocks-service";
 import { createReport, listReports, reportQueueStats, resolveReport } from "../reports-service";
 import { reportLimiter } from "../report-limit";
 import { moderationEmail } from "../moderation-config";
-import { sendModerationAlertEmail } from "../mail";
+import { announceReport } from "../moderation-alerts";
 import { MAX_MESSAGE_LENGTH, messageLimiter } from "../message-limit";
 import { rejectDisallowedText } from "../content-policy";
 import { TERMS_VERSION } from "../legal-config";
@@ -5510,10 +5510,7 @@ Respond with ONLY the category name, nothing else.`
       targetId: body.targetId,
       reason: body.reason,
       details: body.details,
-      onCreated: async (report) => {
-        const to = moderationEmail();
-        if (to) await sendModerationAlertEmail(to, report);
-      },
+      onCreated: (report) => announceReport(report),
     });
     if (!result.ok) return res.status(result.status).json({ error: result.error });
     return res.status(result.report.alreadyReported ? 200 : 201).json({ id: result.report.id, status: result.report.status, alreadyReported: result.report.alreadyReported });

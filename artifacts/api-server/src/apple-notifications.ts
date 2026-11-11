@@ -3,7 +3,7 @@ import { appleLinks, db, pool, users } from "@workspace/db";
 import { DeletionError, requestDeletion, type DeletionDeps } from "./account-deletion/service";
 import { getDeletionEligibility, type DeletionBlocker } from "./account-deletion/eligibility";
 import { moderationEmail } from "./moderation-config";
-import { sendDeletionBlockedAlertEmail } from "./mail";
+import { announceBlockedDeletion } from "./moderation-alerts";
 import type { AppleNotification } from "./apple-auth";
 export { APPLE_NOTIFICATIONS_PATH } from "./server-to-server-routes";
 
@@ -36,7 +36,7 @@ export async function alertAdminsOfBlockedDeletion(alert: DeletionBlockedAlert):
     console.warn("[apple] MODERATION_EMAIL is not set, so nobody was emailed about the blocked deletion");
     return;
   }
-  await sendDeletionBlockedAlertEmail(to, alert);
+  await announceBlockedDeletion(alert);
 }
 
 export type AppleNotificationOptions = { deletion?: DeletionDeps; alertAdmins?: (alert: DeletionBlockedAlert) => Promise<unknown> };

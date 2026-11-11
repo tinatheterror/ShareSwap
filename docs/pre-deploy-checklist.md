@@ -126,7 +126,7 @@ Names only. Set them in the deployment that serves the API AND in the Scheduled 
 | `TERMS_ENFORCEMENT` | unset | existing |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `MODERATION_EMAIL`, `BANNED_EMAIL_HASH_KEY` | set; `EMAIL_FROM` is an address on a domain verified in Resend (see Fresh start, C) | existing |
 | `EMAIL_MODE` | optional. Production sends for real by default; anywhere else the default is `log` (printed, not sent). Set `EMAIL_MODE=live` explicitly in the API deployment and the Scheduled Deployment so a mis-detected environment can never silently swallow email. Tests ignore it and use a fake sender. | new |
-| `MODERATION_ALERT_MINUTES` | optional, default 15: at most one report-alert email per this many minutes (keeps a burst of reports inside the Resend daily quota) | new |
+| `MODERATION_ALERT_MINUTES` | optional, default 15: at most one report email and one blocked-deletion email per this many minutes each (keeps a burst inside the Resend daily quota). Nothing is dropped: alerts wait in `admin_alert_queue` (migration 0033, created at boot) and go out as one "N new reports since the last alert" summary when the window ends, sent by the once-a-minute `admin-alert-summary` timer, which runs only in a deployment (or with `BACKGROUND_JOBS=on`) | new |
 | **`CUSTOM_DOMAIN`** | `shareswap.app`. Every link in an email is built from it in production; without it they point at a development or localhost address | existing |
 | `SCHEDULED_JOBS_EXPIRY_MODE`, `SCHEDULED_JOBS_HANDOFF_MODE` | your decision (default is dry-run) | existing |
 

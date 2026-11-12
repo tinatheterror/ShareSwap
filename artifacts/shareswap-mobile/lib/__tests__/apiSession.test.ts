@@ -73,6 +73,17 @@ test("sign-in and its verification still work after expiration, then polling res
   expect(expired).toHaveBeenCalledTimes(1);
 });
 
+test("Apple sign-in and reactivation are sign-in calls: they still go out after the session expired", async () => {
+  setApiSession(true);
+  mockFetch.mockResolvedValueOnce(response(401));
+  await expect(apiGet("/api/messages/2")).rejects.toMatchObject({ status: 401 });
+  mockFetch.mockResolvedValueOnce(response(200, { csrfToken: "test-only" }))
+    .mockResolvedValueOnce(response(200, { id: 1 }))
+    .mockResolvedValueOnce(response(200, { id: 1 }));
+  await expect(apiPost("/api/auth/apple/native", {})).resolves.toEqual({ id: 1 });
+  await expect(apiPost("/api/auth/oauth-reactivate", {})).resolves.toEqual({ id: 1 });
+});
+
 test("a late 401 from the previous session cannot expire a new sign-in", async () => {
   setApiSession(true);
   let resolve!: (value: Response) => void;

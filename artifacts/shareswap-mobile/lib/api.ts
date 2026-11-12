@@ -62,6 +62,8 @@ function checkSessionResponse(res: Response, epoch: number, handlesSession: bool
 
 const AUTH_PATHS = new Set([
   "/api/login", "/api/register", "/api/logout", "/api/auth/exchange-token", "/api/auth/google-reactivate",
+  // Apple sign-in on iOS posts the credential here, and reactivation after it posts the token: both are how a person signs in again.
+  "/api/auth/apple/native", "/api/auth/oauth-reactivate",
   "/api/auth/forgot-password", "/api/auth/reset-password",
   "/api/forgot-password", "/api/reset-password",
 ]);

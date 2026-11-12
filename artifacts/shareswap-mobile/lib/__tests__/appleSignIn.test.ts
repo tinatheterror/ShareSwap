@@ -2,6 +2,8 @@ jest.mock("react-native", () => ({ Platform: { OS: "ios" } }));
 jest.mock("expo-apple-authentication", () => ({
   isAvailableAsync: jest.fn(),
   signInAsync: jest.fn(),
+  getCredentialStateAsync: jest.fn(),
+  AppleAuthenticationCredentialState: { REVOKED: 0, AUTHORIZED: 1, NOT_FOUND: 2, TRANSFERRED: 3 },
   AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
 }));
 jest.mock("expo-crypto", () => ({
@@ -12,7 +14,7 @@ jest.mock("expo-crypto", () => ({
 
 import * as AppleAuthentication from "expo-apple-authentication";
 import { parseAppleRedirect, parseGoogleRedirect } from "../appleRedirect";
-import { AppleSignInCancelled, appleSignInPayload, requestAppleCredential } from "../appleSignIn";
+import { AppleSignInCancelled, appleCredentialRevoked, appleSignInPayload, requestAppleCredential } from "../appleSignIn";
 
 const signIn = AppleAuthentication.signInAsync as jest.Mock;
 const RAW = "ab".repeat(32);
@@ -72,5 +74,27 @@ describe("parseAppleRedirect", () => {
   test("a link with no token and no reason is an error, not a sign-in", () => {
     expect(parseAppleRedirect("shareswap://")).toMatchObject({ kind: "error" });
     expect(parseAppleRedirect("shareswap://?reactivate=1")).toMatchObject({ kind: "error" });
+  });
+});
+
+describe("appleCredentialRevoked", () => {
+  const state = AppleAuthentication.getCredentialStateAsync as jest.Mock;
+  beforeEach(() => state.mockReset());
+
+  test("REVOKED and NOT_FOUND mean Apple no longer authorizes the app on this device", async () => {
+    state.mockResolvedValueOnce(0);
+    await expect(appleCredentialRevoked("apple-user")).resolves.toBe(true);
+    state.mockResolvedValueOnce(2);
+    await expect(appleCredentialRevoked("apple-user")).resolves.toBe(true);
+    expect(state).toHaveBeenCalledWith("apple-user");
+  });
+
+  test("AUTHORIZED, TRANSFERRED and a failed lookup never sign anyone out", async () => {
+    state.mockResolvedValueOnce(1);
+    await expect(appleCredentialRevoked("u")).resolves.toBe(false);
+    state.mockResolvedValueOnce(3);
+    await expect(appleCredentialRevoked("u")).resolves.toBe(false);
+    state.mockRejectedValueOnce(new Error("no network"));
+    await expect(appleCredentialRevoked("u")).resolves.toBe(false);
   });
 });

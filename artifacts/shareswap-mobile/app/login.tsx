@@ -27,7 +27,7 @@ import { resumeDestination } from "@/lib/sessionNavigation";
 import { ApiEnvironmentLabel } from "@/components/ApiEnvironmentLabel";
 import { AppleSignInButton } from "@/components/AppleSignInButton";
 import { GoogleLogo } from "@/components/ProviderLogos";
-import { AppleSignInCancelled, appleSignInAvailable, requestAppleCredential } from "@/lib/appleSignIn";
+import { APPLE_USER_KEY, AppleSignInCancelled, appleSignInAvailable, requestAppleCredential } from "@/lib/appleSignIn";
 import { parseAppleRedirect, parseGoogleRedirect } from "@/lib/appleRedirect";
 
 export default function LoginScreen() {
@@ -121,8 +121,10 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       let signedIn: boolean;
+      let appleUser: string | null = null;
       if (Platform.OS === "ios") {
-        const payload = await requestAppleCredential();
+        const { appleUser: credentialUser, ...payload } = await requestAppleCredential();
+        appleUser = credentialUser;
         const resp = await apiRequest("POST", "/api/auth/apple/native", payload);
         const body = await resp.json();
         if (body?.reactivate && typeof body.token === "string") {
@@ -155,6 +157,7 @@ export default function LoginScreen() {
       }
       if (!signedIn) return;
       await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "apple");
+      if (appleUser) await AsyncStorage.setItem(APPLE_USER_KEY, appleUser);
       registerPushToken().catch(() => {});
     } catch (err: unknown) {
       if (err instanceof AppleSignInCancelled) return;

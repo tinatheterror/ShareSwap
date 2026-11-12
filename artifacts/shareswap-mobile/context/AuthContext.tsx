@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { AppState, AppStateStatus } from "react-native";
+import { AppState, AppStateStatus, Platform } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, onSessionExpired, onTermsAcceptanceRequired, setApiSession } from "@/lib/api";
 import { getPushTokenForLogout, registerPushToken } from "@/hooks/usePushNotifications";
@@ -261,7 +261,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hadSession.current = false;
     authGeneration.current++;
     setApiSession(false);
-    await AsyncStorage.multiRemove([HAS_SESSION_KEY, LAST_AUTH_METHOD_KEY]);
+    await AsyncStorage.multiRemove([HAS_SESSION_KEY, LAST_AUTH_METHOD_KEY, "appleUserId"]);
     queryClient.clear();
     // Best-effort server-side session teardown. The device's push token goes with it, so the server stops
     // pushing to this device for the account that just signed out.
@@ -269,6 +269,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then((token) => apiPost("/api/logout", token ? { token } : {}))
       .catch(() => {});
   }, [queryClient]);
+
+  // Sign in with Apple: if the person removed ShareSwap under Settings > Apple Account > Sign in with Apple (or deleted the Apple ID),
+  // Apple says so on this device even though the server never heard of it. Checked when the app opens with a session and each time
+  // it comes back to the foreground; only sessions that signed in with Apple on this device (the Apple user id is stored then) are asked.
+  const checkAppleCredential = useCallback(async () => {
+    if (Platform.OS !== "ios" || !hadSession.current) return;
+    try {
+      const [method, appleUser] = await Promise.all([AsyncStorage.getItem(LAST_AUTH_METHOD_KEY), AsyncStorage.getItem("appleUserId")]);
+      if (method !== "apple" || !appleUser) return;
+      // Required here, not imported at the top, so the Apple native modules load only for the sessions that need them.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { appleCredentialRevoked } = require("@/lib/appleSignIn") as typeof import("@/lib/appleSignIn");
+      if (hadSession.current && (await appleCredentialRevoked(appleUser))) await logout();
+    } catch {
+      // A failed check never signs anyone out.
+    }
+  }, [logout]);
+
+  const signedInUserId = user?.id ?? null;
+  useEffect(() => {
+    if (signedInUserId !== null) void checkAppleCredential();
+  }, [signedInUserId, checkAppleCredential]);
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
+      if (next === "active") void checkAppleCredential();
+    });
+    return () => sub.remove();
+  }, [checkAppleCredential]);
 
   const setUserData = useCallback((data: User) => {
     authGeneration.current++;

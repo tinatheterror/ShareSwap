@@ -55,8 +55,26 @@ export async function appleSignInAvailable(): Promise<boolean> {
   }
 }
 
-/** Shows Apple's sheet and returns what to send to POST /api/auth/apple/native. */
-export async function requestAppleCredential(): Promise<AppleSignInPayload> {
+/** Where the app remembers which Apple ID signed in on this device (the credential's `user`), to ask Apple later whether it was revoked. */
+export const APPLE_USER_KEY = "appleUserId";
+
+/**
+ * True when Apple says this device's Apple ID no longer authorizes ShareSwap (the person removed the app under Settings > Apple
+ * Account > Sign in with Apple, or the Apple ID is gone). Only REVOKED and NOT_FOUND count: TRANSFERRED, AUTHORIZED, a failed
+ * lookup or a non-iOS device never sign anyone out.
+ */
+export async function appleCredentialRevoked(appleUser: string): Promise<boolean> {
+  if (Platform.OS !== "ios") return false;
+  try {
+    const state = await AppleAuthentication.getCredentialStateAsync(appleUser);
+    return state === AppleAuthentication.AppleAuthenticationCredentialState.REVOKED || state === AppleAuthentication.AppleAuthenticationCredentialState.NOT_FOUND;
+  } catch {
+    return false;
+  }
+}
+
+/** Shows Apple's sheet and returns what to send to POST /api/auth/apple/native (plus `appleUser`, which stays on the device). */
+export async function requestAppleCredential(): Promise<AppleSignInPayload & { appleUser: string }> {
   const rawNonce = toHex(await Crypto.getRandomBytesAsync(32));
   const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
   try {
@@ -64,7 +82,7 @@ export async function requestAppleCredential(): Promise<AppleSignInPayload> {
       requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
       nonce: hashedNonce,
     });
-    return appleSignInPayload(credential, rawNonce);
+    return { ...appleSignInPayload(credential, rawNonce), appleUser: credential.user };
   } catch (error) {
     if ((error as { code?: string })?.code === "ERR_REQUEST_CANCELED") throw new AppleSignInCancelled();
     throw error;

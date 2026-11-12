@@ -23,7 +23,7 @@ Method: static code review only. The app was not run on a device and no EAS buil
 | 9 | **A placeholder button that doesn't work.** "Continue with Phone Number" opens an alert saying "coming soon". | `login.tsx:128-200`. | S. Remove it. |
 | 10 | **Raw server errors reach users.** For non-JSON error bodies the message is `"<status>: <raw body text>"`, and server `message` or `error` strings are shown directly in about 53 places. | `lib/api.ts:69-86`. | M. Map unknown responses to friendly text and keep the raw detail in logs. |
 | 11 | **No store listing or release setup.** | `eas.json` has `"submit": {"production": {}}`: no Apple ID, App Store Connect app ID or Play service account. `owner` is `"sharewap"`, which may be a typo. `expo-router` `origin` is `https://replit.com/`. | S–M |
-| 12 | **Android push isn't configured for release builds.** There is no `google-services.json` or `android.googleServicesFile`. | `app.json` | S. Upload FCM credentials through EAS. |
+| 12 | **Android push isn't configured for release builds.** `artifacts/shareswap-mobile/app.config.js` now reads `android.googleServicesFile` from the EAS file variable `GOOGLE_SERVICES_JSON` (stored as a secret for all three environments). Still to verify: an Android build that receives a push. | `app.config.js` | S. |
 
 ## Medium
 

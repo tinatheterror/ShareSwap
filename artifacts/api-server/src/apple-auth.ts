@@ -89,7 +89,10 @@ async function verifyAppleJwt(token: string, options: VerifyOptions): Promise<JW
     if (code === "ERR_JWKS_TIMEOUT" || code === "ERR_JOSE_GENERIC" || (error as Error).name === "TypeError" || /fetch|network|ECONN|ENOTFOUND/i.test((error as Error).message)) {
       throw new AppleAuthError("Apple's keys could not be fetched", "apple_unavailable");
     }
-    throw new AppleAuthError("The Apple token is not valid", "invalid_token");
+    // Say WHY in the server log (never the token): an audience mismatch (wrong bundle id, Expo Go), an expired token and a bad
+    // signature all look the same to the person, who only sees "could not be verified".
+    const claim = (error as { claim?: string }).claim;
+    throw new AppleAuthError(`The Apple token is not valid (${code || (error as Error).name}${claim ? `, claim ${claim}` : ""}: ${(error as Error).message})`, "invalid_token");
   }
 }
 

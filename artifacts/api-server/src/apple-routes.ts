@@ -19,6 +19,16 @@ import { appleFullName, resolveAppleUser, storeAppleRefreshToken, type AppleSign
 const CALLBACK_PATH = "/api/auth/apple/callback";
 
 /** Everything the routes take from the rest of auth.ts, passed in so this file does not import it back. */
+/** The `aud` claim of a JWT without checking anything, only to say in the log which app the token was made for. */
+function unverifiedAudience(token: string): string | null {
+  try {
+    const aud = JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString()).aud;
+    return typeof aud === "string" ? aud : null;
+  } catch {
+    return null;
+  }
+}
+
 export type AppleRouteDeps = AppleSignInDeps & {
   authLimiter: (req: Request, res: Response, next: NextFunction) => void;
   login(req: Request, user: unknown): Promise<void>;
@@ -154,6 +164,8 @@ export function registerAppleRoutes(app: Express, deps: AppleRouteDeps) {
         identity = await verifyAppleIdentityToken(identityToken, { audience: [config.bundleId], expectedNonce: sha256Hex(nonce), keys: appleRuntime.keys });
       } catch (error) {
         if (error instanceof AppleAuthError && error.code === "apple_unavailable") return res.status(503).json({ message: "Apple could not be reached. Try again." });
+        const aud = unverifiedAudience(identityToken);
+        console.warn(`[apple] native sign-in refused: ${error instanceof Error ? error.message : error}; token audience ${aud ?? "unreadable"}, accepted ${config.bundleId}`);
         return res.status(401).json({ message: "Apple sign-in could not be verified." });
       }
       const outcome = await resolveAppleUser(identity, { fullName: appleFullName(fullName), referralCode: typeof ref === "string" ? ref : null }, deps);

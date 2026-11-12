@@ -7,14 +7,38 @@ Prices are in Canadian dollars at checkout (the app shows `$4.99/mo` and `$9.99/
 ## Decisions and risks to read first (not for Apple)
 
 1. **Subscriptions through Stripe, not In-App Purchase.** Decided (go-live checklist #6). The argument is that Member and Pro only change limits and fees on **physical services consumed outside the app** (guideline 3.1.3(e)). The risk: a reviewer may read "Unlimited borrows" as an in-app feature unlocked by a subscription, which guideline 3.1.1 sends through In-App Purchase. The notes below say plainly what the plans do and do not unlock so the reviewer can judge it. If Apple rejects it, the fallbacks are in docs/app-store-readiness.md blocker #6 (IAP, or web-only purchase with no in-app path).
-2. **The test card works only against Stripe test mode.** Stripe's test card numbers (4242 4242 4242 4242) are refused by live keys. If production runs on live keys at review time, the reviewer cannot pay with a test card, and a real card would charge real money. Pick one before submitting:
-   - (a) point a separate review environment at Stripe test mode and give the reviewer that build or server (needs its own `EXPO_PUBLIC_DOMAIN` build profile and database), or
-   - (b) keep production on live keys and give the reviewer a demo account that already has a saved card and the Member plan active, so nothing needs to be paid for, and say in the notes that real payment is not needed to review the app, or
-   - (c) give the reviewer a real card with a small credit limit that you refund afterwards.
-   The text below is written for (b); change the "Payments" paragraph if you choose (a) or (c).
-3. **The reviewer's account must be able to reach every screen**: ID verification approved so the Verified badge shows (Persona sandbox approvals do not count in production, see the Persona items in the go-live checklist; I did not find a rule that makes verification mandatory to borrow, so check that in the build), the terms and age gate already passed, the first-visit tutorial seen, and a few listings to browse. Create it by hand in production and log in once on a real iPhone before submitting.
+2. **The test card works only against Stripe test mode.** Stripe's test card numbers (4242 4242 4242 4242) are refused by live keys. Decided: option (b), a demo account that already has a saved card and the Member plan, so nothing needs to be paid for. The notes below say real payment is not needed. (If you later prefer a separate review environment on Stripe test mode, or a real card with a small limit, the "Payments" paragraph must change.)
+3. **The demo account is made by a script, but it needs real Stripe objects.** The app re-checks the stored card and plan against Stripe: a card whose customer Stripe does not know is cleared the first time Settings > Payment Methods opens, and a Member plan with no live Member subscription is corrected to Free the first time the Subscription screen opens. So a database-only account would lose both within seconds of the reviewer's first tap. See "Create the demo account" below: you make the Stripe customer, card and a $0 Member subscription by hand, and the script links them after checking them. What it does and does not give the account:
+   - Verified badge: an approved verification row marked `DEMO_ACCOUNT` with no Persona inquiry id (so `persona:reset-sandbox` never touches it). No ID was checked; the notes tell Apple it is a demo account.
+   - Terms and age gate passed, email verified, location set, one completed borrow with a demo lender (a second account that cannot sign in) and one listing of that lender, "Demo camping tent". **The lender and the listing are visible to every member in production**, and the listing has no photo. Add a few more listings by hand if the reviewer should have more to browse.
+   - **Not seeded: the first-visit tutorial.** It is remembered on the device (`hasSeenTutorial_<id>` in the web app's local storage; I found no equivalent for the mobile app), not in the database, so the reviewer sees it once. It will not carry over from your own test sign-in to Apple's device.
 4. **Keep a second, disposable account for the reviewer to delete.** Account deletion starts a 14-day countdown, so deleting the main demo account would end the demo. Give the reviewer two accounts (below) and tell them which one to delete.
 5. **Server settings the reviewer depends on** (go-live checklist): `ACCOUNT_DELETION_FINALIZE_MODE=live` (otherwise "Delete now" works but the 14-day path stays pending forever), the Sign in with Apple secrets, `MODERATION_EMAIL` and a person reading that inbox, and Resend sending from `support@shareswap.app`.
+
+## Create the demo account (you run this, in production)
+
+1. **In the Stripe dashboard (live mode)** make: a customer (for example "Demo Reviewer"); a card on it, your own card (it is never charged: the subscription below is $0), set as the customer's default payment method; and a subscription on the **ShareSwap Member** product's CAD price with a 100% off coupon, duration "forever", so the plan shows Member and renews at $0. (The Member product is the one whose metadata has `tier=member`; the script refuses any other.) Copy the ids `cus_...`, `pm_...`, `sub_...`.
+2. **Dry run** (reads the database and Stripe, writes nothing; it lists every problem it finds):
+
+   ```
+   DEMO_EMAIL=demo@shareswap.app pnpm --filter @workspace/api-server run demo:seed-reviewer \
+     --stripe-customer=cus_... --stripe-payment-method=pm_... --stripe-subscription=sub_...
+   ```
+
+   `DEMO_EMAIL` must be lowercase: it is also the sign-in name, and the app matches it exactly.
+3. **Apply**, with a password of at least 12 characters in the environment (never on the command line). It is refused unless `ALLOW_NON_TEST_DATABASE` names the production database, like the other cleanup scripts:
+
+   ```
+   DEMO_EMAIL=demo@shareswap.app DEMO_PASSWORD='...' ALLOW_NON_TEST_DATABASE=<production database name> \
+     pnpm --filter @workspace/api-server run demo:seed-reviewer --apply \
+     --stripe-customer=cus_... --stripe-payment-method=pm_... --stripe-subscription=sub_...
+   ```
+
+   It is safe to run twice (existing rows are updated, nothing is duplicated); the password changes only when `DEMO_PASSWORD` is set. It creates nothing in Stripe.
+4. Sign in on a real iPhone, open Settings > Payment Methods and the Subscription screen (this is the test that Stripe agrees with the database), then check the Verified badge and the completed transaction.
+5. The disposable deletion account is still made by hand (sign up normally, accept the terms); it must have no booking, claim or wallet balance.
+
+Tested against a local database (create, rerun, no duplicates) and with fake Stripe responses for the checks; **not** run against real Stripe or production.
 
 ## Paste into App Store Connect
 
@@ -24,11 +48,11 @@ Prices are in Canadian dollars at checkout (the app shows `$4.99/mo` and `$9.99/
 
 **Test accounts.** Sign in with email and password on the first screen.
 
-- Main demo account: `[DEMO_EMAIL]` / `[DEMO_PASSWORD]`. ID verification is approved (the "Verified" badge shows), a payment card is saved, and the Member plan is active. Use this one for everything except deleting an account.
+- Main demo account: `[DEMO_EMAIL]` / `[DEMO_PASSWORD]` (a demo account: its verification was set up for review, so you do not need to go through the ID check). The "Verified" badge shows, a payment card is saved, the Member plan is active, and one borrow is already completed. Use this one for everything except deleting an account.
 - Disposable account for the deletion check: `[DELETE_ME_EMAIL]` / `[DELETE_ME_PASSWORD]`. It has no open bookings, no claims and no wallet balance, so deletion is allowed.
 - Sign in with Apple is also offered (Apple's own sign-in sheet, "Hide My Email" supported).
 
-**Payments.** [Edit to match your choice (a), (b) or (c) above.] Rentals and deposits are paid to other members for physical items and are processed by Stripe; they are not digital goods. You do not need to pay for anything to review the app: the demo account already has a saved card (`[TEST_CARD_PLACEHOLDER: brand and last four digits shown in Settings > Payment Methods]`) and the Member plan. If you want to add a card yourself, use `[TEST_CARD_NUMBER]`, expiry `[MM/YY]`, CVC `[CVC]`, postal code `[POSTAL]`. [Only valid if the review build talks to Stripe test mode.]
+**Payments.** Rentals and deposits are paid to other members for physical items and are processed by Stripe; they are not digital goods. You do not need to pay for anything to review the app: the demo account already has a saved card (`[CARD_BRAND_AND_LAST4: as shown in Settings > Payment Methods]`) and the Member plan, which is on a $0 review subscription. Please do not replace or remove the saved card.
 
 **Subscriptions (Profile tab > your plan card > Subscription screen).** The Member plan ($4.99/month) and Pro plan ($9.99/month) are billed through Stripe, not In-App Purchase, because they only change limits and fees on **physical services used outside the app**:
 
@@ -62,8 +86,8 @@ The plans unlock **no digital content, no app features, no virtual goods and no 
 
 ## Before you submit
 
-- [ ] Both test accounts created in production and signed in once on a real iPhone; the main one has the tutorial, terms and age gate behind it.
-- [ ] Every `[PLACEHOLDER]` above filled in, and the "Payments" paragraph matches the option you chose.
+- [ ] Demo account created with `demo:seed-reviewer` and the disposable account made by hand, both signed in once on a real iPhone (Payment Methods and Subscription screens opened: the card and plan must still be there afterwards).
+- [ ] Every `[PLACEHOLDER]` above filled in.
 - [ ] The privacy policy URL (`https://shareswap.app/privacy`) and the support URL load without signing in.
 - [ ] The sign-in screen shows no "API environment" box (it only appears in development builds; see docs/app-store-readiness.md #8).
 - [ ] Re-read every claim above against the final build; this draft was written from the code, and the app was not run on a device.

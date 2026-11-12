@@ -55,7 +55,7 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
   - [ ] Try it on a real iPhone build and on the web: first sign-in (name arrives once), second sign-in, Hide My Email, revoking ShareSwap in Settings > Apple ID > Sign in with Apple (should sign the person out), and deleting an Apple-linked account (the grant should disappear from that Apple settings list).
 - [x] Subscriptions vs In-App Purchase (#6): decided on Stripe subscriptions, not In-App Purchase. Member and Pro only change limits and fees on physical services, so the App Review notes below must say so.
 - [x] Raw server errors reaching users (#10): done 2026-11-12. Every 5xx body is replaced with a friendly message and a support reference id (`SS-XXXXXXXX`) and the detail is logged under that id (`friendly-errors.ts`); web and mobile never show a raw or technical body. To find a member's error, search the server log for the reference id they read out.
-- [ ] eas.json submit config and Android FCM (#11, #12)
+- [x] eas.json submit config (#11: ascAppId and appleTeamId; the App Store Connect key is in EAS credentials) and Android FCM (#12: FCM V1 key uploaded to EAS for com.shareswap.mobile, google-services.json read from the GOOGLE_SERVICES_JSON file variable). Not yet verified: a push received on a real Android build.
 - [ ] Icon and splash placeholders (#14)
 
 ### Product

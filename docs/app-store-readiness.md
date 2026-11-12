@@ -43,7 +43,7 @@ Verified in the code (static review; no device build):
 |---|---|
 | 8 | **Done.** `ApiEnvironmentLabel` returns null when `__DEV__` is false. EAS `preview` and `production` profiles build release bundles, so only a `developmentClient` build shows it; a test covers it. |
 | 9 | **Done.** The phone-number sign-in button is gone; the only "phone number" left is the optional profile field. |
-| 10 | **Done.** Server shield with reference ids, plus friendly mapping on web and mobile (tests on all three). Residual: a few web pages call `fetch` directly instead of `apiRequest` and bypass the mapping. |
+| 10 | **Done.** Server shield with reference ids, plus friendly mapping on web and mobile (tests on all three). Residual: the server shield covers every 5xx whichever client calls, but the client-side mapping (non-JSON bodies, technical text, network failures, the visible reference id) only covers `apiRequest`; about 59 direct `fetch` calls in the web app and one in mobile (`app/share.tsx`) bypass it. Moving them onto `apiRequest` is a follow-up. |
 | 13 | **Done.** `PushPrePrompt` explains notifications before the system prompt. |
 | 14 | **Not done.** Splash and adaptive icon still reuse `icon.png`; needs a design pass. |
 | 15 | **Done.** `expo-location` is not in `package.json`. |

@@ -38,6 +38,22 @@ describe("API environment label", () => {
     expect(visibleText(tree)).toContain("Live accounts and data");
   });
 
+  test("renders nothing in release builds (preview and production), whatever the API host", () => {
+    const g = globalThis as { __DEV__?: boolean };
+    const original = g.__DEV__;
+    g.__DEV__ = false;
+    try {
+      for (const baseUrl of ["https://shareswap.app", "https://configured-project.replit.dev", "https://staging.example.com", ""]) {
+        tree = renderLabel(baseUrl);
+        expect(tree.toJSON()).toBeNull();
+        act(() => { tree!.unmount(); });
+        tree = undefined;
+      }
+    } finally {
+      g.__DEV__ = original;
+    }
+  });
+
   test("exposes a readable unknown state to screen readers", () => {
     tree = renderLabel("https://staging.example.com");
     const label = tree.root.findByProps({ testID: "api-environment-label" });

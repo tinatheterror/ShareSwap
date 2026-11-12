@@ -83,7 +83,7 @@ export default function MyBalancePage() {
       const data = await res.json();
       if (!res.ok) {
         const err = new Error(data.message || data.error || "Failed");
-        (err as any).code = data.error;
+        (err as any).code = data.code ?? data.error;
         throw err;
       }
       return data as { url: string };

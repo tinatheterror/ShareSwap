@@ -1,14 +1,27 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { friendlyMessage, isNetworkFailure, networkError, parseErrorBody } from "./friendly-error";
+
+/** fetch that turns "Failed to fetch" and friends into one readable message. */
+async function safeFetch(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    throw isNetworkFailure(error) ? networkError() : error;
+  }
+}
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    let parsed: any = null;
-    try { parsed = JSON.parse(text); } catch {}
-    const error = new Error(parsed?.error || `${res.status}: ${text}`) as Error & { code?: string; status?: number; [key: string]: any };
-    error.code = parsed?.code;
+    const text = await res.text().catch(() => "");
+    const parsed = parseErrorBody(text);
+    // Never the raw body: a non-JSON or technical answer becomes plain text (and a 5xx a reference id).
+    const message = friendlyMessage(res.status, parsed);
+    const error = new Error(message) as Error & { code?: string; status?: number; [key: string]: any };
+    error.code = parsed?.code as string | undefined;
     error.status = res.status;
-    if (parsed && typeof parsed === "object") Object.assign(error, parsed);
+    if (parsed) Object.assign(error, parsed);
+    // The server's body must not overwrite the friendly text.
+    error.message = message;
     // The server refuses writes until the current Terms are accepted: refetch the user so the acceptance screen opens.
     if (error.code === "TERMS_ACCEPTANCE_REQUIRED") void queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     throw error;
@@ -88,7 +101,7 @@ async function doFetch(
     if (token) headers['x-csrf-token'] = token;
   }
 
-  return fetch(url, {
+  return safeFetch(url, {
     method,
     headers,
     body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
@@ -136,7 +149,7 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    const res = await safeFetch(queryKey[0] as string, {
       credentials: "include",
     });
 

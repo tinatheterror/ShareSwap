@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { friendlyMessage, isNetworkFailure, networkError, parseErrorBody } from "./friendlyError";
 
 const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN?.trim();
 if (!API_DOMAIN) {
@@ -80,24 +81,21 @@ export interface RequestOptions {
   sessionProbe?: boolean;
 }
 
+/** fetch that turns "Network request failed" and friends into one readable message. */
+async function safeFetch(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    throw isNetworkFailure(error) ? networkError() : error;
+  }
+}
+
 async function throwIfNotOk(res: Response) {
   if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    let parsed: Record<string, unknown> | null = null;
-    try {
-      parsed = JSON.parse(text);
-    } catch {}
-    const isHtml = /<!doctype html|<html[\s>]/i.test(text);
-    const fallbackMessage =
-      res.status === 401
-        ? "Your session has expired. Please sign in again."
-        : res.status === 403
-        ? "Your request could not be verified. Please try again."
-        : `Request failed (${res.status}). Please try again.`;
-    const msg =
-      (parsed?.error as string) ||
-      (parsed?.message as string) ||
-      (text && !isHtml ? `${res.status}: ${text}` : fallbackMessage);
+    const text = await res.text().catch(() => "");
+    const parsed = parseErrorBody(text);
+    // Never the raw body: a non-JSON or technical answer becomes plain text (and a 5xx a reference id).
+    const msg = friendlyMessage(res.status, parsed);
     const err = new Error(msg) as Error & {
       status?: number;
       code?: string;
@@ -112,6 +110,8 @@ async function throwIfNotOk(res: Response) {
     // require an explicit next step. Preserve that structured response so callers
     // can render the server-provided disclosure rather than parsing its message.
     if (parsed) Object.assign(err, parsed);
+    // The server's body must not overwrite the friendly text.
+    err.message = msg;
     if (err.code === "TERMS_ACCEPTANCE_REQUIRED" || err.code === "AGE_CONFIRMATION_REQUIRED") termsListeners.forEach((listener) => listener());
     throw err;
   }
@@ -127,7 +127,7 @@ async function fetchCsrfToken(forceRefresh = false, handlesSession = true): Prom
   if (forceRefresh) csrfToken = null;
   const epoch = sessionEpoch;
   const request = (async () => {
-    const res = await fetch(`${BASE_URL}/api/csrf-token`, {
+    const res = await safeFetch(`${BASE_URL}/api/csrf-token`, {
       credentials: "include",
       cache: "no-store",
     });
@@ -177,7 +177,7 @@ export async function apiRequest(
   }
   if (handlesSession && epoch !== sessionEpoch) throw sessionError();
 
-  const res = await fetch(url, {
+  const res = await safeFetch(url, {
     method,
     headers,
     cache: options?.cache,
@@ -198,7 +198,7 @@ export async function apiRequest(
     ) {
       headers["x-csrf-token"] = await fetchCsrfToken(true, handlesSession);
       if (handlesSession && epoch !== sessionEpoch) throw sessionError();
-      const retryRes = await fetch(url, {
+      const retryRes = await safeFetch(url, {
         method,
         headers,
         body: isFormData

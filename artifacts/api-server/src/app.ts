@@ -5,6 +5,7 @@ import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
+import { errorShield } from "./friendly-errors";
 import healthRouter from "./routes/health";
 import { legacyReputationScoreAlias } from "./legacy-reputation-alias";
 import { DISPUTE_WEBHOOK_PATH, SUBSCRIPTION_WEBHOOK_PATH, isServerToServerPath } from "./server-to-server-routes";
@@ -30,6 +31,9 @@ app.use(
     },
   }),
 );
+
+// Every 5xx body becomes a friendly message with a support reference id; the detail is logged (friendly-errors.ts).
+app.use(errorShield);
 
 app.use(
   cors({

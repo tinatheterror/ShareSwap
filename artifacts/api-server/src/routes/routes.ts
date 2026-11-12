@@ -64,6 +64,7 @@ import type { InsertItem } from "@workspace/db";
 import connectPgSimple from "connect-pg-simple";
 import { recommendationEngine } from "../recommendation-engine";
 import { addSimplifiedRoutes } from "../simplified-routes";
+import { installErrorHandlers } from "../friendly-errors";
 import { requireCurrentTerms } from "../terms-enforcement";
 import { hasAiConsent, registerAiConsentRoutes, requireAiConsent } from "../ai-consent";
 import { BIOMETRIC_CONSENT_REQUIRED_CODE, BIOMETRIC_CONSENT_REQUIRED_MESSAGE, hasBiometricConsent, registerBiometricConsentRoutes } from "../biometric-consent";
@@ -3695,7 +3696,7 @@ Return only the JSON object, no other text.`
     } catch (error) {
       const err = error as any;
       console.error('Screenshot import error:', err);
-      return res.status(500).json({ error: err.message || 'Failed to analyze screenshot' });
+      return res.status(500).json({ error: 'Failed to analyze screenshot' });
     }
   });
 
@@ -8787,11 +8788,12 @@ Respond with ONLY the category name, nothing else.`
       // Stripe Connect not enabled on this platform account
       if (error?.message?.includes('signed up for Connect') || error?.code === 'connect_not_enabled') {
         return res.status(503).json({
-          error: "CONNECT_NOT_ENABLED",
-          message: "Stripe Connect is not yet enabled on this account. An admin must enable it at https://dashboard.stripe.com/connect",
+          code: "CONNECT_NOT_ENABLED",
+          error: "Payout setup is not available right now. Please try again later.",
+          message: "Payout setup is not available right now. Please try again later.",
         });
       }
-      res.status(500).json({ error: "Failed to start payout setup: " + error.message });
+      res.status(500).json({ error: "Failed to start payout setup." });
     }
   });
 
@@ -11103,7 +11105,7 @@ Respond with ONLY the category name, nothing else.`
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     if (!uberDirect.isConfigured()) {
-      return res.status(503).json({ error: "Uber Direct is not configured" });
+      return res.status(503).json({ error: "Delivery is not available right now." });
     }
 
     const { pickupAddress, dropoffAddress, pickupPhone, dropoffPhone, manifestValueCents } = req.body;
@@ -11132,7 +11134,7 @@ Respond with ONLY the category name, nothing else.`
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     if (!uberDirect.isConfigured()) {
-      return res.status(503).json({ error: "Uber Direct is not configured" });
+      return res.status(503).json({ error: "Delivery is not available right now." });
     }
 
     const {
@@ -11344,7 +11346,7 @@ Respond with ONLY the category name, nothing else.`
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     if (!uberDirect.isConfigured()) {
-      return res.status(503).json({ error: "Uber Direct is not configured" });
+      return res.status(503).json({ error: "Delivery is not available right now." });
     }
 
     try {
@@ -11459,7 +11461,7 @@ Respond with ONLY the category name, nothing else.`
       }
     } catch (error: any) {
       console.error("Error creating delivery arrangement:", error);
-      res.status(500).json({ error: "Failed to create delivery arrangement: " + error.message });
+      res.status(500).json({ error: "Failed to create delivery arrangement." });
     }
   });
 
@@ -16510,6 +16512,9 @@ Respond with ONLY the category name, nothing else.`
 
   // Add simplified routes for new features
   addSimplifiedRoutes(app);
+
+  // Last: JSON 404 for unknown /api paths and a friendly JSON answer for uncaught errors (friendly-errors.ts).
+  installErrorHandlers(app);
 
   return httpServer;
 }

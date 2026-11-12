@@ -33,14 +33,14 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
 
 ### App Store / Play blockers
 
-- [ ] **App Store privacy nutrition label** and **Google Play Data safety form**, filled in to match docs/legal/privacy-policy.md and answered the same way in both. Re-read the Privacy Policy first; where the two disagree, fix the Policy. From the code today:
+- [ ] **App Store privacy nutrition label** and **Google Play Data safety form** (draft answers: docs/store-forms.md), filled in to match docs/legal/privacy-policy.md and answered the same way in both. Re-read the Privacy Policy first; where the two disagree, fix the Policy. From the code today:
   - Collected and linked to the person: contact info (email, name, phone number), user content (item photos, profile photo, messages, reviews, wishlist posts), identifiers (user ID, push token, and on the web a device fingerprint used against repeat sign-ups), purchases and financial info (card brand, last four digits and expiry, deposits, payouts, wallet balance; card numbers are held by Stripe), location (postal code, city and radius; item addresses and coordinates; delivery addresses), sensitive/ID data (Persona identity verification: name, ID document and selfie, ID number), province or state and the date age was confirmed (not the date of birth).
   - Shared with third parties: Stripe and Stripe Connect (payments, deposits, payouts), Persona (identity), Google (sign-in), Resend (email), Expo and Apple/Google push (notifications), Uber Direct (delivery names, addresses, phone numbers), OpenAI (only after the in-app consent: profile photo, item photos, screenshots, item name), OpenStreetMap Nominatim (place text for geocoding), Replit (hosting, database, photo storage).
   - Tracking and analytics: no advertising SDK and no analytics service found in the code. The website loads the UserJot feedback widget for signed-in people when VITE_USERJOT_PROJECT_ID is set (web only; it is sent the internal user number and nothing else), and the mobile app opens the public board in the browser, so neither adds tracking; it is listed in the Privacy Policy draft. Re-check the final builds, including any SDK added later, before answering "no tracking".
   - Location: the app does not ask for the device's location permission; location is typed or chosen by the person. Confirm that against the final build before answering.
   - Data deletion: account deletion in the app and at https://shareswap.app/delete-account (Play requires the URL); retention exceptions are in the Privacy Policy.
   - Under 18: not offered, so answer "not directed at children". The age check is by age of majority, 18 to 21 depending on where the person lives.
-- [ ] **Apple age-rating questionnaire**: answer every question honestly from what the app does, including user-generated content and messaging between strangers, in-app payments and deposits, and the marketplace for physical goods. Do not pick the rating you want; expect 18+ and accept what the questionnaire returns. ShareSwap's minimum account age (the age of majority where the person lives) is a separate decision from Apple's rating. Phase 2 teen accounts (docs/product/teen-accounts-phase-2.md) are not for launch and need a fresh answer if they are ever built.
+- [ ] **Apple age-rating questionnaire** (draft answers: docs/store-forms.md): answer every question honestly from what the app does, including user-generated content and messaging between strangers, in-app payments and deposits, and the marketplace for physical goods. Do not pick the rating you want; expect 18+ and accept what the questionnaire returns. ShareSwap's minimum account age (the age of majority where the person lives) is a separate decision from Apple's rating. Phase 2 teen accounts (docs/product/teen-accounts-phase-2.md) are not for launch and need a fresh answer if they are ever built.
 
 - [ ] Content safeguards (#3): report, block, moderation queue, zero-tolerance terms (Apple 1.2)
 - [ ] Sign in with Apple (#1): built (iOS native button, web redirect, account linking, deletion revocation, server-to-server notifications); it stays off until you finish this setup. Required because Google sign-in is offered. At developer.apple.com > Certificates, Identifiers & Profiles:
@@ -54,7 +54,7 @@ Items parked while building on Stripe test mode. Nothing here has been done; tic
   - [ ] Android has no native Apple sheet: the app opens the same web flow (`/api/auth/apple/start`) in the system browser and Apple returns to the same registered return URL, then the server sends the browser back into the app (`shareswap://`) with a one-time token. Nothing extra to register; try it on an Android build too.
   - [ ] Try it on a real iPhone build and on the web: first sign-in (name arrives once), second sign-in, Hide My Email, revoking ShareSwap in Settings > Apple ID > Sign in with Apple (should sign the person out), and deleting an Apple-linked account (the grant should disappear from that Apple settings list).
 - [x] Subscriptions vs In-App Purchase (#6): decided on Stripe subscriptions, not In-App Purchase. Member and Pro only change limits and fees on physical services, so the App Review notes below must say so.
-- [ ] Raw server errors reaching users (#10)
+- [x] Raw server errors reaching users (#10): done 2026-11-12. Every 5xx body is replaced with a friendly message and a support reference id (`SS-XXXXXXXX`) and the detail is logged under that id (`friendly-errors.ts`); web and mobile never show a raw or technical body. To find a member's error, search the server log for the reference id they read out.
 - [ ] eas.json submit config and Android FCM (#11, #12)
 - [ ] Icon and splash placeholders (#14)
 
@@ -108,7 +108,7 @@ Test-mode IDs mean nothing to live keys. Stripe answers "No such customer/paymen
 
 ## App Review
 
-- [ ] **Review notes explaining the plans.** Member and Pro only change limits and fees on **physical services** (borrow limits, the rental service fee, courier fees). They unlock no digital content. Say this in the review notes and provide a test account, with a card that can complete a payment.
+- [ ] **Review notes explaining the plans** (draft: docs/app-review-notes.md; it lists the decisions to make first, including how the reviewer pays). Member and Pro only change limits and fees on **physical services** (borrow limits, the rental service fee, courier fees). They unlock no digital content. Say this in the review notes and provide a test account, with a card that can complete a payment.
 
 ## Final check
 

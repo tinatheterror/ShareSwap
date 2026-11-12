@@ -35,6 +35,23 @@ Method: static code review only. The app was not run on a device and no EAS buil
 | 16 | **Dev-only package ships in the release build.** `expo-dev-client` is in `dependencies`. Most Expo runtime packages are in `devDependencies`, which EAS installs, so they work. | `package.json` | S |
 | 17 | **Push token logged to console.** | `usePushNotifications.ts:119` | S |
 
+## Status check, 2026-11-12
+
+Verified in the code (static review; no device build):
+
+| # | State |
+|---|---|
+| 8 | **Done.** `ApiEnvironmentLabel` returns null when `__DEV__` is false. EAS `preview` and `production` profiles build release bundles, so only a `developmentClient` build shows it; a test covers it. |
+| 9 | **Done.** The phone-number sign-in button is gone; the only "phone number" left is the optional profile field. |
+| 10 | **Done.** Server shield with reference ids, plus friendly mapping on web and mobile (tests on all three). Residual: a few web pages call `fetch` directly instead of `apiRequest` and bypass the mapping. |
+| 13 | **Done.** `PushPrePrompt` explains notifications before the system prompt. |
+| 14 | **Not done.** Splash and adaptive icon still reuse `icon.png`; needs a design pass. |
+| 15 | **Done.** `expo-location` is not in `package.json`. |
+| 16 | **Done.** `expo-dev-client` is in `devDependencies`. |
+| 17 | **Done.** No push token is logged. |
+
+Blocker #7 (`expo-image-picker` plugin) and #5 (`EXPO_PUBLIC_DOMAIN` per profile) are also in place. Still open: #1 (Apple developer setup), #2 (finalize job and secrets), #11 and #12 (`eas.json` submit config, Android FCM), #14.
+
 ## Already fine
 
 - **Bundle ID and package:** `com.shareswap.mobile` on both platforms.

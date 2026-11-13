@@ -13,7 +13,8 @@ import {
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { ArrowLeftRight, Camera, Check, Coins, Package } from "lucide-react-native";
+import { ArrowLeftRight, Camera, Check, Coins, ExternalLink, Package } from "lucide-react-native";
+import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -77,6 +78,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
 
   const [step, setStep] = useState<"select" | "message">("select");
@@ -155,6 +157,12 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
+  /** Opens an item's details page; the sheet closes first so the page is not hidden behind it. */
+  function openItemDetails(id: number) {
+    onClose();
+    router.push(`/item/${id}` as never);
+  }
+
   function toggleOwnerItem(id: number) {
     setSelectedOwnerItemIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
@@ -328,7 +336,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
                             <View style={s.cardScRow}>
                               <Coins size={9} color={colors.mutedForeground} strokeWidth={2} />
                               <Text style={[s.cardSc, { color: colors.mutedForeground }]}>
-                                {getTierSC(item.tier)} SC
+                                {getTierSC(item.tier)} ShareCoins
                               </Text>
                             </View>
                           </View>
@@ -375,6 +383,15 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
                         <View style={[s.checkOverlay, { backgroundColor: "rgba(245,158,11,0.3)" }]}>
                           <Check size={16} color="#92400e" strokeWidth={2.5} />
                         </View>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="View item details"
+                          hitSlop={8}
+                          style={s.expandBtn}
+                          onPress={() => openItemDetails(targetItem.id)}
+                        >
+                          <ExternalLink size={10} color="#57534e" strokeWidth={2} />
+                        </Pressable>
                       </View>
                       <View style={s.cardInfo}>
                         <Text
@@ -386,7 +403,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
                         <View style={s.cardScRow}>
                           <Coins size={9} color="#a16207" strokeWidth={2} />
                           <Text style={[s.cardSc, { color: "#a16207" }]}>
-                            {targetSC} SC
+                            {targetSC} ShareCoins
                           </Text>
                         </View>
                       </View>
@@ -434,6 +451,15 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
                                 <Check size={16} color="#92400e" strokeWidth={2.5} />
                               </View>
                             )}
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel="View item details"
+                              hitSlop={8}
+                              style={s.expandBtn}
+                              onPress={() => openItemDetails(item.id)}
+                            >
+                              <ExternalLink size={10} color="#57534e" strokeWidth={2} />
+                            </Pressable>
                           </View>
                           <View style={s.cardInfo}>
                             <Text
@@ -445,7 +471,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
                             <View style={s.cardScRow}>
                               <Coins size={9} color={colors.mutedForeground} strokeWidth={2} />
                               <Text style={[s.cardSc, { color: colors.mutedForeground }]}>
-                                {getTierSC(item.tier)} SC
+                                {getTierSC(item.tier)} ShareCoins
                               </Text>
                             </View>
                           </View>
@@ -822,6 +848,7 @@ const s = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginTop: -6,
     marginBottom: 0,
+    opacity: 0.7,
   },
   centered: { alignItems: "center", justifyContent: "center", paddingVertical: 24 },
   empty: { alignItems: "center", paddingVertical: 24, gap: 6 },
@@ -840,6 +867,14 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(13,206,161,0.3)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  expandBtn: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    padding: 3,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.85)",
   },
   cardInfo: { padding: 5 },
   cardName: { fontSize: 10, fontFamily: "Inter_500Medium", lineHeight: 13 },

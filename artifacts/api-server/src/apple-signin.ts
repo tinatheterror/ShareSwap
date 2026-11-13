@@ -85,7 +85,10 @@ async function existingAccount(user: User, identity: AppleIdentity, linked: bool
   if (user.accountStatus === "deleted") return { kind: "refused", reason: "blocked" };
   const updates: Partial<typeof users.$inferInsert> = {};
   if (identity.email && !user.email) updates.email = identity.email;
-  if (identity.emailVerified && !user.emailVerified) updates.emailVerified = true;
+  // Apple vouches for *its* address only. It may mark the stored address verified when it is that same address, or when
+  // it is being stored from Apple in this very call; a different stored address stays as it was.
+  const emailIsApples = !!identity.email && (!user.email || user.email.toLowerCase() === identity.email.toLowerCase());
+  if (identity.emailVerified && emailIsApples && !user.emailVerified) updates.emailVerified = true;
   if (Object.keys(updates).length) {
     const [updated] = await db.update(users).set(updates).where(eq(users.id, user.id)).returning();
     return { kind: "ok", user: updated ?? user, created: false, linked };

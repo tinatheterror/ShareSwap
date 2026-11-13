@@ -138,6 +138,44 @@ test("a private-relay address becomes the email but never the username or displa
   assert.ok(!row.username.includes(sub));
 });
 
+async function appleAccount(label: string, email: string | null) {
+  const sub = newSub(label);
+  const [row] = await db.insert(users).values({ username: `${UNIQUE}-${label}`, password: await hashPassword("Pw!123456"), email, emailVerified: false, appleId: sub }).returning();
+  extraUserIds.push(row.id);
+  return sub;
+}
+
+test("signing in again marks the stored email verified when Apple's verified email is the same address (any case)", async () => {
+  const sub = await appleAccount("ev-same", `${UNIQUE}.Same@Example.com`);
+  const res = await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(sub, { email: `${UNIQUE}.same@example.com`, email_verified: "true" }));
+  assert.equal(res.status, 200);
+  const row = await userRow(sub);
+  assert.equal(row.emailVerified, true);
+  assert.equal(row.email, `${UNIQUE}.Same@Example.com`, "the stored address is kept as it was");
+});
+
+test("signing in again never marks a different stored email verified, even if Apple's email is verified", async () => {
+  const stored = `${UNIQUE}.stored@example.com`;
+  const sub = await appleAccount("ev-diff", stored);
+  const res = await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(sub, { email: "q7f3k2x9@privaterelay.appleid.com", email_verified: "true", is_private_email: "true" }));
+  assert.equal(res.status, 200);
+  const row = await userRow(sub);
+  assert.equal(row.emailVerified, false);
+  assert.equal(row.email, stored);
+});
+
+test("an account with no stored email takes Apple's email and is marked verified when Apple verified it, but not when it did not", async () => {
+  const verifiedSub = await appleAccount("ev-empty", null);
+  assert.equal((await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(verifiedSub, { email: `${UNIQUE}.empty@example.com`, email_verified: "true" }))).status, 200);
+  const verified = await userRow(verifiedSub);
+  assert.deepEqual([verified.email, verified.emailVerified], [`${UNIQUE}.empty@example.com`, true]);
+
+  const unverifiedSub = await appleAccount("ev-empty2", null);
+  assert.equal((await new Client(baseUrl).post("/api/auth/apple/native", await nativeBody(unverifiedSub, { email: `${UNIQUE}.empty2@example.com`, email_verified: "false" }))).status, 200);
+  const unverified = await userRow(unverifiedSub);
+  assert.deepEqual([unverified.email, unverified.emailVerified], [`${UNIQUE}.empty2@example.com`, false]);
+});
+
 test("an existing account with the same verified email is linked, not duplicated", async () => {
   const email = `${UNIQUE}.link@example.com`;
   const [existing] = await db.insert(users).values({ username: `${UNIQUE}-link`, password: await hashPassword("Pw!123456"), email, emailVerified: true }).returning();

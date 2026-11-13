@@ -2,7 +2,7 @@ import { pathToFileURL } from "node:url";
 import { pool } from "@workspace/db";
 import { assertDestructiveDatabaseAllowed } from "@workspace/db/test-database-guard";
 import { getUncachableStripeClient } from "../stripe.server";
-import { applyDemoAccount, describeDemoPlan, planDemoAccount, verifyStripeLinks } from "../demo-reviewer-account";
+import { applyDemoAccount, describeDemoPlan, planDemoAccount, verifyStripeLinks, type StripeLinks } from "../demo-reviewer-account";
 
 // Creates (or refreshes) the App Review demo account: ID-verified, Member plan, card on file, one completed transaction.
 //   DEMO_EMAIL=... pnpm --filter @workspace/api-server run demo:seed-reviewer --stripe-customer=cus_... --stripe-payment-method=pm_... --stripe-subscription=sub_...
@@ -29,7 +29,7 @@ async function main() {
   if (!apply) return console.log("\nDRY RUN: nothing was changed. Run again with --apply (and DEMO_PASSWORD when the account does not exist yet).");
   if (!stripe.ok) throw new Error("Refusing --apply: fix the Stripe problems above first.");
   if (!plan.demoExists && !password) throw new Error("Refusing --apply: DEMO_PASSWORD is required to create the account.");
-  console.log("\n" + JSON.stringify(await applyDemoAccount({ email, password, links: links as Required<typeof links>, stripe: stripe.value }), null, 2));
+  console.log("\n" + JSON.stringify(await applyDemoAccount({ email, password, links: links as StripeLinks, stripe: stripe.value }), null, 2));
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

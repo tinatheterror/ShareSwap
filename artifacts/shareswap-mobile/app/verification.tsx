@@ -327,21 +327,6 @@ export default function VerificationScreen() {
               </View>
             )}
 
-            {/* Why verify */}
-            <View style={[styles.card, { backgroundColor: "#f0fdfa", borderColor: "#99f6e4" }]}>
-              <Text style={[styles.benefitsTitle, { color: "#134e4a" }]}>Why Verify Your Identity?</Text>
-              {[
-                { icon: "shield" as const, text: "A verified badge builds instant trust with neighbours" },
-                { icon: "star" as const,   text: "Improve your trust score and become a preferred choice for sharing" },
-                { icon: "eye" as const,    text: "Verified users are prioritized in urgent requests and search results" },
-              ].map(({ icon, text }) => (
-                <View key={text} style={styles.whyRow}>
-                  <Feather name={icon} size={22} color="#0d9488" />
-                  <Text style={[styles.whyText, { color: "#0f766e" }]}>{text}</Text>
-                </View>
-              ))}
-            </View>
-
             {/* Steps + Start button */}
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[styles.cardSectionTitle, { color: colors.foreground }]}>Verify Your Identity</Text>
@@ -389,6 +374,21 @@ export default function VerificationScreen() {
                   Powered by Persona — bank-level identity verification
                 </Text>
               </View>
+            </View>
+
+            {/* Why verify */}
+            <View style={[styles.card, { backgroundColor: "#f0fdfa", borderColor: "#99f6e4" }]}>
+              <Text style={[styles.benefitsTitle, { color: "#134e4a" }]}>Why Verify Your Identity?</Text>
+              {[
+                { icon: "shield" as const, text: "A verified badge builds instant trust with neighbours" },
+                { icon: "star" as const,   text: "Improve your trust score and become a preferred choice for sharing" },
+                { icon: "eye" as const,    text: "Verified users are prioritized in urgent requests and search results" },
+              ].map(({ icon, text }) => (
+                <View key={text} style={styles.whyRow}>
+                  <Feather name={icon} size={22} color="#0d9488" />
+                  <Text style={[styles.whyText, { color: "#0f766e" }]}>{text}</Text>
+                </View>
+              ))}
             </View>
 
             <Text style={[styles.footnote, { color: colors.mutedForeground, textAlign: "center" }]}>

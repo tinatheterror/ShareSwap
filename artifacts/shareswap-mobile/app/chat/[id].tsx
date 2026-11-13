@@ -19,12 +19,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { Shield, Coins, Calendar, CreditCard } from "lucide-react-native";
+import { ArrowLeftRight, Shield, Coins, Calendar, CreditCard, Package } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiPatch, photoUrl } from "@/lib/api";
 import { fmtCalendarDate, fmtCalendarRange, fmtDate as fmtDateUtil, safeDate } from "@/lib/dateUtils";
 import { REQUEST_DATES_PASSED_MESSAGE, acceptBlockedByDates } from "@/lib/requestDates";
 import { useAuth } from "@/context/AuthContext";
+import { calcSwap, getTierSC } from "@/components/SwapInventorySelector";
 import { InsufficientShareCoinsModal } from "@/components/InsufficientShareCoinsModal";
 import { PayDepositSheet } from "@/components/PayDepositSheet";
 import { PayRentalSheet } from "@/components/PayRentalSheet";
@@ -84,6 +85,8 @@ interface RequestItem {
   securityDeposit: number | null;
 }
 
+type SwapSummaryItem = { id: number; name: string; photos: string[] | null; tier?: number | null };
+
 interface ItemRequest {
   id: number;
   requestType: string;
@@ -116,6 +119,8 @@ interface ItemRequest {
   swapOfferedItems?: { id: number; name: string; photos: string[] | null; tier?: number | null }[];
   counterSwapOwnerItemIds: number[] | null;
   counterSwapRequesterItemIds: number[] | null;
+  counterSwapOwnerItems?: SwapSummaryItem[];
+  counterSwapRequesterItems?: SwapSummaryItem[];
   counterNote: string | null;
   trustDepositAmount: number | null;
   trustDepositBaseAmount: number | null;
@@ -711,11 +716,15 @@ export default function ChatScreen() {
       !!handoffCompletedAt ||
       ["IN_PROGRESS", "RETURN_REQUESTED", "COMPLETED", "COMPLETED_EARLY"].includes(status);
 
+    // Swaps have no deposit. They are stored with the default "in_app" method, which must not make the card wait for one
+    // (the server lets a swap go to handoff straight from ACCEPTED).
+    const takesInAppDeposit = request.requestType !== "SWAP" && request.depositMethod === "in_app";
+
     const handoffStatuses = ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "ACCEPTED"];
     const showHandoffForOwner =
       isOwner &&
       (handoffStatuses.includes(status)) &&
-      request.depositMethod !== "in_app";
+      !takesInAppDeposit;
     const showHandoffForOwnerInApp =
       isOwner && status === "DEPOSIT_CONFIRMED";
     const canConfirmOwnerHandoff = showHandoffForOwner || showHandoffForOwnerInApp;
@@ -723,10 +732,10 @@ export default function ChatScreen() {
     const showPinEntryForBorrower =
       isBorrower &&
       (status === "DEPOSIT_CONFIRMED" || status === "AWAITING_HANDOFF_CONFIRM" ||
-        (status === "ACCEPTED" && request.depositMethod !== "in_app"));
+        (status === "ACCEPTED" && !takesInAppDeposit));
 
     const showDepositNeeded =
-      isBorrower && status === "ACCEPTED" && request.depositMethod === "in_app";
+      isBorrower && status === "ACCEPTED" && takesInAppDeposit;
 
     const anyMutating =
       acceptMutation.isPending || declineMutation.isPending ||
@@ -827,6 +836,61 @@ export default function ChatScreen() {
             )}
           </View>
         </View>
+
+        {/* Swap: what the requester offers (left) for what the owner gives (right); a counter replaces the originals */}
+        {request.requestType === "SWAP" && (() => {
+          const hasCounter = (request.counterSwapOwnerItemIds?.length ?? 0) > 0 || (request.counterSwapRequesterItemIds?.length ?? 0) > 0;
+          const leftItems: SwapSummaryItem[] = hasCounter && request.counterSwapRequesterItems?.length
+            ? request.counterSwapRequesterItems
+            : (request.swapOfferedItems ?? []);
+          const rightItems: SwapSummaryItem[] = hasCounter && request.counterSwapOwnerItems?.length
+            ? request.counterSwapOwnerItems
+            : request.item ? [{ id: request.item.id, name: request.item.name ?? "Item", photos: request.item.photos ?? null, tier: (request.item as { tier?: number | null }).tier }] : [];
+          if (leftItems.length === 0 && rightItems.length === 0) return null;
+          const result = calcSwap(
+            leftItems.reduce((sum, i) => sum + getTierSC(i.tier), 0),
+            rightItems.reduce((sum, i) => sum + getTierSC(i.tier), 0),
+          );
+          const receives = result.offsetDirection === "you_receive";
+          const renderSide = (items: SwapSummaryItem[], bg: string, border: string, text: string) => (
+            <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+              {items.map((i) => (
+                <View key={i.id} style={[card.swapItem, { backgroundColor: bg, borderColor: border }]}>
+                  {i.photos?.[0] ? (
+                    <Image source={{ uri: photoUrl(i.photos[0]) }} style={card.swapThumb} resizeMode="cover" />
+                  ) : (
+                    <Package size={16} color={text} strokeWidth={1.5} />
+                  )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={[card.swapItemName, { color: text }]} numberOfLines={2}>{i.name}</Text>
+                    <Text style={[card.swapItemValue, { color: text }]}>{getTierSC(i.tier)} ShareCoins</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          );
+          const otherName = partner?.displayName || partner?.username || "the other member";
+          // The requester pays when what they offer is worth less ("you_pay"), and receives when it is worth more.
+          const requesterPays = result.offsetDirection === "you_pay";
+          const viewerPays = isBorrower ? requesterPays : !requesterPays;
+          const offsetLine = result.isFair
+            ? null
+            : viewerPays
+              ? `You pay ${otherName} ${result.offset} ShareCoins.`
+              : `${otherName} pays you ${result.offset} ShareCoins.`;
+          return (
+            <View style={[card.swapWrap, { borderTopColor: colors.border }]}>
+              <View style={card.swapRow}>
+                {renderSide(leftItems, "#fffbeb", "#fde68a", "#78350f")}
+                <ArrowLeftRight size={18} color="#14b8a6" style={{ marginTop: 8 }} />
+                {renderSide(rightItems, "#f0fdfa", "#99f6e4", "#134e4a")}
+              </View>
+              {offsetLine && (
+                <Text style={[card.swapOffsetText, { color: colors.foreground }]}>{offsetLine}</Text>
+              )}
+            </View>
+          );
+        })()}
 
         {lifecycleLoading && <View style={card.lifecycleLoading}><ActivityIndicator size="small" color={colors.primary} /></View>}
         {lifecycleError && <Text style={[card.lifecycleError, { color: colors.mutedForeground }]}>Return details are temporarily unavailable.</Text>}
@@ -955,7 +1019,7 @@ export default function ChatScreen() {
                   </Pressable>
                   {(request.counterRound ?? 0) < 2 && (
                     <Pressable
-                      style={[card.btn, { borderColor: "#f59e0b", backgroundColor: "#fffbeb", flex: 1 }]}
+                      style={[card.btn, { borderColor: "transparent", backgroundColor: "#fef3c7", flex: 1 }]}
                       onPress={() => setShowCounterSheet(true)}
                       disabled={anyMutating}
                     >
@@ -977,7 +1041,7 @@ export default function ChatScreen() {
             {iSentCounter && (
               <View style={[card.counterBanner, { backgroundColor: "#fffbeb", borderColor: "#fcd34d" }]}>
                 <Text style={[card.counterBannerTitle, { color: "#92400e" }]}>
-                  ⏳ Waiting for the other party to respond to your proposed terms
+                  ⏳ Waiting for their response
                 </Text>
               </View>
             )}
@@ -1012,7 +1076,7 @@ export default function ChatScreen() {
                       }
                     </Pressable>
                     <Pressable
-                      style={[card.btn, { borderColor: "#f59e0b", backgroundColor: "#fffbeb", flex: 1 }]}
+                      style={[card.btn, { borderColor: "transparent", backgroundColor: "#fef3c7", flex: 1 }]}
                       onPress={() => setShowCounterSheet(true)}
                       disabled={anyMutating}
                     >
@@ -1162,7 +1226,7 @@ export default function ChatScreen() {
             )}
 
             {/* ACCEPTED + in_app deposit: owner waits */}
-            {isOwner && status === "ACCEPTED" && request.depositMethod === "in_app" && (
+            {isOwner && status === "ACCEPTED" && takesInAppDeposit && (
               <View style={[card.infoBanner, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                 <Text style={[card.infoBannerText, { color: colors.mutedForeground }]}>
                   Waiting for the borrower to place their deposit hold.
@@ -1568,10 +1632,6 @@ export default function ChatScreen() {
             // ── Event messages (request_accepted, counter_proposed, etc.) ──────
             if (msg.messageType === "event") {
               const et = msg.metadata?.eventType as string | undefined;
-              const relatedReq = msg.requestId
-                ? allRequests?.find((r) => r.id === msg.requestId) ?? null
-                : null;
-
               const iActor = msg.senderId === user?.id;
               const actorName = partner?.displayName || partner?.username || "";
               const actor = iActor ? "You" : actorName;
@@ -1591,78 +1651,6 @@ export default function ChatScreen() {
                 et === "extension_requested" ? null :
                 et === "counter_proposed" ? null :
                 msg.content;
-
-              // Counter-proposed card: show Previous → Proposed columns
-              const counterCard = et === "counter_proposed" && msg.metadata
-                ? (() => {
-                    const mStart = msg.metadata.startDate as string | undefined;
-                    const mEnd = msg.metadata.endDate as string | undefined;
-                    const origStartRaw = (msg.metadata.origStartDate as string | undefined) ?? relatedReq?.startDate ?? undefined;
-                    const origEndRaw = (msg.metadata.origEndDate as string | undefined) ?? relatedReq?.endDate ?? undefined;
-                    const origStart = origStartRaw ? fmtCalendarDate(origStartRaw) : null;
-                    const origEnd = origEndRaw ? fmtCalendarDate(origEndRaw) : null;
-                    const newStart = mStart ? fmtCalendarDate(mStart) : null;
-                    const newEnd = mEnd ? fmtCalendarDate(mEnd) : null;
-                    const dateChanged = (newStart && newStart !== origStart) || (newEnd && newEnd !== origEnd);
-                    const origDeposit = msg.metadata.origDepositMethod as string | undefined;
-                    const newDeposit = msg.metadata.depositMethod as string | undefined;
-                    const depositChanged = origDeposit !== newDeposit;
-                    const depLabel = (m?: string | null) => m === "in_person" ? "In-person" : "In-app";
-
-                    return (
-                      <View style={[styles.counterTermsCard, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-                        {/* Previous column */}
-                        <View style={{ flex: 1, gap: 4 }}>
-                          <Text style={[styles.counterTermsColLabel, { color: "#9ca3af" }]}>Previous</Text>
-                          {origStart && origEnd && (
-                            <View style={styles.counterTermsRow}>
-                              <Feather name="clock" size={11} color={colors.mutedForeground} />
-                              <Text style={[styles.counterTermsText, { color: colors.mutedForeground }]}>
-                                {origStart} – {origEnd}
-                              </Text>
-                            </View>
-                          )}
-                          {origDeposit != null && (
-                            <View style={styles.counterTermsRow}>
-                              <Shield size={11} color={colors.mutedForeground} strokeWidth={2} />
-                              <Text style={[styles.counterTermsText, { color: colors.mutedForeground }]}>
-                                {depLabel(origDeposit)}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                        {/* Divider arrow */}
-                        <Text style={{ color: "#9ca3af", fontFamily: "Inter_600SemiBold", paddingHorizontal: 6, paddingTop: 20 }}>→</Text>
-                        {/* Proposed column */}
-                        <View style={{ flex: 1, gap: 4 }}>
-                          <Text style={[styles.counterTermsColLabel, { color: "#f59e0b" }]}>Proposed</Text>
-                          {newStart && newEnd && (
-                            <View style={styles.counterTermsRow}>
-                              <Feather name="clock" size={11} color={dateChanged ? "#d97706" : colors.mutedForeground} />
-                              <Text style={[styles.counterTermsText, {
-                                color: dateChanged ? "#d97706" : colors.mutedForeground,
-                                fontFamily: dateChanged ? "Inter_600SemiBold" : "Inter_400Regular",
-                              }]}>
-                                {newStart} – {newEnd}
-                              </Text>
-                            </View>
-                          )}
-                          {newDeposit != null && (
-                            <View style={styles.counterTermsRow}>
-                              <Shield size={11} color={depositChanged ? "#d97706" : colors.mutedForeground} strokeWidth={2} />
-                              <Text style={[styles.counterTermsText, {
-                                color: depositChanged ? "#d97706" : colors.mutedForeground,
-                                fontFamily: depositChanged ? "Inter_600SemiBold" : "Inter_400Regular",
-                              }]}>
-                                {depLabel(newDeposit)}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    );
-                  })()
-                : null;
 
               // Extension-requested cards are a read-only history entry. The
               // one active Accept / Decline control pair lives in the request
@@ -1705,7 +1693,6 @@ export default function ChatScreen() {
                      et === "extension_requested" ? null :
                      eventLabel}
                   </Text>
-                  {counterCard}
                   {extensionCard}
                 </View>
               );
@@ -2119,6 +2106,18 @@ const card = StyleSheet.create({
     paddingVertical: 8,
     gap: 5,
   },
+  swapWrap: {
+    gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  swapRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  swapItem: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 6, padding: 4, height: 52 }, // two name lines + the value fit; every box is the same size
+  swapThumb: { width: 28, height: 28, borderRadius: 4 },
+  swapItemName: { fontSize: 11, fontFamily: "Inter_500Medium", lineHeight: 14 },
+  swapItemValue: { fontSize: 10, fontFamily: "Inter_400Regular", lineHeight: 13, opacity: 0.75 },
+  swapOffsetText: { fontSize: 12, fontFamily: "Inter_500Medium", lineHeight: 17 },
   detailRow: { flexDirection: "row", alignItems: "flex-start", gap: 5 },
   detailText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 17 },
   detailTextTight: { lineHeight: 15 },
@@ -2272,19 +2271,6 @@ const styles = StyleSheet.create({
     fontSize: 12, fontFamily: "Inter_600SemiBold",
     textAlign: "center",
   },
-  // Counter-proposal terms card (Previous → Proposed)
-  counterTermsCard: {
-    flexDirection: "row", alignItems: "flex-start",
-    borderWidth: 1, borderRadius: 10,
-    paddingHorizontal: 10, paddingVertical: 8,
-    gap: 2, width: 260,
-  },
-  counterTermsColLabel: {
-    fontSize: 9, fontFamily: "Inter_600SemiBold",
-    textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2,
-  },
-  counterTermsRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  counterTermsText: { fontSize: 11, fontFamily: "Inter_400Regular", flexShrink: 1 },
   // System messages
   systemWrap: {
     alignItems: "center", alignSelf: "center",

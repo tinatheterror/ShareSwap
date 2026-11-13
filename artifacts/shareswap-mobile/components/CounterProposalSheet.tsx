@@ -16,16 +16,20 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { Camera, Check, Coins, ExternalLink } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
-import { apiGet } from "@/lib/api";
+import { apiGet, photoUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { MAX_SWAP_OFFSET, calcSwap, getTierSC } from "@/components/SwapInventorySelector";
+import { SwapFairnessSummary } from "@/components/SwapFairnessSummary";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -118,85 +122,99 @@ function toISODateStr(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-// ── Item chip for SWAP picker ─────────────────────────────────────────────────
+// ── Item card for SWAP picker (same look as the swap request modal) ──────────
+
+const GRID_GAP = 6;
+const GRID_COLS = 3;
 
 function SwapItemChip({
   item,
   selected,
   onToggle,
+  onExpand,
+  width,
   variant,
 }: {
   item: SwapEligibleItem;
   selected: boolean;
   onToggle: (id: number) => void;
+  /** Opens the item's details page (their items only, as in the swap request modal). */
+  onExpand?: (id: number) => void;
+  width: number;
   variant: "mine" | "theirs";
 }) {
   const colors = useColors();
-  const photo = item.photos?.[0];
-  const activeBorder = variant === "mine" ? PRIMARY : "#f59e0b";
-  const activeBg = variant === "mine" ? "#e6fbf5" : "#fef3c7";
+  const uri = photoUrl(item.photos?.[0]);
+  const mine = variant === "mine";
 
   return (
     <Pressable
       onPress={() => onToggle(item.id)}
       style={[
-        chipStyles.chip,
+        chipStyles.card,
         {
-          borderColor: selected ? activeBorder : colors.border,
-          backgroundColor: selected ? activeBg : colors.background,
+          width,
+          borderColor: selected ? (mine ? PRIMARY : "#f59e0b") : colors.border,
+          backgroundColor: selected ? (mine ? "#E6FBF5" : "#fffbeb") : colors.background,
         },
       ]}
     >
-      {photo ? (
-        <Image source={{ uri: photo }} style={chipStyles.photo} contentFit="cover" />
-      ) : (
-        <View style={[chipStyles.photoPlaceholder, { backgroundColor: colors.muted }]}>
-          <Text style={{ fontSize: 18 }}>📦</Text>
+      <View style={[chipStyles.img, { height: width * (4 / 5), backgroundColor: colors.muted }]}>
+        {uri ? (
+          <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : (
+          <Camera size={14} color={colors.mutedForeground} strokeWidth={1.5} />
+        )}
+        {selected && (
+          <View style={[chipStyles.checkOverlay, { backgroundColor: mine ? "rgba(13,206,161,0.3)" : "rgba(245,158,11,0.3)" }]}>
+            <Check size={16} color={mine ? "#fff" : "#92400e"} strokeWidth={2.5} />
+          </View>
+        )}
+        {onExpand && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="View item details"
+            hitSlop={8}
+            style={chipStyles.expandBtn}
+            onPress={() => onExpand(item.id)}
+          >
+            <ExternalLink size={10} color="#57534e" strokeWidth={2} />
+          </Pressable>
+        )}
+      </View>
+      <View style={chipStyles.info}>
+        <Text style={[chipStyles.name, { color: colors.foreground }]} numberOfLines={2}>
+          {item.name}
+        </Text>
+        <View style={chipStyles.scRow}>
+          <Coins size={9} color={colors.mutedForeground} strokeWidth={2} />
+          <Text style={[chipStyles.sc, { color: colors.mutedForeground }]}>{getTierSC(item.tier)} ShareCoins</Text>
         </View>
-      )}
-      <Text style={[chipStyles.name, { color: colors.foreground }]} numberOfLines={2}>
-        {item.name}
-      </Text>
-      {selected && (
-        <View style={[chipStyles.checkBadge, { backgroundColor: activeBorder }]}>
-          <Text style={{ color: "#fff", fontSize: 10, fontFamily: "Inter_700Bold" }}>✓</Text>
-        </View>
-      )}
+      </View>
     </Pressable>
   );
 }
 
 const chipStyles = StyleSheet.create({
-  chip: {
-    width: "47%",
-    borderWidth: 1.5,
-    borderRadius: 10,
-    overflow: "hidden",
-    marginBottom: 8,
-  },
-  photo: { width: "100%", aspectRatio: 4 / 3 },
-  photoPlaceholder: {
-    width: "100%",
-    aspectRatio: 4 / 3,
+  card: { borderRadius: 8, borderWidth: 1, overflow: "hidden" },
+  img: { alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  checkOverlay: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
   },
-  name: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    padding: 6,
-    lineHeight: 15,
-  },
-  checkBadge: {
+  expandBtn: {
     position: "absolute",
     top: 4,
     right: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
+    padding: 3,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.85)",
   },
+  info: { padding: 5 },
+  name: { fontSize: 10, fontFamily: "Inter_500Medium", lineHeight: 13 },
+  scRow: { flexDirection: "row", alignItems: "center", gap: 2, marginTop: 2 },
+  sc: { fontSize: 9, fontFamily: "Inter_400Regular" },
 });
 
 // ── DateButton ────────────────────────────────────────────────────────────────
@@ -290,6 +308,15 @@ export default function CounterProposalSheet({
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  // Three cards a row inside the sheet's 20px padding, as in the swap request modal.
+  const cardWidth = (screenWidth - 40 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+  /** Opens an item's details page; the sheet closes first so the page is not hidden behind it. */
+  function openItemDetails(id: number) {
+    onClose();
+    router.push(`/item/${id}` as never);
+  }
 
   const isSwap = request.requestType === "SWAP";
   const isBorrow = request.requestType === "BORROW";
@@ -306,7 +333,6 @@ export default function CounterProposalSheet({
   // ── SWAP state ────────────────────────────────────────────────────────────
   const [ownerItemIds, setOwnerItemIds] = useState<number[]>([]);
   const [requesterItemIds, setRequesterItemIds] = useState<number[]>([]);
-  const [counterNote, setCounterNote] = useState("");
 
   // Pre-fill on open (matches web handleRequestChange logic)
   useEffect(() => {
@@ -330,7 +356,6 @@ export default function CounterProposalSheet({
         : (request.swapOfferedItemIds ?? []);
       setOwnerItemIds(initOwner);
       setRequesterItemIds(initRequester);
-      setCounterNote(request.counterNote ?? "");
     }
   }, [visible, request.id]);
 
@@ -359,6 +384,24 @@ export default function CounterProposalSheet({
 
   const requesterPanelItems: SwapEligibleItem[] = isOwner ? partnerSwapItems : mySwapItems;
 
+  // From the viewer's side, as on web: "Your Swap Items" are the owner's items when you own the listing, the requester's otherwise.
+  const myPanelItems = isOwner ? ownerPanelItems : requesterPanelItems;
+  const theirPanelItems = isOwner ? requesterPanelItems : ownerPanelItems;
+  const mySelectedIds = isOwner ? ownerItemIds : requesterItemIds;
+  const theirSelectedIds = isOwner ? requesterItemIds : ownerItemIds;
+  const setMySelectedIds = isOwner ? setOwnerItemIds : setRequesterItemIds;
+  const setTheirSelectedIds = isOwner ? setRequesterItemIds : setOwnerItemIds;
+
+  // ShareCoin value of each side's selection (a selected item missing from the lists falls back to what the request carries).
+  const knownItems = new Map<number, { tier?: number | null }>();
+  for (const i of [...(request.swapOfferedItems ?? []), ...(request.item ? [request.item] : [])]) knownItems.set(i.id, i);
+  for (const i of [...ownerPanelItems, ...requesterPanelItems]) knownItems.set(i.id, i);
+  const sideValue = (ids: number[]) => ids.reduce((sum, id) => sum + (knownItems.has(id) ? getTierSC(knownItems.get(id)?.tier) : 0), 0);
+  const myValue = sideValue(mySelectedIds);
+  const theirValue = sideValue(theirSelectedIds);
+  const showSwapSummary = isSwap && mySelectedIds.length > 0 && theirSelectedIds.length > 0;
+  const swapResult = calcSwap(myValue, theirValue);
+
   // ── Validation & submit ───────────────────────────────────────────────────
   function handleSubmit() {
     if (isSwap) {
@@ -369,7 +412,7 @@ export default function CounterProposalSheet({
       onSubmit({
         swapOwnerItemIds: ownerItemIds,
         swapRequesterItemIds: requesterItemIds,
-        counterNote: counterNote.trim(),
+        counterNote: "", // the sheet no longer takes a note; an empty one is what an unwritten note always sent
         isResponse,
       });
     } else {
@@ -572,25 +615,26 @@ export default function CounterProposalSheet({
                 <>
                   {/* My items */}
                   <View style={ss.section}>
-                    <Text style={[ss.sectionLabel, { color: colors.foreground }]}>
-                      {isOwner ? "Your items to offer" : "Your items to offer"}
+                    <Text style={[ss.sectionLabel, { color: "#0f766e" }]}>
+                      Your Swap Items
                     </Text>
-                    {ownerPanelItems.length === 0 ? (
+                    {myPanelItems.length === 0 ? (
                       <Text style={[ss.emptyText, { color: colors.mutedForeground }]}>
                         No swap-eligible items in your ShareChest.
                       </Text>
                     ) : (
                       <View style={ss.itemGrid}>
-                        {ownerPanelItems.map((item) => (
+                        {myPanelItems.map((item) => (
                           <SwapItemChip
                             key={item.id}
                             item={item}
-                            selected={ownerItemIds.includes(item.id)}
+                            selected={mySelectedIds.includes(item.id)}
                             onToggle={(id) =>
-                              setOwnerItemIds((prev) =>
+                              setMySelectedIds((prev) =>
                                 prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
                               )
                             }
+                            width={cardWidth}
                             variant="mine"
                           />
                         ))}
@@ -600,25 +644,27 @@ export default function CounterProposalSheet({
 
                   {/* Their items */}
                   <View style={ss.section}>
-                    <Text style={[ss.sectionLabel, { color: colors.foreground }]}>
-                      {isOwner ? "Their items (what you'd receive)" : "Their items (what you'd receive)"}
+                    <Text style={[ss.sectionLabel, { color: "#b45309" }]}>
+                      Their Swap Items
                     </Text>
-                    {requesterPanelItems.length === 0 ? (
+                    {theirPanelItems.length === 0 ? (
                       <Text style={[ss.emptyText, { color: colors.mutedForeground }]}>
                         No swap-eligible items found.
                       </Text>
                     ) : (
                       <View style={ss.itemGrid}>
-                        {requesterPanelItems.map((item) => (
+                        {theirPanelItems.map((item) => (
                           <SwapItemChip
                             key={item.id}
                             item={item}
-                            selected={requesterItemIds.includes(item.id)}
+                            selected={theirSelectedIds.includes(item.id)}
                             onToggle={(id) =>
-                              setRequesterItemIds((prev) =>
+                              setTheirSelectedIds((prev) =>
                                 prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
                               )
                             }
+                            width={cardWidth}
+                            onExpand={openItemDetails}
                             variant="theirs"
                           />
                         ))}
@@ -626,27 +672,10 @@ export default function CounterProposalSheet({
                     )}
                   </View>
 
-                  {/* Counter note */}
-                  <View style={ss.section}>
-                    <Text style={[ss.sectionLabel, { color: colors.foreground }]}>
-                      Note (optional)
-                    </Text>
-                    <TextInput
-                      value={counterNote}
-                      onChangeText={(t) => setCounterNote(t.slice(0, 300))}
-                      placeholder="Add context for your counter offer…"
-                      placeholderTextColor={colors.mutedForeground}
-                      multiline
-                      numberOfLines={3}
-                      style={[
-                        ss.noteInput,
-                        { borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground },
-                      ]}
-                    />
-                    <Text style={[ss.charCount, { color: colors.mutedForeground }]}>
-                      {counterNote.length}/300
-                    </Text>
-                  </View>
+                  {/* Swap summary, same as the swap request modal: scrolls with the items */}
+                  {showSwapSummary && (
+                    <SwapFairnessSummary yourSC={myValue} theirSC={theirValue} valuation={swapResult} maxOffset={MAX_SWAP_OFFSET} />
+                  )}
                 </>
               )}
             </>
@@ -797,28 +826,12 @@ const ss = StyleSheet.create({
   itemGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: GRID_GAP,
   },
   emptyText: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     fontStyle: "italic",
-  },
-  // Note input
-  noteInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  charCount: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    textAlign: "right",
-    marginTop: -4,
   },
   // Footer
   footer: {

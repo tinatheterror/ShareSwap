@@ -17,17 +17,18 @@ import { ArrowLeftRight, Camera, Check, Coins, ExternalLink, Package } from "luc
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SwapFairnessSummary } from "@/components/SwapFairnessSummary";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, photoUrl } from "@/lib/api";
 
 // ── Swap calculator (mirrors web lib) ─────────────────────────────────────────
 const TIER_SC: Record<number, number> = { 1: 5, 2: 10, 3: 20, 4: 40 };
-const MAX_SWAP_OFFSET = 20;
-function getTierSC(tier?: number | null): number {
+export const MAX_SWAP_OFFSET = 20;
+export function getTierSC(tier?: number | null): number {
   return TIER_SC[tier ?? 2] ?? 10;
 }
-function calcSwap(yourSC: number, theirSC: number) {
+export function calcSwap(yourSC: number, theirSC: number) {
   const offset = Math.abs(yourSC - theirSC);
   const exceedsMax = offset > MAX_SWAP_OFFSET;
   const offsetDirection: "none" | "you_pay" | "you_receive" =
@@ -193,20 +194,6 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
     } finally {
       setSending(false);
     }
-  }
-
-  // ── Fairness summary colours ──────────────────────────────────────────────
-  let fc = { bg: "#fefce8", border: "#fcd34d", text: "#92400e" }; // yellow = offset
-  if (valuation.exceedsMax) fc = { bg: "#fef2f2", border: "#fecaca", text: "#b91c1c" };
-  else if (valuation.isFair) fc = { bg: "#f0fdf4", border: "#86efac", text: "#15803d" };
-
-  function fairnessMsg() {
-    if (valuation.isFair) return "Fair swap";
-    if (valuation.exceedsMax)
-      return `Offset is ${valuation.offset} ShareCoins — maximum allowed is ${MAX_SWAP_OFFSET}`;
-    if (valuation.offsetDirection === "you_pay")
-      return `You pay ${valuation.offset} ShareCoins to balance`;
-    return `You receive +${valuation.offset} ShareCoins to balance`;
   }
 
   const targetName = targetItem.name ?? (targetItem as any).title ?? "Item";
@@ -502,38 +489,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
 
               {/* ── Fairness summary ── */}
               {anySelected && (
-                <View
-                  style={[
-                    s.fairness,
-                    { backgroundColor: fc.bg, borderColor: fc.border },
-                  ]}
-                >
-                  <View style={s.fairnessRow}>
-                    <View style={s.fairnessSide}>
-                      <Text style={[s.fairnessSub, { color: fc.text }]}>Your offer</Text>
-                      <Text style={[s.fairnessBig, { color: fc.text }]}>{yourSC}</Text>
-                      <Text style={[s.fairnessSub, { color: fc.text }]}>ShareCoin</Text>
-                    </View>
-                    <ArrowLeftRight size={16} color={fc.text} strokeWidth={2} />
-                    <View style={s.fairnessSide}>
-                      <Text style={[s.fairnessSub, { color: fc.text }]}>Their offer</Text>
-                      <Text style={[s.fairnessBig, { color: fc.text }]}>{theirSC}</Text>
-                      <Text style={[s.fairnessSub, { color: fc.text }]}>ShareCoin</Text>
-                    </View>
-                  </View>
-                  <View style={[s.fairnessDivider, { borderColor: fc.border }]} />
-                  <View style={s.fairnessMsgRow}>
-                    <Feather
-                      name={valuation.exceedsMax ? "alert-triangle" : "info"}
-                      size={11}
-                      color={fc.text}
-                      style={{ marginTop: 1 }}
-                    />
-                    <Text style={[s.fairnessMsgText, { color: fc.text }]}>
-                      {fairnessMsg()}
-                    </Text>
-                  </View>
-                </View>
+                <SwapFairnessSummary yourSC={yourSC} theirSC={theirSC} valuation={valuation} maxOffset={MAX_SWAP_OFFSET} />
               )}
 
               {/* ── Hint when nothing selected ── */}
@@ -888,39 +844,6 @@ const s = StyleSheet.create({
     gap: 4,
   },
   showMoreText: { fontSize: 13, color: PRIMARY, fontFamily: "Inter_500Medium" },
-  // Fairness
-  fairness: { borderRadius: 10, padding: 12, borderWidth: 1 },
-  fairnessRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  fairnessSide: { flex: 1, alignItems: "center" },
-  fairnessSub: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-    opacity: 0.8,
-    marginBottom: 2,
-  },
-  fairnessBig: {
-    fontSize: 24,
-    fontFamily: "Inter_700Bold",
-    lineHeight: 28,
-  },
-  fairnessDivider: { borderTopWidth: 1, opacity: 0.2 },
-  fairnessMsgRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 6,
-    marginTop: 8,
-  },
-  fairnessMsgText: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    flex: 1,
-    lineHeight: 16,
-  },
   // Hint
   hint: { flexDirection: "row", alignItems: "center", gap: 6 },
   hintText: { fontSize: 11, fontFamily: "Inter_400Regular" },

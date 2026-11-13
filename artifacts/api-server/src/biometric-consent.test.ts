@@ -111,7 +111,7 @@ test("with consent at the current version create-inquiry goes to Persona; an old
 test("the wording cannot change without a new version, and the Privacy Policy has the section the notice links to", () => {
   const fingerprint = createHash("sha256").update(`${BIOMETRIC_NOTICE}\n${BIOMETRIC_CHECKBOX_LABEL}`).digest("hex").slice(0, 16);
   assert.equal(
-    `${BIOMETRIC_CONSENT_VERSION}:${fingerprint}`, "2026-11-10.1:f85dbb624e4f63b7",
+    `${BIOMETRIC_CONSENT_VERSION}:${fingerprint}`, "2026-11-13.1:798574708a470f88",
     "The consent wording changed: bump BIOMETRIC_CONSENT_VERSION (so everyone is asked again) and update this line.",
   );
   assert.match(BIOMETRIC_NOTICE, /Persona/);
@@ -123,11 +123,11 @@ test("the wording cannot change without a new version, and the Privacy Policy ha
   assert.match(BIOMETRIC_NOTICE, /detect fraud/);
   assert.match(BIOMETRIC_NOTICE, /improve its own service/);
   assert.match(BIOMETRIC_NOTICE, /ID images, selfie and other personal data 30 days after your verification is decided, keeping only the decision/);
-  assert.match(BIOMETRIC_NOTICE, /If you delete your account, we ask Persona to delete them when the deletion is completed: after a 14-day grace period, or sooner if you choose to delete it immediately/);
+  assert.match(BIOMETRIC_NOTICE, /If you delete your account, we ask Persona to delete them once the deletion completes: after a 14-day grace period, or sooner if you delete immediately/);
   assert.doesNotMatch(BIOMETRIC_NOTICE, /straight away|sooner if you close/, "Persona is asked when the deletion is completed, not when it is requested");
   assert.equal(DELETION_GRACE_DAYS, 14, "the policy and the notice say 14 days");
   assert.equal(BIOMETRIC_CHECKBOX_LABEL, "I agree to ShareSwap and Persona collecting and using my ID and face data to verify my identity, detect fraud and improve Persona's service.");
-  assert.notEqual(BIOMETRIC_CONSENT_VERSION, "2026-11-09", "the wording changed, so everyone who agreed to the earlier text is asked again");
+  assert.notEqual(BIOMETRIC_CONSENT_VERSION, "2026-11-10.1", "the wording changed, so everyone who agreed to the earlier text is asked again");
 
   const policy = readFileSync(new URL("../../../docs/legal/privacy-policy.md", import.meta.url), "utf8");
   assert.ok(policy.split("\n").includes(`## ${BIOMETRIC_POLICY_HEADING}`), "the policy has the heading the notice links to");

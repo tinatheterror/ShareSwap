@@ -577,7 +577,10 @@ export function setupAuth(app: Express) {
               const googleVerified = googleEmailIsVerified(profile);
               const updates: Partial<typeof users.$inferInsert> = {};
               if (googleEmail && !existingUser.email) updates.email = googleEmail;
-              if (googleVerified && !existingUser.emailVerified) updates.emailVerified = true;
+              // Google vouches for *its* address only: it may mark the stored address verified when it is that same
+              // address, or when it is being stored from Google in this very call; a different one stays as it was.
+              const emailIsGoogles = !!googleEmail && (!existingUser.email || existingUser.email.toLowerCase() === String(googleEmail).toLowerCase());
+              if (googleVerified && emailIsGoogles && !existingUser.emailVerified) updates.emailVerified = true;
               if (Object.keys(updates).length > 0) {
                 const [updated] = await db
                   .update(users)

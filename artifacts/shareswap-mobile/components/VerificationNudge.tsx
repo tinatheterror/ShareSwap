@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
+import { BadgeCheck } from "lucide-react-native";
 import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "@/context/AuthContext";
@@ -55,8 +56,8 @@ export function VerificationNudge() {
 
   return (
     <View style={[styles.banner, { backgroundColor: "#f0fdfa", borderBottomColor: "#99f6e4" }]}>
-      <View style={[styles.iconWrap, { backgroundColor: "#ccfbf1" }]}>
-        <Feather name="shield" size={16} color="#0d9488" />
+      <View style={styles.iconWrap}>
+        <BadgeCheck size={28} fill="#0DCEA1" color="white" strokeWidth={1.5} />
       </View>
 
       <View style={styles.body}>

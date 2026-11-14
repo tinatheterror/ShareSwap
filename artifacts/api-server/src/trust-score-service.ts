@@ -27,8 +27,6 @@ export const TRUST_POINTS = {
     DEPOSIT_CLAIMED: -50,
     FRAUD_ABUSE: -100,
     REPEATED_NO_SHOWS: -35,
-    // One reported no-show for an accepted swap (a first one in 30 days is a warning only, like a cancellation)
-    NO_SHOW: -20,
     // Late-return tiers (applied at confirm-return; notify-delay softens one tier)
     LATE_RETURN_MODERATE: -20,    // 3-6 days late
     LATE_RETURN_SEVERE: -40,      // 7-13 days late
@@ -69,7 +67,6 @@ export function trustLevelForSqlScore(score: SQL): SQL<string> {
 export const GRACE_PASS_CONFIG = {
   ENABLED_PENALTY_TYPES: [
     "cancel_after_acceptance",
-    "no_show",
     "low_review_one_star",
     "low_review_two_star",
   ] as const,
@@ -101,7 +98,6 @@ export type TrustActivityType =
   | "fraud_abuse"
   | "repeated_no_shows"
   // Medium penalty activities
-  | "no_show"
   | "cancel_after_acceptance"
   | "cancel_after_deposit"
   | "ignoring_messages"
@@ -117,7 +113,6 @@ export type PenaltyType =
   | "deposit_claimed"
   | "fraud_abuse"
   | "repeated_no_shows"
-  | "no_show"
   | "cancel_after_acceptance"
   | "cancel_after_deposit"
   | "ignoring_messages"
@@ -280,8 +275,6 @@ export function formatReputationActivityDescription(
       return "A trust and safety violation was confirmed.";
     case "repeated_no_shows":
       return "Repeated missed handoffs were recorded.";
-    case "no_show":
-      return `A missed swap meetup was reported${onItem}`;
     case "cancel_after_acceptance":
       return `An accepted request was cancelled${onItem}`;
     case "cancel_after_deposit":
@@ -857,7 +850,6 @@ const PENALTY_POINTS: Record<PenaltyType, number> = {
   deposit_claimed: TRUST_POINTS.PENALTIES.DEPOSIT_CLAIMED,
   fraud_abuse: TRUST_POINTS.PENALTIES.FRAUD_ABUSE,
   repeated_no_shows: TRUST_POINTS.PENALTIES.REPEATED_NO_SHOWS,
-  no_show: TRUST_POINTS.PENALTIES.NO_SHOW,
   cancel_after_acceptance: TRUST_POINTS.PENALTIES.CANCEL_AFTER_ACCEPTANCE,
   cancel_after_deposit: TRUST_POINTS.PENALTIES.CANCEL_AFTER_DEPOSIT,
   ignoring_messages: TRUST_POINTS.PENALTIES.IGNORING_MESSAGES,
@@ -983,17 +975,6 @@ export async function applyCancellationPenalty(
   });
 
   return { applied: result.applied, wasGracePass: result.wasGracePass };
-}
-
-/** A reported no-show for an accepted swap: the first one in 30 days is a warning, later ones cost points. */
-export async function applyNoShowPenalty(
-  userId: number,
-  requestId: number,
-  itemId: number,
-  executor: any = db,
-): Promise<{ applied: boolean; wasGracePass: boolean; pointsDeducted: number }> {
-  const result = await applyTrustPenalty(userId, "no_show", { requestId, itemId }, executor);
-  return { applied: result.applied, wasGracePass: result.wasGracePass, pointsDeducted: result.pointsDeducted };
 }
 
 /**

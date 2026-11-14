@@ -116,7 +116,6 @@ import {
   type RequestExpirySweepResult,
 } from "../request-expiry-service";
 import { findReservationConflict, heldItemIdSet, ITEM_ALREADY_COMMITTED_CODE, ITEM_ALREADY_COMMITTED_MESSAGE } from "../swap-reservation";
-import { SWAP_NO_SHOW_EVENT, swapNoShowKey, swapNoShowEligibleAt } from "../swap-no-show-rules";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
 import {
@@ -201,7 +200,6 @@ import {
   awardFeedbackPoints, 
   TRUST_POINTS,
   applySeriousOverduePenalty,
-  applyNoShowPenalty,
   applyDepositClaimedPenalty,
   applyLowReviewPenalty,
   formatReputationActivityDescription,
@@ -9427,53 +9425,6 @@ Respond with ONLY the category name, nothing else.`
       // Verify the reported user is involved in this request
       if (reportedUserId !== request.items.ownerId && reportedUserId !== request.item_requests.requesterId) {
         return res.status(400).json({ error: "Reported user is not part of this transaction" });
-      }
-
-      // An accepted SWAP: after 72 hours without a reply from the other person, the report is recorded and
-      // they get the trust-score penalty (a warning the first time). The person who reports is never penalised.
-      if (request.item_requests.requestType === "SWAP" && request.item_requests.status === "ACCEPTED") {
-        const eligibleAt = await swapNoShowEligibleAt(request.item_requests, reportedUserId);
-        if (!eligibleAt || eligibleAt.getTime() > Date.now()) {
-          return res.status(400).json({
-            error: "You can report a no-show once the other person has not replied for 72 hours.",
-            code: "NO_SHOW_TOO_EARLY",
-            eligibleAt: eligibleAt?.toISOString() ?? null,
-          });
-        }
-        const note = typeof description === "string" ? description.trim().slice(0, 500) : "";
-        const outcome = await db.transaction(async (tx) => {
-          const [recorded] = await tx
-            .insert(requestLifecycleEvents)
-            .values({
-              requestId,
-              eventType: SWAP_NO_SHOW_EVENT,
-              actorId: req.user!.id,
-              idempotencyKey: swapNoShowKey(requestId),
-              details: { reportedUserId, ...(note ? { description: note } : {}) },
-            })
-            .onConflictDoNothing()
-            .returning({ id: requestLifecycleEvents.id });
-          if (!recorded) return null;
-          const penalty = await applyNoShowPenalty(reportedUserId, requestId, request.items.id, tx);
-          await tx.insert(notifications).values({
-            userId: reportedUserId,
-            type: "swap_no_show_reported",
-            title: "Missed Swap Reported",
-            message: `${request.items.name.slice(0, 22)}: the other person reported that the swap did not happen.`,
-            itemId: request.items.id,
-            requestId,
-          });
-          return penalty;
-        });
-        if (!outcome) {
-          return res.status(409).json({ error: "A no-show was already reported for this swap.", code: "NO_SHOW_ALREADY_REPORTED" });
-        }
-        return res.json({
-          success: true,
-          message: outcome.wasGracePass
-            ? "No-show reported. This is their first one, so they get a warning."
-            : "No-show reported. A trust score penalty has been applied to them.",
-        });
       }
 
       // Only apply no-show penalty to valid statuses

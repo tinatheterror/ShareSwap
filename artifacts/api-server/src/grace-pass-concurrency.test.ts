@@ -30,6 +30,7 @@ async function createUser(t: TestContext) {
 
 const deductions = {
   cancel_after_acceptance: -TRUST_POINTS.PENALTIES.CANCEL_AFTER_ACCEPTANCE,
+  no_show: -TRUST_POINTS.PENALTIES.NO_SHOW,
   low_review_one_star: -TRUST_POINTS.PENALTIES.LOW_REVIEW_ONE_STAR,
   low_review_two_star: -TRUST_POINTS.PENALTIES.LOW_REVIEW_TWO_STAR,
 };

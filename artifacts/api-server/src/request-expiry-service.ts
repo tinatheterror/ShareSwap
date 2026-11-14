@@ -20,6 +20,7 @@ import { computeHandoffCutoff, timezoneForRequest } from "./request-dates";
 import { buildRefundLedgerRows, insertRefundLedger, refundUpfrontCharges, type LedgerRow } from "./request-refunds";
 import { classifyDepositState, expiredReasonFor } from "./deposit-state";
 import * as copy from "./request-expiry-copy";
+import { runSwapExpirySweep } from "./swap-expiry-service";
 
 // A BORROW/RENT request that nobody handed off before its late-handoff cutoff
 // moves to EXPIRED (final, and separate from CANCELLED/DECLINED).
@@ -536,6 +537,20 @@ export async function runRequestExpirySweep(
     if (dryRun) continue;
     if (await sendHandoffReminder(request, row.items, cutoff, deps, now)) result.remindedCount++;
   }
+
+  // Accepted swaps have no dates or deposit; they expire a fixed time after acceptance (swap-expiry-service.ts).
+  const swaps = await runSwapExpirySweep(deps, {
+    now,
+    dryRun,
+    expireDryRun: options.expireDryRun,
+    reminders: options.reminders,
+    maxCutoffAgeMs: options.maxCutoffAgeMs,
+    onlyRequestIds: options.onlyRequestIds,
+  });
+  result.expiredCount += swaps.expiredCount;
+  result.remindedCount += swaps.remindedCount;
+  result.failedCount += swaps.failedCount;
+  result.candidates.push(...swaps.candidates);
   return result;
 }
 

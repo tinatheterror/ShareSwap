@@ -405,7 +405,9 @@ test("the live sweep applies the transition and logs a summary", async () => {
   assert.match(lines[0], /autoConfirmed=1/);
 });
 
-// ── requestTypes: the sweeps leave SWAP alone ─────────────────────────────────
+// ── requestTypes: a sweep asked for BORROW and RENT leaves SWAP alone ─────────
+
+const BORROW_AND_RENT = ["BORROW", "RENT"] as const;
 
 test("requestTypes BORROW/RENT: a SWAP is untouched by the live sweep, a BORROW beside it is not", async () => {
   swapCalls.length = 0;
@@ -421,7 +423,7 @@ test("requestTypes BORROW/RENT: a SWAP is untouched by the live sweep, a BORROW 
 
   const result = await processHandoffDeadlines(deps, {
     onlyRequestIds: [swap.id, borrow.id],
-    requestTypes: HANDOFF_SWEEP_REQUEST_TYPES,
+    requestTypes: BORROW_AND_RENT,
   });
   assert.equal(result.autoAdvancedCount, 1, "only the BORROW advanced");
   assert.deepEqual(await own(), swapBefore);
@@ -432,7 +434,7 @@ test("requestTypes BORROW/RENT: a SWAP is untouched by the live sweep, a BORROW 
 
 test("requestTypes BORROW/RENT: a SWAP with one side denied is not flagged either", async () => {
   const swap = await newRequest({ requestType: "SWAP", ownerConfirmedHandoff: false, borrowerConfirmedHandoff: false, borrowerDeniedHandoff: true });
-  const result = await processHandoffDeadlines(deps, { onlyRequestIds: [swap.id], requestTypes: HANDOFF_SWEEP_REQUEST_TYPES });
+  const result = await processHandoffDeadlines(deps, { onlyRequestIds: [swap.id], requestTypes: BORROW_AND_RENT });
   assert.equal(result.flaggedCount, 0);
   assert.deepEqual(result.candidates, []);
   assert.equal((await snapshot(swap.id, swap.itemId)).status, "AWAITING_HANDOFF_CONFIRM");
@@ -445,11 +447,24 @@ test("requestTypes BORROW/RENT: the dry-run sweep does not report a SWAP", async
   const lines: string[] = [];
   const result = await runHandoffDeadlineSweep(deps, "dry-run", (l) => lines.push(l), {
     onlyRequestIds: [swap.id, borrow.id],
-    requestTypes: HANDOFF_SWEEP_REQUEST_TYPES,
+    requestTypes: BORROW_AND_RENT,
   });
   assert.deepEqual(result.candidates.map((c) => c.requestId), [borrow.id]);
   assert.ok(lines.some((l) => l.includes(`request ${borrow.id} `)));
   assert.ok(!lines.some((l) => l.includes(`request ${swap.id} `)));
+});
+
+test("the scheduled sweeps include SWAP: a silent partner no longer leaves an exchange half-confirmed, and a denied one is flagged", async () => {
+  assert.ok((HANDOFF_SWEEP_REQUEST_TYPES as readonly string[]).includes("SWAP"));
+  swapCalls.length = 0;
+  const silent = await newRequest({ requestType: "SWAP" });
+  const denied = await newRequest({ requestType: "SWAP", ownerConfirmedHandoff: false, borrowerConfirmedHandoff: false, borrowerDeniedHandoff: true });
+  const result = await processHandoffDeadlines(deps, { onlyRequestIds: [silent.id, denied.id], requestTypes: HANDOFF_SWEEP_REQUEST_TYPES });
+  assert.equal(result.autoAdvancedCount, 1);
+  assert.equal(result.flaggedCount, 1);
+  assert.equal((await snapshot(silent.id, silent.itemId)).status, "COMPLETED");
+  assert.equal(swapCalls.length, 1, "the swap rewards and coin offset run once");
+  assert.equal((await snapshot(denied.id, denied.itemId)).status, "HANDOFF_FLAGGED");
 });
 
 test("requestTypes defaults to every type: without it a SWAP is still auto-confirmed", async () => {
@@ -478,6 +493,6 @@ test("requestTypes narrows the deposit timeout too: RENT only skips BORROW, SWAP
   assert.deepEqual(all.candidates.map((c) => c.requestId).sort(), [...ids].sort());
 });
 
-test("the scheduled sweeps ask for BORROW and RENT only", () => {
-  assert.deepEqual([...HANDOFF_SWEEP_REQUEST_TYPES], ["BORROW", "RENT"]);
+test("the scheduled sweeps ask for BORROW, RENT and SWAP", () => {
+  assert.deepEqual([...HANDOFF_SWEEP_REQUEST_TYPES], ["BORROW", "RENT", "SWAP"]);
 });

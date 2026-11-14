@@ -66,12 +66,12 @@ after(async () => {
   await pool.end();
 });
 
-test("the scheduled-jobs handoff runner selects the BORROW and never the SWAP", async () => {
+test("the scheduled-jobs handoff runner selects both the BORROW and the SWAP", async () => {
   assert.ok(runners, "registerRoutes handed out the runners");
   const lines: string[] = [];
   const result = await runners.runHandoffSweep("dry-run", (line) => lines.push(line));
   const ids = result.candidates.map((c) => c.requestId);
   assert.ok(ids.includes(borrowId), "the BORROW past its deadline is a candidate");
-  assert.ok(!ids.includes(swapId), "the SWAP past its deadline is not");
-  assert.ok(!lines.some((l) => l.includes(`request ${swapId} `)));
+  assert.ok(ids.includes(swapId), "the SWAP past its deadline is too");
+  assert.ok(lines.some((l) => l.includes(`request ${swapId} `)));
 });

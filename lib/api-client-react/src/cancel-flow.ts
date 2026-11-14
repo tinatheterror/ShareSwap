@@ -4,7 +4,7 @@
 //     deposit was placed; if it was, it answers 409 PENALTY_ACK_REQUIRED and the app shows the penalty
 //     modal. "Proceed to cancel" sends the cancel again with the acknowledgment; "Keep booking"
 //     (the default action) closes the modal and nothing happens.
-//   - SWAP and GIFT keep their old confirmation dialogs (and their old server rule), now drawn with the
+//   - SWAP (requester or owner) and GIFT keep their old confirmation dialogs (and their old server rule), now drawn with the
 //     same modal instead of window.confirm / Alert.alert, which cannot label buttons (and do nothing at
 //     all for multi-button alerts on react-native-web).
 
@@ -44,6 +44,8 @@ export function cancelAction(target: CancelTarget): "direct" | "confirm" | "none
     return ["ACCEPTED", "DEPOSIT_CONFIRMED"].includes(status) ? "direct" : "none";
   }
   if (requestType === "GIFT" && role === "owner") return status === "ACCEPTED" ? "confirm" : "none";
+  // An owner can walk away from an accepted swap, so a partner who goes quiet cannot hold both items.
+  if (requestType === "SWAP" && role === "owner") return ["ACCEPTED", "DEPOSIT_CONFIRMED"].includes(status) ? "confirm" : "none";
   if (role === "requester") {
     if (status === "PENDING") return "direct";
     return ["ACCEPTED", "DEPOSIT_CONFIRMED"].includes(status) ? "confirm" : "none";
@@ -91,6 +93,15 @@ export function legacyCancelDialog(target: CancelTarget, platform: CancelPlatfor
     return platform === "mobile"
       ? { title: "Cancel this gift?", message: "The requester will be notified.", keepLabel: "Keep it", confirmLabel: "Cancel", primary: "confirm" }
       : { title: "Cancel this booking?", message: "", ...keepBooking };
+  }
+  if (requestType === "SWAP" && role === "owner") {
+    return {
+      title: "Cancel this swap?",
+      message: "The other person will be notified.",
+      hint: "Cancelling can lower your Trust Score, unless they haven't replied for 72 hours.",
+      ...keepBooking,
+      keepLabel: "Keep swap",
+    };
   }
   if (status === "DEPOSIT_CONFIRMED") {
     return {

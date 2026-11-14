@@ -39,10 +39,12 @@ describe("cancel flow: who sees a Cancel button, and what it does", () => {
     }
   });
 
-  it("SWAP and GIFT keep a confirmation, and only a GIFT giver can cancel as owner", () => {
+  it("SWAP and GIFT keep a confirmation, and an owner can cancel an accepted SWAP or GIFT", () => {
     expect(cancelAction({ requestType: "GIFT", status: "ACCEPTED", role: "owner" })).toBe("confirm");
     expect(cancelAction({ requestType: "GIFT", status: "PENDING", role: "owner" })).toBe("none");
-    expect(cancelAction({ requestType: "SWAP", status: "ACCEPTED", role: "owner" })).toBe("none");
+    expect(cancelAction({ requestType: "SWAP", status: "ACCEPTED", role: "owner" })).toBe("confirm");
+    expect(cancelAction({ requestType: "SWAP", status: "PENDING", role: "owner" })).toBe("none");
+    expect(cancelAction({ requestType: "SWAP", status: "IN_PROGRESS", role: "owner" })).toBe("none");
     for (const requestType of ["SWAP", "GIFT"]) {
       expect(cancelAction({ requestType, status: "ACCEPTED", role: "requester" })).toBe("confirm");
       expect(cancelAction({ requestType, status: "DEPOSIT_CONFIRMED", role: "requester" })).toBe("confirm");
@@ -81,6 +83,18 @@ describe("cancel flow: dialogs", () => {
       }
     }
     expect(hits).toEqual(["GIFT/ACCEPTED/owner/mobile"]);
+  });
+
+  it("an owner cancelling an accepted SWAP is asked first and told about the Trust Score", () => {
+    for (const platform of ["mobile", "web"] as const) {
+      expect(legacyCancelDialog({ requestType: "SWAP", status: "ACCEPTED", role: "owner" }, platform)).toMatchObject({
+        title: "Cancel this swap?",
+        message: "The other person will be notified.",
+        hint: "Cancelling can lower your Trust Score, unless they haven't replied for 72 hours.",
+        keepLabel: "Keep swap",
+        confirmLabel: "Cancel",
+      });
+    }
   });
 
   it("keeps each app's existing SWAP/GIFT wording", () => {

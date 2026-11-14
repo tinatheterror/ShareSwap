@@ -1180,10 +1180,10 @@ export default function ChatScreen() {
               </Pressable>
             )}
 
-            {/* Owner: cancel an accepted BORROW/RENT. Free unless the borrower's deposit is in place;
-                then the server asks for the -5 to be acknowledged. */}
+            {/* Owner: cancel an accepted BORROW/RENT (free unless the borrower's deposit is in place; then the server asks
+                for the -5 to be acknowledged) or SWAP (asks first; no penalty if the partner has been silent for 72 hours). */}
             {isOwner && request.requestType !== "GIFT" &&
-              cancelAction({ requestType: request.requestType ?? "", status, role: "owner" }) === "direct" && (
+              cancelAction({ requestType: request.requestType ?? "", status, role: "owner" }) !== "none" && (
               <Pressable
                 style={{ alignItems: "center", paddingVertical: 6 }}
                 onPress={() => startCancel("owner")}

@@ -1,4 +1,4 @@
-import { formatHandoffCutoff, formatHandoffCutoffSentence } from "./request-dates";
+import { PLATFORM_TIME_ZONE, formatHandoffCutoff, formatHandoffCutoffSentence } from "./request-dates";
 import { shortItemName } from "./deposit-copy";
 
 /**
@@ -70,5 +70,40 @@ export function handoffReminder(itemName: string, cutoff: Date) {
   return {
     title: `Hand off soon: ${reminderItemName(itemName)}`,
     message: `Handed off? Confirm by ${formatHandoffCutoff(cutoff)} or it expires.`,
+  };
+}
+
+// ── Swaps ─────────────────────────────────────────────────────────────────────
+// A swap has no dates, no deposit and no handoff window, so it expires at the end of the 7th calendar day after the owner accepted it.
+// Nobody is penalised: the app cannot tell which person did not show up.
+
+export const SWAP_EXPIRY_DAYS = 7;
+export const SWAP_EXPIRY_MS = SWAP_EXPIRY_DAYS * 24 * 3_600_000;
+export const SWAP_EXPIRED_REASON = "swap_no_handoff";
+export const SWAP_EXPIRY_REMINDER_TYPE_72H = "swap_expiry_reminder_72h";
+export const SWAP_EXPIRY_REMINDER_TYPE_24H = "swap_expiry_reminder_24h";
+
+/** "Oct 8": a swap expires at the end of this calendar day (platform zone), so no time of day is shown. */
+export function formatSwapDeadlineDay(deadline: Date): string {
+  return new Intl.DateTimeFormat("en-US", { timeZone: PLATFORM_TIME_ZONE, month: "short", day: "numeric" }).format(deadline);
+}
+
+export function swapExpiredChat(_deadline: Date): string {
+  return "⏰ Swap expired — the exchange was not confirmed";
+}
+
+// Notification bodies are shortened to 54 characters when shown (notification-copy.ts), so they are kept short.
+export function swapExpiredNotice(itemName: string, _deadline: Date) {
+  return {
+    title: `Swap expired: ${reminderItemName(itemName)}`,
+    message: "Not confirmed in time.",
+  };
+}
+
+/** `hoursLeft` is 72 or 24; `otherName` is the person they are swapping with (each person is told the other's name). */
+export function swapExpiryReminder(itemName: string, hoursLeft: 72 | 24, otherName?: string | null) {
+  return {
+    title: `Swap expires in ${hoursLeft === 72 ? "3 days" : "24 hours"}: ${reminderItemName(itemName)}`,
+    message: `Arrange meet up with ${otherName?.trim() || "your neighbour"}`,
   };
 }

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { after, before, test } from "node:test";
+import { after, before, beforeEach, test } from "node:test";
 import cookieParser from "cookie-parser";
 import express from "express";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
   db,
   deliveryArrangements,
@@ -76,6 +76,15 @@ class TestClient {
     this.csrfToken = ((await csrfResponse.json()) as { csrfToken: string }).csrfToken;
   }
 }
+
+/**
+ * Every test accepts requests on one shared item. An accepted swap holds its items, so a swap and any other request
+ * accepted on the same item would now refuse each other; each test starts with the item free.
+ */
+async function releaseSharedItem() {
+  await db.update(itemRequests).set({ status: "CANCELLED" }).where(and(eq(itemRequests.itemId, itemId), inArray(itemRequests.status, ["ACCEPTED", "DEPOSIT_CONFIRMED", "DEPOSIT_PENDING"])));
+}
+beforeEach(releaseSharedItem);
 
 async function createPendingRequest(
   requestType: string,

@@ -28,7 +28,7 @@ const ROWS: Array<[string, string]> = [
 const names = ROWS.map(([name]) => name);
 
 // A BORROW and a SWAP, both past their handoff-confirm deadline: the timer's handoff sweep (a dry run here)
-// must report the BORROW and never the SWAP.
+// must report both.
 const FIXTURE = `timer-wiring-${Date.now()}`;
 const fixtureRequestIds: number[] = [];
 const fixtureItemIds: number[] = [];
@@ -169,9 +169,9 @@ test("the real timers read their switch rows: off and dry-run skip, dry-run and 
   assert.equal(rows.get(timerRunName("rate-limit-cleanup"))?.state.mode, "live");
   assert.equal(rows.has(timerRunName("return-recovery")), false, "off: return recovery's work did not run");
   assert.equal(rows.has(timerRunName("overdue-reminders")), false, "dry-run: overdue reminders has no dry-run, so it was skipped");
-  // The timer's handoff sweep passes BORROW/RENT only: the BORROW is reported, the SWAP never is.
+  // The timer's handoff sweep covers BORROW, RENT and SWAP: both are reported.
   assert.ok(logged.some((l) => l.includes(`DRY-RUN would change request ${borrowRequestId} `)), "the BORROW past its deadline is reported");
-  assert.ok(!logged.some((l) => l.includes(`request ${swapRequestId} `)), "the SWAP past its deadline is not");
+  assert.ok(logged.some((l) => l.includes(`request ${swapRequestId} `)), "the SWAP past its deadline is too");
   // The script's own rows (plain names) are untouched by the timers.
   const plainAfter = JSON.stringify((await pool.query("SELECT * FROM scheduled_job_runs WHERE job_name = ANY($1) ORDER BY job_name", [names])).rows);
   assert.equal(plainAfter, plainBefore);

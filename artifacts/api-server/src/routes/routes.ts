@@ -117,6 +117,8 @@ import {
   type RequestExpirySweepOptions,
   type RequestExpirySweepResult,
 } from "../request-expiry-service";
+import { findReservationConflict, heldItemIdSet, ITEM_ALREADY_COMMITTED_CODE, ITEM_ALREADY_COMMITTED_MESSAGE } from "../swap-reservation";
+import { swapPartnerIsUnresponsive, noShowReportedAgainst, SWAP_NO_SHOW_EVENT, swapNoShowKey, swapNoShowEligibleAt } from "../swap-cancel-rules";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
 import {
@@ -202,6 +204,7 @@ import {
   TRUST_POINTS,
   applySeriousOverduePenalty,
   applyCancellationPenalty,
+  applyNoShowPenalty,
   applyDepositClaimedPenalty,
   applyLowReviewPenalty,
   formatReputationActivityDescription,
@@ -7096,6 +7099,14 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
+    // An accepted exchange holds its items: refuse to accept one whose items another accepted request already holds.
+    if (status === "ACCEPTED" && request.item_requests.status !== "ACCEPTED") {
+      const conflict = await findReservationConflict(request.item_requests);
+      if (conflict) {
+        return res.status(409).json({ error: ITEM_ALREADY_COMMITTED_MESSAGE, code: ITEM_ALREADY_COMMITTED_CODE, conflictingRequestId: conflict.requestId, itemId: conflict.itemId });
+      }
+    }
+
     // Block acceptance if the item is currently physically out with another neighbour
     if (status === "ACCEPTED") {
       const physicallyOutStatuses = ["IN_PROGRESS", "HANDOFF_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "HANDOFF_DISPUTED", "DISPUTED"];
@@ -7804,6 +7815,13 @@ Respond with ONLY the category name, nothing else.`
       const ownerApprovedInAdvance = !isOwner && ownerProposedThisCounter;
       const requestAccepted = isOwner || ownerApprovedInAdvance;
 
+      if (requestAccepted) {
+        const conflict = await findReservationConflict(request.item_requests);
+        if (conflict) {
+          return res.status(409).json({ error: ITEM_ALREADY_COMMITTED_MESSAGE, code: ITEM_ALREADY_COMMITTED_CODE, conflictingRequestId: conflict.requestId, itemId: conflict.itemId });
+        }
+      }
+
       const [updated] = await db
         .update(itemRequests)
         .set({
@@ -7956,14 +7974,8 @@ Respond with ONLY the category name, nothing else.`
     const partnerId = req.query.partnerId ? parseInt(req.query.partnerId as string) : null;
     const userId = partnerId ?? req.user.id;
 
-    const LOCKED_STATUSES = ["ACCEPTED", "DEPOSIT_CONFIRMED", "IN_PROGRESS"];
-
-    // Get all item IDs currently locked in active transactions
-    const lockedItemRows = await db
-      .select({ itemId: itemRequests.itemId })
-      .from(itemRequests)
-      .where(inArray(itemRequests.status, LOCKED_STATUSES));
-    const lockedItemIds = lockedItemRows.map(r => r.itemId);
+    // Items held by an accepted request (as the listing item or on either side of an accepted swap) cannot be offered.
+    const lockedItemIds = [...(await heldItemIdSet())];
 
     const eligibleItems = await db
       .select({
@@ -9363,7 +9375,13 @@ Respond with ONLY the category name, nothing else.`
           `[cancel] legacy cancel of request ${requestId} by user ${req.user.id}: ${legacyPenaltyExempt ? `penalty skipped (${LEGACY_CANCEL_ACK_UNTIL_ENV} is in the future)` : "no exemption, penalty rules apply"}`,
         );
       }
-      if (!isGiftGiverCancelling && !legacyPenaltyExempt) {
+      // Leaving a swap partner who has not answered for 72 hours is not punished.
+      const swapPartnerId = isOwner ? request.item_requests.requesterId : request.items.ownerId;
+      const partnerUnresponsive =
+        request.item_requests.requestType === "SWAP" &&
+        ((await swapPartnerIsUnresponsive(request.item_requests, swapPartnerId)) ||
+          (await noShowReportedAgainst(requestId, swapPartnerId)));
+      if (!isGiftGiverCancelling && !legacyPenaltyExempt && !partnerUnresponsive) {
         try {
           penaltyResult = await applyCancellationPenalty(
             req.user.id,
@@ -9381,6 +9399,8 @@ Respond with ONLY the category name, nothing else.`
         depositReleased: !!request.item_requests.depositPaymentIntentId,
         message: isGiftGiverCancelling
           ? "Gift cancelled. Your item is available again."
+          : partnerUnresponsive
+            ? "Swap cancelled. No penalty applies because the other person has not responded for 72 hours."
           : penaltyResult.wasGracePass 
             ? "Request cancelled. This is your first cancellation - no penalty applied, but future cancellations will affect your trust score."
             : penaltyResult.applied 
@@ -9430,6 +9450,53 @@ Respond with ONLY the category name, nothing else.`
       // Verify the reported user is involved in this request
       if (reportedUserId !== request.items.ownerId && reportedUserId !== request.item_requests.requesterId) {
         return res.status(400).json({ error: "Reported user is not part of this transaction" });
+      }
+
+      // An accepted SWAP: after 72 hours without a reply from the other person, the report is recorded and
+      // they get the trust-score penalty (a warning the first time). The person who reports is never penalised.
+      if (request.item_requests.requestType === "SWAP" && request.item_requests.status === "ACCEPTED") {
+        const eligibleAt = await swapNoShowEligibleAt(request.item_requests, reportedUserId);
+        if (!eligibleAt || eligibleAt.getTime() > Date.now()) {
+          return res.status(400).json({
+            error: "You can report a no-show once the other person has not replied for 72 hours.",
+            code: "NO_SHOW_TOO_EARLY",
+            eligibleAt: eligibleAt?.toISOString() ?? null,
+          });
+        }
+        const note = typeof description === "string" ? description.trim().slice(0, 500) : "";
+        const outcome = await db.transaction(async (tx) => {
+          const [recorded] = await tx
+            .insert(requestLifecycleEvents)
+            .values({
+              requestId,
+              eventType: SWAP_NO_SHOW_EVENT,
+              actorId: req.user!.id,
+              idempotencyKey: swapNoShowKey(requestId),
+              details: { reportedUserId, ...(note ? { description: note } : {}) },
+            })
+            .onConflictDoNothing()
+            .returning({ id: requestLifecycleEvents.id });
+          if (!recorded) return null;
+          const penalty = await applyNoShowPenalty(reportedUserId, requestId, request.items.id, tx);
+          await tx.insert(notifications).values({
+            userId: reportedUserId,
+            type: "swap_no_show_reported",
+            title: "Missed Swap Reported",
+            message: `${request.items.name.slice(0, 22)}: the other person reported that the swap did not happen.`,
+            itemId: request.items.id,
+            requestId,
+          });
+          return penalty;
+        });
+        if (!outcome) {
+          return res.status(409).json({ error: "A no-show was already reported for this swap.", code: "NO_SHOW_ALREADY_REPORTED" });
+        }
+        return res.json({
+          success: true,
+          message: outcome.wasGracePass
+            ? "No-show reported. This is their first one, so they get a warning. You can cancel the swap without a penalty."
+            : "No-show reported. A trust score penalty has been applied to them. You can cancel the swap without a penalty.",
+        });
       }
 
       // Only apply no-show penalty to valid statuses
@@ -10381,7 +10448,7 @@ Respond with ONLY the category name, nothing else.`
 
       // Same switch as the server timer: a job_switches row wins, then HANDOFF_DEADLINE_SWEEP_MODE, else dry-run.
       // A switch that cannot be read acts as off. Only live changes anything (reminders and the both-silent
-      // cancel included); dry-run reports what would change in the log, and SWAP handoffs are never touched.
+      // cancel included); dry-run reports what would change in the log, and (SWAP included: see HANDOFF_SWEEP_REQUEST_TYPES).
       const decision = await resolveJobSwitch(HANDOFF_DEADLINES_JOB, resolveHandoffSweepMode(process.env.HANDOFF_DEADLINE_SWEEP_MODE));
       if (!decision.ok) console.error(`[handoff-deadlines] could not read the ${HANDOFF_DEADLINES_JOB} switch; the endpoint did nothing: ${decision.error}`);
       const mode = decision.ok ? decision.mode : "off";

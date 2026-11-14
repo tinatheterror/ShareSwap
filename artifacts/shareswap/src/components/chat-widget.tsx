@@ -1580,7 +1580,7 @@ export function ChatWidget() {
 
               {/* Owner: cancel an accepted BORROW/RENT. Free unless the borrower's deposit is in place;
                   then the server asks for the -5 to be acknowledged. */}
-              {isOwner && request.requestType !== "GIFT" && cancelAction({ requestType: request.requestType, status: request.status, role: "owner" }) === "direct" && (
+              {isOwner && request.requestType !== "GIFT" && cancelAction({ requestType: request.requestType, status: request.status, role: "owner" }) !== "none" && (
                 <button
                   className="w-full text-center text-xs text-muted-foreground hover:text-red-500 transition-colors"
                   onClick={(e) => { e.stopPropagation(); startCancel(request, "owner"); }}

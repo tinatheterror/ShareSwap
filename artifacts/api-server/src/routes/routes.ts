@@ -10448,7 +10448,7 @@ Respond with ONLY the category name, nothing else.`
 
       // Same switch as the server timer: a job_switches row wins, then HANDOFF_DEADLINE_SWEEP_MODE, else dry-run.
       // A switch that cannot be read acts as off. Only live changes anything (reminders and the both-silent
-      // cancel included); dry-run reports what would change in the log, and (SWAP included: see HANDOFF_SWEEP_REQUEST_TYPES).
+      // cancel included); dry-run reports what would change in the log, and SWAP handoffs are never touched.
       const decision = await resolveJobSwitch(HANDOFF_DEADLINES_JOB, resolveHandoffSweepMode(process.env.HANDOFF_DEADLINE_SWEEP_MODE));
       if (!decision.ok) console.error(`[handoff-deadlines] could not read the ${HANDOFF_DEADLINES_JOB} switch; the endpoint did nothing: ${decision.error}`);
       const mode = decision.ok ? decision.mode : "off";

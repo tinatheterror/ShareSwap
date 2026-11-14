@@ -304,73 +304,6 @@ export default function VerificationPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Verify Your Identity</CardTitle>
-                <CardDescription>
-                  Securely verify with a government ID and a quick selfie
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="p-2 bg-teal-100 rounded-full flex-shrink-0">
-                      <CreditCard className="h-5 w-5 text-teal-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">Step 1: Scan your ID</p>
-                      <p className="text-xs text-gray-500">Take a photo of your driver's license, passport, or national ID</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="p-2 bg-teal-100 rounded-full flex-shrink-0">
-                      <ScanFace className="h-5 w-5 text-teal-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">Step 2: Take a selfie</p>
-                      <p className="text-xs text-gray-500">We'll match your selfie to your ID photo for security</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="p-2 bg-teal-100 rounded-full flex-shrink-0">
-                      <CheckCircle2 className="h-5 w-5 text-teal-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">Step 3: Get verified</p>
-                      <p className="text-xs text-gray-500">Results are usually instant - earn your verified badge right away</p>
-                    </div>
-                  </div>
-                </div>
-
-                <BiometricConsentNotice consent={consent} agreed={agreed} onAgreedChange={setAgreed} />
-
-                <Button
-                  onClick={startPersonaVerification}
-                  disabled={personaLoading || createInquiryMutation.isPending || !consent || (!consent.consented && !agreed)}
-                  className="w-full text-white"
-                  style={{ backgroundColor: "#0DCEA1" }}
-                  size="lg"
-                >
-                  {personaLoading || createInquiryMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Starting Verification...
-                    </>
-                  ) : (
-                    <>
-                      <Shield className="mr-2 h-5 w-5" />
-                      {isFailed ? "Try Again" : "Start Verification"}
-                    </>
-                  )}
-                </Button>
-
-                <div className="flex items-center gap-2 text-xs text-gray-400 justify-center">
-                  <Shield className="h-3 w-3" />
-                  <span>Powered by Persona - bank-level identity verification</span>
-                </div>
-              </CardContent>
-            </Card>
-
             <Card className="bg-gradient-to-br from-teal-50 to-white border-teal-100">
               <CardContent className="p-6">
                 <h3 className="font-semibold text-teal-900 mb-3">
@@ -515,6 +448,73 @@ export default function VerificationPage() {
                 </AlertDescription>
               </Alert>
             )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Verify Your Identity</CardTitle>
+                <CardDescription>
+                  Securely verify with a government ID and a quick selfie
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="p-2 bg-teal-100 rounded-full flex-shrink-0">
+                      <CreditCard className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">Step 1: Scan your ID</p>
+                      <p className="text-xs text-gray-500">Take a photo of your driver's license, passport, or national ID</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="p-2 bg-teal-100 rounded-full flex-shrink-0">
+                      <ScanFace className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">Step 2: Take a selfie</p>
+                      <p className="text-xs text-gray-500">We'll match your selfie to your ID photo for security</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="p-2 bg-teal-100 rounded-full flex-shrink-0">
+                      <CheckCircle2 className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">Step 3: Get verified</p>
+                      <p className="text-xs text-gray-500">Results are usually instant - earn your verified badge right away</p>
+                    </div>
+                  </div>
+                </div>
+
+                <BiometricConsentNotice consent={consent} agreed={agreed} onAgreedChange={setAgreed} />
+
+                <Button
+                  onClick={startPersonaVerification}
+                  disabled={personaLoading || createInquiryMutation.isPending || !consent || (!consent.consented && !agreed)}
+                  className="w-full text-white"
+                  style={{ backgroundColor: "#0DCEA1" }}
+                  size="lg"
+                >
+                  {personaLoading || createInquiryMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Starting Verification...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="mr-2 h-5 w-5" />
+                      {isFailed ? "Try Again" : "Start Verification"}
+                    </>
+                  )}
+                </Button>
+
+                <div className="flex items-center gap-2 text-xs text-gray-400 justify-center">
+                  <Shield className="h-3 w-3" />
+                  <span>Powered by Persona - bank-level identity verification</span>
+                </div>
+              </CardContent>
+            </Card>
 
             <Card className="bg-gradient-to-br from-teal-50 to-white border-teal-100">
               <CardContent className="p-4 sm:p-6">

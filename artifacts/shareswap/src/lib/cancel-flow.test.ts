@@ -54,6 +54,18 @@ describe("cancel flow: who sees a Cancel button, and what it does", () => {
     }
   });
 
+  it("a SWAP or GIFT cannot be cancelled once either person has confirmed the handoff, but a pending one can still be withdrawn", () => {
+    for (const requestType of ["SWAP", "GIFT"]) {
+      for (const role of ["owner", "requester"] as const) {
+        expect(cancelAction({ requestType, status: "ACCEPTED", role, handoffConfirmed: false })).toBe("confirm");
+        expect(cancelAction({ requestType, status: "ACCEPTED", role, handoffConfirmed: true })).toBe("none");
+      }
+      expect(cancelAction({ requestType, status: "PENDING", role: "requester", handoffConfirmed: true })).toBe("direct");
+    }
+    // BORROW and RENT are not affected by the flag.
+    expect(cancelAction({ requestType: "BORROW", status: "ACCEPTED", role: "owner", handoffConfirmed: true })).toBe("direct");
+  });
+
   it("only BORROW and RENT are decided by the server", () => {
     expect(TYPES.filter(isServerDecidedCancel)).toEqual(["BORROW", "RENT"]);
   });
@@ -87,12 +99,11 @@ describe("cancel flow: dialogs", () => {
     expect(hits).toEqual(["GIFT/ACCEPTED/owner/mobile"]);
   });
 
-  it("an owner cancelling an accepted SWAP is asked first and told about the Trust Score", () => {
+  it("an owner cancelling an accepted SWAP is asked first, with no penalty warning", () => {
     for (const platform of ["mobile", "web"] as const) {
       expect(legacyCancelDialog({ requestType: "SWAP", status: "ACCEPTED", role: "owner" }, platform)).toMatchObject({
         title: "Cancel this swap?",
-        message: "The other person will be notified.",
-        hint: "Cancelling can lower your Trust Score, unless they haven't replied for 72 hours.",
+        message: "",
         keepLabel: "Keep swap",
         confirmLabel: "Cancel",
       });

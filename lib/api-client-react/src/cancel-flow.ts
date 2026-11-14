@@ -4,7 +4,7 @@
 //     deposit was placed; if it was, it answers 409 PENALTY_ACK_REQUIRED and the app shows the penalty
 //     modal. "Proceed to cancel" sends the cancel again with the acknowledgment; "Keep booking"
 //     (the default action) closes the modal and nothing happens.
-//   - SWAP (requester or owner) and GIFT keep their old confirmation dialogs (and their old server rule), now drawn with the
+//   - SWAP and GIFT (either person, while accepted and before a handoff is confirmed) ask first and are never penalised, drawn with the
 //     same modal instead of window.confirm / Alert.alert, which cannot label buttons (and do nothing at
 //     all for multi-button alerts on react-native-web).
 
@@ -22,6 +22,8 @@ export interface CancelTarget {
   requestType: string;
   status: string;
   role: CancelRole;
+  /** Either person has confirmed the handoff. A swap or gift can no longer be cancelled from then on. */
+  handoffConfirmed?: boolean;
 }
 
 /** BORROW and RENT cancels are decided by the server (free, or penalty after an acknowledgment). */
@@ -38,6 +40,8 @@ export function isServerDecidedCancel(requestType: string): boolean {
  */
 export function cancelAction(target: CancelTarget): "direct" | "confirm" | "none" {
   const { requestType, status, role } = target;
+  // A swap or gift is cancelled by either person while it is accepted, and not once either has confirmed the handoff.
+  if ((requestType === "SWAP" || requestType === "GIFT") && target.handoffConfirmed === true && status !== "PENDING") return "none";
   if (isServerDecidedCancel(requestType)) {
     if (role === "requester") return ["PENDING", "ACCEPTED", "DEPOSIT_CONFIRMED"].includes(status) ? "direct" : "none";
     // Owners cancel an accepted request (a pending one is declined instead).
@@ -97,8 +101,7 @@ export function legacyCancelDialog(target: CancelTarget, platform: CancelPlatfor
   if (requestType === "SWAP" && role === "owner") {
     return {
       title: "Cancel this swap?",
-      message: "The other person will be notified.",
-      hint: "Cancelling can lower your Trust Score, unless they haven't replied for 72 hours.",
+      message: "",
       ...keepBooking,
       keepLabel: "Keep swap",
     };

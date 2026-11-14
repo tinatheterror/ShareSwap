@@ -501,13 +501,18 @@ export default function ChatScreen() {
     },
   });
 
+  /** Either person has confirmed the handoff of a swap or gift: it can no longer be cancelled. */
+  const handoffUnderway =
+    (request?.requestType === "SWAP" || request?.requestType === "GIFT") &&
+    !!(request?.ownerConfirmedHandoff || request?.borrowerConfirmedHandoff);
+
   function startCancel(role: CancelRole) {
     const cancelRequestId = request?.id ?? reqId;
     if (!cancelRequestId) {
       setCancelNotice({ title: "Could not cancel", message: "Unable to identify this request. Please reopen the chat and try again.", tone: "error" });
       return;
     }
-    if (request && cancelAction({ requestType: request.requestType ?? "", status: request.status, role }) === "confirm") {
+    if (request && cancelAction({ requestType: request.requestType ?? "", status: request.status, role, handoffConfirmed: handoffUnderway }) === "confirm") {
       setLegacyCancelRole(role);
       return;
     }
@@ -1151,52 +1156,6 @@ export default function ChatScreen() {
               </Pressable>
             )}
 
-            {/* DEPOSIT_CONFIRMED: borrower can still cancel. BORROW/RENT go straight to the server, which
-                asks for the -5 to be acknowledged when the deposit is in place; SWAP/GIFT confirm first. */}
-            {status === "DEPOSIT_CONFIRMED" && isBorrower && (
-              <Pressable
-                style={{ alignItems: "center", paddingVertical: 6 }}
-                onPress={() => startCancel("requester")}
-                disabled={anyMutating}
-              >
-                {cancelFlow.pending
-                  ? <ActivityIndicator size="small" color={colors.mutedForeground} />
-                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
-                }
-              </Pressable>
-            )}
-
-            {/* GIFT owner: cancel an accepted gift (e.g. receiver never showed up) */}
-            {isOwner && request.requestType === "GIFT" && status === "ACCEPTED" && (
-              <Pressable
-                style={{ alignItems: "center", paddingVertical: 6 }}
-                onPress={() => startCancel("owner")}
-                disabled={anyMutating}
-              >
-                {cancelFlow.pending
-                  ? <ActivityIndicator size="small" color={colors.mutedForeground} />
-                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
-                }
-              </Pressable>
-            )}
-
-            {/* Owner: cancel an accepted BORROW/RENT (free unless the borrower's deposit is in place; then the server asks
-                for the -5 to be acknowledged) or SWAP (asks first; no penalty if the partner has been silent for 72 hours). */}
-            {isOwner && request.requestType !== "GIFT" &&
-              cancelAction({ requestType: request.requestType ?? "", status, role: "owner" }) !== "none" && (
-              <Pressable
-                style={{ alignItems: "center", paddingVertical: 6 }}
-                onPress={() => startCancel("owner")}
-                disabled={anyMutating}
-                testID="owner-cancel-request"
-              >
-                {cancelFlow.pending
-                  ? <ActivityIndicator size="small" color={colors.mutedForeground} />
-                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
-                }
-              </Pressable>
-            )}
-
             {/* ACCEPTED + in_app deposit: borrower pays deposit */}
             {showDepositNeeded && (
               <Pressable
@@ -1208,20 +1167,6 @@ export default function ChatScreen() {
                 <Text style={[card.btnLabel, { color: "#fff" }]}>
                   {request.requestType === "RENT" ? "Pay Security Deposit" : "Pay Trust Deposit"}
                 </Text>
-              </Pressable>
-            )}
-
-            {/* ACCEPTED: borrower can always cancel before deposit or handoff */}
-            {status === "ACCEPTED" && isBorrower && (
-              <Pressable
-                style={{ alignItems: "center", paddingVertical: 6 }}
-                onPress={() => startCancel("requester")}
-                disabled={anyMutating}
-              >
-                {cancelFlow.pending
-                  ? <ActivityIndicator size="small" color={colors.foreground} />
-                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
-                }
               </Pressable>
             )}
 
@@ -1253,6 +1198,67 @@ export default function ChatScreen() {
                 onPress={() => setShowHandoffSheetBorrower(true)}
               >
                 <Text style={[card.btnLabel, { color: "#fff" }]}>Enter handoff code</Text>
+              </Pressable>
+            )}
+
+            {/* Cancel comes last, below the handoff code buttons. A swap or gift stops showing it once either person confirms the handoff. */}
+            {/* DEPOSIT_CONFIRMED: borrower can still cancel. BORROW/RENT go straight to the server, which
+                asks for the -5 to be acknowledged when the deposit is in place; SWAP/GIFT confirm first. */}
+            {status === "DEPOSIT_CONFIRMED" && isBorrower && !handoffUnderway && (
+              <Pressable
+                style={{ alignItems: "center", paddingVertical: 2, marginTop: -8 }}
+                onPress={() => startCancel("requester")}
+                disabled={anyMutating}
+              >
+                {cancelFlow.pending
+                  ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
+                }
+              </Pressable>
+            )}
+
+            {/* GIFT owner: cancel an accepted gift (e.g. receiver never showed up) */}
+            {isOwner && request.requestType === "GIFT" && status === "ACCEPTED" && !handoffUnderway && (
+              <Pressable
+                style={{ alignItems: "center", paddingVertical: 2, marginTop: -8 }}
+                onPress={() => startCancel("owner")}
+                disabled={anyMutating}
+              >
+                {cancelFlow.pending
+                  ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
+                }
+              </Pressable>
+            )}
+
+            {/* Owner: cancel an accepted BORROW/RENT (free unless the borrower's deposit is in place; then the server asks
+                for the -5 to be acknowledged) or SWAP (asks first; never penalised: cancelling tells the other person you are not coming). */}
+            {isOwner && request.requestType !== "GIFT" &&
+              cancelAction({ requestType: request.requestType ?? "", status, role: "owner", handoffConfirmed: handoffUnderway }) !== "none" && (
+              <Pressable
+                style={{ alignItems: "center", paddingVertical: 2, marginTop: -8 }}
+                onPress={() => startCancel("owner")}
+                disabled={anyMutating}
+                testID="owner-cancel-request"
+              >
+                {cancelFlow.pending
+                  ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
+                }
+              </Pressable>
+            )}
+
+            {/* ACCEPTED: borrower can always cancel before deposit or handoff */}
+            {status === "ACCEPTED" && isBorrower && !handoffUnderway && (
+              <Pressable
+                style={{ alignItems: "center", paddingVertical: 2, marginTop: -8 }}
+                onPress={() => startCancel("requester")}
+                disabled={anyMutating}
+              >
+                {cancelFlow.pending
+                  ? <ActivityIndicator size="small" color={colors.foreground} />
+                  : <Text style={[card.btnLabel, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>Cancel</Text>
+                }
               </Pressable>
             )}
 

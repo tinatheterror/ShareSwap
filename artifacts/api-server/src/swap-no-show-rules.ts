@@ -1,10 +1,10 @@
 import { and, desc, eq, notInArray } from "drizzle-orm";
-import { db, messages, requestLifecycleEvents } from "@workspace/db";
+import { db, messages } from "@workspace/db";
 
 /**
- * Cancelling an accepted swap normally costs the person who cancels a trust-score penalty (after the first-offence
- * grace pass). Walking away from someone who has gone quiet should not: if the other person has not written
- * anything on the request for this long (counted from when the swap was accepted if they never did), no penalty applies.
+ * A silent no-show on an accepted swap: the other person has not written anything on the request for this long
+ * (counted from when the swap was accepted if they never did). Only then can they be reported, and only the person
+ * who did not show is penalised. Cancelling a swap is never penalised: it tells the other person you are not coming.
  */
 export const SWAP_PARTNER_SILENCE_MS = 72 * 3_600_000;
 
@@ -29,17 +29,6 @@ export async function partnerLastResponse(
   return times.length ? new Date(Math.max(...times.map((t) => t.getTime()))) : null;
 }
 
-/** True when the other person has been silent for SWAP_PARTNER_SILENCE_MS or more. */
-export async function swapPartnerIsUnresponsive(
-  request: { id: number; acceptedAt: Date | null },
-  partnerId: number | null,
-  now: Date = new Date(),
-): Promise<boolean> {
-  if (partnerId === null) return false;
-  const last = await partnerLastResponse(request, partnerId);
-  return last !== null && now.getTime() - last.getTime() >= SWAP_PARTNER_SILENCE_MS;
-}
-
 // ── No-show reports on an accepted swap ───────────────────────────────────────
 
 export const SWAP_NO_SHOW_EVENT = "swap_no_show_reported";
@@ -56,15 +45,4 @@ export async function swapNoShowEligibleAt(
 ): Promise<Date | null> {
   const last = await partnerLastResponse(request, reportedUserId);
   return last ? new Date(last.getTime() + SWAP_PARTNER_SILENCE_MS) : null;
-}
-
-/** True when a no-show was already reported against this person on the swap (cancelling is then free). */
-export async function noShowReportedAgainst(requestId: number, userId: number | null): Promise<boolean> {
-  if (userId === null) return false;
-  const [event] = await db
-    .select({ details: requestLifecycleEvents.details })
-    .from(requestLifecycleEvents)
-    .where(and(eq(requestLifecycleEvents.requestId, requestId), eq(requestLifecycleEvents.eventType, SWAP_NO_SHOW_EVENT)))
-    .limit(1);
-  return (event?.details as { reportedUserId?: number } | null)?.reportedUserId === userId;
 }

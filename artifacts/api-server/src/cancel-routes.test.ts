@@ -259,37 +259,32 @@ test("the cancel route writes the record over HTTP too", async () => {
 
 // ── SWAP and GIFT keep the original handler ───────────────────────────────────
 
-test("SWAP keeps the original rule: grace pass first, then -20 cancel_after_acceptance, original response shape; the new record stays empty", async () => {
+test("SWAP: cancelling is clear communication, so it is never penalised (no grace-pass warning either); original response shape; the new record stays empty", async () => {
   const user = await db.insert(users).values({ username: `${UNIQUE}-swapper`, password: await hashPassword(PASSWORD), emailVerified: true, trustScore: 80 }).returning({ id: users.id, username: users.username });
   userIds.push(user[0].id);
   const swapper = new TestClient();
   await swapper.login(user[0].username);
 
-  const first = await newRequest({ requestType: "SWAP", status: "ACCEPTED", requesterId: user[0].id });
-  const r1 = await swapper.post(`/api/requests/${first.id}/cancel`, {});
-  assert.equal(r1.status, 200);
-  const b1: any = await r1.json();
-  assert.equal(b1.outcome, undefined, "not the BORROW/RENT shape");
-  assert.equal(b1.depositReleased, false);
-  assert.match(b1.message, /first cancellation - no penalty applied/);
-  assert.equal(await score(user[0].id), 80);
-
-  const second = await newRequest({ requestType: "SWAP", status: "ACCEPTED", requesterId: user[0].id });
-  const r2 = await swapper.post(`/api/requests/${second.id}/cancel`, {});
-  const b2: any = await r2.json();
-  assert.match(b2.message, /trust score penalty has been applied/);
-  assert.equal(await score(user[0].id), 60);
-  assert.equal((await acts(user[0].id, second.id))[0].activityType, "cancel_after_acceptance");
-  assert.equal((await acts(user[0].id, second.id))[0].points, -20);
-  assert.equal((await load(second.id)).cancelledAt, null, "SWAP/GIFT cancels do not write the BORROW/RENT record");
+  for (const turn of ["first", "second"]) {
+    const request = await newRequest({ requestType: "SWAP", status: "ACCEPTED", requesterId: user[0].id });
+    const response = await swapper.post(`/api/requests/${request.id}/cancel`, {});
+    assert.equal(response.status, 200, turn);
+    const body: any = await response.json();
+    assert.equal(body.outcome, undefined, "not the BORROW/RENT shape");
+    assert.equal(body.depositReleased, false);
+    assert.equal(body.message, "Swap cancelled.", turn);
+    assert.equal(await score(user[0].id), 80, turn);
+    assert.deepEqual(await acts(user[0].id, request.id), [], `${turn}: no penalty and no warning`);
+    assert.equal((await load(request.id)).cancelledAt, null, "SWAP/GIFT cancels do not write the BORROW/RENT record");
+  }
 });
 
-test("GIFT: the giver cancelling their own accepted gift is still penalty-free with the original message", async () => {
+test("GIFT: the giver cancelling their own accepted gift is penalty-free", async () => {
   const { id } = await newRequest({ requestType: "GIFT", status: "ACCEPTED" });
   const response = await owner.post(`/api/requests/${id}/cancel`, {});
   assert.equal(response.status, 200);
   const body: any = await response.json();
-  assert.equal(body.message, "Gift cancelled. Your item is available again.");
+  assert.equal(body.message, "Gift cancelled.");
   assert.equal(body.outcome, undefined);
   assert.deepEqual(await acts(ownerId, id), []);
 });

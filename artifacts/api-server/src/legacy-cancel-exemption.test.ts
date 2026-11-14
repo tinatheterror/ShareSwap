@@ -233,7 +233,7 @@ test("BORROW with no deposit stays free for everyone: the flag changes nothing",
   assert.equal(await score(userId), START_SCORE);
 });
 
-// ── SWAP and GIFT keep the original handler (and its exemption) ───────────────
+// ── SWAP and GIFT keep the original handler (a SWAP cancel is never penalised, so its exemption cannot be seen) ──
 
 test("SWAP, legacy request, flag in the future: cancels with no penalty and no grace-pass warning", async () => {
   setFlag(FAR_FUTURE);
@@ -243,18 +243,18 @@ test("SWAP, legacy request, flag in the future: cancels with no penalty and no g
   assert.equal(await penaltyActivities(userId), 0);
 });
 
-test("SWAP, legacy request, flag off: the original penalty rules apply (first-offence grace warning)", async () => {
+test("SWAP, legacy request, flag off: still no penalty and no warning (cancelling a swap is never penalised)", async () => {
   for (const value of [undefined, PAST]) {
     setFlag(value);
     const { userId, requestId, client } = await scenario({}, "SWAP");
     assert.equal((await client.post(`/api/requests/${requestId}/cancel`, {})).status, 200);
-    assert.equal(await penaltyActivities(userId), 1, `flag ${JSON.stringify(value)}`);
+    assert.equal(await penaltyActivities(userId), 0, `flag ${JSON.stringify(value)}`);
   }
 });
 
-test("SWAP: a request with x-app-version never gets the exemption", async () => {
+test("SWAP: a request with x-app-version is not penalised either", async () => {
   setFlag(FAR_FUTURE);
   const { userId, requestId, client } = await scenario({ "x-app-version": "1.0.0" }, "SWAP");
   assert.equal((await client.post(`/api/requests/${requestId}/cancel`, {})).status, 200);
-  assert.equal(await penaltyActivities(userId), 1);
+  assert.equal(await penaltyActivities(userId), 0);
 });

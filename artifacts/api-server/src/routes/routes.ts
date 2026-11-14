@@ -16,8 +16,6 @@ import { trustDepositDiscountPercent } from "../trust-deposit-discount";
 import {
   clientVersionOf,
   isLegacyClient,
-  legacyCancelPenaltyExempt,
-  LEGACY_CANCEL_ACK_UNTIL_ENV,
 } from "../legacy-cancel-exemption";
 import { db, pool, PLATFORM_CURRENCY , walletTransactions} from "@workspace/db";
 import { currencyForNewCharge, recordCurrency, stampPaymentCurrency } from "../payment-currency";
@@ -118,7 +116,7 @@ import {
   type RequestExpirySweepResult,
 } from "../request-expiry-service";
 import { findReservationConflict, heldItemIdSet, ITEM_ALREADY_COMMITTED_CODE, ITEM_ALREADY_COMMITTED_MESSAGE } from "../swap-reservation";
-import { swapPartnerIsUnresponsive, noShowReportedAgainst, SWAP_NO_SHOW_EVENT, swapNoShowKey, swapNoShowEligibleAt } from "../swap-cancel-rules";
+import { SWAP_NO_SHOW_EVENT, swapNoShowKey, swapNoShowEligibleAt } from "../swap-no-show-rules";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
 import {
@@ -203,7 +201,6 @@ import {
   awardFeedbackPoints, 
   TRUST_POINTS,
   applySeriousOverduePenalty,
-  applyCancellationPenalty,
   applyNoShowPenalty,
   applyDepositClaimedPenalty,
   applyLowReviewPenalty,
@@ -9249,6 +9246,19 @@ Respond with ONLY the category name, nothing else.`
         });
       }
 
+      // A swap or gift can be cancelled by either person while it is accepted, but not once either of them has
+      // confirmed the handoff: from then on it finishes, or expires if the other person never confirms.
+      if (
+        (request.item_requests.requestType === "SWAP" || request.item_requests.requestType === "GIFT") &&
+        request.item_requests.status !== "PENDING" &&
+        (request.item_requests.ownerConfirmedHandoff || request.item_requests.borrowerConfirmedHandoff)
+      ) {
+        return res.status(409).json({
+          error: "The handoff has already been confirmed, so this can no longer be cancelled.",
+          code: "HANDOFF_ALREADY_CONFIRMED",
+        });
+      }
+
       const terminalClaim = await claimDepositTerminalAction(requestId, "cancel");
       if (terminalClaim.status !== "claimed") {
         return res.status(409).json({ error: terminalClaim.reason });
@@ -9363,49 +9373,16 @@ Respond with ONLY the category name, nothing else.`
         }));
       }
 
-      // Apply cancellation penalty to the cancelling user (with grace pass for first offense)
-      // Exception: giver cancelling their own gift is not penalised (they're doing a favour)
-      const isGiftGiverCancelling = request.item_requests.requestType === "GIFT" && isOwner;
-      let penaltyResult = { applied: false, wasGracePass: false };
-      // Legacy clients (no x-app-version) cannot show the penalty acknowledgment; while
-      // LEGACY_CANCEL_ACK_UNTIL is in the future their cancel goes through without the penalty.
-      const legacyPenaltyExempt = !isGiftGiverCancelling && legacyCancelPenaltyExempt(req.headers);
+      // Cancelling a swap or a gift is clear communication that you will not be coming, so it is never penalised, for
+      // anyone, at any time. (BORROW and RENT never reach this handler: cancel-service.ts decides theirs.)
       if (legacyClient) {
-        console.log(
-          `[cancel] legacy cancel of request ${requestId} by user ${req.user.id}: ${legacyPenaltyExempt ? `penalty skipped (${LEGACY_CANCEL_ACK_UNTIL_ENV} is in the future)` : "no exemption, penalty rules apply"}`,
-        );
+        console.log(`[cancel] legacy cancel of request ${requestId} by user ${req.user.id}: swap and gift cancels are never penalised`);
       }
-      // Leaving a swap partner who has not answered for 72 hours is not punished.
-      const swapPartnerId = isOwner ? request.item_requests.requesterId : request.items.ownerId;
-      const partnerUnresponsive =
-        request.item_requests.requestType === "SWAP" &&
-        ((await swapPartnerIsUnresponsive(request.item_requests, swapPartnerId)) ||
-          (await noShowReportedAgainst(requestId, swapPartnerId)));
-      if (!isGiftGiverCancelling && !legacyPenaltyExempt && !partnerUnresponsive) {
-        try {
-          penaltyResult = await applyCancellationPenalty(
-            req.user.id,
-            requestId,
-            request.items.id
-          );
-        } catch (penaltyError) {
-          console.error("Error applying cancellation penalty:", penaltyError);
-        }
-      }
-
       res.json({
         success: true,
         request: updated,
         depositReleased: !!request.item_requests.depositPaymentIntentId,
-        message: isGiftGiverCancelling
-          ? "Gift cancelled. Your item is available again."
-          : partnerUnresponsive
-            ? "Swap cancelled. No penalty applies because the other person has not responded for 72 hours."
-          : penaltyResult.wasGracePass 
-            ? "Request cancelled. This is your first cancellation - no penalty applied, but future cancellations will affect your trust score."
-            : penaltyResult.applied 
-              ? "Request cancelled. A trust score penalty has been applied."
-              : "Request cancelled successfully.",
+        message: request.item_requests.requestType === "SWAP" ? "Swap cancelled." : "Gift cancelled.",
       });
     } catch (error: any) {
       console.error("Error cancelling request:", error);
@@ -9494,8 +9471,8 @@ Respond with ONLY the category name, nothing else.`
         return res.json({
           success: true,
           message: outcome.wasGracePass
-            ? "No-show reported. This is their first one, so they get a warning. You can cancel the swap without a penalty."
-            : "No-show reported. A trust score penalty has been applied to them. You can cancel the swap without a penalty.",
+            ? "No-show reported. This is their first one, so they get a warning."
+            : "No-show reported. A trust score penalty has been applied to them.",
         });
       }
 

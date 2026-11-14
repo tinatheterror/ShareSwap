@@ -781,8 +781,13 @@ export function ChatWidget() {
   });
 
   /** Cancel tapped: SWAP/GIFT ask first, BORROW/RENT send it and let the server say if there is a penalty. */
+  /** Either person has confirmed the handoff of a swap or gift: it can no longer be cancelled. */
+  const handoffUnderway = (request: ItemRequest) =>
+    (request.requestType === "SWAP" || request.requestType === "GIFT") &&
+    !!(request.ownerConfirmedHandoff || request.borrowerConfirmedHandoff);
+
   const startCancel = (request: ItemRequest, role: CancelRole) => {
-    if (cancelAction({ requestType: request.requestType, status: request.status, role }) === "confirm") {
+    if (cancelAction({ requestType: request.requestType, status: request.status, role, handoffConfirmed: handoffUnderway(request) }) === "confirm") {
       setCancelConfirmRequest({ request, role });
       return;
     }
@@ -1568,7 +1573,7 @@ export function ChatWidget() {
               )}
 
               {/* Giver: cancel an accepted gift (e.g. receiver never showed up) */}
-              {isOwner && request.requestType === "GIFT" && request.status === "ACCEPTED" && (
+              {isOwner && request.requestType === "GIFT" && request.status === "ACCEPTED" && !handoffUnderway(request) && (
                 <button
                   className="w-full text-center text-xs text-muted-foreground hover:text-red-500 transition-colors"
                   onClick={(e) => { e.stopPropagation(); startCancel(request, "owner"); }}
@@ -1580,7 +1585,7 @@ export function ChatWidget() {
 
               {/* Owner: cancel an accepted BORROW/RENT. Free unless the borrower's deposit is in place;
                   then the server asks for the -5 to be acknowledged. */}
-              {isOwner && request.requestType !== "GIFT" && cancelAction({ requestType: request.requestType, status: request.status, role: "owner" }) !== "none" && (
+              {isOwner && request.requestType !== "GIFT" && cancelAction({ requestType: request.requestType, status: request.status, role: "owner", handoffConfirmed: handoffUnderway(request) }) !== "none" && (
                 <button
                   className="w-full text-center text-xs text-muted-foreground hover:text-red-500 transition-colors"
                   onClick={(e) => { e.stopPropagation(); startCancel(request, "owner"); }}
@@ -1636,7 +1641,7 @@ export function ChatWidget() {
               )}
 
               {/* Borrower: discreet cancel for post-accept pre-handoff */}
-              {isBorrower && ["ACCEPTED", "DEPOSIT_CONFIRMED"].includes(request.status) && (
+              {isBorrower && ["ACCEPTED", "DEPOSIT_CONFIRMED"].includes(request.status) && !handoffUnderway(request) && (
                 <button
                   className="w-full text-center text-xs text-muted-foreground hover:text-red-500 transition-colors"
                   onClick={(e) => { e.stopPropagation(); startCancel(request, "requester"); }}

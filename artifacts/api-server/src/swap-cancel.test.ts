@@ -4,7 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db, itemRequests, items, messages, notifications, pool, reputationActivities, requestLifecycleEvents, users } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { Client, startApp } from "./auth-test-client.js";
-import { SWAP_PARTNER_SILENCE_MS, swapPartnerIsUnresponsive } from "./swap-cancel-rules.js";
+import { SWAP_PARTNER_SILENCE_MS, swapNoShowEligibleAt } from "./swap-no-show-rules.js";
 
 const UNIQUE = `swap-cancel-${Date.now()}`;
 const PASSWORD = "SwapCancel!42";
@@ -82,62 +82,92 @@ async function usedGracePass(userId: number) {
 const penaltyRows = (userId: number, requestId: number) =>
   db.select().from(reputationActivities).where(and(eq(reputationActivities.userId, userId), eq(reputationActivities.requestId, requestId)));
 
-test("a partner counts as unresponsive after 72 hours without a message, counted from acceptance when they never wrote", async () => {
+test("a no-show can be reported 72 hours after the other person last wrote, counted from acceptance when they never did", async () => {
   const { owner, requester, requestId, acceptedAt } = await acceptedSwap(100);
   const request = { id: requestId, acceptedAt };
-  assert.equal(await swapPartnerIsUnresponsive(request, requester.id), true);
-  assert.equal(await swapPartnerIsUnresponsive(request, requester.id, new Date(acceptedAt!.getTime() + SWAP_PARTNER_SILENCE_MS - 1000)), false);
+  assert.equal((await swapNoShowEligibleAt(request, requester.id))!.getTime(), acceptedAt!.getTime() + SWAP_PARTNER_SILENCE_MS);
 
   // A system line or an event sent in their name is not a reply.
   await db.insert(messages).values({ content: "accepted", senderId: requester.id, receiverId: owner.id, requestId, messageType: "event" });
-  assert.equal(await swapPartnerIsUnresponsive(request, requester.id), true);
+  assert.equal((await swapNoShowEligibleAt(request, requester.id))!.getTime(), acceptedAt!.getTime() + SWAP_PARTNER_SILENCE_MS);
   // A real message 10 hours ago is.
-  await db.insert(messages).values({ content: "see you saturday", senderId: requester.id, receiverId: owner.id, requestId, messageType: "text", createdAt: new Date(Date.now() - 10 * H) });
-  assert.equal(await swapPartnerIsUnresponsive(request, requester.id), false);
+  const wrote = new Date(Date.now() - 10 * H);
+  await db.insert(messages).values({ content: "see you saturday", senderId: requester.id, receiverId: owner.id, requestId, messageType: "text", createdAt: wrote });
+  assert.equal((await swapNoShowEligibleAt(request, requester.id))!.getTime(), wrote.getTime() + SWAP_PARTNER_SILENCE_MS);
 });
 
-test("an owner can cancel an accepted swap; with a partner who answered, the penalty rules apply", async () => {
+test("an owner can change their mind and cancel an accepted swap: never penalised, even after a first cancellation and with a partner who answered", async () => {
   const { owner, requester, requestId, itemId } = await acceptedSwap(100);
   await db.insert(messages).values({ content: "still on?", senderId: requester.id, receiverId: owner.id, requestId, messageType: "text", createdAt: new Date(Date.now() - 5 * H) });
   await usedGracePass(owner.id);
-  const client = await loggedIn(owner.username);
+  const ownerScore = await trust(owner.id);
 
-  const res = await client.post(`/api/requests/${requestId}/cancel`, {});
+  const res = await (await loggedIn(owner.username)).post(`/api/requests/${requestId}/cancel`, {});
   assert.equal(res.status, 200);
-  const body = (await res.json()) as { message: string };
-  assert.match(body.message, /trust score penalty has been applied/i);
-  const [request] = await db.select().from(itemRequests).where(eq(itemRequests.id, requestId));
-  assert.equal(request.status, "CANCELLED");
-  assert.equal((await penaltyRows(owner.id, requestId)).some((r) => r.points < 0), true, "the owner paid the penalty");
+  assert.equal(((await res.json()) as { message: string }).message, "Swap cancelled.");
+  assert.equal((await db.select().from(itemRequests).where(eq(itemRequests.id, requestId)))[0].status, "CANCELLED");
+  assert.deepEqual(await penaltyRows(owner.id, requestId), [], "no penalty and no grace-pass warning");
+  assert.equal(await trust(owner.id), ownerScore);
   assert.equal((await db.select().from(items).where(eq(items.id, itemId)))[0].isAvailable, true);
 });
 
-test("an owner who cancels on a partner silent for 72 hours is not penalised", async () => {
-  const { owner, requestId } = await acceptedSwap(100);
-  await usedGracePass(owner.id);
-  const client = await loggedIn(owner.username);
+test("a requester cancelling an accepted swap is not penalised either, first time or later", async () => {
+  const first = await acceptedSwap(5);
+  const res1 = await (await loggedIn(first.requester.username)).post(`/api/requests/${first.requestId}/cancel`, {});
+  assert.equal(res1.status, 200);
+  assert.equal(((await res1.json()) as { message: string }).message, "Swap cancelled.");
+  assert.deepEqual(await penaltyRows(first.requester.id, first.requestId), [], "not even a grace-pass warning");
 
-  const res = await client.post(`/api/requests/${requestId}/cancel`, {});
-  assert.equal(res.status, 200);
-  assert.match(((await res.json()) as { message: string }).message, /No penalty applies because the other person has not responded for 72 hours/);
-  assert.equal((await db.select().from(itemRequests).where(eq(itemRequests.id, requestId)))[0].status, "CANCELLED");
-  assert.deepEqual(await penaltyRows(owner.id, requestId), [], "no penalty and no grace-pass warning was recorded");
+  const later = await acceptedSwap(5);
+  await usedGracePass(later.requester.id);
+  const before = await trust(later.requester.id);
+  assert.equal((await (await loggedIn(later.requester.username)).post(`/api/requests/${later.requestId}/cancel`, {})).status, 200);
+  assert.deepEqual(await penaltyRows(later.requester.id, later.requestId), []);
+  assert.equal(await trust(later.requester.id), before);
 });
 
-test("the requester gets the same 72-hour exemption when the owner has gone quiet, and not before", async () => {
-  const quiet = await acceptedSwap(100);
-  await usedGracePass(quiet.requester.id);
-  const res = await (await loggedIn(quiet.requester.username)).post(`/api/requests/${quiet.requestId}/cancel`, {});
-  assert.equal(res.status, 200);
-  assert.match(((await res.json()) as { message: string }).message, /No penalty applies/);
-  assert.deepEqual(await penaltyRows(quiet.requester.id, quiet.requestId), []);
+/** An accepted swap or gift; `extra` sets fields such as who has confirmed the handoff. */
+async function acceptedExchange(requestType: "SWAP" | "GIFT", extra: Partial<typeof itemRequests.$inferInsert> = {}) {
+  const made = await acceptedSwap(5);
+  await db.update(itemRequests).set({ requestType, ...extra }).where(eq(itemRequests.id, made.requestId));
+  return made;
+}
 
-  const recent = await acceptedSwap(10);
-  await usedGracePass(recent.requester.id);
-  const res2 = await (await loggedIn(recent.requester.username)).post(`/api/requests/${recent.requestId}/cancel`, {});
-  assert.equal(res2.status, 200);
-  assert.match(((await res2.json()) as { message: string }).message, /trust score penalty has been applied/i);
-  assert.equal((await penaltyRows(recent.requester.id, recent.requestId)).some((r) => r.points < 0), true);
+test("a gift can be cancelled by either person while accepted, and never costs anyone anything", async () => {
+  for (const who of ["owner", "requester"] as const) {
+    const gift = await acceptedExchange("GIFT");
+    const person = gift[who];
+    await usedGracePass(person.id);
+    const before = await trust(person.id);
+    const res = await (await loggedIn(person.username)).post(`/api/requests/${gift.requestId}/cancel`, {});
+    assert.equal(res.status, 200, who);
+    assert.equal(((await res.json()) as { message: string }).message, "Gift cancelled.", who);
+    assert.equal((await db.select().from(itemRequests).where(eq(itemRequests.id, gift.requestId)))[0].status, "CANCELLED", who);
+    assert.deepEqual((await penaltyRows(person.id, gift.requestId)).filter((r) => r.points < 0 || r.activityType === "grace_pass_warning"), [], who);
+    assert.equal(await trust(person.id), before, who);
+  }
+});
+
+test("once either person has confirmed the handoff, a swap or gift can no longer be cancelled by anyone", async () => {
+  for (const type of ["SWAP", "GIFT"] as const) {
+    for (const flag of ["ownerConfirmedHandoff", "borrowerConfirmedHandoff"] as const) {
+      const exchange = await acceptedExchange(type, { [flag]: true });
+      for (const person of [exchange.owner, exchange.requester]) {
+        const res = await (await loggedIn(person.username)).post(`/api/requests/${exchange.requestId}/cancel`, {});
+        assert.equal(res.status, 409, `${type} ${flag}`);
+        assert.equal(((await res.json()) as { code: string }).code, "HANDOFF_ALREADY_CONFIRMED");
+      }
+      assert.equal((await db.select().from(itemRequests).where(eq(itemRequests.id, exchange.requestId)))[0].status, "ACCEPTED");
+    }
+  }
+});
+
+test("a pending request can still be withdrawn even though it has no handoff", async () => {
+  const swap = await acceptedExchange("SWAP");
+  await db.update(itemRequests).set({ status: "PENDING", acceptedAt: null }).where(eq(itemRequests.id, swap.requestId));
+  const res = await (await loggedIn(swap.requester.username)).post(`/api/requests/${swap.requestId}/cancel`, {});
+  assert.equal(res.status, 200);
+  assert.equal((await db.select().from(itemRequests).where(eq(itemRequests.id, swap.requestId)))[0].status, "CANCELLED");
 });
 
 test("someone who is not part of the swap cannot cancel it", async () => {
@@ -172,14 +202,14 @@ test("someone who answered recently is not a no-show, however long ago the swap 
   assert.equal(((await res.json()) as { code: string }).code, "NO_SHOW_TOO_EARLY");
 });
 
-test("after 72 hours of silence the report is recorded once; a first no-show is a warning, the reporter is never penalised, and cancelling is free", async () => {
+test("after 72 hours of silence the report is recorded once; a first no-show is a warning and the reporter is never penalised", async () => {
   const { owner, requester, requestId } = await acceptedSwap(100);
   const ownerClient = await loggedIn(owner.username);
   const ownerScore = await trust(owner.id);
 
   const res = await report(ownerClient, requestId, requester.id, "  Never replied or showed up  ");
   assert.equal(res.status, 200);
-  assert.match(((await res.json()) as { message: string }).message, /first one, so they get a warning/);
+  assert.equal(((await res.json()) as { message: string }).message, "No-show reported. This is their first one, so they get a warning.");
   const [event] = await db.select().from(requestLifecycleEvents).where(eq(requestLifecycleEvents.requestId, requestId));
   assert.equal(event.eventType, "swap_no_show_reported");
   assert.equal(event.actorId, owner.id);
@@ -194,12 +224,11 @@ test("after 72 hours of silence the report is recorded once; a first no-show is 
   assert.equal(((await again.json()) as { code: string }).code, "NO_SHOW_ALREADY_REPORTED");
   assert.equal((await penaltyRows(requester.id, requestId)).length, 1, "reporting twice does not penalise twice");
 
-  // The reported person replies after the report; the reporter can still leave without a penalty.
-  await db.insert(messages).values({ content: "sorry!", senderId: requester.id, receiverId: owner.id, requestId, messageType: "text" });
+  // The reporter can still cancel afterwards, as anyone can, without a penalty.
   await usedGracePass(owner.id);
   const cancel = await ownerClient.post(`/api/requests/${requestId}/cancel`, {});
   assert.equal(cancel.status, 200);
-  assert.match(((await cancel.json()) as { message: string }).message, /No penalty applies/);
+  assert.equal(((await cancel.json()) as { message: string }).message, "Swap cancelled.");
   assert.deepEqual((await penaltyRows(owner.id, requestId)).filter((r) => r.points < 0), []);
 });
 

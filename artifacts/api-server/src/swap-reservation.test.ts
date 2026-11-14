@@ -4,7 +4,7 @@ import { eq, inArray } from "drizzle-orm";
 import { db, itemRequests, items, messages, notifications, pool, reputationActivities, shareCoinsTransactions, users } from "@workspace/db";
 import { hashPassword } from "./auth.js";
 import { Client, startApp } from "./auth-test-client.js";
-import { COMMITTED_STATUSES, heldItemIds, type ReservableRequest } from "./swap-reservation.js";
+import { COMMITTED_STATUSES, heldItemIdSet, heldItemIds, type ReservableRequest } from "./swap-reservation.js";
 
 const UNIQUE = `swap-reservation-${Date.now()}`;
 const PASSWORD = "SwapReservation!42";
@@ -79,6 +79,14 @@ async function ownerAccepts(requestId: number) {
 }
 
 const status = async (id: number) => (await db.select({ s: itemRequests.status }).from(itemRequests).where(eq(itemRequests.id, id)))[0].s;
+async function makeRequest(requestType: string, itemId: number, requesterId: number, status: string) {
+  const [request] = await db
+    .insert(itemRequests)
+    .values({ itemId, requesterId, requestType, status, acceptedAt: status === "ACCEPTED" ? new Date() : null, ...(requestType === "BORROW" ? { startDate: new Date(Date.now() + 5 * 86_400_000), endDate: new Date(Date.now() + 9 * 86_400_000) } : {}) })
+    .returning({ id: itemRequests.id });
+  requestIds.push(request.id);
+  return request.id;
+}
 const asRequest = (over: Partial<ReservableRequest>): ReservableRequest => ({
   id: 1, itemId: 10, requestType: "SWAP", swapOfferedItemIds: [], swapRequestedItemIds: [], counterSwapOwnerItemIds: [], counterSwapRequesterItemIds: [], ...over,
 });
@@ -163,4 +171,53 @@ test("the swap item picker leaves out items an accepted swap holds, on either si
   const ids = list.map((i) => i.id);
   assert.ok(ids.includes(freeOffered));
   assert.ok(!ids.includes(heldOffered), "an item offered in an accepted swap is not offered again");
+});
+
+// ── Gifts hold their item the same way ────────────────────────────────────────
+
+test("an accepted gift holds its item: a second gift, a swap or a borrow for it cannot be accepted", async () => {
+  const giftee = await makeUser("gifteeA");
+  const other = await makeUser("gifteeB");
+  const listed = await makeItem(owner.id, "giftHeld");
+  const gift = await makeRequest("GIFT", listed, giftee.id, "ACCEPTED");
+  assert.equal((await heldItemIdSet()).has(listed), true);
+
+  for (const type of ["GIFT", "SWAP", "BORROW"]) {
+    const asking = await makeRequest(type, listed, other.id, "PENDING");
+    const res = await ownerAccepts(asking);
+    assert.equal(res.status, 409, type);
+    const body = (await res.json()) as { code: string; conflictingRequestId: number };
+    assert.deepEqual([body.code, body.conflictingRequestId], ["ITEM_ALREADY_COMMITTED", gift], type);
+    assert.equal(await status(asking), "PENDING", type);
+  }
+});
+
+test("an accepted swap holds its items against a gift too, and the hold ends when the first one does", async () => {
+  const requester = await makeUser("swapperG");
+  const giftee = await makeUser("gifteeC");
+  const listed = await makeItem(owner.id, "swapHeldFromGift");
+  const swap = await makeSwap(listed, requester.id, [await makeItem(requester.id, "swapHeldFromGiftOffered")], "ACCEPTED");
+  const gift = await makeRequest("GIFT", listed, giftee.id, "PENDING");
+
+  const blocked = await ownerAccepts(gift);
+  assert.equal(blocked.status, 409);
+  assert.equal(((await blocked.json()) as { conflictingRequestId: number }).conflictingRequestId, swap);
+
+  await db.update(itemRequests).set({ status: "EXPIRED" }).where(eq(itemRequests.id, swap));
+  assert.equal((await ownerAccepts(gift)).status, 200, "an expired swap holds nothing");
+  assert.equal(await status(gift), "ACCEPTED");
+});
+
+test("a gift for an item nothing else holds is accepted as before, and a cancelled gift frees its item", async () => {
+  const giftee = await makeUser("gifteeD");
+  const other = await makeUser("gifteeE");
+  const listed = await makeItem(owner.id, "giftFree");
+  const first = await makeRequest("GIFT", listed, giftee.id, "PENDING");
+  assert.equal((await ownerAccepts(first)).status, 200);
+
+  const second = await makeRequest("GIFT", listed, other.id, "PENDING");
+  assert.equal((await ownerAccepts(second)).status, 409);
+  await db.update(itemRequests).set({ status: "CANCELLED" }).where(eq(itemRequests.id, first));
+  assert.equal((await heldItemIdSet()).has(listed), false);
+  assert.equal((await ownerAccepts(second)).status, 200);
 });

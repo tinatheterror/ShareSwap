@@ -2,7 +2,7 @@ import { and, inArray, ne, or, sql } from "drizzle-orm";
 import { db, itemRequests } from "@workspace/db";
 
 // An exchange that has been accepted holds its items: while a request is in one of these statuses, the items it
-// involves cannot be committed to another swap. The hold is derived from the requests themselves, so it ends by
+// involves cannot be committed to another swap or gift. The hold is derived from the requests themselves, so it ends by
 // itself the moment a request is cancelled, declined, expired or completed, with nothing to release and no flag
 // that could be left set by mistake (the old `items.isAvailable` flag does not say why an item is unavailable).
 export const COMMITTED_STATUSES = [
@@ -81,16 +81,19 @@ export interface ReservationConflict {
   itemId: number;
 }
 
+/** Swaps and gifts hand an item over for good, so while one is accepted nothing else may be accepted for its items. */
+const isExclusive = (requestType: string) => requestType === "SWAP" || requestType === "GIFT";
+
 /**
  * Before accepting a request: is one of the items it would hold already held by another accepted request?
- * Accepting a SWAP checks every other committed request; accepting anything else only checks committed swaps
- * (borrows of the same item for other dates are allowed to queue as before).
+ * Accepting a SWAP or a GIFT checks every other committed request, and accepting anything else checks committed
+ * swaps and gifts (borrows of the same item for other dates are allowed to queue as before).
  */
 export async function findReservationConflict(request: ReservableRequest): Promise<ReservationConflict | null> {
   const mine = heldItemIds(request);
   const others = await committedRequestsTouching(mine, request.id);
   for (const other of others) {
-    if (request.requestType !== "SWAP" && other.requestType !== "SWAP") continue;
+    if (!isExclusive(request.requestType) && !isExclusive(other.requestType)) continue;
     const theirs = heldItemIds(other);
     const shared = mine.find((id) => theirs.includes(id));
     if (shared !== undefined) return { requestId: other.id, itemId: shared };

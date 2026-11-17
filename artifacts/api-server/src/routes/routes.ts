@@ -473,21 +473,35 @@ async function applySwapCoinOffset(
   const payerId   = ownerSC < requesterSC ? ownerId    : requesterId;
   const receiverId = ownerSC < requesterSC ? requesterId : ownerId;
 
-  // Deduct from payer
-  await db.update(users).set({ shareCoins: sql`GREATEST(0, CAST(share_coins AS INTEGER) - ${offset})` }).where(eq(users.id, payerId));
-  await db.insert(shareCoinsTransactions).values({ userId: payerId, amount: (-offset).toString(), description: `Swap offset paid: ${itemName}`, transactionType: "SWAP_OFFSET_PAID" });
+  // The payer pays at most what they have, like a borrow charge (min(cost, balance)), and the receiver is credited exactly
+  // what the payer paid, so a swap never creates coins. The payer's row is locked so the balance cannot change between
+  // reading it and debiting it.
+  const paid = await db.transaction(async (tx) => {
+    const [payer] = await tx.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, payerId)).for("update");
+    const payerBalance = Math.floor(parseFloat(payer?.shareCoins || "0"));
+    const charged = Math.min(offset, Math.max(payerBalance, 0));
+    if (charged <= 0) return 0;
 
-  // Credit receiver
-  await db.update(users).set({ shareCoins: sql`CAST(share_coins AS INTEGER) + ${offset}` }).where(eq(users.id, receiverId));
-  await db.insert(shareCoinsTransactions).values({ userId: receiverId, amount: offset.toString(), description: `Swap offset received: ${itemName}`, transactionType: "SWAP_OFFSET_RECEIVED" });
+    await tx.update(users).set({ shareCoins: sql`CAST(share_coins AS INTEGER) - ${charged}` }).where(eq(users.id, payerId));
+    await tx.insert(shareCoinsTransactions).values({ userId: payerId, amount: (-charged).toString(), description: `Swap offset paid: ${itemName}`, transactionType: "SWAP_OFFSET_PAID" });
 
-  // Notify both parties
+    await tx.update(users).set({ shareCoins: sql`CAST(share_coins AS INTEGER) + ${charged}` }).where(eq(users.id, receiverId));
+    await tx.insert(shareCoinsTransactions).values({ userId: receiverId, amount: charged.toString(), description: `Swap offset received: ${itemName}`, transactionType: "SWAP_OFFSET_RECEIVED" });
+    return charged;
+  });
+
+  if (paid === 0) {
+    console.log(`⚠️ Swap offset of ${offset} SC on "${itemName}" not collected: user ${payerId} has no ShareCoins to pay it with`);
+    return;
+  }
+
+  // Notify both parties (of what actually moved)
   await db.insert(notifications).values([
-    { userId: payerId,    type: "sharecoin_earned", title: `-${offset} ShareCoins`, message: `-${offset} SC swap offset for "${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}".`,    requestId, isRead: false },
-    { userId: receiverId, type: "sharecoin_earned", title: `+${offset} ShareCoins`, message: `+${offset} SC swap offset for "${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}".`, requestId, isRead: false },
+    { userId: payerId,    type: "sharecoin_earned", title: `-${paid} ShareCoins`, message: `-${paid} SC swap offset for "${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}".`,    requestId, isRead: false },
+    { userId: receiverId, type: "sharecoin_earned", title: `+${paid} ShareCoins`, message: `+${paid} SC swap offset for "${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}".`, requestId, isRead: false },
   ]);
 
-  console.log(`✅ Swap offset: ${offset} SC from user ${payerId} to user ${receiverId} for swap on "${itemName}"`);
+  console.log(`✅ Swap offset: ${paid} SC${paid < offset ? ` (of ${offset} owed; all the payer had)` : ""} from user ${payerId} to user ${receiverId} for swap on "${itemName}"`);
 }
 
 // Helper function to check and award referral bonus when a referred user completes their first transaction
@@ -2003,6 +2017,10 @@ export function registerRoutes(
         );
 
         await awardSwapCompletionPoints(swap.ownerId, swap.borrowerId, swap.requestId, swap.itemId, swap.itemId);
+        await db.insert(notifications).values([
+          { userId: swap.ownerId, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: swap.itemId, requestId: swap.requestId, isRead: false },
+          { userId: swap.borrowerId, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: swap.itemId, requestId: swap.requestId, isRead: false },
+        ]);
         await checkAndAwardReferralBonus(swap.ownerId, swap.requestId, 'SWAP');
         await checkAndAwardReferralBonus(swap.borrowerId, swap.requestId, 'SWAP');
         await checkAndAwardAchievements(swap.ownerId);

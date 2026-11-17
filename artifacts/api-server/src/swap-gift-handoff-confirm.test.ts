@@ -274,6 +274,13 @@ test("a SWAP the sweep confirms settles coins exactly as one both people confirm
     assert.deepEqual(await ledger(a), await ledger(m), "the same ledger rows");
     assert.equal(await balance(a), await balance(m), "the same balance");
   }
+  // Both people are told "Trust Score +20", on the auto-confirm path as on the manual one.
+  for (const [swapId, people] of [[swap.id, auto], [swap2.id, manual]] as const) {
+    for (const personId of [people.ownerId, people.requesterId]) {
+      const trust = (await notesFor(swapId, personId)).filter((n) => n.type === "trust_score_changed");
+      assert.deepEqual(trust.map((n) => `${n.title}|${n.message}`), ["Trust Score +20|Swap completed +20"], `swap ${swapId}, user ${personId}`);
+    }
+  }
   // The offset is the tier difference (20 - 10): the side with the cheaper item pays it, once, and the other receives it.
   assert.ok((await ledger(auto.ownerId)).some((row) => row.startsWith("SWAP_OFFSET_PAID:-10:")), "the owner paid 10");
   assert.ok((await ledger(auto.requesterId)).some((row) => row.startsWith("SWAP_OFFSET_RECEIVED:10:")), "the requester received 10");
@@ -319,19 +326,26 @@ test("a GIFT the sweep confirms moves no coins from the receiver; the giver gets
   assert.equal((await bonusRows(pair.requesterId, "Gift")).length, 0, "the receiver gets none");
 });
 
-test("KNOWN GAP (reported, not fixed): the swap offset credits the full amount even when the payer cannot cover it", async () => {
-  // Owner's item is tier 1 (5 SC), the requester's tier 4 (40 SC): the owner owes 35 SC but has 2.
+test("the swap offset is capped at what the payer has, and the receiver gets exactly what the payer paid: no coins are created", async () => {
+  // Owner's item is tier 1 (5 SC), the requester's tier 4 (40 SC): the owner owes 35 SC but starts with 2.
   const pair = await freshPair(["2.00", "0.00"]);
   const swap = await seedSwap(pair, 1, 4);
   assert.equal((await pair.ownerClient.post(`/api/requests/${swap.id}/handoff`, { confirmedBy: "owner" })).status, 200);
   assert.equal((await pair.requesterClient.post(`/api/requests/${swap.id}/handoff`, { confirmedBy: "borrower" })).status, 200);
-  const owner = await balance(pair.ownerId);
-  const requester = await balance(pair.requesterId);
-  console.log(`[settlement probe] owner owed 35 with 2 SC: owner ends with ${owner}, requester ends with ${requester}`);
-  // Today: the ledger says the owner paid 35 and the requester received 35, but the owner only had 2. The debit floors at
-  // 0 while the credit is the full 35, so coins appear from nowhere (35 minted less the 2 the owner had).
-  assert.ok((await ledger(pair.ownerId)).some((row) => row.startsWith("SWAP_OFFSET_PAID:-35:")));
-  assert.ok((await ledger(pair.requesterId)).some((row) => row.startsWith("SWAP_OFFSET_RECEIVED:35:")));
-  assert.ok(requester >= 35, "the requester was credited the full 35");
-  assert.ok(owner >= 0 && owner < 35, "the owner could not have paid it");
+  assert.equal((await load(swap.id)).status, "COMPLETED", "the swap itself still completes");
+
+  const sum = async (id: number) => (await ledgerRows(id)).reduce((total, row) => total + Number(row.amount), 0);
+  const paidRows = (await ledgerRows(pair.ownerId)).filter((t) => t.transactionType === "SWAP_OFFSET_PAID");
+  const receivedRows = (await ledgerRows(pair.requesterId)).filter((t) => t.transactionType === "SWAP_OFFSET_RECEIVED");
+  assert.equal(paidRows.length, 1);
+  assert.equal(receivedRows.length, 1);
+  const paid = -Number(paidRows[0].amount);
+  assert.ok(paid > 0 && paid < 35, `the owner paid ${paid}, less than the 35 owed`);
+  assert.equal(Number(receivedRows[0].amount), paid, "the requester received exactly what the owner paid");
+  // What the owner had when the offset ran: the 2 they started with plus the first-swap bonus (badges are awarded after).
+  const bonus = (await bonusRows(pair.ownerId, "Swap")).reduce((total, row) => total + Number(row.amount), 0);
+  assert.equal(paid, 2 + bonus, "the owner paid everything they had toward the offset, no more");
+  // Every coin on both balances is in the ledger: the starting 2 plus the recorded rows, nothing from nowhere.
+  assert.equal(await balance(pair.ownerId), 2 + (await sum(pair.ownerId)));
+  assert.equal(await balance(pair.requesterId), 0 + (await sum(pair.requesterId)));
 });

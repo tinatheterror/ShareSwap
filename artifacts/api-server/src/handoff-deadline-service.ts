@@ -49,8 +49,12 @@ export interface HandoffDeadlineCandidate {
   detail: string;
 }
 
-/** What the scheduled sweeps act on: SWAP handoffs are left alone (see HandoffDeadlineOptions.requestTypes). */
-export const HANDOFF_SWEEP_REQUEST_TYPES = ["BORROW", "RENT"] as const;
+/**
+ * What the scheduled sweeps act on. Swaps are included: when one person confirms the exchange and the other stays
+ * silent for the confirmation window, it is auto-confirmed (and flagged for review if someone denied it), so an
+ * accepted swap cannot sit half-confirmed forever.
+ */
+export const HANDOFF_SWEEP_REQUEST_TYPES = ["BORROW", "RENT", "SWAP"] as const;
 
 export interface HandoffDeadlineOptions {
   now?: Date;

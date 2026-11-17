@@ -9,7 +9,7 @@ import { ensureJobSwitchesTable, ensureScheduledJobRunsTable } from "./startup-m
 
 // POST /api/requests/check-handoff-deadlines reads the same job switch as the server timer
 // ("handoff-deadlines": a job_switches row, else HANDOFF_DEADLINE_SWEEP_MODE, else dry-run) and only
-// ever acts on BORROW and RENT. Only live changes anything; a SWAP is untouched in every mode.
+// acts on BORROW, RENT and SWAP. Only live changes anything.
 
 const UNIQUE = `handoff-route-${Date.now()}`;
 const PASSWORD = "HandoffRoute!42";
@@ -143,6 +143,13 @@ before(async () => {
   closeServer = () => new Promise<void>((resolve, reject) => server.close((e) => (e ? reject(e) : resolve())));
 });
 
+/** An auto-confirmed SWAP awards trust points and achievements to both people; those rows point at the requests. */
+async function cleanSwapRewards() {
+  await pool.query("DELETE FROM reputation_activities WHERE request_id = ANY($1)", [requestIds]);
+  await pool.query("DELETE FROM user_achievements WHERE user_id = ANY($1)", [userIds]);
+  await pool.query("DELETE FROM share_coins_transactions WHERE user_id = ANY($1)", [userIds]);
+}
+
 beforeEach(async () => {
   delete process.env.HANDOFF_DEADLINE_SWEEP_MODE;
   await setSwitch(null);
@@ -150,6 +157,7 @@ beforeEach(async () => {
     await db.delete(messages).where(inArray(messages.requestId, requestIds));
     await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
     await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, requestIds));
+    await cleanSwapRewards();
     await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
     requestIds.length = 0;
   }
@@ -163,6 +171,7 @@ after(async () => {
       await db.delete(messages).where(inArray(messages.requestId, requestIds));
       await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
       await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, requestIds));
+      await cleanSwapRewards();
       await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
     }
     if (userIds.length) await db.delete(notifications).where(inArray(notifications.userId, userIds));
@@ -208,7 +217,7 @@ test("an off switch row (or an off environment mode) makes the endpoint do nothi
   await untouched("BORROW");
 });
 
-test("live: BORROW handoffs advance, are cancelled when both are silent and get their reminder; the SWAP beside each is untouched", async () => {
+test("live: handoffs advance, are cancelled when both are silent and get their reminder; a SWAP is auto-confirmed like a BORROW", async () => {
   await setSwitch("live");
   const body = await callEndpoint();
   assert.equal(body.mode, "live");
@@ -220,12 +229,14 @@ test("live: BORROW handoffs advance, are cancelled when both are silent and get 
   assert.deepEqual(await state(ids.nudge.BORROW), { status: "AWAITING_HANDOFF_CONFIRM", level: 1 });
   assert.equal(await systemMessages(ids.nudge.BORROW), 1);
 
-  await untouched("SWAP");
+  assert.equal((await state(ids.late.SWAP)).status, "COMPLETED", "a swap one person confirmed is completed when the other stays silent");
+  assert.equal((await state(ids.silent.SWAP)).status, "CANCELLED", "neither side confirmed and the start passed: cancelled, as for a BORROW");
+  assert.deepEqual(await state(ids.nudge.SWAP), { status: "AWAITING_HANDOFF_CONFIRM", level: 1 });
 });
 
 test("an environment live mode applies when there is no switch row", async () => {
   process.env.HANDOFF_DEADLINE_SWEEP_MODE = "live";
   assert.equal((await callEndpoint()).mode, "live");
   assert.equal((await state(ids.late.BORROW)).status, "IN_PROGRESS");
-  await untouched("SWAP");
+  assert.equal((await state(ids.late.SWAP)).status, "COMPLETED");
 });

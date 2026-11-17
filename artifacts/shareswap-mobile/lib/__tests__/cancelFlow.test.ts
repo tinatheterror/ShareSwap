@@ -179,9 +179,10 @@ describe("cancel flow: talking to the server", () => {
       description: "Your $42 deposit hold was released. You were not charged. A trust score penalty of -5 was applied.",
     });
     expect(cancelToast({ alreadyCancelled: false, message: "Request cancelled." })).toEqual({ title: "Request cancelled", description: undefined });
-    expect(cancelToast({ alreadyCancelled: false, message: "Gift cancelled. Your item is available again." })).toEqual({
-      title: "Request cancelled", description: "Gift cancelled. Your item is available again.",
-    });
+    // A swap or a gift shows only its own sentence: no "Request cancelled" title.
+    expect(cancelToast({ alreadyCancelled: false, message: "Swap cancelled." })).toEqual({ title: "Swap cancelled." });
+    expect(cancelToast({ alreadyCancelled: false, message: "Gift cancelled." })).toEqual({ title: "Gift cancelled." });
+    expect(cancelToast({ alreadyCancelled: false, message: "Gift cancelled. Your item is available again." })).toEqual({ title: "Gift cancelled." });
     expect(cancelToast({ alreadyCancelled: true, message: "This request was already cancelled." })).toEqual({ title: "Already cancelled" });
   });
 });

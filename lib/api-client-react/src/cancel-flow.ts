@@ -178,9 +178,17 @@ export async function submitCancel(
   }
 }
 
-/** A toast for a finished cancel: "Request cancelled" and then what was released or refunded. */
+/** What the server says when a swap or a gift is cancelled; nothing is held, charged or refunded, so that is all the banner shows. */
+const EXCHANGE_CANCELLED_MESSAGES = ["Swap cancelled.", "Gift cancelled."] as const;
+
+/**
+ * A toast for a finished cancel: "Request cancelled" and then what was released or refunded. A cancelled swap or
+ * gift shows only "Swap cancelled." or "Gift cancelled.".
+ */
 export function cancelToast(done: { alreadyCancelled: boolean; message: string }): { title: string; description?: string } {
   if (done.alreadyCancelled) return { title: "Already cancelled" };
+  const exchange = EXCHANGE_CANCELLED_MESSAGES.find((sentence) => done.message.startsWith(sentence));
+  if (exchange) return { title: exchange };
   const lead = "Request cancelled.";
   if (done.message.startsWith(lead)) {
     const rest = done.message.slice(lead.length).trim();

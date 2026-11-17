@@ -634,11 +634,9 @@ export function ChatWidget() {
         const error = new Error(body.error || "Failed to accept request") as Error & {
           code?: string;
           required?: number;
-          payerIsRequester?: boolean;
         };
         error.code = body.code;
         error.required = body.required;
-        error.payerIsRequester = body.payerIsRequester;
         throw error;
       }
       return response.json();
@@ -650,19 +648,9 @@ export function ChatWidget() {
     },
     onError: (error: any) => {
       if (error?.code === "INSUFFICIENT_SHARECOINS") {
-        const required = error.required ?? 0;
-        if (error.payerIsRequester) {
-          // Requester is short — owner can only be informed
-          toast({
-            title: "Not Enough ShareCoins",
-            description: `This swap can't proceed — the requester needs ${required} ShareCoins to cover the value difference but doesn't have enough.`,
-            variant: "destructive",
-          });
-        } else {
-          // Owner (current user) is short — show earn modal
-          setInsufficientCoinsRequired(required);
-          setShowInsufficientCoinsModal(true);
-        }
+        // The server only says this to the person who would pay, so it is always the current user's own balance.
+        setInsufficientCoinsRequired(error.required ?? 0);
+        setShowInsufficientCoinsModal(true);
       } else if (error?.code === "OVERDUE_BORROW_RESTRICTED") {
         toast({
           title: "Borrower must return an overdue item",
@@ -722,19 +710,11 @@ export function ChatWidget() {
         });
       }
     },
-    onError: (error: any, vars) => {
+    onError: (error: any) => {
       if (error?.code === "INSUFFICIENT_SHARECOINS") {
-        const request = requests.find((candidate) => candidate.id === vars.requestId);
-        if (request?.requesterId === user?.id) {
-          setInsufficientCoinsRequired(error.required ?? 0);
-          setShowInsufficientCoinsModal(true);
-        } else {
-          toast({
-            title: "Borrower needs more ShareCoins",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
+        // Only the person who would pay is ever told this, about their own balance.
+        setInsufficientCoinsRequired(error.required ?? 0);
+        setShowInsufficientCoinsModal(true);
         return;
       }
       toast({
@@ -856,6 +836,15 @@ export function ChatWidget() {
       setChatCounterRequest(null);
       toast({ title: "Counter Sent", description: "The other party will be notified." });
     },
+    onError: (err: any) => {
+      if (err?.code === "INSUFFICIENT_SHARECOINS") {
+        // The sender would pay under these terms (the server only checks the person who would pay).
+        setInsufficientCoinsRequired(err.required ?? 0);
+        setShowInsufficientCoinsModal(true);
+        return;
+      }
+      toast({ title: "Could not send counter", description: err?.message || "Please try again.", variant: "destructive" });
+    },
   });
 
   const swapCounterMutation = useMutation({
@@ -884,6 +873,11 @@ export function ChatWidget() {
       toast({ title: "Swap Counter Sent", description: "The other party will be notified." });
     },
     onError: (err: any) => {
+      if (err?.code === "INSUFFICIENT_SHARECOINS") {
+        setInsufficientCoinsRequired(err.required ?? 0);
+        setShowInsufficientCoinsModal(true);
+        return;
+      }
       toast({ title: "Error", description: err?.message || "Could not send counter", variant: "destructive" });
     },
   });

@@ -453,17 +453,10 @@ export default function ChatScreen() {
     },
     onError: (e: any) => {
       if (e?.code === "INSUFFICIENT_SHARECOINS") {
-        const required = e.required ?? 0;
-        if (e.payerIsRequester) {
-          Alert.alert(
-            "Not Enough ShareCoins",
-            `This swap can't proceed — the requester needs ${required} ShareCoins to cover the value difference but doesn't have enough.`,
-          );
-        } else {
-          setEarnRequired(required);
-          setEarnContext("swap");
-          setShowEarnModal(true);
-        }
+        // The server only says this to the person who would pay, about their own balance.
+        setEarnRequired(e.required ?? 0);
+        setEarnContext(request?.requestType === "SWAP" ? "swap" : "borrow");
+        setShowEarnModal(true);
       } else if (e?.code === "OVERDUE_BORROW_RESTRICTED") {
         Alert.alert(
           "Borrower must return an overdue item",
@@ -547,13 +540,10 @@ export default function ChatScreen() {
     },
     onError: (e: any) => {
       if (e?.code === "PREFLIGHT_INSUFFICIENT" || e?.code === "INSUFFICIENT_SHARECOINS") {
-        if (request?.requesterId === user?.id) {
-          setEarnRequired(e.required ?? 0);
-          setEarnContext("borrow");
-          setShowEarnModal(true);
-        } else {
-          Alert.alert("Borrower needs more ShareCoins", e.message || "The borrower cannot afford these dates yet.");
-        }
+        // Only the person who would pay is ever told this (the server says nothing to the other person).
+        setEarnRequired(e.required ?? 0);
+        setEarnContext(request?.requestType === "SWAP" ? "swap" : "borrow");
+        setShowEarnModal(true);
       } else if (e?.code === "OVERDUE_BORROW_RESTRICTED") {
         Alert.alert(
           "Borrower must return an overdue item",
@@ -608,7 +598,7 @@ export default function ChatScreen() {
       if (e?.code === "PREFLIGHT_INSUFFICIENT" || e?.code === "INSUFFICIENT_SHARECOINS") {
         setShowCounterSheet(false);
         setEarnRequired(e.required ?? 0);
-        setEarnContext("borrow");
+        setEarnContext(request?.requestType === "SWAP" ? "swap" : "borrow");
         setShowEarnModal(true);
       } else {
         Alert.alert("Error", e.message || "Failed to send counter");

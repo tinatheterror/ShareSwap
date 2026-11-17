@@ -233,6 +233,10 @@ export function ItemRequestForm({
             </ToastAction>
           ),
         });
+      } else if ((error as any).code === "INSUFFICIENT_SHARECOINS" && onInsufficientCoins) {
+        // The server's own check, for when the balance shown here was out of date: same modal as the check before sending.
+        onClose();
+        onInsufficientCoins((error as any).required ?? 0, requestType === "SWAP" ? "swap" : "borrow");
       } else if ((error as any).code === "OVERDUE_BORROW_RESTRICTED") {
         toast({
           title: "Return overdue item first",

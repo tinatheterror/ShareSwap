@@ -146,6 +146,8 @@ before(async () => {
         emailVerified: true,
         stripePaymentMethodId: `pm_${UNIQUE}_requester`,
         subscriptionTier: "member",
+        // These tests are about dates, not funds: enough for a borrow of any length.
+        shareCoins: "100000.00",
       },
     ])
     .returning({ id: users.id, username: users.username });
@@ -476,7 +478,7 @@ const ownersCounter = { negotiationStatus: "counter_proposed", counterRound: 1, 
 
 test("the requester accepting the owner's counter accepts the request: no second approval from the owner", async () => {
   clock = OCT_4_EVENING_PDT;
-  await db.update(users).set({ shareCoins: "100.00" }).where(eq(users.id, userIds[1]));
+  await db.update(users).set({ shareCoins: "100000.00" }).where(eq(users.id, userIds[1]));
   for (const requestType of ["BORROW", "RENT"]) {
     const requestId = await createPendingRequest(requestType, "2026-10-10", { ...ownersCounter, counterProposedBy: userIds[0] });
     const { response, body } = await acceptCounterAs(requester, requestId);
@@ -557,11 +559,11 @@ test("a borrower who cannot afford the countered dates cannot accept, and nothin
   try {
     const requestId = await createPendingRequest("BORROW", "2026-10-10", { ...ownersCounter, counterProposedBy: userIds[0] });
     const { response, body } = await acceptCounterAs(requester, requestId);
-    assert.equal(response.status, 400);
+    assert.equal(response.status, 402);
     assert.equal(body.code, "INSUFFICIENT_SHARECOINS");
     assert.deepEqual(await counterState(requestId), { status: "PENDING", negotiationStatus: "counter_proposed" });
   } finally {
-    await db.update(users).set({ shareCoins: "100.00" }).where(eq(users.id, userIds[1]));
+    await db.update(users).set({ shareCoins: "100000.00" }).where(eq(users.id, userIds[1]));
   }
 });
 

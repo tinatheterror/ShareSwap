@@ -118,6 +118,7 @@ import {
 import { findReservationConflict, heldItemIdSet, ITEM_ALREADY_COMMITTED_CODE, ITEM_ALREADY_COMMITTED_MESSAGE } from "../swap-reservation";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
+import { applyFundsGate, gateRequestFunds, notifyUnblockedRequests, quoteRequest, quoteSwap } from "../sharecoin-funds";
 import { HANDOFF_CONFIRM_WINDOW_HOURS, SILENT_PERSON_NOTICE_TITLE, isConfirmNoticeType, silentPersonNotice } from "../handoff-confirm-copy";
 import {
   HANDOFF_SWEEP_INTERVAL_MS,
@@ -435,13 +436,8 @@ async function finishCompletedGift(gift: {
   return { isFirstTime: giftBonusResult.isFirstTime };
 }
 
-// Server-side swap coin offset application
-// Mirrors the client-side getTierShareCoins / calculateMultiSwap logic
-function serverGetTierSC(tier: number | null | undefined): number {
-  const map: Record<number, number> = { 1: 5, 2: 10, 3: 20, 4: 40 };
-  return map[tier ?? 2] ?? 10;
-}
-
+// Server-side swap coin offset application. The amount and who pays come from the same quote the funds gates use
+// (sharecoin-funds.ts), so what a person was checked against is what is settled.
 async function applySwapCoinOffset(
   ownerId: number,
   requesterId: number,
@@ -452,26 +448,17 @@ async function applySwapCoinOffset(
   counterSwapRequesterItemIds: number[] | null,
   itemName: string,
 ): Promise<void> {
-  // Determine effective item IDs for each side (counter takes priority)
-  const ownerItemIds = counterSwapOwnerItemIds?.length ? counterSwapOwnerItemIds : [itemId];
-  const requesterItemIds = counterSwapRequesterItemIds?.length ? counterSwapRequesterItemIds : (swapOfferedItemIds ?? []);
+  const [requested] = await db.select({ swapRequestedItemIds: itemRequests.swapRequestedItemIds }).from(itemRequests).where(eq(itemRequests.id, requestId)).limit(1);
+  const quote = await quoteSwap({
+    requestType: "SWAP", requesterId, ownerId, itemId,
+    swapOfferedItemIds, swapRequestedItemIds: (requested?.swapRequestedItemIds as number[] | null) ?? null,
+    counterSwapOwnerItemIds, counterSwapRequesterItemIds,
+  });
+  if (!quote) return; // fair swap (or a side with no items), nothing to transfer
 
-  if (ownerItemIds.length === 0 || requesterItemIds.length === 0) return;
-
-  // Fetch tiers from DB
-  const allIds = [...new Set([...ownerItemIds, ...requesterItemIds])];
-  const itemRows = await db.select({ id: items.id, tier: items.tier }).from(items).where(inArray(items.id, allIds));
-  const tierMap = new Map<number, number | null>(itemRows.map(r => [r.id, r.tier]));
-
-  const ownerSC = ownerItemIds.reduce((s, id) => s + serverGetTierSC(tierMap.get(id)), 0);
-  const requesterSC = requesterItemIds.reduce((s, id) => s + serverGetTierSC(tierMap.get(id)), 0);
-  const offset = Math.abs(ownerSC - requesterSC);
-
-  if (offset === 0) return; // fair swap, nothing to transfer
-
-  // The side with fewer SC pays the offset to the other
-  const payerId   = ownerSC < requesterSC ? ownerId    : requesterId;
-  const receiverId = ownerSC < requesterSC ? requesterId : ownerId;
+  const offset = quote.amount;
+  const payerId = quote.payerId;
+  const receiverId = quote.receiverId;
 
   // The payer pays at most what they have, like a borrow charge (min(cost, balance)), and the receiver is credited exactly
   // what the payer paid, so a swap never creates coins. The payer's row is locked so the balance cannot change between
@@ -6785,6 +6772,20 @@ Respond with ONLY the category name, nothing else.`
         .send("This item cannot be rented because it does not have a Replacement Value set.");
     }
 
+    // ShareCoins: a borrow is paid by the requester; a swap's difference by whichever side's items are worth less. The
+    // requester is checked only if they would pay (the Not Enough ShareCoins modal); if the owner would pay, the request
+    // goes through and the owner's balance is never looked at here: they are checked when they accept.
+    if (requestType === "BORROW" || requestType === "SWAP") {
+      const quote = await quoteRequest({
+        requestType, requesterId: req.user.id, ownerId: item.ownerId!, itemId: item.id, shareCoinPrice: item.shareCoinPrice,
+        startDate, endDate,
+        swapOfferedItemIds: Array.isArray(swapOfferedItemIds) ? swapOfferedItemIds.map(Number) : null,
+        swapRequestedItemIds: Array.isArray(swapRequestedItemIds) ? swapRequestedItemIds.map(Number) : null,
+      });
+      const fundsBlock = await applyFundsGate({ actorId: req.user.id, quote, mode: "send" });
+      if (fundsBlock) return res.status(fundsBlock.status).json(fundsBlock.body);
+    }
+
     // Create the request
     const [request] = await db
       .insert(itemRequests)
@@ -7253,37 +7254,11 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
-    // BORROW requests are paid for by the requester. Enforce the prorated
-    // ShareCoin requirement on the server so an owner cannot accept a request
-    // whose borrower cannot afford the final date range.
+    // A borrower with an overdue borrow cannot start another.
     if (status === "ACCEPTED" && request.item_requests.requestType === "BORROW") {
       const blockedBorrow = await getBlockingOverdueBorrow(request.item_requests.requesterId);
       if (blockedBorrow) {
         return res.status(403).json(overdueBorrowRestrictionResponse(blockedBorrow));
-      }
-
-      const weeklyPrice = parseFloat(request.items.shareCoinPrice?.toString() ?? "0") || 5;
-      const startDate = request.item_requests.counterStartDate || request.item_requests.startDate;
-      const endDate = request.item_requests.counterEndDate || request.item_requests.endDate;
-      const days = startDate && endDate
-        ? Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000))
-        : 0;
-      const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
-      const [borrower] = await db
-        .select({ shareCoins: users.shareCoins })
-        .from(users)
-        .where(eq(users.id, request.item_requests.requesterId))
-        .limit(1);
-      const currentBalance = Math.floor(parseFloat(borrower?.shareCoins?.toString() ?? "0"));
-
-      if (currentBalance < required) {
-        return res.status(400).json({
-          code: "INSUFFICIENT_SHARECOINS",
-          error: `The borrower needs ${required} ShareCoins for these dates but has ${currentBalance}.`,
-          required,
-          currentBalance,
-          payerIsRequester: true,
-        });
       }
     }
 
@@ -7304,42 +7279,12 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
-    // For SWAP acceptance: block if the payer (owner or requester) can't cover the coin offset
-    if (status === "ACCEPTED" && request.item_requests.requestType === "SWAP") {
-      const acOwnerItemIds = (request.item_requests.counterSwapOwnerItemIds as number[] | null)?.length
-        ? (request.item_requests.counterSwapOwnerItemIds as number[])
-        : [request.items.id];
-      const acRequesterItemIds = (request.item_requests.counterSwapRequesterItemIds as number[] | null)?.length
-        ? (request.item_requests.counterSwapRequesterItemIds as number[])
-        : ((request.item_requests.swapOfferedItemIds as number[] | null) ?? []);
-
-      if (acOwnerItemIds.length > 0 && acRequesterItemIds.length > 0) {
-        const acAllIds = [...new Set([...acOwnerItemIds, ...acRequesterItemIds])];
-        const acItemRows = await db.select({ id: items.id, tier: items.tier }).from(items).where(inArray(items.id, acAllIds));
-        const acTierMap = new Map(acItemRows.map(r => [r.id, r.tier]));
-        const acOwnerSC = acOwnerItemIds.reduce((s: number, id: number) => s + serverGetTierSC(acTierMap.get(id)), 0);
-        const acRequesterSC = acRequesterItemIds.reduce((s: number, id: number) => s + serverGetTierSC(acTierMap.get(id)), 0);
-        const acOffset = Math.abs(acOwnerSC - acRequesterSC);
-
-        if (acOffset > 0) {
-          const acPayerId = acOwnerSC < acRequesterSC ? request.items.ownerId! : request.item_requests.requesterId;
-          const [acPayerRow] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, acPayerId)).limit(1);
-          const acBalance = parseInt(acPayerRow?.shareCoins?.toString() ?? "0");
-
-          if (acBalance < acOffset) {
-            const payerIsOwner = acPayerId === req.user.id;
-            return res.status(402).json({
-              error: payerIsOwner
-                ? `You need ${acOffset} ShareCoins to complete this swap (your item is valued lower), but you only have ${acBalance}. Earn more ShareCoins first.`
-                : `This swap can't proceed — the requester needs ${acOffset} ShareCoins to cover the value difference but doesn't have enough.`,
-              code: "INSUFFICIENT_SHARECOINS",
-              required: acOffset,
-              available: acBalance,
-              payerIsRequester: !payerIsOwner,
-            });
-          }
-        }
-      }
+    // ShareCoins: a borrow is paid by the requester, a swap's difference by whichever side's items are worth less. If the
+    // owner (who is accepting) would pay and cannot, they get the Not Enough ShareCoins modal; if the other person would
+    // pay and cannot, the owner gets only a neutral answer and the payer a private nudge (sharecoin-funds.ts).
+    if (status === "ACCEPTED") {
+      const fundsBlock = await gateRequestFunds(req.user.id, "accept", request.item_requests, request.items);
+      if (fundsBlock) return res.status(fundsBlock.status).json(fundsBlock.body);
     }
 
     // When accepting, promote any pending counter-proposed dates/methods into the main fields
@@ -7654,6 +7599,20 @@ Respond with ONLY the category name, nothing else.`
 
     const newRound = currentRound + 1;
 
+    // ShareCoins: the terms being proposed are checked for whoever would pay under them. If that is the sender they get the
+    // Not Enough ShareCoins modal; if it is the other person the counter is sent and their balance is not looked at here.
+    {
+      const fundsBlock = await gateRequestFunds(req.user.id, "send", request.item_requests, request.items, {
+        counterStartDate: startDate ? new Date(startDate) : (request.item_requests.startDate ?? null),
+        counterEndDate: endDate ? new Date(endDate) : (request.item_requests.endDate ?? null),
+        ...(isSwap ? {
+          counterSwapOwnerItemIds: Array.isArray(swapOwnerItemIds) ? swapOwnerItemIds.map(Number) : (request.item_requests.counterSwapOwnerItemIds ?? []),
+          counterSwapRequesterItemIds: Array.isArray(swapRequesterItemIds) ? swapRequesterItemIds.map(Number) : (request.item_requests.counterSwapRequesterItemIds ?? []),
+        } : {}),
+      });
+      if (fundsBlock) return res.status(fundsBlock.status).json(fundsBlock.body);
+    }
+
     const swapUpdateFields = isSwap ? {
       counterSwapOwnerItemIds: Array.isArray(swapOwnerItemIds) ? swapOwnerItemIds.map(Number) : (request.item_requests.counterSwapOwnerItemIds ?? []),
       counterSwapRequesterItemIds: Array.isArray(swapRequesterItemIds) ? swapRequesterItemIds.map(Number) : (request.item_requests.counterSwapRequesterItemIds ?? []),
@@ -7814,6 +7773,17 @@ Respond with ONLY the category name, nothing else.`
         );
         if (rejection) return res.status(400).json(rejection);
       }
+      {
+        const fundsBlock = await gateRequestFunds(req.user.id, "send", request.item_requests, request.items, {
+          counterStartDate: counter.startDate ? new Date(counter.startDate) : (request.item_requests.counterStartDate ?? null),
+          counterEndDate: counter.endDate ? new Date(counter.endDate) : (request.item_requests.counterEndDate ?? null),
+          ...(isSwap ? {
+            counterSwapOwnerItemIds: Array.isArray(counter.swapOwnerItemIds) ? counter.swapOwnerItemIds.map(Number) : (request.item_requests.counterSwapOwnerItemIds ?? []),
+            counterSwapRequesterItemIds: Array.isArray(counter.swapRequesterItemIds) ? counter.swapRequesterItemIds.map(Number) : (request.item_requests.counterSwapRequesterItemIds ?? []),
+          } : {}),
+        });
+        if (fundsBlock) return res.status(fundsBlock.status).json(fundsBlock.body);
+      }
       const swapCounterFields = isSwap ? {
         counterSwapOwnerItemIds: Array.isArray(counter.swapOwnerItemIds) ? counter.swapOwnerItemIds.map(Number) : (request.item_requests.counterSwapOwnerItemIds ?? []),
         counterSwapRequesterItemIds: Array.isArray(counter.swapRequesterItemIds) ? counter.swapRequesterItemIds.map(Number) : (request.item_requests.counterSwapRequesterItemIds ?? []),
@@ -7900,35 +7870,20 @@ Respond with ONLY the category name, nothing else.`
         });
       }
 
-      // The requester pays the ShareCoin cost for BORROW requests, regardless
-      // of whether the requester or owner clicks Accept on these final terms.
+      // A borrower with an overdue borrow cannot start another.
       if (request.item_requests.requestType === "BORROW") {
         const blockedBorrow = await getBlockingOverdueBorrow(request.item_requests.requesterId);
         if (blockedBorrow) {
           return res.status(403).json(overdueBorrowRestrictionResponse(blockedBorrow));
         }
+      }
 
-        const weeklyPrice = parseFloat(request.items.shareCoinPrice?.toString() ?? "0") || 5;
-        const days = finalStartDate && finalEndDate
-          ? Math.max(1, Math.ceil((new Date(finalEndDate).getTime() - new Date(finalStartDate).getTime()) / 86_400_000))
-          : 0;
-        const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
-        const [borrower] = await db
-          .select({ shareCoins: users.shareCoins })
-          .from(users)
-          .where(eq(users.id, request.item_requests.requesterId))
-          .limit(1);
-        const currentBalance = Math.floor(parseFloat(borrower?.shareCoins?.toString() ?? "0"));
-
-        if (currentBalance < required) {
-          return res.status(400).json({
-            code: "INSUFFICIENT_SHARECOINS",
-            error: `The borrower needs ${required} ShareCoins for these dates but has ${currentBalance}.`,
-            required,
-            currentBalance,
-            payerIsRequester: true,
-          });
-        }
+      // ShareCoins, on the final terms: whoever would pay (the requester for a borrow, the lower-valued side of a swap) is
+      // checked whoever clicks Accept. If it is the person accepting they get the Not Enough ShareCoins modal; if it is
+      // the other person, the accepter gets only a neutral answer and the payer a private nudge.
+      {
+        const fundsBlock = await gateRequestFunds(req.user.id, "accept", request.item_requests, request.items);
+        if (fundsBlock) return res.status(fundsBlock.status).json(fundsBlock.body);
       }
 
       // The request is fully accepted when the OWNER accepts a counter (they have final approval authority), and
@@ -12674,6 +12629,14 @@ Respond with ONLY the category name, nothing else.`
     supportsDryRun: false,
     run: async () => `sent=${(await sweepAdminAlerts()).sent}`,
   });
+  // Tells people who could not accept a request because the other person was short of ShareCoins that it can now be
+  // accepted (sharecoin-funds.ts). It only sends notifications, so there is no dry run.
+  const runFundsRecheckSweep = guardedJob({
+    name: "sharecoin-funds-recheck",
+    envMode: "live",
+    supportsDryRun: false,
+    run: async () => `notified=${await notifyUnblockedRequests()}`,
+  });
   options.onScheduledJobs?.({
     runReturnRecovery: async () => {
       const { checked, completed, pending } = await recoverPendingApprovedReturns({
@@ -12700,6 +12663,7 @@ Respond with ONLY the category name, nothing else.`
       void runReturnRecoverySweep();
       backgroundJobs.setInterval(() => void runReturnRecoverySweep(), 60 * 1000);
       backgroundJobs.setInterval(() => void runAdminAlertSweep(), 60 * 1000);
+      backgroundJobs.setInterval(() => void runFundsRecheckSweep(), 60 * 1000);
 
       // Optional request-expiry sweep, OFF unless EXPIRY_SWEEP_TIMER=on (see request-expiry-timer.ts):
       // expiry is always a dry run; the 4h reminder follows SCHEDULED_JOBS_EXPIRY_REMINDERS.

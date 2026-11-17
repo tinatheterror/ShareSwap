@@ -118,6 +118,8 @@ before(async () => {
         emailVerified: true,
         stripePaymentMethodId: `pm_${UNIQUE}_requester`,
         subscriptionTier: "member",
+        // These tests are about dates, not funds: enough for a borrow of any length.
+        shareCoins: "100000.00",
       },
     ])
     .returning({ id: users.id, username: users.username });

@@ -16,3 +16,15 @@ export function silentPersonNotice(type: ConfirmNoticeType, confirmerName: strin
 }
 
 export const isConfirmNoticeType = (type: string | null | undefined): type is ConfirmNoticeType => type === "SWAP" || type === "GIFT";
+
+/**
+ * The 12 hour and 2 hour reminders to whoever has not yet confirmed a swap or gift the other person confirmed. Borrows
+ * and rentals keep their own wording (handoff-reminders.ts).
+ */
+export function silentPersonReminder(type: ConfirmNoticeType, confirmerName: string, hours: number): { title: string; message: string } {
+  const word = type === "SWAP" ? "swap" : "gift";
+  return {
+    title: hours <= 2 ? `Last chance: confirm the ${word}` : `Confirm the ${word}`,
+    message: `${confirmerName} confirmed the ${word}. Confirm, or report a problem, within ${hours} hours. If you do nothing, it will be confirmed for you.`,
+  };
+}

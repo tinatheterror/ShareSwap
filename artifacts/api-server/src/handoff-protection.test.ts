@@ -76,6 +76,56 @@ test("no reminder when the borrower already confirmed or denied, when the owner 
   assert.equal(await sendBorrowerHandoffReminders(NOW, { onlyRequestIds: [confirmed, denied, ownerSilent, past] }), 0);
 });
 
+test("swap and gift: the reminder goes to whichever person has not confirmed, naming the one who did", async () => {
+  await db.update(users).set({ displayName: "Olive Owner" }).where(eq(users.id, ownerId));
+  await db.update(users).set({ displayName: "Remy Requester" }).where(eq(users.id, borrowerId));
+  for (const [type, word] of [["SWAP", "swap"], ["GIFT", "gift"]] as const) {
+    const ownerFirst = await awaitingRequest(24, { requestType: type });
+    const requesterFirst = await awaitingRequest(24, { requestType: type, ownerConfirmedHandoff: false, borrowerConfirmedHandoff: true });
+    const only = { onlyRequestIds: [ownerFirst, requesterFirst] };
+    assert.equal(await sendBorrowerHandoffReminders(NOW, only), 0, "24 hours left: too early");
+    assert.equal(await sendBorrowerHandoffReminders(at(12, 24), only), 2);
+    assert.equal(await sendBorrowerHandoffReminders(at(11, 24), only), 0, "not repeated");
+    assert.equal(await sendBorrowerHandoffReminders(at(2, 24), only), 2);
+
+    const toRequester = await reminders(ownerFirst);
+    assert.ok(toRequester.length === 2 && toRequester.every((n) => n.userId === borrowerId), "the owner confirmed, so the requester is reminded");
+    assert.equal(toRequester[0].message, `Olive Owner confirmed the ${word}. Confirm, or report a problem, within 12 hours. If you do nothing, it will be confirmed for you.`);
+    assert.equal(toRequester[1].message, `Olive Owner confirmed the ${word}. Confirm, or report a problem, within 2 hours. If you do nothing, it will be confirmed for you.`);
+    assert.equal(toRequester[1].title, `Last chance: confirm the ${word}`);
+
+    const toOwner = await reminders(requesterFirst);
+    assert.ok(toOwner.length === 2 && toOwner.every((n) => n.userId === ownerId), "the requester confirmed, so the owner is reminded");
+    assert.equal(toOwner[0].message, `Remy Requester confirmed the ${word}. Confirm, or report a problem, within 12 hours. If you do nothing, it will be confirmed for you.`);
+    assert.ok(!toOwner.some((n) => n.message.includes("The owner says")));
+  }
+});
+
+test("swap and gift: nobody is reminded who confirmed or reported a problem, and nobody when neither has confirmed", async () => {
+  for (const type of ["SWAP", "GIFT"]) {
+    const ids = [
+      await awaitingRequest(10, { requestType: type, borrowerDeniedHandoff: true }),
+      await awaitingRequest(10, { requestType: type, ownerConfirmedHandoff: false, borrowerConfirmedHandoff: true, ownerDeniedHandoff: true }),
+      await awaitingRequest(10, { requestType: type, borrowerConfirmedHandoff: true }),
+      await awaitingRequest(10, { requestType: type, ownerConfirmedHandoff: false, borrowerConfirmedHandoff: false }),
+    ];
+    assert.equal(await sendBorrowerHandoffReminders(NOW, { onlyRequestIds: ids }), 0);
+  }
+});
+
+test("borrow and rental reminders are unchanged: only the borrower, only once the owner confirmed, with the owner-says wording", async () => {
+  for (const type of ["BORROW", "RENT"]) {
+    const ownerFirst = await awaitingRequest(10, { requestType: type });
+    const borrowerFirst = await awaitingRequest(10, { requestType: type, ownerConfirmedHandoff: false, borrowerConfirmedHandoff: true });
+    assert.equal(await sendBorrowerHandoffReminders(NOW, { onlyRequestIds: [ownerFirst, borrowerFirst] }), 1);
+    const [sent] = await reminders(ownerFirst);
+    assert.equal(sent.userId, borrowerId);
+    assert.equal(sent.title, "Did you receive your item?");
+    assert.match(sent.message, /^The owner says ".*" was handed over to you\. Confirm it, or report a problem, within 12 hours\. If you do nothing, it will be confirmed for you\.$/);
+    assert.equal((await reminders(borrowerFirst)).length, 0);
+  }
+});
+
 async function releasedRental(net: string, balance: string, currency = "cad") {
   const requestId = await awaitingRequest(0, { status: "IN_PROGRESS", paymentCurrency: currency, handoffAutoAdvanced: true });
   const [payout] = await db.insert(rentalPayouts).values({ userId: ownerId, requestId, amount: net, rentalAmount: net, netAmount: net, status: "released" }).returning();

@@ -133,7 +133,7 @@ after(async () => {
 test("five simultaneous live sweeps advance a BORROW once: one charge, one reward, two notifications", async () => {
   await resetCoins();
   const id = await newRequest();
-  const deps: HandoffDeadlineDeps = { onSwapAutoConfirmed: async () => {} };
+  const deps: HandoffDeadlineDeps = { onSwapAutoConfirmed: async () => {}, onGiftAutoConfirmed: async () => {} };
   const results = await Promise.all(
     Array.from({ length: 5 }, () => processHandoffDeadlines(deps, { onlyRequestIds: [id] })),
   );
@@ -159,6 +159,7 @@ test("stale-run overlap: an abandoned sweep still going and a new sweep beside i
       swapCalls.push(context);
       if (swapCalls.length === 1) await release.promise;
     },
+    onGiftAutoConfirmed: async () => {},
   };
 
   const clock = { t: 0 };
@@ -205,7 +206,7 @@ test("stale-run overlap on a BORROW: the abandoned and the new sweep together ch
   const gate = deferred();
   let entered = 0;
   // Hold the first sweep open by wrapping the sweep itself: it runs for real, then waits.
-  const deps: HandoffDeadlineDeps = { onSwapAutoConfirmed: async () => {} };
+  const deps: HandoffDeadlineDeps = { onSwapAutoConfirmed: async () => {}, onGiftAutoConfirmed: async () => {} };
   const clock = { t: 0 };
   const guarded = withOverlapGuard(
     "handoff-deadlines",

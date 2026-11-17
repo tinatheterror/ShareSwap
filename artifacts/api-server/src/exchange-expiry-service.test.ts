@@ -106,11 +106,16 @@ for (const type of ["SWAP", "GIFT"] as const) {
     assert.equal((await sweep(new Date(DEADLINE.getTime() + 2_000), {}, [id])).expiredCount, 0, "a second sweep does nothing");
   });
 
-  test(`a ${word} that only one person has confirmed still expires, because it was never handed off`, async () => {
-    // A swap moves to AWAITING_HANDOFF_CONFIRM after the first confirmation; a gift stays ACCEPTED with a flag set.
-    const { id } = await newExchange(type, type === "SWAP" ? { status: "AWAITING_HANDOFF_CONFIRM", ownerConfirmedHandoff: true } : { ownerConfirmedHandoff: true });
-    assert.equal((await sweep(new Date(DEADLINE.getTime() + 1_000), {}, [id])).expiredCount, 1);
-    assert.equal((await load(id)).status, "EXPIRED");
+  test(`a ${word} that only one person has confirmed does not expire: the handoff sweep settles it within 24 hours`, async () => {
+    // The first confirmation moves it to AWAITING_HANDOFF_CONFIRM and starts the other person's 24 hours.
+    const { id } = await newExchange(type, { status: "AWAITING_HANDOFF_CONFIRM", ownerConfirmedHandoff: true, handoffConfirmDeadline: new Date(DEADLINE.getTime() + 24 * H) });
+    for (const at of [DEADLINE.getTime() - 40 * H, DEADLINE.getTime() - 10 * H, DEADLINE.getTime() + 1_000]) {
+      const result = await sweep(new Date(at), {}, [id]);
+      assert.equal(result.expiredCount, 0);
+      assert.equal(result.remindedCount, 0, "no expiry reminder either");
+      assert.deepEqual(result.candidates, []);
+    }
+    assert.equal((await load(id)).status, "AWAITING_HANDOFF_CONFIRM");
   });
 
   test(`the 72h and 24h reminders for a ${word} each go to both people once, naming the other person`, async () => {

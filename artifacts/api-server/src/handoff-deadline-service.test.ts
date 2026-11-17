@@ -19,6 +19,7 @@ import {
   resetHandoffSweepReportState,
   resolveHandoffSweepMode,
   runHandoffDeadlineSweep,
+  type AutoConfirmedGiftContext,
   type AutoConfirmedSwapContext,
   type HandoffDeadlineDeps,
 } from "./handoff-deadline-service.js";
@@ -33,9 +34,13 @@ let ownerId: number;
 let borrowerId: number;
 
 const swapCalls: AutoConfirmedSwapContext[] = [];
+const giftCalls: AutoConfirmedGiftContext[] = [];
 const deps: HandoffDeadlineDeps = {
   onSwapAutoConfirmed: async (context) => {
     swapCalls.push(context);
+  },
+  onGiftAutoConfirmed: async (context) => {
+    giftCalls.push(context);
   },
 };
 
@@ -493,6 +498,56 @@ test("requestTypes narrows the deposit timeout too: RENT only skips BORROW, SWAP
   assert.deepEqual(all.candidates.map((c) => c.requestId).sort(), [...ids].sort());
 });
 
-test("the scheduled sweeps ask for BORROW, RENT and SWAP", () => {
-  assert.deepEqual([...HANDOFF_SWEEP_REQUEST_TYPES], ["BORROW", "RENT", "SWAP"]);
+test("the scheduled sweeps ask for BORROW, RENT, SWAP and GIFT", () => {
+  assert.deepEqual([...HANDOFF_SWEEP_REQUEST_TYPES], ["BORROW", "RENT", "SWAP", "GIFT"]);
+});
+
+// ── GIFT: one person confirmed, the other silent for 24 hours ─────────────────
+
+test("an auto-confirmed GIFT completes once, moves no coins, and hands the gift rewards to the injected callback once", async () => {
+  giftCalls.length = 0;
+  await setCoins(borrowerId, "50.00");
+  await setCoins(ownerId, "5.00");
+  const gift = await newRequest({ requestType: "GIFT" });
+
+  const results = await Promise.all([run([gift.id]), run([gift.id])]);
+  assert.equal(results.reduce((sum, r) => sum + r.autoAdvancedCount, 0), 1);
+
+  const after = await snapshot(gift.id, gift.itemId);
+  assert.equal(after.status, "COMPLETED", "a gift is finished at handoff, not IN_PROGRESS");
+  assert.equal(after.handoffAutoAdvanced, true);
+  assert.equal(after.depositStatus, null, "no deposit is held for a gift");
+  assert.equal(after.itemAvailable, false);
+  assert.equal(after.borrowerCoins, 50, "the receiver is not charged");
+  assert.equal(after.ownerCoins, 5, "the giver is not paid by the sweep (the first-gift bonus is the callback's)");
+  assert.equal(giftCalls.length, 1);
+  assert.deepEqual(giftCalls[0], { requestId: gift.id, giverId: ownerId, receiverId: borrowerId, itemId: gift.itemId, itemName: giftCalls[0].itemName });
+});
+
+test("an auto-confirmed GIFT also works when the giver is the silent one", async () => {
+  giftCalls.length = 0;
+  const gift = await newRequest({ requestType: "GIFT", ownerConfirmedHandoff: false, borrowerConfirmedHandoff: true });
+  const result = await run([gift.id]);
+  assert.equal(result.autoAdvancedCount, 1);
+  assert.equal((await snapshot(gift.id, gift.itemId)).status, "COMPLETED");
+  assert.equal(giftCalls.length, 1);
+});
+
+test("a GIFT one person reported a problem with, the other silent, is flagged for review and not completed", async () => {
+  giftCalls.length = 0;
+  const gift = await newRequest({ requestType: "GIFT", ownerConfirmedHandoff: false, borrowerConfirmedHandoff: false, borrowerDeniedHandoff: true });
+  const result = await run([gift.id]);
+  assert.equal(result.flaggedCount, 1);
+  assert.equal(result.autoAdvancedCount, 0);
+  assert.equal((await snapshot(gift.id, gift.itemId)).status, "HANDOFF_FLAGGED");
+  assert.equal(giftCalls.length, 0);
+});
+
+test("the dry run says a GIFT would be COMPLETED and changes nothing", async () => {
+  const gift = await newRequest({ requestType: "GIFT" });
+  const before = await snapshot(gift.id, gift.itemId);
+  const result = await processHandoffDeadlines(deps, { dryRun: true, onlyRequestIds: [gift.id] });
+  assert.equal(result.candidates.length, 1);
+  assert.match(result.candidates[0].detail, /-> COMPLETED/);
+  assert.deepEqual(await snapshot(gift.id, gift.itemId), before);
 });

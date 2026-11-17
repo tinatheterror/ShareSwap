@@ -17,7 +17,7 @@ const userIds: number[] = [];
 let ownerId: number;
 let borrowerId: number;
 
-const deps: HandoffDeadlineDeps = { onSwapAutoConfirmed: async () => {} };
+const deps: HandoffDeadlineDeps = { onSwapAutoConfirmed: async () => {}, onGiftAutoConfirmed: async () => {} };
 const sweep = (ids: number[]) => processHandoffDeadlines(deps, { onlyRequestIds: ids });
 
 async function rental(opts: { type?: string; status?: string; held?: boolean; handedOff?: boolean; rentalAmount?: string | null } = {}) {

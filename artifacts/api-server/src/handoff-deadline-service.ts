@@ -50,11 +50,11 @@ export interface HandoffDeadlineCandidate {
 }
 
 /**
- * What the scheduled sweeps act on. Swaps are included: when one person confirms the exchange and the other stays
- * silent for the confirmation window, it is auto-confirmed (and flagged for review if someone denied it), so an
- * accepted swap cannot sit half-confirmed forever.
+ * What the scheduled sweeps act on. Swaps and gifts are included: when one person confirms the exchange and the
+ * other stays silent for the confirmation window, it is auto-confirmed (and flagged for review if someone denied
+ * it), so an accepted swap or gift cannot sit half-confirmed forever.
  */
-export const HANDOFF_SWEEP_REQUEST_TYPES = ["BORROW", "RENT", "SWAP"] as const;
+export const HANDOFF_SWEEP_REQUEST_TYPES = ["BORROW", "RENT", "SWAP", "GIFT"] as const;
 
 export interface HandoffDeadlineOptions {
   now?: Date;
@@ -83,9 +83,19 @@ export interface AutoConfirmedSwapContext {
   counterSwapRequesterItemIds: number[] | null;
 }
 
+export interface AutoConfirmedGiftContext {
+  requestId: number;
+  giverId: number;
+  receiverId: number;
+  itemId: number;
+  itemName: string;
+}
+
 export interface HandoffDeadlineDeps {
   /** Rewards for an auto-confirmed SWAP; runs after the transition commits and may not throw. */
   onSwapAutoConfirmed: (context: AutoConfirmedSwapContext) => Promise<void>;
+  /** What a confirmed gift earns (first-gift bonus, trust points, referrals, badges); runs after the transition commits and may not throw. */
+  onGiftAutoConfirmed: (context: AutoConfirmedGiftContext) => Promise<void>;
 }
 
 export interface HandoffDeadlineResult {
@@ -222,6 +232,9 @@ export async function processHandoffDeadlines(
         : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
 
       const isAutoSwap = request.item_requests.requestType === "SWAP";
+      const isAutoGift = request.item_requests.requestType === "GIFT";
+      // A swap or gift is finished at handoff (nothing comes back), so it goes straight to COMPLETED.
+      const completesAtHandoff = isAutoSwap || isAutoGift;
 
       if (dryRun) {
         let coinNote = "no ShareCoin charge";
@@ -238,7 +251,7 @@ export async function processHandoffDeadlines(
           requestType: request.item_requests.requestType,
           itemName,
           deadline,
-          detail: `AWAITING_HANDOFF_CONFIRM -> ${isAutoSwap ? "COMPLETED" : "IN_PROGRESS"} (${ownerConfirmed ? "owner" : "borrower"} confirmed, other silent); item set unavailable; ${coinNote}`,
+          detail: `AWAITING_HANDOFF_CONFIRM -> ${completesAtHandoff ? "COMPLETED" : "IN_PROGRESS"} (${ownerConfirmed ? "owner" : "borrower"} confirmed, other silent); item set unavailable; ${coinNote}`,
         });
         result.autoAdvancedCount++;
         continue;
@@ -246,7 +259,12 @@ export async function processHandoffDeadlines(
 
       const advanced = await db.transaction(async (tx) => {
         const [claimed] = await tx.update(itemRequests)
-          .set({ status: isAutoSwap ? "COMPLETED" : "IN_PROGRESS", handoffConfirmedAt: now, borrowPeriodStartedAt: now, actualHandoffAt: now, shareCoinsCharged: true, shareCoinsChargedAt: now, depositStatus: "held", handoffAutoAdvanced: true })
+          .set(
+            isAutoGift
+              // A gift has no deposit and no coin charge; same fields the gift's own confirmation and PIN path leave.
+              ? { status: "COMPLETED", handoffConfirmedAt: now, actualHandoffAt: now, handoffAutoAdvanced: true }
+              : { status: completesAtHandoff ? "COMPLETED" : "IN_PROGRESS", handoffConfirmedAt: now, borrowPeriodStartedAt: now, actualHandoffAt: now, shareCoinsCharged: true, shareCoinsChargedAt: now, depositStatus: "held", handoffAutoAdvanced: true },
+          )
           .where(and(eq(itemRequests.id, reqId), eq(itemRequests.status, "AWAITING_HANDOFF_CONFIRM")))
           .returning({ id: itemRequests.id });
         if (!claimed) return false;
@@ -314,6 +332,17 @@ export async function processHandoffDeadlines(
           swapOfferedItemIds: request.item_requests.swapOfferedItemIds as number[] | null,
           counterSwapOwnerItemIds: request.item_requests.counterSwapOwnerItemIds as number[] | null,
           counterSwapRequesterItemIds: request.item_requests.counterSwapRequesterItemIds as number[] | null,
+        });
+      }
+
+      // The same for a GIFT: first-gift bonus, trust points, referrals and badges, as the gift's own confirmation gives.
+      if (isAutoGift && ownerId2) {
+        await deps.onGiftAutoConfirmed({
+          requestId: reqId,
+          giverId: ownerId2,
+          receiverId: borrowerId2,
+          itemId: request.item_requests.itemId!,
+          itemName,
         });
       }
 

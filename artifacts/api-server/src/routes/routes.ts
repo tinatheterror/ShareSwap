@@ -118,6 +118,7 @@ import {
 import { findReservationConflict, heldItemIdSet, ITEM_ALREADY_COMMITTED_CODE, ITEM_ALREADY_COMMITTED_MESSAGE } from "../swap-reservation";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
+import { HANDOFF_CONFIRM_WINDOW_HOURS, SILENT_PERSON_NOTICE_TITLE, isConfirmNoticeType, silentPersonNotice } from "../handoff-confirm-copy";
 import {
   HANDOFF_SWEEP_INTERVAL_MS,
   HANDOFF_SWEEP_REQUEST_TYPES,
@@ -329,6 +330,109 @@ async function awardShareCoinsWithFirstTimeBonus(
   }
 
   return { totalAwarded, isFirstTime };
+}
+
+// What a completed gift earns and says, once its status is COMPLETED and the item is unavailable. Shared by the
+// gift's own confirmation (both people confirmed) and the handoff sweep (one confirmed, the other stayed silent).
+async function finishCompletedGift(gift: {
+  requestId: number;
+  giverId: number;
+  receiverId: number;
+  itemId: number;
+  itemName: string;
+}): Promise<{ isFirstTime: boolean }> {
+  const { requestId, giverId, receiverId, itemId, itemName } = gift;
+
+  // Award first-time bonus to giver only (no recurring reward; receiver gets nothing)
+  const giftBonusResult = await awardShareCoinsWithFirstTimeBonus(giverId, 'GIFT', itemName, 0);
+
+  // Update trust scores — with anti-farming guards
+  try {
+    // Guard 1: only award gift trust points once per giver→receiver pair (lifetime)
+    const [priorGiftBetweenPair] = await db
+      .select({ cnt: sql<number>`count(*)` })
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(
+        and(
+          eq(itemRequests.requestType, "GIFT"),
+          eq(itemRequests.status, "COMPLETED"),
+          eq(items.ownerId, giverId),
+          eq(itemRequests.requesterId, receiverId),
+          ne(itemRequests.id, requestId),
+        ),
+      );
+
+    // Guard 2: receiver account must be at least 14 days old
+    const [receiverUser] = await db
+      .select({ createdAt: users.createdAt })
+      .from(users)
+      .where(eq(users.id, receiverId))
+      .limit(1);
+    const receiverAgeDays = receiverUser
+      ? (Date.now() - new Date(receiverUser.createdAt!).getTime()) / 86_400_000
+      : 0;
+
+    if (Number(priorGiftBetweenPair?.cnt ?? 1) > 0) {
+      console.log(`⚠️ Gift trust points skipped — giver ${giverId} has already gifted receiver ${receiverId} before (pair cap).`);
+    } else if (receiverAgeDays < 14) {
+      console.log(`⚠️ Gift trust points skipped — receiver ${receiverId} account is only ${receiverAgeDays.toFixed(1)} days old (minimum 14).`);
+    } else {
+      await awardGiftingPoints(giverId, receiverId, requestId, itemId);
+      console.log(`✅ Awarded trust points for completed gift`);
+      await db.insert(notifications).values({
+        userId: giverId,
+        type: "trust_score_changed",
+        title: "Trust Score +10",
+        message: "Gift completed +10",
+        itemId,
+        requestId,
+        isRead: false,
+      });
+    }
+  } catch (trustError) {
+    console.error("Error awarding gift trust points:", trustError);
+  }
+
+  // Check and award referral bonus for both users (first transaction completion)
+  await checkAndAwardReferralBonus(giverId, requestId, 'GIFT');
+  await checkAndAwardReferralBonus(receiverId, requestId, 'GIFT');
+  // Check and award any newly unlocked badges
+  await checkAndAwardAchievements(giverId);
+  await checkAndAwardAchievements(receiverId);
+
+  // Send chat completion stamp
+  await db.insert(messages).values({
+    content: `🎁 Gift has been handed over. Thank you for caring!`,
+    senderId: giverId,
+    receiverId,
+    messageType: "system",
+    requestId,
+  });
+
+  // Send completion notification to both parties
+  await db.insert(notifications).values([
+    {
+      userId: giverId,
+      type: "gift_completed",
+      title: "Gift Completed! 🎁",
+      message: giftBonusResult.isFirstTime
+        ? `"${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}" gifted — first-time bonus: +1 SC.`
+        : `"${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}" gifted successfully.`,
+      itemId,
+      requestId: requestId,
+    },
+    {
+      userId: receiverId,
+      type: "gift_completed",
+      title: "Gift Received! 🎁",
+      message: `"${itemName.length > 22 ? itemName.slice(0, 22) + "…" : itemName}" is yours — enjoy!`,
+      itemId,
+      requestId: requestId,
+    },
+  ]);
+
+  return { isFirstTime: giftBonusResult.isFirstTime };
 }
 
 // Server-side swap coin offset application
@@ -1905,6 +2009,13 @@ export function registerRoutes(
         await checkAndAwardAchievements(swap.borrowerId);
       } catch (swapAutoErr) {
         console.error("Error awarding swap rewards on auto-advance:", swapAutoErr);
+      }
+    },
+    onGiftAutoConfirmed: async (gift) => {
+      try {
+        await finishCompletedGift(gift);
+      } catch (giftAutoErr) {
+        console.error("Error finishing a gift on auto-confirm:", giftAutoErr);
       }
     },
   };
@@ -8024,7 +8135,10 @@ Respond with ONLY the category name, nothing else.`
       return res.status(400).json({ error: "This endpoint is only for gift transactions" });
     }
 
-    if (request.item_requests.status !== "ACCEPTED") {
+    // ACCEPTED: nobody has confirmed. AWAITING_HANDOFF_CONFIRM: one person has, and the other has 24 hours (the
+    // handoff sweep confirms it for them after that, as for a borrow or a swap).
+    const currentStatus = request.item_requests.status ?? "";
+    if (!["ACCEPTED", "AWAITING_HANDOFF_CONFIRM"].includes(currentStatus)) {
       return res.status(400).json({ error: "Gift must be accepted before confirming handoff" });
     }
 
@@ -8047,30 +8161,56 @@ Respond with ONLY the category name, nothing else.`
       return res.json({ success: true, completed: false, message: "Already confirmed. Waiting for giver." });
     }
 
-    // Update the confirmation status
-    const updateData: any = {};
-    if (role === "giver") {
-      updateData.ownerConfirmedHandoff = true;
-    } else {
-      updateData.borrowerConfirmedHandoff = true;
+    const now = new Date();
+    const giverId = request.items.ownerId!;
+    const receiverId = request.item_requests.requesterId;
+    const otherPartyId = role === "giver" ? receiverId : giverId;
+    const otherConfirmed = role === "giver" ? request.item_requests.borrowerConfirmedHandoff : request.item_requests.ownerConfirmedHandoff;
+    const otherDenied = role === "giver" ? request.item_requests.borrowerDeniedHandoff : request.item_requests.ownerDeniedHandoff;
+    const mine = role === "giver"
+      ? { ownerConfirmedHandoff: true, ownerConfirmedHandoffAt: now }
+      : { borrowerConfirmedHandoff: true, borrowerConfirmedHandoffAt: now };
+    const itemShort22 = request.items.name.length > 22 ? request.items.name.slice(0, 22) + "…" : request.items.name;
+    // Every change is claimed against the status read above, so a confirmation that races the sweep or the other
+    // person's confirmation changes nothing the second time.
+    const claimed = and(eq(itemRequests.id, requestId), eq(itemRequests.status, currentStatus));
+    const changedMessage = "This gift changed before your confirmation could be recorded. Please refresh and try again.";
+
+    if (otherDenied) {
+      // The other person already reported a problem: lock it down and ask both for proof, as a swap or borrow does.
+      const [disputed] = await db.update(itemRequests).set({
+        ...mine,
+        status: "HANDOFF_DISPUTED",
+        handoffDisputeTriggered: true,
+        handoffDisputeAt: now,
+        handoffProofDeadline: new Date(now.getTime() + HANDOFF_CONFIRM_WINDOW_HOURS * 3_600_000),
+      }).where(claimed).returning({ id: itemRequests.id });
+      if (!disputed) return res.status(409).json({ error: changedMessage });
+      await db.insert(messages).values({
+        content: `⚠️ There's a disagreement about the handoff. We've paused this transaction while we review. Both parties have 24 hours to submit proof.`,
+        senderId: giverId,
+        receiverId,
+        messageType: "system",
+        requestId,
+      });
+      await db.insert(notifications).values([giverId, receiverId].map((userId) => ({
+        userId, type: "handoff_dispute", title: "Handoff Dispute Opened",
+        message: `Handoff disagreement on "${itemShort22}". Submit proof within 24 hours.`,
+        itemId: request.items.id, requestId,
+      })));
+      return res.json({ success: true, completed: false, disputeTriggered: true, message: "Dispute opened. Transaction is paused pending proof submission." });
     }
 
-    const [updated] = await db
-      .update(itemRequests)
-      .set(updateData)
-      .where(eq(itemRequests.id, requestId))
-      .returning();
-
-    // Check if both parties have confirmed
-    const giverConfirmed = role === "giver" ? true : request.item_requests.ownerConfirmedHandoff;
-    const receiverConfirmed = role === "receiver" ? true : request.item_requests.borrowerConfirmedHandoff;
-
-    if (giverConfirmed && receiverConfirmed) {
+    if (otherConfirmed) {
       // Both confirmed - complete the gift!
-      await db
-        .update(itemRequests)
-        .set({ status: "COMPLETED" })
-        .where(eq(itemRequests.id, requestId));
+      const [completed] = await db.update(itemRequests).set({
+        ...mine,
+        status: "COMPLETED",
+        handoffConfirmedAt: now,
+        actualHandoffAt: now,
+        confirmationMethod: "manual",
+      }).where(claimed).returning({ id: itemRequests.id });
+      if (!completed) return res.status(409).json({ error: changedMessage });
 
       // Mark item as gifted/unavailable
       await db
@@ -8078,97 +8218,9 @@ Respond with ONLY the category name, nothing else.`
         .set({ isAvailable: false })
         .where(eq(items.id, request.items.id));
 
-      const giverId = request.items.ownerId!;
-      const receiverId = request.item_requests.requesterId;
-
-      // Award first-time bonus to giver only (no recurring reward; receiver gets nothing)
-      const giftBonusResult = await awardShareCoinsWithFirstTimeBonus(giverId, 'GIFT', request.items.name, 0);
-
-      // Update trust scores — with anti-farming guards
-      try {
-        // Guard 1: only award gift trust points once per giver→receiver pair (lifetime)
-        const [priorGiftBetweenPair] = await db
-          .select({ cnt: sql<number>`count(*)` })
-          .from(itemRequests)
-          .innerJoin(items, eq(items.id, itemRequests.itemId))
-          .where(
-            and(
-              eq(itemRequests.requestType, "GIFT"),
-              eq(itemRequests.status, "COMPLETED"),
-              eq(items.ownerId, giverId),
-              eq(itemRequests.requesterId, receiverId),
-              ne(itemRequests.id, requestId),
-            ),
-          );
-
-        // Guard 2: receiver account must be at least 14 days old
-        const [receiverUser] = await db
-          .select({ createdAt: users.createdAt })
-          .from(users)
-          .where(eq(users.id, receiverId))
-          .limit(1);
-        const receiverAgeDays = receiverUser
-          ? (Date.now() - new Date(receiverUser.createdAt!).getTime()) / 86_400_000
-          : 0;
-
-        if (Number(priorGiftBetweenPair?.cnt ?? 1) > 0) {
-          console.log(`⚠️ Gift trust points skipped — giver ${giverId} has already gifted receiver ${receiverId} before (pair cap).`);
-        } else if (receiverAgeDays < 14) {
-          console.log(`⚠️ Gift trust points skipped — receiver ${receiverId} account is only ${receiverAgeDays.toFixed(1)} days old (minimum 14).`);
-        } else {
-          await awardGiftingPoints(giverId, receiverId, requestId, request.items.id);
-          console.log(`✅ Awarded trust points for completed gift`);
-          await db.insert(notifications).values({
-            userId: giverId,
-            type: "trust_score_changed",
-            title: "Trust Score +10",
-            message: "Gift completed +10",
-            itemId: request.items.id,
-            requestId,
-            isRead: false,
-          });
-        }
-      } catch (trustError) {
-        console.error("Error awarding gift trust points:", trustError);
-      }
-
-      // Check and award referral bonus for both users (first transaction completion)
-      await checkAndAwardReferralBonus(giverId, requestId, 'GIFT');
-      await checkAndAwardReferralBonus(receiverId, requestId, 'GIFT');
-      // Check and award any newly unlocked badges
-      await checkAndAwardAchievements(giverId);
-      await checkAndAwardAchievements(receiverId);
-
-      // Send chat completion stamp
-      await db.insert(messages).values({
-        content: `🎁 Gift has been handed over. Thank you for caring!`,
-        senderId: giverId,
-        receiverId,
-        messageType: "system",
-        requestId,
+      await finishCompletedGift({
+        requestId, giverId, receiverId, itemId: request.items.id, itemName: request.items.name,
       });
-
-      // Send completion notification to both parties
-      await db.insert(notifications).values([
-        {
-          userId: giverId,
-          type: "gift_completed",
-          title: "Gift Completed! 🎁",
-          message: giftBonusResult.isFirstTime
-            ? `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" gifted — first-time bonus: +1 SC.`
-            : `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" gifted successfully.`,
-          itemId: request.items.id,
-          requestId: requestId,
-        },
-        {
-          userId: receiverId,
-          type: "gift_completed",
-          title: "Gift Received! 🎁",
-          message: `"${request.items.name.length > 22 ? request.items.name.slice(0, 22) + "…" : request.items.name}" is yours — enjoy!`,
-          itemId: request.items.id,
-          requestId: requestId,
-        },
-      ]);
 
       return res.json({
         success: true,
@@ -8177,47 +8229,46 @@ Respond with ONLY the category name, nothing else.`
       });
     }
 
-    // Only one party confirmed so far — look up the confirming user's name
+    // Only one party confirmed so far. The other has 24 hours to confirm or report a problem.
+    const [waiting] = await db.update(itemRequests).set({
+      ...mine,
+      status: "AWAITING_HANDOFF_CONFIRM",
+      handoffConfirmDeadline: new Date(now.getTime() + HANDOFF_CONFIRM_WINDOW_HOURS * 3_600_000),
+      handoffRemindersLevel: 0,
+    }).where(claimed).returning({ id: itemRequests.id });
+    if (!waiting) return res.status(409).json({ error: changedMessage });
+
     const [confirmerUser] = await db
       .select({ displayName: users.displayName, username: users.username })
       .from(users)
       .where(eq(users.id, req.user.id))
       .limit(1);
     const confirmerName = publicName(confirmerUser) || (role === "giver" ? "The giver" : "The receiver");
+    const silentNotice = silentPersonNotice("GIFT", confirmerName);
 
-    const otherPartyId = role === "giver" ? request.item_requests.requesterId : request.items.ownerId!;
-
-    // Send role-specific confirmation stamps
     await db.insert(messages).values([
       {
         content: `✅ You confirmed the handoff`,
-        senderId: request.items.ownerId!,
-        receiverId: request.item_requests.requesterId,
+        senderId: giverId,
+        receiverId,
         messageType: "system",
         requestId,
         metadata: { visibleToUserId: req.user.id },
       },
       {
-        content: `✅ ${confirmerName} confirmed the handoff`,
-        senderId: request.items.ownerId!,
-        receiverId: request.item_requests.requesterId,
+        content: `✅ ${silentNotice}`,
+        senderId: giverId,
+        receiverId,
         messageType: "system",
         requestId,
         metadata: { visibleToUserId: otherPartyId },
-      },
-      {
-        content: `If only one person confirms, we'll complete this automatically in 24 hours.`,
-        senderId: request.items.ownerId!,
-        receiverId: request.item_requests.requesterId,
-        messageType: "system",
-        requestId,
       },
     ]);
     await db.insert(notifications).values({
       userId: otherPartyId,
       type: "gift_handoff_pending",
-      title: role === "giver" ? "Giver Confirmed Handoff" : "Receiver Confirmed Receipt",
-      message: `Confirm gift handoff for "${request.items.name.length > 22 ? request.items.name.slice(0, 22) + "…" : request.items.name}".`,
+      title: SILENT_PERSON_NOTICE_TITLE.GIFT,
+      message: silentNotice,
       itemId: request.items.id,
       requestId: requestId,
     });
@@ -9481,11 +9532,13 @@ Respond with ONLY the category name, nothing else.`
       // SWAP requests and BORROW+in_person-deposit requests skip the in-app deposit step so they
       // may arrive here from ACCEPTED directly (legacy rows before auto-advance was introduced).
       const isSwapRequest = request.item_requests.requestType === "SWAP";
+      // A gift, like a swap, has no deposit step: it stays ACCEPTED until the handoff and is finished by it.
+      const isGiftRequest = request.item_requests.requestType === "GIFT";
       const isInPersonBorrowDeposit =
         request.item_requests.requestType === "BORROW" &&
         request.item_requests.depositMethod === "in_person";
       const validStatuses = ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM"];
-      const acceptedStatusOk = (isSwapRequest || isInPersonBorrowDeposit) && request.item_requests.status === "ACCEPTED";
+      const acceptedStatusOk = (isSwapRequest || isGiftRequest || isInPersonBorrowDeposit) && request.item_requests.status === "ACCEPTED";
       if (!validStatuses.includes(request.item_requests.status) && !acceptedStatusOk) {
         return res.status(400).json({ error: "Request is not ready for handoff" });
       }
@@ -9554,13 +9607,16 @@ Respond with ONLY the category name, nothing else.`
       if (bothConfirmed) {
         // Complete the handoff (manual confirmation path)
         // SWAP transactions are fully complete at handoff (no return step), so mark COMPLETED
-        updateData.status = isSwapRequest ? "COMPLETED" : "IN_PROGRESS";
+        updateData.status = isSwapRequest || isGiftRequest ? "COMPLETED" : "IN_PROGRESS";
         updateData.handoffConfirmedAt = now;
-        updateData.borrowPeriodStartedAt = now;
         updateData.actualHandoffAt = now;
-        updateData.shareCoinsCharged = true;
-        updateData.shareCoinsChargedAt = now;
-        updateData.depositStatus = "held";
+        if (!isGiftRequest) {
+          // (a gift has no borrow period, coin charge or deposit)
+          updateData.borrowPeriodStartedAt = now;
+          updateData.shareCoinsCharged = true;
+          updateData.shareCoinsChargedAt = now;
+          updateData.depositStatus = "held";
+        }
         updateData.confirmationMethod = "manual";
         [claimedHandoff] = await db
           .update(itemRequests)
@@ -9710,6 +9766,21 @@ Respond with ONLY the category name, nothing else.`
           }
         }
 
+        // A gift is finished here: first-gift bonus, trust points, referrals, badges and its completion messages.
+        if (isGiftRequest) {
+          try {
+            await finishCompletedGift({
+              requestId,
+              giverId: request.items.ownerId!,
+              receiverId: request.item_requests.requesterId,
+              itemId: request.items.id,
+              itemName: request.items.name,
+            });
+          } catch (giftRewardError) {
+            console.error("Error finishing a gift at handoff:", giftRewardError);
+          }
+        }
+
         // For RENT: release rental earnings to owner at handoff (not at return)
         if (request.item_requests.requestType === 'RENT' && request.item_requests.rentalAmount) {
           try {
@@ -9738,14 +9809,26 @@ Respond with ONLY the category name, nothing else.`
 
       // Send notification to the other party
       const otherPartyId = isOwner ? request.item_requests.requesterId : request.items.ownerId;
+      // A swap or gift tells the silent person who confirmed and how long they have: "[name] confirmed the swap.
+      // Confirm, or report a problem within 24 hours."
+      const exchangeType = isConfirmNoticeType(request.item_requests.requestType) ? request.item_requests.requestType : null;
+      let silentNotice: string | null = null;
+      if (exchangeType && !bothConfirmed && !disputeTriggered) {
+        const [confirmer] = await db
+          .select({ displayName: users.displayName, username: users.username })
+          .from(users)
+          .where(eq(users.id, req.user.id))
+          .limit(1);
+        silentNotice = silentPersonNotice(exchangeType, publicName(confirmer) || (isOwner ? "The owner" : "The other person"));
+      }
       if (otherPartyId && !bothConfirmed) {
         await db.insert(notifications).values({
           userId: otherPartyId,
           type: "handoff_pending",
-          title: "Handoff Confirmation Needed",
-          message: isOwner 
+          title: exchangeType ? SILENT_PERSON_NOTICE_TITLE[exchangeType] : "Handoff Confirmation Needed",
+          message: silentNotice ?? (isOwner
             ? `Owner confirmed handoff for "${request.items.name}". Please confirm receipt.`
-            : `Borrower confirmed receipt of "${request.items.name}". Please confirm.`,
+            : `Borrower confirmed receipt of "${request.items.name}". Please confirm.`),
           itemId: request.items.id,
           requestId: requestId,
         });
@@ -9813,20 +9896,21 @@ Respond with ONLY the category name, nothing else.`
             metadata: { visibleToUserId: req.user.id },
           },
           {
-            content: `✅ ${confirmerName} confirmed the handoff`,
+            content: silentNotice ? `✅ ${silentNotice}` : `✅ ${confirmerName} confirmed the handoff`,
             senderId: ownerId,
             receiverId: borrowerId,
             messageType: "system",
             requestId,
             metadata: { visibleToUserId: otherPartyId },
           },
-          {
+          // The swap/gift notice already says what happens if they do nothing.
+          ...(silentNotice ? [] : [{
             content: `If only one person confirms, we'll complete this automatically in 24 hours.`,
             senderId: ownerId,
             receiverId: borrowerId,
             messageType: "system",
             requestId,
-          },
+          }]),
         ]);
       } else {
         // Both confirmed — send type-appropriate post-handoff summary messages
@@ -9841,7 +9925,7 @@ Respond with ONLY the category name, nothing else.`
         if (isSwap) {
           systemMsgs = [`🔄 Swap complete! Both items have been exchanged. Enjoy!`];
         } else if (isGift) {
-          systemMsgs = [`🎁 Gift successfully handed over! Generosity makes the neighbourhood stronger.`];
+          systemMsgs = []; // finishCompletedGift already posted the gift's completion message
         } else {
           // BORROW or RENT
           // Use counter-proposed dates if present — they are the agreed-upon dates after negotiation

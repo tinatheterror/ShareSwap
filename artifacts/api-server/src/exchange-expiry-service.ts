@@ -5,9 +5,9 @@ import { calendarDayInZone, endOfLocalDay, PLATFORM_TIME_ZONE } from "./request-
 
 // An accepted SWAP or GIFT that nobody confirms by the end of the 7th day after acceptance expires on its own.
 //
-//   - Both ACCEPTED and AWAITING_HANDOFF_CONFIRM expire: a swap where only one person confirmed is still not handed
-//     off (a gift stays ACCEPTED while only one has confirmed). Once either person has confirmed it can no longer be
-//     cancelled, so expiry is also what ends one where the other never confirms.
+//   - Only ACCEPTED ones expire: nobody has confirmed. Once one person confirms it is AWAITING_HANDOFF_CONFIRM and
+//     is no longer this sweep's: the other person has 24 hours to confirm or report a problem, and the handoff
+//     sweep then confirms it for them (or flags it for review if they reported one), exactly as for a borrow.
 //   - No money is involved (no deposit, no up-front charge) and nobody is penalised: the app cannot tell who did
 //     not show up. What is recorded is the request itself (EXPIRED, with a reason), which is how expired swaps and
 //     gifts are counted per person (expired-exchange-counts.ts).
@@ -22,7 +22,7 @@ import { calendarDayInZone, endOfLocalDay, PLATFORM_TIME_ZONE } from "./request-
 export const EXCHANGE_REMINDER_72H_MS = 72 * 3_600_000;
 export const EXCHANGE_REMINDER_24H_MS = 24 * 3_600_000;
 export const EXCHANGE_EXPIRABLE_TYPES = ["SWAP", "GIFT"] as const;
-export const EXCHANGE_EXPIRABLE_STATUSES = ["ACCEPTED", "AWAITING_HANDOFF_CONFIRM"] as const;
+export const EXCHANGE_EXPIRABLE_STATUSES = ["ACCEPTED"] as const;
 
 export interface ExchangeExpiryDeps {
   /** Runs after an expiry commits; failures are ignored. */

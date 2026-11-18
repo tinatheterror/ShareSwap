@@ -116,6 +116,7 @@ import {
   type RequestExpirySweepOptions,
   type RequestExpirySweepResult,
 } from "../request-expiry-service";
+import { isItemPassedOn, ITEM_PASSED_ON_CODE, ITEM_PASSED_ON_MESSAGE } from "../passed-on-items";
 import { findReservationConflict, heldItemIdSet, ITEM_ALREADY_COMMITTED_CODE, ITEM_ALREADY_COMMITTED_MESSAGE } from "../swap-reservation";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
@@ -5218,6 +5219,8 @@ Respond with ONLY the category name, nothing else.`
       const [item] = await db.select({ ownerId: items.ownerId, moderationStatus: items.moderationStatus }).from(items).where(eq(items.id, itemId)).limit(1);
       if (!item) return res.status(404).json({ error: "Item not found" });
       if (item.ownerId !== req.user.id) return res.status(403).json({ error: "Not your item" });
+      // Swapped away or given away: gone for good, it can never be listed again.
+      if (await isItemPassedOn(itemId)) return res.status(409).json({ error: ITEM_PASSED_ON_MESSAGE, code: ITEM_PASSED_ON_CODE });
       if (item.moderationStatus === "removed") return res.status(403).json({ error: "This listing was removed by our moderators and cannot be relisted." });
 
       const { availableToDate } = req.body as { availableToDate?: string };

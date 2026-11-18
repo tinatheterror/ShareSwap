@@ -35,6 +35,7 @@ import BorrowPage from "@/pages/borrow-page";
 import LendPage from "@/pages/lend-page";
 import VerifyItemsPage from "@/pages/admin/verify-items";
 import AdminDisputesPage from "@/pages/admin/disputes";
+import AdminHandoffDisputesPage from "@/pages/admin/handoff-disputes";
 import AdminReportsPage from "@/pages/admin/reports";
 import CommunityGuidelinesPage from "@/pages/community-guidelines-page";
 import ChargebacksPage from "@/pages/chargebacks-page";
@@ -120,6 +121,7 @@ function Router() {
       <AdminRoute path="/admin/users" component={AdminUsersPage} />
       <AdminRoute path="/admin/items" component={AdminItemsPage} />
       <AdminRoute path="/admin/transactions" component={AdminTransactionsPage} />
+      <AdminRoute path="/admin/handoff-disputes" component={AdminHandoffDisputesPage} />
       <AdminRoute path="/admin/disputes" component={AdminDisputesPage} />
       <AdminRoute path="/admin/reports" component={AdminReportsPage} />
       <AdminRoute path="/admin/verify-items" component={VerifyItemsPage} />

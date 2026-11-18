@@ -25,6 +25,7 @@ import {
   messages,
   items,
   users,
+  shareCoinHolds,
   shareCoinsTransactions,
   notifications,
 } from "@workspace/db";
@@ -93,7 +94,7 @@ import { isEmailShaped, publicName, publicUsername } from "../public-identity";
 import { scrubEmailUsernames, usernameScrubMiddleware } from "../username-scrub";
 import { e2eTestModeEnabled } from "../e2e-mode";
 import { freezeRentalEarnings } from "../rental-earnings-freeze";
-import { resolveHandoffDispute } from "../handoff-dispute-service";
+import { ADMIN_DECIDABLE_STATUSES, resolveHandoffDispute } from "../handoff-dispute-service";
 import { MIN_PAYOUT, findRetryablePayout, releaseHeldRentalPayout, releaseStrandedRentalPayouts, reservePayout, sendPayout, type PayoutRow, type PayoutStripeClient } from "../rental-payout-service";
 import {
   claimDepositTerminalAction,
@@ -14878,15 +14879,71 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // The admin queue of exchanges waiting for a decision: disputes and exchanges flagged for review, oldest first, with both
+  // people's messages, any proof they sent, and the ShareCoins held for it.
+  app.get("/api/admin/handoff-disputes", requireAdmin, async (_req, res) => {
+    try {
+      const rows = await db
+        .select({ request: itemRequests, item: items })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(inArray(itemRequests.status, [...ADMIN_DECIDABLE_STATUSES]))
+        .orderBy(sql`COALESCE(${itemRequests.handoffDisputeAt}, ${itemRequests.handoffConfirmDeadline}, ${itemRequests.createdAt}) ASC`, asc(itemRequests.id))
+        .limit(100);
+      const requestIdList = rows.map((r) => r.request.id);
+      const personIds = [...new Set(rows.flatMap((r) => [r.item.ownerId, r.request.requesterId].filter((id): id is number => typeof id === "number")))];
+      const people = personIds.length
+        ? await db.select({ id: users.id, displayName: users.displayName, username: users.username }).from(users).where(inArray(users.id, personIds))
+        : [];
+      const nameOf = new Map(people.map((p) => [p.id, publicName(p) || `User ${p.id}`]));
+      const thread = requestIdList.length
+        ? await db.select().from(messages).where(inArray(messages.requestId, requestIdList)).orderBy(asc(messages.createdAt), asc(messages.id)).limit(2000)
+        : [];
+      const holds = requestIdList.length
+        ? await db.select().from(shareCoinHolds).where(and(inArray(shareCoinHolds.requestId, requestIdList), eq(shareCoinHolds.status, "ACTIVE")))
+        : [];
+      res.json(rows.map(({ request, item }) => {
+        const roleOf = (id: number | null): "owner" | "requester" | "system" => (id === item.ownerId ? "owner" : id === request.requesterId ? "requester" : "system");
+        const hold = holds.find((h) => h.requestId === request.id);
+        return {
+          id: request.id,
+          kind: request.status === "HANDOFF_FLAGGED" ? "flagged" : "dispute",
+          status: request.status,
+          requestType: request.requestType,
+          itemName: item.name,
+          owner: { id: item.ownerId, name: item.ownerId ? nameOf.get(item.ownerId) ?? `User ${item.ownerId}` : "Unknown" },
+          requester: { id: request.requesterId, name: (request.requesterId !== null && nameOf.get(request.requesterId)) || `User ${request.requesterId}` },
+          openedAt: request.handoffDisputeAt ?? request.handoffConfirmDeadline ?? request.createdAt,
+          ownerConfirmed: Boolean(request.ownerConfirmedHandoff),
+          requesterConfirmed: Boolean(request.borrowerConfirmedHandoff),
+          ownerDenied: Boolean(request.ownerDeniedHandoff),
+          requesterDenied: Boolean(request.borrowerDeniedHandoff),
+          autoConfirmed: Boolean(request.handoffAutoAdvanced),
+          proofDeadline: request.handoffProofDeadline,
+          proof: { owner: request.handoffProofOwner, requester: request.handoffProofBorrower },
+          held: hold ? { amount: hold.amount, kind: hold.kind, payer: hold.payerId === item.ownerId ? "owner" : "requester" } : null,
+          messages: thread
+            .filter((m) => m.requestId === request.id)
+            .map((m) => ({ id: m.id, from: roleOf(m.senderId), type: m.messageType, content: m.content, createdAt: m.createdAt })),
+        };
+      }));
+    } catch (err) {
+      console.error("Error listing handoff disputes:", err);
+      res.status(500).json({ error: "Failed to list disputes" });
+    }
+  });
+
   // Resolve a handoff dispute that was opened after an auto-confirm (see handoff-dispute-service.ts).
   // "owner": the handoff stands, the rental continues and the frozen earnings return to the owner's wallet.
   // "borrower": the rental payment and platform fee are refunded, the deposit is released, the rental is cancelled and the
   // owner's earnings are reversed. Every Stripe call has a deterministic idempotency key; repeating the call is safe.
   app.post("/api/admin/handoff-disputes/:requestId/resolve", requireAdmin, csrfProtection, async (req, res): Promise<any> => {
     const requestId = parseInt(String(req.params.requestId));
-    const { decision } = req.body as { decision: "owner" | "borrower" };
+    const body = req.body as { decision: "owner" | "borrower" | "requester" };
+    // "requester" is the borrower's side of a swap or gift; the service calls it "borrower".
+    const decision = body.decision === "requester" ? "borrower" : body.decision;
     if (!Number.isFinite(requestId)) return res.status(400).json({ error: "Invalid request id" });
-    if (!["owner", "borrower"].includes(decision)) return res.status(400).json({ error: "decision must be 'owner' or 'borrower'" });
+    if (!["owner", "borrower"].includes(decision)) return res.status(400).json({ error: "decision must be 'owner' or 'requester'" });
     try {
       const result = await resolveHandoffDispute({ requestId, decision, adminId: req.user?.id ?? null, stripe: (options.stripe ?? stripe) as any });
       return res.status(result.status).json(result.body);

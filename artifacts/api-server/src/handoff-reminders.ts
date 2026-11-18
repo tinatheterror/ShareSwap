@@ -6,8 +6,8 @@ import { publicName } from "./public-identity";
 
 /**
  * Reminds the person who has not confirmed, before an auto-confirm, that the handoff will be confirmed for them when the
- * deadline passes. For a borrow or rental that is the borrower, once the owner has confirmed ("The owner says ... was handed
- * over to you"). For a swap or gift it is whichever of the two has not confirmed, once the other has ("[name] confirmed the
+ * deadline passes. For a borrow or rental that is the borrower once the owner has confirmed ("The owner says ... was handed
+ * over to you"), or the owner once the borrower has ("The borrower says they received ..."). For a swap or gift it is whichever of the two has not confirmed, once the other has ("[name] confirmed the
  * swap. Confirm, or report a problem, within 12 hours"). Two reminders: 12 hours and 2 hours before the deadline. Each is sent
  * once per deadline: the lifecycle event's idempotency key (reminder, request, deadline) is what claims it, so the route,
  * the server timer and several instances can all call this. A reminder that is already late for the 12 hour mark when the
@@ -55,8 +55,8 @@ export async function sendBorrowerHandoffReminders(now: Date = new Date(), optio
       if (ownerConfirmed && !borrowerConfirmed && !borrowerDenied && row.requesterId !== null) {
         return [{ ...row, recipientId: row.requesterId, confirmerId: row.ownerId, exchange }];
       }
-      // Only swaps and gifts remind the owner; the borrow and rental wording is the borrower's.
-      if (exchange && borrowerConfirmed && !ownerConfirmed && !ownerDenied && row.ownerId !== null) {
+      // The owner is reminded too when the borrower, renter, swapper or receiver confirmed first.
+      if (borrowerConfirmed && !ownerConfirmed && !ownerDenied && row.ownerId !== null) {
         return [{ ...row, recipientId: row.ownerId, confirmerId: row.requesterId, exchange }];
       }
       return [];
@@ -87,6 +87,12 @@ export async function sendBorrowerHandoffReminders(now: Date = new Date(), optio
           ? null
           : (await db.select({ displayName: users.displayName, username: users.username }).from(users).where(eq(users.id, request.confirmerId)).limit(1))[0];
         ({ title, message } = silentPersonReminder(request.exchange, publicName(confirmer) || "The other person", step));
+      } else if (request.recipientId === request.ownerId) {
+        // A borrow or rental the borrower confirmed first: the owner is the one who has not answered.
+        const name = request.itemName.length > 30 ? `${request.itemName.slice(0, 30)}…` : request.itemName;
+        const who = request.requestType === "RENT" ? "renter" : "borrower";
+        title = step === HANDOFF_REMINDER_HOURS[1] ? "Last chance: confirm the handoff" : "Did you hand it over?";
+        message = `The ${who} says they received "${name}". Confirm it, or report a problem, within ${step} hours. If you do nothing, it will be confirmed for you.`;
       } else {
         const name = request.itemName.length > 30 ? `${request.itemName.slice(0, 30)}…` : request.itemName;
         title = step === HANDOFF_REMINDER_HOURS[1] ? "Last chance: confirm you received it" : "Did you receive your item?";

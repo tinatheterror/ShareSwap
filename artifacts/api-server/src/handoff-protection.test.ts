@@ -115,17 +115,50 @@ test("swap and gift: nobody is reminded who confirmed or reported a problem, and
   }
 });
 
-test("borrow and rental reminders are unchanged: only the borrower, only once the owner confirmed, with the owner-says wording", async () => {
+test("borrow and rental: the borrower is reminded once the owner confirmed, with the owner-says wording", async () => {
   for (const type of ["BORROW", "RENT"]) {
     const ownerFirst = await awaitingRequest(10, { requestType: type });
-    const borrowerFirst = await awaitingRequest(10, { requestType: type, ownerConfirmedHandoff: false, borrowerConfirmedHandoff: true });
-    assert.equal(await sendBorrowerHandoffReminders(NOW, { onlyRequestIds: [ownerFirst, borrowerFirst] }), 1);
+    assert.equal(await sendBorrowerHandoffReminders(NOW, { onlyRequestIds: [ownerFirst] }), 1);
     const [sent] = await reminders(ownerFirst);
     assert.equal(sent.userId, borrowerId);
     assert.equal(sent.title, "Did you receive your item?");
     assert.match(sent.message, /^The owner says ".*" was handed over to you\. Confirm it, or report a problem, within 12 hours\. If you do nothing, it will be confirmed for you\.$/);
-    assert.equal((await reminders(borrowerFirst)).length, 0);
   }
+});
+
+test("borrow and rental: the OWNER is reminded when the borrower or renter confirmed first, at 12 and 2 hours, once each", async () => {
+  for (const [type, who] of [["BORROW", "borrower"], ["RENT", "renter"]] as const) {
+    const id = await awaitingRequest(10, { requestType: type, ownerConfirmedHandoff: false, borrowerConfirmedHandoff: true });
+    const only = { onlyRequestIds: [id] };
+    assert.equal(await sendBorrowerHandoffReminders(NOW, only), 1);
+    assert.equal(await sendBorrowerHandoffReminders(at(11, 10), only), 0, "the 12 hour reminder is not repeated");
+    assert.equal(await sendBorrowerHandoffReminders(at(2, 10), only), 1);
+    assert.equal(await sendBorrowerHandoffReminders(at(1, 10), only), 0);
+    const sent = (await reminders(id)).sort((a, b) => a.id - b.id);
+    assert.equal(sent.length, 2);
+    assert.ok(sent.every((n) => n.userId === ownerId), "only the owner");
+    assert.equal(sent[0].title, "Did you hand it over?");
+    assert.match(sent[0].message, new RegExp(`^The ${who} says they received ".*"\\. Confirm it, or report a problem, within 12 hours\\. If you do nothing, it will be confirmed for you\\.$`));
+    assert.equal(sent[1].title, "Last chance: confirm the handoff");
+    assert.match(sent[1].message, /within 2 hours/);
+  }
+});
+
+test("borrow and rental: the owner is not reminded if they confirmed or reported a problem, and the borrower is not reminded by it", async () => {
+  const ownerConfirmedToo = await awaitingRequest(10, { ownerConfirmedHandoff: true, borrowerConfirmedHandoff: true });
+  const ownerDenied = await awaitingRequest(10, { ownerConfirmedHandoff: false, ownerDeniedHandoff: true, borrowerConfirmedHandoff: true });
+  const neither = await awaitingRequest(10, { ownerConfirmedHandoff: false, borrowerConfirmedHandoff: false });
+  const pastDeadline = await awaitingRequest(-1, { ownerConfirmedHandoff: false, borrowerConfirmedHandoff: true });
+  assert.equal(await sendBorrowerHandoffReminders(NOW, { onlyRequestIds: [ownerConfirmedToo, ownerDenied, neither, pastDeadline] }), 0);
+});
+
+test("borrow and rental: a request first seen with under 2 hours left sends the owner only the 2 hour reminder", async () => {
+  const id = await awaitingRequest(10, { ownerConfirmedHandoff: false, borrowerConfirmedHandoff: true });
+  assert.equal(await sendBorrowerHandoffReminders(at(1, 10), { onlyRequestIds: [id] }), 1);
+  assert.equal(await sendBorrowerHandoffReminders(at(0.5, 10), { onlyRequestIds: [id] }), 0);
+  const sent = await reminders(id);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].title, "Last chance: confirm the handoff");
 });
 
 async function releasedRental(net: string, balance: string, currency = "cad") {

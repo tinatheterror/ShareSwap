@@ -8,7 +8,9 @@ import { recordWalletEntry, rentalEarningKey } from "./wallet-ledger.js";
 
 const unique = `handoff-protection-${Date.now()}`;
 const HOUR = 3_600_000;
-const NOW = new Date("2026-11-10T12:00:00.000Z");
+// A moment well ahead of the real clock: these requests wait for a handoff confirmation with deadlines measured from NOW, and a live
+// handoff sweep run by another test file (which acts on every overdue request in the shared database) must find them not yet due.
+const NOW = new Date(Date.now() + 30 * 24 * HOUR);
 let ownerId: number;
 let borrowerId: number;
 let itemId: number;

@@ -6,6 +6,9 @@ import {
   type FixtureRecordCounts, type OwnerReturnFixture,
 } from "./owner-return-helpers";
 
+// What a person sees for a 5xx (api-server/src/friendly-errors.ts and the clients' friendly-error.ts).
+const SHIELDED_SERVER_ERROR = /Something went wrong on our side\. Please try again in a moment\. \(Reference: SS-[0-9A-F]{8}\)/;
+
 // These tests share one E2E API fixture registry and intentionally inject
 // cleanup failures; a parallel setup can observe another test's injected failure.
 test.describe.configure({ mode: "serial" });
@@ -24,9 +27,14 @@ test("failed fixture setup rolls back every inserted record", async ({
 
   expect(fixtureResponse.status()).toBe(500);
   const failure = (await fixtureResponse.json()) as {
+    code: string;
+    referenceId: string;
     fixtureId: string;
     remaining: FixtureRecordCounts;
   };
+  // A 5xx is shielded (friendly-errors.ts): the body is kept only because it carries a code, and it gains a support reference id.
+  expect(failure.code).toBe("E2E_FIXTURE_SETUP_FAILED");
+  expect(failure.referenceId).toMatch(/^SS-[0-9A-F]{8}$/);
   expect(failure.fixtureId).toMatch(/^[a-f0-9]{16}$/);
   expect(failure.remaining).toEqual({
     users: 0,
@@ -280,9 +288,9 @@ test("borrower sees a failed return request without losing the dialog", async ({
 
     await expect(dialog).toBeVisible();
     await expect(page.getByText("Return failed", { exact: true })).toBeVisible();
-    await expect(
-      page.getByText("Return request could not be saved", { exact: true }),
-    ).toBeVisible();
+    // The server's 5xx is shielded: a person sees friendly text and a support reference id, never the raw message.
+    await expect(page.locator('[data-component-name="ToastDescription"]').filter({ hasText: SHIELDED_SERVER_ERROR })).toBeVisible();
+    await expect(page.getByText("Return request could not be saved")).toHaveCount(0);
   } finally {
     await cleanupOwnerReturnFixture(page.request, fixture.fixtureId);
   }
@@ -401,9 +409,13 @@ test("owner completes a return and failed fixture cleanup rolls back before retr
     );
     expect(failedCleanupResponse.status()).toBe(500);
     const failedCleanup = (await failedCleanupResponse.json()) as {
+      code: string;
+      referenceId: string;
       generated: FixtureRecordCounts;
       remaining: FixtureRecordCounts;
     };
+    expect(failedCleanup.code).toBe("E2E_FIXTURE_CLEANUP_FAILED");
+    expect(failedCleanup.referenceId).toMatch(/^SS-[0-9A-F]{8}$/);
     expect(failedCleanup.generated.users).toBe(2);
     expect(failedCleanup.generated.items).toBe(1);
     expect(failedCleanup.generated.requests).toBe(1);
@@ -539,9 +551,8 @@ test("owner sees a failed return confirmation without losing the dialog", async 
     await expect(
       page.getByText("Confirmation failed", { exact: true }),
     ).toBeVisible();
-    await expect(
-      page.getByText("Return could not be saved", { exact: true }),
-    ).toBeVisible();
+    await expect(page.locator('[data-component-name="ToastDescription"]').filter({ hasText: SHIELDED_SERVER_ERROR })).toBeVisible();
+    await expect(page.getByText("Return could not be saved")).toHaveCount(0);
   } finally {
     await cleanupOwnerReturnFixture(page.request, fixture.fixtureId);
   }

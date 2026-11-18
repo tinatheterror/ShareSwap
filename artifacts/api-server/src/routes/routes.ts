@@ -2428,7 +2428,8 @@ export function registerRoutes(
         const remaining = await db.transaction((tx) =>
           countOwnerReturnFixtureRecords(tx, attemptedFixture!),
         );
-        res.status(500).json({ fixtureId, remaining });
+        // `code` lets the body through the 5xx error shield (friendly-errors.ts), which otherwise replaces it.
+          res.status(500).json({ code: "E2E_FIXTURE_SETUP_FAILED", fixtureId, remaining });
         return;
       }
 
@@ -2523,7 +2524,7 @@ export function registerRoutes(
         const remaining = await db.transaction((tx) =>
           countOwnerReturnFixtureRecords(tx, fixture),
         );
-        res.status(500).json({ generated: generatedBeforeFailure, remaining });
+        res.status(500).json({ code: "E2E_FIXTURE_CLEANUP_FAILED", generated: generatedBeforeFailure, remaining });
         return;
       }
       ownerReturnFixtures.delete(req.body.fixtureId);

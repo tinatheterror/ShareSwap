@@ -26,6 +26,16 @@ import { declineRequestsForGoneItems, involvedItemIds } from "./item-availabilit
  */
 export type HandoffDisputeDecision = "owner" | "borrower";
 
+export interface CompletedExchange {
+  requestId: number;
+  requestType: "SWAP" | "GIFT";
+  ownerId: number;
+  requesterId: number;
+  itemId: number;
+  itemName: string;
+  request: typeof itemRequests.$inferSelect;
+}
+
 /** The exchanges an admin decides: a dispute (HANDOFF_DISPUTED) or an exchange flagged for review (HANDOFF_FLAGGED). Either decision applies to both. */
 export const ADMIN_DECIDABLE_STATUSES = ["HANDOFF_DISPUTED", "HANDOFF_FLAGGED"] as const;
 export interface ServiceResult { status: number; body: Record<string, unknown> }
@@ -46,6 +56,12 @@ export async function resolveHandoffDispute(input: {
   adminId: number | null;
   stripe: DepositRenewalStripeClient;
   now?: Date;
+  /**
+   * Runs after a swap or gift the admin decided for the owner has been completed (status, items and coins are done): the shared
+   * completion step that a normal confirmation runs (the other requests for the items declined, bonuses, trust points, referrals,
+   * badges). Without it only the other requests are declined.
+   */
+  onCompleted?: (completed: CompletedExchange) => Promise<void>;
 }): Promise<ServiceResult> {
   const { requestId, decision, adminId, stripe } = input;
   const now = input.now ?? new Date();
@@ -105,7 +121,14 @@ export async function resolveHandoffDispute(input: {
     });
     if (done === null) return { status: 409, body: { error: "This exchange changed before it could be decided" } };
     // The items are gone: the other pending requests for them are declined ("This item is no longer available.").
-    if (completesAtHandoff) await declineRequestsForGoneItems(requestId).catch((error) => console.error("[handoff-dispute] could not decline the other requests:", error));
+    if (completesAtHandoff) {
+      try {
+        if (input.onCompleted) await input.onCompleted({ requestId, requestType: requestType as "SWAP" | "GIFT", ownerId, requesterId: borrowerId, itemId: item.id, itemName: item.name, request: row.item_requests });
+        else await declineRequestsForGoneItems(requestId);
+      } catch (error) {
+        console.error("[handoff-dispute] could not finish the completed exchange:", error);
+      }
+    }
     return { status: 200, body: { success: true, decision, earnings: done.earnings } };
   }
 

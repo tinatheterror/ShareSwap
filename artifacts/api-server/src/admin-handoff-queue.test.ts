@@ -127,6 +127,7 @@ after(async () => {
     const created = itemIds.length ? await db.select({ id: itemRequests.id }).from(itemRequests).where(inArray(itemRequests.itemId, itemIds)) : [];
     const all = [...new Set([...requestIds, ...created.map((r) => r.id)])];
     if (all.length) {
+      await pool.query("DELETE FROM reputation_activities WHERE request_id = ANY($1)", [all]);
       await db.delete(requestRefunds).where(inArray(requestRefunds.requestId, all));
       await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, all));
       await db.delete(messages).where(inArray(messages.requestId, all));
@@ -136,6 +137,8 @@ after(async () => {
     }
     await db.delete(notifications).where(inArray(notifications.userId, userIds));
     await db.delete(shareCoinsTransactions).where(inArray(shareCoinsTransactions.userId, userIds));
+    await pool.query("DELETE FROM user_achievements WHERE user_id = ANY($1)", [userIds]);
+    await pool.query("DELETE FROM reputation_activities WHERE user_id = ANY($1)", [userIds]);
     if (itemIds.length) await db.delete(items).where(inArray(items.id, itemIds));
     await db.delete(users).where(inArray(users.id, userIds));
   } finally {
@@ -144,8 +147,19 @@ after(async () => {
   }
 });
 
-test("the queue is for admins only", async () => {
+test("the queue and the decisions are for admins only: a normal member gets 403, a signed-out caller is refused, and nothing changes", async () => {
   assert.equal((await plain.queue()).status, 403);
+  const swap = await waiting("SWAP", "HANDOFF_FLAGGED", { handoffConfirmDeadline: new Date(Date.now() - 3_600_000) });
+  for (const decision of ["owner", "requester", "borrower"]) {
+    const refused = await plain.decide(swap.id, decision);
+    assert.equal(refused.status, 403, `a member deciding "${decision}"`);
+  }
+  const signedOut = new TestClient();
+  assert.ok([401, 403].includes((await signedOut.queue()).status), "signed out: the queue");
+  assert.ok([401, 403].includes((await signedOut.decide(swap.id, "owner")).status), "signed out: a decision");
+  // The owner and the requester of the exchange are members too: being a party does not make them admins.
+  assert.equal(await statusOf(swap.id), "HANDOFF_FLAGGED");
+  assert.deepEqual((await holdsOf(swap.id)).map((h) => h.status), ["ACTIVE"]);
 });
 
 test("the queue lists disputes and flagged exchanges, oldest first, with both people's messages, proof and the held coins", async () => {
@@ -188,14 +202,21 @@ test("deciding for the owner settles the hold and completes a flagged swap; the 
   assert.equal(response.status, 200, await response.clone().text());
   assert.equal(await statusOf(swap.id), "COMPLETED");
   assert.deepEqual((await holdsOf(swap.id)).map((h) => [h.status, h.reason]), [["SETTLED", "dispute_settled"]]);
-  assert.equal(await totalBalance(ownerId), 85, "the owner paid the held 15");
-  assert.equal(await totalBalance(requesterId), 115);
+  const received = (await db.select().from(shareCoinsTransactions).where(eq(shareCoinsTransactions.userId, requesterId))).filter((r) => r.transactionType === "SWAP_OFFSET_RECEIVED");
+  assert.deepEqual(received.map((r) => Number(r.amount)), [15]);
   const [moved] = await db.select({ swapped: items.isSwapped, available: items.isAvailable }).from(items).where(eq(items.id, swap.ownerItem.id));
   assert.deepEqual([moved.swapped, moved.available], [true, false]);
   assert.equal(await statusOf(bystander.id), "DECLINED");
   assert.equal((await db.select().from(notifications).where(eq(notifications.requestId, bystander.id))).find((n) => n.type === "request_declined")?.message, ITEM_NO_LONGER_AVAILABLE_MESSAGE);
   assert.equal((await told(ownerId, swap.id)).length, 1);
   assert.equal((await told(requesterId, swap.id)).length, 1);
+
+  // The same rewards a normal completion gives: the first-swap bonus for each, and the swap trust points.
+  for (const id of [ownerId, requesterId]) {
+    assert.equal((await db.select().from(shareCoinsTransactions).where(eq(shareCoinsTransactions.userId, id))).filter((r) => r.description?.startsWith("First Time Swap Bonus")).length, 1, `first-swap bonus for ${id}`);
+    assert.ok((await db.select().from(notifications).where(eq(notifications.requestId, swap.id))).some((n) => n.userId === id && n.type === "trust_score_changed" && n.message === "Swap completed +20"), `trust points for ${id}`);
+  }
+  assert.equal((await db.select().from(shareCoinsTransactions).where(eq(shareCoinsTransactions.userId, ownerId))).filter((r) => r.transactionType === "SWAP_OFFSET_PAID").length, 1, "the offset settled once, not twice");
 
   const rows = (await (await admin.queue()).json()) as any[];
   assert.ok(!rows.some((r) => r.id === swap.id), "decided, so no longer in the queue");
@@ -249,4 +270,23 @@ test("a flagged borrow decided for the owner goes on; an unknown decision, or a 
   assert.deepEqual((await holdsOf(flagged.id)).map((h) => h.status), ["SETTLED"]);
   assert.equal(await totalBalance(ownerId), 14);
   assert.equal((await admin.decide(flagged.id, "requester")).status === 200, false, "already decided: the other decision is refused");
+});
+
+test("a flagged gift decided for the owner is completed like a normal gift: the giver's first-gift bonus, the item gone, the others declined", async () => {
+  const giver = ownerId;
+  const gift = await newItem(giver, 2);
+  const [request] = await db.insert(itemRequests).values({
+    itemId: gift.id, requesterId, requestType: "GIFT", status: "HANDOFF_FLAGGED", ownerConfirmedHandoff: true, borrowerDeniedHandoff: true,
+    handoffConfirmDeadline: new Date(Date.now() - 3_600_000),
+  } as any).returning({ id: itemRequests.id });
+  requestIds.push(request.id);
+  const [bystander] = await db.insert(itemRequests).values({ itemId: gift.id, requesterId: otherId, requestType: "GIFT", status: "PENDING" } as any).returning({ id: itemRequests.id });
+  requestIds.push(bystander.id);
+
+  assert.equal((await admin.decide(request.id, "owner")).status, 200);
+  assert.equal(await statusOf(request.id), "COMPLETED");
+  assert.equal(await statusOf(bystander.id), "DECLINED");
+  const bonus = (await db.select().from(shareCoinsTransactions).where(eq(shareCoinsTransactions.userId, giver))).filter((r) => r.description?.startsWith("First Time Gift Bonus"));
+  assert.equal(bonus.length, 1, "the giver's first-gift bonus, as a normal completion gives");
+  assert.ok((await db.select().from(messages).where(eq(messages.requestId, request.id))).length > 0, "its completion message is posted");
 });

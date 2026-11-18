@@ -443,6 +443,49 @@ async function finishCompletedGift(gift: {
 }
 
 /**
+ * What a completed swap earns and says, once its status is COMPLETED and its items are marked swapped: the other pending
+ * requests for those items are declined, both people get the first-swap bonus, the coin offset settles (from the hold, or the
+ * quote), both get the swap trust points, referral bonuses and badges. Shared by the manual confirmation, the code, the
+ * sweep and an admin's decision for the owner. Failures are logged and never undo the completion. `settleCoins: false` when
+ * the caller has already settled the hold (the admin decision does it in the same transaction as the status change).
+ */
+async function finishCompletedSwap(
+  swap: {
+    requestId: number; ownerId: number; requesterId: number; itemId: number; itemName: string;
+    swapOfferedItemIds: number[] | null; counterSwapOwnerItemIds: number[] | null; counterSwapRequesterItemIds: number[] | null;
+  },
+  options: { reason: "handoff_manual" | "handoff_pin" | "handoff_auto"; settleCoins?: boolean },
+): Promise<void> {
+  // The items are gone: every other pending request for them is declined ("This item is no longer available.").
+  await declineRequestsForGoneItems(swap.requestId).catch((error) => console.error("Error declining the other requests for swapped items:", error));
+  try {
+    await awardShareCoinsWithFirstTimeBonus(swap.ownerId, 'SWAP', swap.itemName, 1);
+    await awardShareCoinsWithFirstTimeBonus(swap.requesterId, 'SWAP', swap.itemName, 1);
+
+    // Apply tier-based coin offset between the two parties
+    if (options.settleCoins !== false) {
+      await applySwapCoinOffset(
+        swap.ownerId, swap.requesterId, swap.requestId, swap.itemId,
+        swap.swapOfferedItemIds, swap.counterSwapOwnerItemIds, swap.counterSwapRequesterItemIds,
+        swap.itemName, options.reason,
+      );
+    }
+
+    await awardSwapCompletionPoints(swap.ownerId, swap.requesterId, swap.requestId, swap.itemId, swap.itemId);
+    await db.insert(notifications).values([
+      { userId: swap.ownerId, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: swap.itemId, requestId: swap.requestId, isRead: false },
+      { userId: swap.requesterId, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: swap.itemId, requestId: swap.requestId, isRead: false },
+    ]);
+    await checkAndAwardReferralBonus(swap.ownerId, swap.requestId, 'SWAP');
+    await checkAndAwardReferralBonus(swap.requesterId, swap.requestId, 'SWAP');
+    await checkAndAwardAchievements(swap.ownerId);
+    await checkAndAwardAchievements(swap.requesterId);
+  } catch (swapRewardError) {
+    console.error("Error awarding swap rewards:", swapRewardError);
+  }
+}
+
+/**
  * A borrow's handoff has happened: move the coins the request holds (exactly the amount reserved at accept; a request from
  * before holds falls back to the quote, limited to what the borrower can spend). Then the lender's first-lend bonus and
  * the "+N SC" notice, for what actually moved. Returns what moved.
@@ -1919,6 +1962,8 @@ export interface ScheduledJobRunners {
   runHandoffSweep(
     mode: "dry-run" | "live",
     log: (line: string) => void,
+    /** Tests only: act on just these requests, so a run never touches other rows in a shared database. */
+    scope?: { onlyRequestIds?: number[] },
   ): Promise<HandoffDeadlineResult>;
   runExpirySweep(options: RequestExpirySweepOptions): Promise<RequestExpirySweepResult>;
 }
@@ -2011,35 +2056,10 @@ export function registerRoutes(
   // transition commits; failures are logged and never undo it.
   const handoffDeadlineDeps: HandoffDeadlineDeps = {
     onSwapAutoConfirmed: async (swap) => {
-      // The items are gone: every other pending request for them is declined ("This item is no longer available.").
-      await declineRequestsForGoneItems(swap.requestId).catch((error) => console.error("Error declining the other requests for swapped items:", error));
-      try {
-        await awardShareCoinsWithFirstTimeBonus(swap.ownerId, 'SWAP', swap.itemName, 1);
-        await awardShareCoinsWithFirstTimeBonus(swap.borrowerId, 'SWAP', swap.itemName, 1);
-
-        // Apply tier-based coin offset between the two parties
-        await applySwapCoinOffset(
-          swap.ownerId, swap.borrowerId, swap.requestId,
-          swap.itemId,
-          swap.swapOfferedItemIds,
-          swap.counterSwapOwnerItemIds,
-          swap.counterSwapRequesterItemIds,
-          swap.itemName,
-          "handoff_auto",
-        );
-
-        await awardSwapCompletionPoints(swap.ownerId, swap.borrowerId, swap.requestId, swap.itemId, swap.itemId);
-        await db.insert(notifications).values([
-          { userId: swap.ownerId, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: swap.itemId, requestId: swap.requestId, isRead: false },
-          { userId: swap.borrowerId, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: swap.itemId, requestId: swap.requestId, isRead: false },
-        ]);
-        await checkAndAwardReferralBonus(swap.ownerId, swap.requestId, 'SWAP');
-        await checkAndAwardReferralBonus(swap.borrowerId, swap.requestId, 'SWAP');
-        await checkAndAwardAchievements(swap.ownerId);
-        await checkAndAwardAchievements(swap.borrowerId);
-      } catch (swapAutoErr) {
-        console.error("Error awarding swap rewards on auto-advance:", swapAutoErr);
-      }
+      await finishCompletedSwap({
+        requestId: swap.requestId, ownerId: swap.ownerId, requesterId: swap.borrowerId, itemId: swap.itemId, itemName: swap.itemName,
+        swapOfferedItemIds: swap.swapOfferedItemIds, counterSwapOwnerItemIds: swap.counterSwapOwnerItemIds, counterSwapRequesterItemIds: swap.counterSwapRequesterItemIds,
+      }, { reason: "handoff_auto" });
     },
     onGiftAutoConfirmed: async (gift) => {
       try {
@@ -2128,6 +2148,8 @@ export function registerRoutes(
       tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
       userIds: number[],
     ) => {
+      // A person who is the payer or receiver of a ShareCoin hold cannot be deleted while the hold exists.
+      await tx.delete(shareCoinHolds).where(or(inArray(shareCoinHolds.payerId, userIds), inArray(shareCoinHolds.receiverId, userIds)));
       if (userIds.length === 0) return;
       await tx
         .delete(userAchievements)
@@ -9712,46 +9734,18 @@ Respond with ONLY the category name, nothing else.`
           if (offeredIds.length > 0) {
             await db.update(items).set({ isAvailable: false, isSwapped: true }).where(inArray(items.id, offeredIds));
           }
-          // The items are gone: every other pending request for them is declined ("This item is no longer available.").
-          await declineRequestsForGoneItems(requestId).catch((error) => console.error("Error declining the other requests for swapped items:", error));
         }
 
-        // Award ShareCoins, trust points, referral bonuses, and achievements for SWAP
-        // at handoff completion (deferred from acceptance to ensure the exchange actually happened)
+        // The swap is finished here: the other requests for its items are declined, then the bonuses, the coin offset, trust
+        // points, referrals and badges (deferred from acceptance to ensure the exchange actually happened).
         if (isSwapRequest) {
-          try {
-            const ownerId2 = request.items.ownerId!;
-            const requesterId2 = request.item_requests.requesterId;
-            const itemName2 = request.items.name;
-
-            const ownerResult = await awardShareCoinsWithFirstTimeBonus(ownerId2, 'SWAP', itemName2, 1);
-            const requesterResult = await awardShareCoinsWithFirstTimeBonus(requesterId2, 'SWAP', itemName2, 1);
-            console.log(`✅ Awarded ShareCoins for swap at handoff: Owner=${ownerResult.totalAwarded}, Requester=${requesterResult.totalAwarded}`);
-
-            // Apply tier-based coin offset between the two parties
-            await applySwapCoinOffset(
-              ownerId2, requesterId2, requestId,
-              request.item_requests.itemId,
-              request.item_requests.swapOfferedItemIds as number[] | null,
-              request.item_requests.counterSwapOwnerItemIds as number[] | null,
-              request.item_requests.counterSwapRequesterItemIds as number[] | null,
-              itemName2,
-            );
-
-            await awardSwapCompletionPoints(ownerId2, requesterId2, requestId, request.items.id, request.items.id);
-            console.log(`✅ Awarded trust points for swap handoff completion`);
-            await db.insert(notifications).values([
-              { userId: ownerId2, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: request.items.id, requestId, isRead: false },
-              { userId: requesterId2, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: request.items.id, requestId, isRead: false },
-            ]);
-
-            await checkAndAwardReferralBonus(ownerId2, requestId, 'SWAP');
-            await checkAndAwardReferralBonus(requesterId2, requestId, 'SWAP');
-            await checkAndAwardAchievements(ownerId2);
-            await checkAndAwardAchievements(requesterId2);
-          } catch (swapRewardError) {
-            console.error("Error awarding swap rewards at handoff:", swapRewardError);
-          }
+          await finishCompletedSwap({
+            requestId, ownerId: request.items.ownerId!, requesterId: request.item_requests.requesterId!, itemId: request.item_requests.itemId!,
+            itemName: request.items.name,
+            swapOfferedItemIds: request.item_requests.swapOfferedItemIds as number[] | null,
+            counterSwapOwnerItemIds: request.item_requests.counterSwapOwnerItemIds as number[] | null,
+            counterSwapRequesterItemIds: request.item_requests.counterSwapRequesterItemIds as number[] | null,
+          }, { reason: "handoff_manual" });
         }
 
         // A gift is finished here: first-gift bonus, trust points, referrals, badges and its completion messages.
@@ -10140,8 +10134,6 @@ Respond with ONLY the category name, nothing else.`
         if (swapOfferedIds.length > 0) {
           await db.update(items).set({ isAvailable: false, isSwapped: true }).where(inArray(items.id, swapOfferedIds));
         }
-        // The items are gone: every other pending request for them is declined ("This item is no longer available.").
-        await declineRequestsForGoneItems(requestId).catch((error) => console.error("Error declining the other requests for swapped items:", error));
       }
 
       // System messages
@@ -10157,31 +10149,13 @@ Respond with ONLY the category name, nothing else.`
           senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId,
         });
 
-        // Award ShareCoins and apply tier-based offset for SWAP (PIN path)
-        try {
-          await awardShareCoinsWithFirstTimeBonus(ownerId, 'SWAP', request.items.name, 1);
-          await awardShareCoinsWithFirstTimeBonus(borrowerId, 'SWAP', request.items.name, 1);
-          await applySwapCoinOffset(
-            ownerId, borrowerId, requestId,
-            request.item_requests.itemId,
-            request.item_requests.swapOfferedItemIds as number[] | null,
-            request.item_requests.counterSwapOwnerItemIds as number[] | null,
-            request.item_requests.counterSwapRequesterItemIds as number[] | null,
-            request.items.name,
-            "handoff_pin",
-          );
-          await awardSwapCompletionPoints(ownerId, borrowerId, requestId, request.items.id, request.items.id);
-          await db.insert(notifications).values([
-            { userId: ownerId, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: request.items.id, requestId, isRead: false },
-            { userId: borrowerId, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: request.items.id, requestId, isRead: false },
-          ]);
-          await checkAndAwardReferralBonus(ownerId, requestId, 'SWAP');
-          await checkAndAwardReferralBonus(borrowerId, requestId, 'SWAP');
-          await checkAndAwardAchievements(ownerId);
-          await checkAndAwardAchievements(borrowerId);
-        } catch (swapPinRewardError) {
-          console.error("Error awarding swap rewards at PIN handoff:", swapPinRewardError);
-        }
+        // The swap is finished: the other requests for its items are declined, then the bonuses, offset, points, referrals, badges.
+        await finishCompletedSwap({
+          requestId, ownerId, requesterId: borrowerId!, itemId: request.item_requests.itemId!, itemName: request.items.name,
+          swapOfferedItemIds: request.item_requests.swapOfferedItemIds as number[] | null,
+          counterSwapOwnerItemIds: request.item_requests.counterSwapOwnerItemIds as number[] | null,
+          counterSwapRequesterItemIds: request.item_requests.counterSwapRequesterItemIds as number[] | null,
+        }, { reason: "handoff_pin" });
       } else {
         const periodType = requestType === "RENT" ? "rental" : "borrow";
         await db.insert(messages).values({ content: `🤝 Handoff confirmed via PIN — ${periodType} period has started`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
@@ -10527,6 +10501,8 @@ Respond with ONLY the category name, nothing else.`
         flaggedCount,
         depositExpiredCount,
       } = await processHandoffDeadlines(handoffDeadlineDeps, { now, requestTypes: HANDOFF_SWEEP_REQUEST_TYPES });
+      // The live sweep also settles auto-confirmed borrows whose 24-hour dispute window has closed.
+      await settleElapsedAutoConfirmedBorrows({ now }).catch((error) => console.error("[handoff-deadlines] could not settle elapsed borrows:", error));
 
       // ── Both-silent handoff timeout: AWAITING_HANDOFF_CONFIRM, neither confirmed, 48hrs past start date ──
       const handoffSilentDeadline = new Date(now.getTime() - 48 * 3_600_000);
@@ -14948,7 +14924,22 @@ Respond with ONLY the category name, nothing else.`
     if (!Number.isFinite(requestId)) return res.status(400).json({ error: "Invalid request id" });
     if (!["owner", "borrower"].includes(decision)) return res.status(400).json({ error: "decision must be 'owner' or 'requester'" });
     try {
-      const result = await resolveHandoffDispute({ requestId, decision, adminId: req.user?.id ?? null, stripe: (options.stripe ?? stripe) as any });
+      const result = await resolveHandoffDispute({
+        requestId, decision, adminId: req.user?.id ?? null, stripe: (options.stripe ?? stripe) as any,
+        // A swap or gift decided for the owner is finished like a normal completion: the same bonuses, trust points, referrals and badges.
+        onCompleted: async (done) => {
+          if (done.requestType === "SWAP") {
+            await finishCompletedSwap({
+              requestId: done.requestId, ownerId: done.ownerId, requesterId: done.requesterId, itemId: done.itemId, itemName: done.itemName,
+              swapOfferedItemIds: done.request.swapOfferedItemIds as number[] | null,
+              counterSwapOwnerItemIds: done.request.counterSwapOwnerItemIds as number[] | null,
+              counterSwapRequesterItemIds: done.request.counterSwapRequesterItemIds as number[] | null,
+            }, { reason: "handoff_manual", settleCoins: false });
+          } else {
+            await finishCompletedGift({ requestId: done.requestId, giverId: done.ownerId, receiverId: done.requesterId, itemId: done.itemId, itemName: done.itemName });
+          }
+        },
+      });
       return res.status(result.status).json(result.body);
     } catch (err) {
       console.error("Error resolving handoff dispute:", err);

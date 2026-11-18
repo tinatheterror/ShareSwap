@@ -85,6 +85,13 @@ Pending requests do not expire (to be revisited after launch), so these rules ke
 - **One pending request per person per item**, whatever the type (`DUPLICATE_PENDING_REQUEST`, 409), checked again under an advisory lock on (item, requester) so two taps at once create one.
 - **Passed start dates**: a pending borrow or rental whose start day has passed shows the owner "Dates have passed. Counter with new dates or decline." in place of Accept (the server refuses the accept as well).
 
+## Disputes, admin decisions and the hold table (follow-ups to Phase 2)
+
+- **Disputes after an auto-confirm.** A borrow or rental the sweep auto-confirmed can be disputed by either person for **24 hours** after the auto-confirm (`AUTO_CONFIRM_DISPUTE_WINDOW_HOURS`, handoff-confirm-copy.ts); later, `deny-handoff` answers 409 `DISPUTE_WINDOW_CLOSED`. A borrow's ShareCoins are **not** charged at auto-confirm: the hold stays for the window and `settleElapsedAutoConfirmedBorrows` (run every minute by the `sharecoin-funds-recheck` job) settles it when the window closes. A disputed borrow is left alone until an admin decides it. A swap or gift cannot be disputed after it completes, so its coins settle at completion as before.
+- **Admin queue.** `GET /api/admin/handoff-disputes` (web: Admin → Handoff disputes) lists disputes (`HANDOFF_DISPUTED`) and flagged exchanges (`HANDOFF_FLAGGED`), oldest first, with both people's messages, any proof and the ShareCoins held. `POST /api/admin/handoff-disputes/:id/resolve` with `owner` (the handoff stands: the hold settles as `dispute_settled`; a borrow/rental goes on, a swap/gift is completed, its items marked and the other requests for them declined) or `borrower`/`requester` (it did not happen: payments refunded, deposit released, the exchange cancelled and the hold released as `dispute_released`, or `flag_rejected` for a flagged exchange). Both people are notified. A swap or gift completed by an admin gets no first-swap/gift bonus or trust points.
+- **Monthly slot.** Releasing a borrow's hold (cancel, deposit timeout, expiry, declined terms, a dispute decided for the borrower, account deletion) gives the Free-plan monthly slot back, once, if it was counted in the window now running.
+- **Hold table.** `sharecoin_holds.request_id` is `ON DELETE RESTRICT`: a request with a hold cannot be deleted (delete the hold first). 0034 creates it that way; 0035 converts an older CASCADE table at startup.
+
 ## Phase 3 — clean-up
 
 Remove the old per-site checks and the clamping in the borrow charge once holds settle them.

@@ -466,6 +466,7 @@ export async function ensureAdminAlertQueueTable() {
 }
 
 const SHARECOIN_HOLDS_FILE = "lib/db/scripts/0034_sharecoin_holds.sql";
+const SHARECOIN_HOLDS_RESTRICT_FILE = "lib/db/scripts/0035_sharecoin_holds_restrict.sql";
 
 /**
  * sharecoin_holds (0034): coins reserved for accepted borrows and swaps. When the table is first created, accepted requests
@@ -473,7 +474,14 @@ const SHARECOIN_HOLDS_FILE = "lib/db/scripts/0034_sharecoin_holds.sql";
  */
 export async function ensureShareCoinHoldsTable() {
   const { rows } = await pool.query(`SELECT to_regclass('sharecoin_holds') IS NOT NULL AS present`);
-  if (rows[0]?.present === true) return;
+  if (rows[0]?.present === true) {
+    // A table made by the earlier CASCADE version: a request with a hold must not be deletable (0035).
+    const rule = await pool.query(
+      `SELECT confdeltype FROM pg_constraint WHERE conname = 'sharecoin_holds_request_id_item_requests_id_fk' AND conrelid = 'sharecoin_holds'::regclass`,
+    );
+    if (rule.rows[0]?.confdeltype !== "r") await runMigrationFile(SHARECOIN_HOLDS_RESTRICT_FILE);
+    return;
+  }
   try {
     await runMigrationFile(SHARECOIN_HOLDS_FILE);
   } catch (err) {

@@ -87,10 +87,11 @@ const notesFor = (userId: number, requestId: number) =>
   db.select().from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.requestId, requestId)));
 
 /** The server's own handoff sweep, with its real rewards and clean-up, run live (it is captured from the app's scheduled-job hook). */
-let handoffSweep: ((mode: "off" | "dry-run" | "live", log: (line: string) => void) => Promise<unknown>) | null = null;
-async function runLiveSweep() {
+let handoffSweep: ((mode: "off" | "dry-run" | "live", log: (line: string) => void, scope?: { onlyRequestIds?: number[] }) => Promise<unknown>) | null = null;
+/** Scoped to the request under test, so it never advances another test file's rows. */
+async function runLiveSweep(requestId: number) {
   assert.ok(handoffSweep, "the app handed over its handoff sweep");
-  await handoffSweep("live", () => {});
+  await handoffSweep("live", () => {}, { onlyRequestIds: [requestId] });
 }
 
 /** The request goes from pending to ACCEPTED through the route, so its PIN exists. */
@@ -202,7 +203,7 @@ test("a gift the sweep confirms for a silent receiver declines the others too", 
   await accepted(winning);
   assert.equal((await owner.post(`/api/requests/${winning}/handoff`, { confirmedBy: "owner" })).status, 200);
   await db.update(itemRequests).set({ handoffConfirmDeadline: new Date(Date.now() - 3_600_000) }).where(eq(itemRequests.id, winning));
-  await runLiveSweep();
+  await runLiveSweep(winning);
   assert.equal(await statusOf(winning), "COMPLETED");
   assert.equal(await statusOf(loser), "DECLINED");
 });
@@ -248,7 +249,7 @@ test("a swap confirmed with the code, or by the sweep, declines the others too",
   await accepted(viaSweep.winning);
   assert.equal((await owner.post(`/api/requests/${viaSweep.winning}/handoff`, { confirmedBy: "owner" })).status, 200);
   await db.update(itemRequests).set({ handoffConfirmDeadline: new Date(Date.now() - 3_600_000) }).where(eq(itemRequests.id, viaSweep.winning));
-  await runLiveSweep();
+  await runLiveSweep(viaSweep.winning);
   assert.equal(await statusOf(viaSweep.winning), "COMPLETED");
   assert.equal(await statusOf(sweepLoser), "DECLINED");
 });

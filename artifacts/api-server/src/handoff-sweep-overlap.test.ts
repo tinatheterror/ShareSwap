@@ -8,6 +8,7 @@ import {
   messages,
   notifications,
   pool,
+  shareCoinHolds,
   shareCoinsTransactions,
   users,
 } from "@workspace/db";
@@ -16,6 +17,7 @@ import {
   type AutoConfirmedSwapContext,
   type HandoffDeadlineDeps,
 } from "./handoff-deadline-service.js";
+import { settleElapsedAutoConfirmedBorrows } from "./sharecoin-funds.js";
 import { withOverlapGuard } from "./overlap-guard";
 
 // Overlapping handoff sweeps, including the case the stale-run timeout creates on purpose: the old
@@ -99,6 +101,10 @@ async function outcome(requestId: number) {
   };
 }
 
+/** Accepting a borrow holds its ShareCoins (7 SC here: a 7 SC/week item for 7 days). */
+const holdCoins = (requestId: number) =>
+  db.insert(shareCoinHolds).values({ requestId, payerId: borrowerId, receiverId: ownerId, kind: "BORROW", amount: 7 });
+
 const resetCoins = async () => {
   await db.update(users).set({ shareCoins: "50.00" }).where(eq(users.id, borrowerId));
   await db.update(users).set({ shareCoins: "0.00" }).where(eq(users.id, ownerId));
@@ -122,6 +128,7 @@ after(async () => {
   if (requestIds.length) {
     await db.delete(messages).where(inArray(messages.requestId, requestIds));
     await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
+    await db.delete(shareCoinHolds).where(inArray(shareCoinHolds.requestId, requestIds));
     await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
   }
   if (userIds.length) await db.delete(shareCoinsTransactions).where(inArray(shareCoinsTransactions.userId, userIds));
@@ -130,14 +137,19 @@ after(async () => {
   await pool.end();
 });
 
-test("five simultaneous live sweeps advance a BORROW once: one charge, one reward, two notifications", async () => {
+test("five simultaneous live sweeps advance a BORROW once: one hold settled, one charge, one reward, two notifications", async () => {
   await resetCoins();
   const id = await newRequest();
+  await holdCoins(id);
   const deps: HandoffDeadlineDeps = { onSwapAutoConfirmed: async () => {}, onGiftAutoConfirmed: async () => {} };
   const results = await Promise.all(
     Array.from({ length: 5 }, () => processHandoffDeadlines(deps, { onlyRequestIds: [id] })),
   );
   assert.equal(results.reduce((sum, r) => sum + r.autoAdvancedCount, 0), 1);
+  // The coins stay held through the 24-hour dispute window, then settle once, however many settle passes overlap.
+  assert.deepEqual(await outcome(id), { status: "IN_PROGRESS", notifications: 2, charges: 0, rewards: 0, borrowerCoins: 50, ownerCoins: 0 });
+  const later = new Date(Date.now() + 25 * 3_600_000);
+  await Promise.all([settleElapsedAutoConfirmedBorrows({ now: later }), settleElapsedAutoConfirmedBorrows({ now: later }), settleElapsedAutoConfirmedBorrows({ now: later })]);
   assert.deepEqual(await outcome(id), {
     status: "IN_PROGRESS",
     notifications: 2,
@@ -203,6 +215,7 @@ test("stale-run overlap: an abandoned sweep still going and a new sweep beside i
 test("stale-run overlap on a BORROW: the abandoned and the new sweep together charge once", async () => {
   await resetCoins();
   const id = await newRequest();
+  await holdCoins(id);
   const gate = deferred();
   let entered = 0;
   // Hold the first sweep open by wrapping the sweep itself: it runs for real, then waits.
@@ -226,6 +239,10 @@ test("stale-run overlap on a BORROW: the abandoned and the new sweep together ch
   assert.equal(second, 0);
   gate.resolve();
   assert.equal(await first, 1);
+  // The coins stay held through the 24-hour dispute window, then settle once, however many settle passes overlap.
+  assert.deepEqual(await outcome(id), { status: "IN_PROGRESS", notifications: 2, charges: 0, rewards: 0, borrowerCoins: 50, ownerCoins: 0 });
+  const later = new Date(Date.now() + 25 * 3_600_000);
+  await Promise.all([settleElapsedAutoConfirmedBorrows({ now: later }), settleElapsedAutoConfirmedBorrows({ now: later }), settleElapsedAutoConfirmedBorrows({ now: later })]);
   assert.deepEqual(await outcome(id), {
     status: "IN_PROGRESS",
     notifications: 2,

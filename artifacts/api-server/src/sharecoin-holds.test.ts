@@ -5,7 +5,7 @@ import { db, itemRequests, items, messages, notifications, pool, requestLifecycl
 import app from "./app.js";
 import { hashPassword } from "./auth.js";
 import { registerRoutes } from "./routes/routes.js";
-import { ensureJobSwitchesTable, ensureScheduledJobRunsTable } from "./startup-migrations.js";
+import { ensureJobSwitchesTable, ensureScheduledJobRunsTable, ensureShareCoinHoldsTable } from "./startup-migrations.js";
 import { processHandoffDeadlines } from "./handoff-deadline-service.js";
 import { resolveHandoffDispute } from "./handoff-dispute-service.js";
 import {
@@ -163,7 +163,8 @@ after(async () => {
       await db.delete(messages).where(inArray(messages.requestId, all));
       await db.delete(notifications).where(inArray(notifications.requestId, all));
       await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, all));
-      await db.delete(itemRequests).where(inArray(itemRequests.id, all)); // its holds go with it
+      await db.delete(shareCoinHolds).where(inArray(shareCoinHolds.requestId, all)); // a request with a hold cannot be deleted
+      await db.delete(itemRequests).where(inArray(itemRequests.id, all));
     }
     if (userIds.length) {
       await db.delete(notifications).where(inArray(notifications.userId, userIds));
@@ -611,4 +612,24 @@ test("the table refuses a kind, a status, a reason or an amount it does not allo
   await db.insert(shareCoinHolds).values({ ...base, status: "RELEASED", reason: "flag_rejected" } as any);
   await db.insert(shareCoinHolds).values({ ...base, status: "RELEASED", reason: "dispute_released" } as any);
   await db.insert(shareCoinHolds).values({ ...base, status: "SETTLED", reason: "dispute_settled" } as any);
+});
+
+test("a request that has a hold cannot be deleted until the hold is; a table made with CASCADE is converted at startup", async () => {
+  const swap = await pendingSwap(1, 3);
+  await db.insert(shareCoinHolds).values({ requestId: swap.id, payerId: ownerId, receiverId: requesterId, kind: "SWAP", amount: 15 });
+  const deleteRequest = () => db.delete(itemRequests).where(eq(itemRequests.id, swap.id));
+  await assert.rejects(deleteRequest, (error: any) => (error?.cause ?? error).code === "23503", "RESTRICT: a request with a hold stays");
+  assert.equal(await requestStatus(swap.id), "PENDING");
+
+  // An older database whose constraint is still CASCADE: the startup step converts it.
+  await pool.query("ALTER TABLE sharecoin_holds DROP CONSTRAINT sharecoin_holds_request_id_item_requests_id_fk");
+  await pool.query("ALTER TABLE sharecoin_holds ADD CONSTRAINT sharecoin_holds_request_id_item_requests_id_fk FOREIGN KEY (request_id) REFERENCES item_requests(id) ON DELETE CASCADE");
+  await ensureShareCoinHoldsTable();
+  const rule = await pool.query("SELECT confdeltype FROM pg_constraint WHERE conname = 'sharecoin_holds_request_id_item_requests_id_fk'");
+  assert.equal(rule.rows[0].confdeltype, "r");
+  await assert.rejects(deleteRequest, (error: any) => (error?.cause ?? error).code === "23503");
+
+  await db.delete(shareCoinHolds).where(eq(shareCoinHolds.requestId, swap.id));
+  await deleteRequest();
+  assert.deepEqual(await db.select().from(itemRequests).where(eq(itemRequests.id, swap.id)), []);
 });

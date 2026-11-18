@@ -1155,7 +1155,7 @@ export const requestLifecycleEvents = pgTable("request_lifecycle_events", {
  * ShareCoins reserved for an accepted borrow or swap (0034). Accepting reserves what the payer will owe; the payer's spendable
  * balance is their balance minus their ACTIVE holds; the handoff SETTLES the hold (the coins move, exactly this amount) and every
  * way the request can end RELEASES it. `kind` is only BORROW or SWAP: rentals are paid in money and borrow deposits are card
- * authorizations, so neither holds ShareCoins. At most one ACTIVE hold per request. Design: docs/sharecoin-funds-design.md.
+ * authorizations, so neither holds ShareCoins. At most one ACTIVE hold per request. A request that has a hold cannot be deleted (ON DELETE RESTRICT): delete the hold first. Design: docs/sharecoin-funds-design.md.
  */
 export const SHARECOIN_HOLD_KINDS = ["BORROW", "SWAP"] as const;
 export const SHARECOIN_HOLD_STATUSES = ["ACTIVE", "SETTLED", "RELEASED"] as const;
@@ -1163,7 +1163,7 @@ export const SHARECOIN_HOLD_SETTLE_REASONS = ["handoff_manual", "handoff_pin", "
 export const SHARECOIN_HOLD_RELEASE_REASONS = ["cancelled", "expired", "deposit_timeout", "account_deleted", "dispute_released", "flag_rejected", "request_ended", "migration"] as const;
 export const shareCoinHolds = pgTable("sharecoin_holds", {
   id: serial("id").primaryKey(),
-  requestId: integer("request_id").notNull().references(() => itemRequests.id, { onDelete: "cascade" }),
+  requestId: integer("request_id").notNull().references(() => itemRequests.id, { onDelete: "restrict" }),
   payerId: integer("payer_id").notNull().references(() => users.id),
   receiverId: integer("receiver_id").notNull().references(() => users.id),
   kind: text("kind").notNull(),

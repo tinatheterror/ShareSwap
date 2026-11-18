@@ -2117,6 +2117,9 @@ export function registerRoutes(
         .delete(messages)
         .where(inArray(messages.requestId, requestIds));
       await tx
+        .delete(shareCoinHolds)
+        .where(inArray(shareCoinHolds.requestId, requestIds));
+      await tx
         .delete(itemRequests)
         .where(inArray(itemRequests.id, requestIds));
     };
@@ -12653,8 +12656,8 @@ Respond with ONLY the category name, nothing else.`
       return { checked, completed, pending };
     },
     runOverdueReminders: () => processReturnReminders(),
-    runHandoffSweep: (mode, log) =>
-      runHandoffDeadlineSweep(handoffDeadlineDeps, mode, log, { requestTypes: HANDOFF_SWEEP_REQUEST_TYPES }),
+    runHandoffSweep: (mode, log, scope) =>
+      runHandoffDeadlineSweep(handoffDeadlineDeps, mode, log, { requestTypes: HANDOFF_SWEEP_REQUEST_TYPES, ...(scope?.onlyRequestIds ? { onlyRequestIds: scope.onlyRequestIds } : {}) }),
     runExpirySweep: (sweepOptions) => runRequestExpirySweep(requestExpiryDeps, sweepOptions),
   });
   if (

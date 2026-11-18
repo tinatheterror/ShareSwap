@@ -149,6 +149,7 @@ after(async () => {
         await db.delete(messages).where(inArray(messages.requestId, all));
         await db.delete(notifications).where(inArray(notifications.requestId, all));
         await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, all));
+        await db.delete(shareCoinHolds).where(inArray(shareCoinHolds.requestId, all));
         await db.delete(itemRequests).where(inArray(itemRequests.id, all));
       }
       await pool.query("DELETE FROM farming_detections WHERE item_id = ANY($1)", [itemIds]);

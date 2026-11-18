@@ -1,10 +1,10 @@
 -- ShareCoins reserved for accepted borrows and swaps (Phase 2 of docs/sharecoin-funds-design.md). Accepting reserves what the
 -- payer will owe; the payer's spendable balance is their balance minus their ACTIVE holds; the handoff SETTLES a hold and every
--- other way a request ends RELEASES it. A hold is only a reservation on its request, so deleting a request deletes it. kind is BORROW or SWAP only (rentals are money, borrow deposits are card holds).
+-- other way a request ends RELEASES it. A request that has a hold cannot be deleted (RESTRICT). kind is BORROW or SWAP only (rentals are money, borrow deposits are card holds).
 -- Idempotent.
 CREATE TABLE IF NOT EXISTS sharecoin_holds (
   id          serial PRIMARY KEY,
-  request_id  integer NOT NULL CONSTRAINT sharecoin_holds_request_id_item_requests_id_fk REFERENCES item_requests(id) ON DELETE CASCADE,
+  request_id  integer NOT NULL CONSTRAINT sharecoin_holds_request_id_item_requests_id_fk REFERENCES item_requests(id) ON DELETE RESTRICT,
   payer_id    integer NOT NULL CONSTRAINT sharecoin_holds_payer_id_users_id_fk REFERENCES users(id),
   receiver_id integer NOT NULL CONSTRAINT sharecoin_holds_receiver_id_users_id_fk REFERENCES users(id),
   kind        text NOT NULL,

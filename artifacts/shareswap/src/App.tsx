@@ -34,6 +34,7 @@ import ShareOptionsPage from "@/pages/share-options";
 import BorrowPage from "@/pages/borrow-page";
 import LendPage from "@/pages/lend-page";
 import VerifyItemsPage from "@/pages/admin/verify-items";
+import { AdminRoute } from "@/components/admin/admin-route";
 import AdminDisputesPage from "@/pages/admin/disputes";
 import AdminHandoffDisputesPage from "@/pages/admin/handoff-disputes";
 import AdminReportsPage from "@/pages/admin/reports";
@@ -83,14 +84,6 @@ import { BackgroundPolling } from "@/components/background-polling";
 import { LocationSetupWrapper } from "@/components/location-setup-wrapper";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ShareCoinAnimation } from "@/components/sharecoin-animation";
-
-function AdminRoute({ path, component: Component }: { path: string; component: () => React.JSX.Element | null }) {
-  const { user, isLoading } = useAuth();
-  if (isLoading) return <Route path={path}><div /></Route>;
-  if (!user) return <Route path={path}><Redirect to="/auth" /></Route>;
-  if (!(user as any).isAdmin) return <Route path={path}><Redirect to="/" /></Route>;
-  return <Route path={path}><Component /></Route>;
-}
 
 // After signing in (by password, or by Google, which leaves the site and comes back), go to the page the person was
 // sent from, if it was one of ours: the deletion page asks for a sign-in and then needs them back on it.

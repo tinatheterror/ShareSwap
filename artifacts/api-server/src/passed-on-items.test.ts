@@ -180,3 +180,16 @@ test("cancelling a pending deletion lists only the ordinary items", async () => 
   assert.equal(await availableOf(s.gifted), false);
 });
 
+
+test("/api/my-items says a gifted item was gifted even when a later request outranks the gift", async () => {
+  const s = await scenario("my-items", asker.id);
+  // A borrow that completed early afterwards outranks the completed gift in the one-request-per-item summary.
+  await request(s.gifted, asker.id, "BORROW", { status: "COMPLETED_EARLY" });
+  const client = await new Client().signIn(s.username);
+  const mine = (await client.get("/api/my-items")).json as { id: number; isGifted: boolean; isSwapped: boolean; activeRequest: any }[];
+  const gifted = mine.find((i) => i.id === s.gifted)!;
+  assert.equal(gifted.activeRequest.requestType, "BORROW", "the summary request is the borrow, not the gift");
+  assert.equal(gifted.isGifted, true);
+  assert.equal(mine.find((i) => i.id === s.plain)!.isGifted, false);
+  assert.equal(mine.find((i) => i.id === s.swapped)!.isSwapped, true);
+});

@@ -116,7 +116,7 @@ import {
   type RequestExpirySweepOptions,
   type RequestExpirySweepResult,
 } from "../request-expiry-service";
-import { isItemPassedOn, ITEM_PASSED_ON_CODE, ITEM_PASSED_ON_MESSAGE } from "../passed-on-items";
+import { giftedItemIds, isItemPassedOn, ITEM_PASSED_ON_CODE, ITEM_PASSED_ON_MESSAGE } from "../passed-on-items";
 import { findReservationConflict, heldItemIdSet, ITEM_ALREADY_COMMITTED_CODE, ITEM_ALREADY_COMMITTED_MESSAGE } from "../swap-reservation";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
@@ -4725,9 +4725,13 @@ Respond with ONLY the category name, nothing else.`
         if (newPri > oldPri) requestMap.set(req.itemId, req);
       }
 
+      // The newest-priority request can hide a completed gift (a later borrow, say, outranks it), so say outright
+      // which items were given away; the apps show those as "Gifted" and never offer to relist them.
+      const gifted = await giftedItemIds(itemIds);
       const enriched = userItems.map((item) => ({
         ...item,
         activeRequest: requestMap.get(item.id) ?? null,
+        isGifted: gifted.has(item.id),
       }));
 
       res.json(enriched);

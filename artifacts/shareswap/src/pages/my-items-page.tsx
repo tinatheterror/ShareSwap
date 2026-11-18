@@ -33,6 +33,7 @@ import {
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { SelectItem } from "@db/schema";
+import { getInventoryStatus, isListingExpired, type StatusKey, type FilterGroup, type InventoryStatus } from "@/lib/inventory-status";
 
 const TIER_NAMES: Record<number, string> = {
   1: "Tier 1 – Budget Friendly",
@@ -49,129 +50,6 @@ const TIER_SHARECOINS: Record<number, number> = {
 };
 
 // ─── Flat status system ───────────────────────────────────────────────────────
-
-type StatusKey =
-  | "available"
-  | "unavailable"
-  | "lent_out"
-  | "rented_out"
-  | "gifted"
-  | "swapped";
-type FilterGroup = "all" | StatusKey;
-
-interface InventoryStatus {
-  status: StatusKey;
-  label: string;
-  canDelete: boolean;
-  deleteLabel: string;
-  isDisputed?: boolean;
-}
-
-const ACTIVE_STATUSES = [
-  "IN_PROGRESS",
-  "HANDOFF_CONFIRMED",
-  "DEPOSIT_CONFIRMED",
-  "AWAITING_HANDOFF_CONFIRM",
-];
-
-function isListingExpired(item: any): boolean {
-  return (
-    !!item.listingExpiresAt && new Date(item.listingExpiresAt) <= new Date()
-  );
-}
-
-function getInventoryStatus(item: any): InventoryStatus {
-  // Items that were given away in a swap — check this first
-  if (item.isSwapped) {
-    return {
-      status: "swapped",
-      label: "Swapped",
-      canDelete: true,
-      deleteLabel: "Remove from history",
-    };
-  }
-
-  const req = item.activeRequest;
-
-  if (req) {
-    const s: string = req.status;
-    const t: string = req.requestType;
-
-    if (s === "HANDOFF_DISPUTED" || s === "DISPUTED") {
-      if (t === "RENT")
-        return {
-          status: "rented_out",
-          label: "Rented Out",
-          canDelete: false,
-          deleteLabel: "",
-          isDisputed: true,
-        };
-      return {
-        status: "lent_out",
-        label: "Lent Out",
-        canDelete: false,
-        deleteLabel: "",
-        isDisputed: true,
-      };
-    }
-    if (ACTIVE_STATUSES.includes(s)) {
-      if (t === "RENT")
-        return {
-          status: "rented_out",
-          label: "Rented Out",
-          canDelete: false,
-          deleteLabel: "",
-        };
-      return {
-        status: "lent_out",
-        label: "Lent Out",
-        canDelete: false,
-        deleteLabel: "",
-      };
-    }
-    // ACCEPTED or PENDING — item still physically with owner
-    if (s === "ACCEPTED" || s === "PENDING") {
-      return {
-        status: "available",
-        label: "Available",
-        canDelete: false,
-        deleteLabel: "",
-      };
-    }
-    if (s === "COMPLETED" || s === "COMPLETED_EARLY") {
-      if (t === "GIFT")
-        return {
-          status: "gifted",
-          label: "Gifted",
-          canDelete: true,
-          deleteLabel: "Remove from history",
-        };
-      if (t === "SWAP")
-        return {
-          status: "swapped",
-          label: "Swapped",
-          canDelete: true,
-          deleteLabel: "Remove from history",
-        };
-    }
-  }
-
-  // An expired listing (listingExpiresAt in the past) is unavailable even if isAvailable=true
-  if (item.isAvailable && !isListingExpired(item)) {
-    return {
-      status: "available",
-      label: "Available",
-      canDelete: true,
-      deleteLabel: "Remove item",
-    };
-  }
-  return {
-    status: "unavailable",
-    label: "Unavailable",
-    canDelete: true,
-    deleteLabel: "Remove item",
-  };
-}
 
 // ─── Badge colours per status ─────────────────────────────────────────────────
 

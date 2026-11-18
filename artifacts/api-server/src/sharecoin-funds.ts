@@ -703,7 +703,7 @@ export async function ensureFundsHeld(
  * AUTO_CONFIRM_DISPUTE_WINDOW_HOURS). When the window closes without a dispute the hold settles: the coins move, exactly the
  * held amount. A disputed borrow (HANDOFF_DISPUTED) is left alone until an admin decides it. Returns how many it settled.
  */
-export async function settleElapsedAutoConfirmedBorrows(options: { now?: Date; exec?: Executor } = {}): Promise<number> {
+export async function settleElapsedAutoConfirmedBorrows(options: { now?: Date; exec?: Executor; onlyRequestIds?: number[] } = {}): Promise<number> {
   const exec = options.exec ?? db;
   const now = options.now ?? new Date();
   const closedBefore = new Date(now.getTime() - AUTO_CONFIRM_DISPUTE_WINDOW_HOURS * 3_600_000);
@@ -715,6 +715,7 @@ export async function settleElapsedAutoConfirmedBorrows(options: { now?: Date; e
     .where(and(
       eq(shareCoinHolds.status, "ACTIVE"),
       eq(shareCoinHolds.kind, "BORROW"),
+      ...(options.onlyRequestIds ? [inArray(itemRequests.id, options.onlyRequestIds)] : []),
       eq(itemRequests.handoffAutoAdvanced, true),
       lte(itemRequests.handoffConfirmedAt, closedBefore),
       notInArray(itemRequests.status, ["HANDOFF_DISPUTED", "HANDOFF_FLAGGED", ...ENDED_REQUEST_STATUSES]),

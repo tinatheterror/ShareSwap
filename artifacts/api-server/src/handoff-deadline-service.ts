@@ -107,7 +107,7 @@ export interface HandoffDeadlineResult {
 }
 
 // The borrow price formula lives in sharecoin-funds.ts, the one place that decides what a ShareCoin action costs.
-import { calcBorrowShareCoinCost, hasActiveHold, releaseHold } from "./sharecoin-funds";
+import { calcBorrowShareCoinCost, hasActiveHold, releaseHold, settleElapsedAutoConfirmedBorrows } from "./sharecoin-funds";
 export { calcBorrowShareCoinCost };
 
 const short = (name: string, max: number) => (name.length > max ? name.slice(0, max) + "…" : name);
@@ -438,10 +438,16 @@ export async function runHandoffDeadlineSweep(
       reportedCandidates.add(key);
       log(`[handoff-deadlines] DRY-RUN would change ${describeCandidate(candidate)}`);
     }
-  } else if (result.autoAdvancedCount + result.flaggedCount + result.depositExpiredCount > 0) {
-    log(
-      `[handoff-deadlines] applied: autoConfirmed=${result.autoAdvancedCount} flagged=${result.flaggedCount} depositCancelled=${result.depositExpiredCount}`,
-    );
+  } else {
+    // A live handoff sweep also settles the borrows it auto-confirmed once their dispute window has closed, so borrow coins
+    // reach owners wherever this sweep runs (the server timer, the scheduled-jobs runner), not only through the funds job.
+    const settled = await settleElapsedAutoConfirmedBorrows({ ...(options.now ? { now: options.now } : {}), ...(options.onlyRequestIds ? { onlyRequestIds: options.onlyRequestIds } : {}) });
+    if (result.autoAdvancedCount + result.flaggedCount + result.depositExpiredCount > 0) {
+      log(
+        `[handoff-deadlines] applied: autoConfirmed=${result.autoAdvancedCount} flagged=${result.flaggedCount} depositCancelled=${result.depositExpiredCount}`,
+      );
+    }
+    if (settled > 0) log(`[handoff-deadlines] settled the ShareCoins of ${settled} auto-confirmed borrow(s) whose dispute window closed`);
   }
   return result;
 }

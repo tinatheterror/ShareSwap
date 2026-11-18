@@ -574,3 +574,25 @@ test("the dry run says a GIFT would be COMPLETED and changes nothing", async () 
   assert.match(result.candidates[0].detail, /-> COMPLETED/);
   assert.deepEqual(await snapshot(gift.id, gift.itemId), before);
 });
+
+test("a LIVE handoff sweep also settles the coins of an auto-confirmed borrow once its dispute window has closed; a dry run does not", async () => {
+  await setCoins(borrowerId, "50.00");
+  await setCoins(ownerId, "0.00");
+  const { id, itemId } = await newRequest();
+  await holdCoins(id);
+  const lines: string[] = [];
+  const start = new Date();
+  await runHandoffDeadlineSweep(deps, "live", (line) => lines.push(line), { onlyRequestIds: [id], now: start });
+  assert.equal((await snapshot(id, itemId)).status, "IN_PROGRESS");
+  assert.deepEqual(await holdStatus(id), ["ACTIVE"], "held while the window is open");
+
+  const later = new Date(start.getTime() + 25 * HOUR);
+  await runHandoffDeadlineSweep(deps, "dry-run", () => {}, { onlyRequestIds: [id], now: later });
+  assert.deepEqual(await holdStatus(id), ["ACTIVE"], "a dry run settles nothing");
+
+  await runHandoffDeadlineSweep(deps, "live", (line) => lines.push(line), { onlyRequestIds: [id], now: later });
+  assert.deepEqual(await holdStatus(id), ["SETTLED"]);
+  const after = await snapshot(id, itemId);
+  assert.deepEqual([after.borrowerCoins, after.ownerCoins], [43, 7]);
+  assert.ok(lines.some((l) => /settled the ShareCoins of 1 auto-confirmed borrow/.test(l)));
+});

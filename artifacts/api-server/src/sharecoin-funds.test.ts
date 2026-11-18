@@ -115,7 +115,8 @@ before(async () => {
   const password = await hashPassword(PASSWORD);
   const [o, r] = await db.insert(users).values([
     { username: `${UNIQUE}-owner`, displayName: "Olive Owner", password, emailVerified: true, shareCoins: "100.00" },
-    { username: `${UNIQUE}-requester`, displayName: "Remy Requester", password, emailVerified: true, shareCoins: "100.00" },
+    // A Member: the Free plan counts only 3 borrows a month when they are accepted (borrow-limits.test.ts).
+    { username: `${UNIQUE}-requester`, displayName: "Remy Requester", password, emailVerified: true, subscriptionTier: "member", shareCoins: "100.00" },
   ]).returning({ id: users.id });
   ownerId = o.id;
   requesterId = r.id;

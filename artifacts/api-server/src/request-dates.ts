@@ -10,7 +10,7 @@
 export const DEFAULT_PLATFORM_TIME_ZONE = "America/Vancouver";
 
 export const REQUEST_DATES_PASSED_MESSAGE =
-  "These dates have passed. Counter with new dates or decline.";
+  "Dates have passed. Counter with new dates or decline.";
 
 export function resolveTimeZone(candidate: string | undefined): string {
   if (!candidate) return DEFAULT_PLATFORM_TIME_ZONE;

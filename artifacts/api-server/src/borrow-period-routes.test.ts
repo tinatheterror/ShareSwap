@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import cookieParser from "cookie-parser";
 import express from "express";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   db,
   itemRequests,
@@ -315,6 +315,9 @@ test("counter-backs enforce the BORROW boundary", async () => {
 
 test("RENT, SWAP, and GIFT initial requests keep accepting dates over 12 months", async () => {
   for (const requestType of ["RENT", "SWAP", "GIFT"]) {
+    // One pending request per person per item: the ones made so far are set aside first.
+    await db.update(itemRequests).set({ status: "CANCELLED" })
+      .where(and(eq(itemRequests.itemId, allTypesItemId), eq(itemRequests.requesterId, userIds[1]), eq(itemRequests.status, "PENDING")));
     const response = await requester.request(`/api/items/${allTypesItemId}/request`, {
       method: "POST",
       body: JSON.stringify({

@@ -1,6 +1,7 @@
 import { and, eq, gte, inArray, notInArray, sql } from "drizzle-orm";
 import { db, itemRequests, items, notifications, requestLifecycleEvents, shareCoinHolds, shareCoinsTransactions, users } from "@workspace/db";
 import type { SHARECOIN_HOLD_RELEASE_REASONS, SHARECOIN_HOLD_SETTLE_REASONS } from "@workspace/db";
+import { borrowLimitBody, BORROW_LIMIT_MESSAGE, monthlyBorrowSlotAvailable, takeMonthlyBorrowSlot } from "./borrow-allowance";
 import { sendPushToUser } from "./push-notifications";
 
 // The one place that decides what a ShareCoin action costs, who pays it and whether they can. Every gate (sending a
@@ -526,28 +527,34 @@ export async function settleRequestCoins(
   return { settled: paid > 0, paid, kind: quote.kind, payerId: quote.payerId, receiverId: quote.receiverId };
 }
 
-export type AcceptFundsFailure = "funds" | "changed";
+export type AcceptFundsFailure = "funds" | "borrow_limit" | "changed";
 export type AcceptFundsResult<T> = { ok: true; value: T; hold: HoldRow | null } | { ok: false; reason: AcceptFundsFailure };
 
 class AcceptChanged extends Error {}
 
 /**
- * Accepts a request with its coins reserved, atomically. In ONE transaction: reserve the payer's coins (payer row locked
- * first), then run `commit`, which makes the status change and returns its result, or null if the request is no longer in
- * the state it was read in (nothing is kept). On a refusal nothing at all was written.
+ * Accepts a request with its coins reserved, atomically. In ONE transaction: take the Free plan's monthly borrow slot (a
+ * borrow counts when it is accepted), reserve the payer's coins (payer row locked first), then run `commit`, which makes the
+ * status change and returns its result, or null if the request is no longer in the state it was read in (nothing is kept).
+ * On a refusal nothing at all was written.
  */
 export async function acceptWithFunds<T>(args: {
   request: RequestRow;
   item: ItemRow;
   commit: (tx: Executor) => Promise<T | null>;
   now?: Date;
+  /** Count a Free-plan borrow against the monthly allowance at this accept (see borrow-allowance.ts). */
+  borrowAllowance?: boolean;
 }): Promise<AcceptFundsResult<T>> {
   const { request, item } = args;
   const quote = await quoteRequest(quoteInputFromRows(request, item));
   try {
     return await db.transaction(async (tx): Promise<AcceptFundsResult<T>> => {
+      const countsAgainstAllowance = args.borrowAllowance === true && request.requestType === "BORROW" && request.status === "PENDING";
+      if (countsAgainstAllowance && !(await monthlyBorrowSlotAvailable(tx, request.requesterId!, args.now))) return { ok: false, reason: "borrow_limit" };
       const placed = await placeHold(tx, request.id, quote);
       if (!placed.ok) return { ok: false, reason: "funds" };
+      if (countsAgainstAllowance && !(await takeMonthlyBorrowSlot(tx, request.requesterId!, args.now))) return { ok: false, reason: "borrow_limit" };
       const value = await args.commit(tx);
       if (value === null) throw new AcceptChanged();
       return { ok: true, value, hold: placed.hold };
@@ -559,11 +566,14 @@ export async function acceptWithFunds<T>(args: {
 }
 
 export const REQUEST_CHANGED_CODE = "REQUEST_CHANGED";
+export const BORROW_LIMIT_NOTIFICATION = "borrow_limit_reached";
 
 /**
  * The response for an accept that was refused, by whoever clicked:
- *   funds    the same gate as before (402 modal to the payer, neutral to the other person with a private nudge).
- *   changed  someone else changed the request first.
+ *   funds        the same gate as before (402 modal to the payer, neutral to the other person with a private nudge).
+ *   borrow_limit the requester (clicking accept on a counter) gets the plan-limit answer; the owner gets only the neutral
+ *                answer, and the requester is told privately, once per window, so they see the plan-limit modal.
+ *   changed      someone else changed the request first.
  */
 export async function acceptFailureResponse(args: {
   reason: AcceptFundsFailure;
@@ -575,8 +585,34 @@ export async function acceptFailureResponse(args: {
   if (reason === "changed") {
     return { status: 409, body: { code: REQUEST_CHANGED_CODE, error: "This request changed before it could be accepted. Please refresh and try again." } };
   }
-  const block = await gateRequestFunds(actorId, "accept", request, item);
-  return block ?? { status: 409, body: { code: REQUEST_NOT_ACCEPTABLE_NOW_CODE, error: REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE } };
+  if (reason === "funds") {
+    const block = await gateRequestFunds(actorId, "accept", request, item);
+    return block ?? { status: 409, body: { code: REQUEST_NOT_ACCEPTABLE_NOW_CODE, error: REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE } };
+  }
+  if (actorId === request.requesterId) return { status: 403, body: borrowLimitBody() };
+  try {
+    const [window] = await db.select({ resetAt: users.monthlyBorrowResetAt }).from(users).where(eq(users.id, request.requesterId!)).limit(1);
+    const claimed = await db
+      .insert(requestLifecycleEvents)
+      .values({
+        requestId: request.id, eventType: "BORROW_LIMIT_BLOCKED", actorId, idempotencyKey: `borrow-limit-blocked:${request.id}:${window?.resetAt?.getTime() ?? 0}`,
+        details: {},
+      })
+      .onConflictDoNothing()
+      .returning({ id: requestLifecycleEvents.id });
+    if (claimed.length > 0) {
+      await db.insert(notifications).values({
+        userId: request.requesterId!, type: BORROW_LIMIT_NOTIFICATION, title: "Borrow limit reached", message: BORROW_LIMIT_MESSAGE,
+        itemId: item.id, requestId: request.id, isRead: false,
+      } as any);
+      await Promise.resolve(
+        sendPushToUser(request.requesterId!, { title: "Borrow limit reached", body: BORROW_LIMIT_MESSAGE, data: { screen: "chat", chatUserId: item.ownerId, requestId: request.id, itemId: item.id } }, "requests"),
+      ).catch(() => {});
+    }
+  } catch (error) {
+    console.error("[sharecoin-funds] could not tell the requester about the borrow limit:", error);
+  }
+  return { status: 409, body: { code: REQUEST_NOT_ACCEPTABLE_NOW_CODE, error: REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE } };
 }
 
 /**

@@ -75,6 +75,16 @@ Approved with these decisions:
 - **Migration.** When the table is first created, accepted borrows and swaps that owe coins but hold none are cancelled and both people told (test data only; no Stripe call is made, and the ids of any with a card deposit are logged for a manual release).
 - **Modal** gets `reserved` (the payer's own reserved figure) next to `available`.
 
+## Pending-request clean-up
+
+Pending requests do not expire (to be revisited after launch), so these rules keep them from piling up or holding a slot forever:
+
+- **Free-plan borrow limit is counted at accept, not at send.** `acceptWithFunds` takes the slot in the same transaction as the hold (the requester's row is locked, a window older than 30 days starts again, an unanswered or declined request never uses one up). Sending only refuses a borrow when the month is already used up (it could never be accepted); it counts nothing. A Free-plan member can have at most 3 pending borrow requests at once (`PENDING_BORROW_LIMIT`, 403, "You already have 3 borrow requests waiting for an answer…"); Member and above have neither limit (`borrow-allowance.ts`).
+- **Accepting past the monthly limit is refused.** The requester (when they are the one accepting a counter) gets `BORROW_LIMIT_REACHED` and the apps' plan-limit answer with an Upgrade action; when the owner accepts, the owner gets only the neutral "This can't be accepted right now.", and the requester gets one private notification (`borrow_limit_reached`, per window, opening the plan page).
+- **A completed gift or swap declines the other pending requests for the items involved** (the listed item and, for a swap, every item on either side, plus swaps that offered one of them) with the notice "This item is no longer available." (notification, thread line, push); this runs at every completion path (both people confirming, the code, the sweep). Accepting a request for an item that has already been given away or swapped is refused (`ITEM_NO_LONGER_AVAILABLE`, 409) (`item-availability.ts`).
+- **One pending request per person per item**, whatever the type (`DUPLICATE_PENDING_REQUEST`, 409), checked again under an advisory lock on (item, requester) so two taps at once create one.
+- **Passed start dates**: a pending borrow or rental whose start day has passed shows the owner "Dates have passed. Counter with new dates or decline." in place of Accept (the server refuses the accept as well).
+
 ## Phase 3 — clean-up
 
 Remove the old per-site checks and the clamping in the borrow charge once holds settle them.

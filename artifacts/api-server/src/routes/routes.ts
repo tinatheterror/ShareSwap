@@ -118,6 +118,8 @@ import {
 import { findReservationConflict, heldItemIdSet, ITEM_ALREADY_COMMITTED_CODE, ITEM_ALREADY_COMMITTED_MESSAGE } from "../swap-reservation";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
+import { DUPLICATE_PENDING_REQUEST_CODE, DUPLICATE_PENDING_REQUEST_MESSAGE, ITEM_NO_LONGER_AVAILABLE_CODE, ITEM_NO_LONGER_AVAILABLE_MESSAGE, declineRequestsForGoneItems, requestInvolvesGoneItem } from "../item-availability";
+import { borrowLimitBody, monthlyAllowanceUsedUp, pendingBorrowCapReached, pendingBorrowLimitBody } from "../borrow-allowance";
 import { acceptFailureResponse, acceptWithFunds, applyFundsGate, ensureFundsHeld, gateRequestFunds, notifyUnblockedRequests, quoteRequest, quoteSwap, releaseHold, releaseHoldsOfEndedRequests, settleRequestCoins } from "../sharecoin-funds";
 import { HANDOFF_CONFIRM_WINDOW_HOURS, SILENT_PERSON_NOTICE_TITLE, isConfirmNoticeType, silentPersonNotice } from "../handoff-confirm-copy";
 import {
@@ -343,6 +345,9 @@ async function finishCompletedGift(gift: {
   itemName: string;
 }): Promise<{ isFirstTime: boolean }> {
   const { requestId, giverId, receiverId, itemId, itemName } = gift;
+
+  // The gift is gone: every other pending request for the item is declined ("This item is no longer available.").
+  await declineRequestsForGoneItems(requestId).catch((error) => console.error("Error declining the other requests for a gifted item:", error));
 
   // Award first-time bonus to giver only (no recurring reward; receiver gets nothing)
   const giftBonusResult = await awardShareCoinsWithFirstTimeBonus(giverId, 'GIFT', itemName, 0);
@@ -2005,6 +2010,8 @@ export function registerRoutes(
   // transition commits; failures are logged and never undo it.
   const handoffDeadlineDeps: HandoffDeadlineDeps = {
     onSwapAutoConfirmed: async (swap) => {
+      // The items are gone: every other pending request for them is declined ("This item is no longer available.").
+      await declineRequestsForGoneItems(swap.requestId).catch((error) => console.error("Error declining the other requests for swapped items:", error));
       try {
         await awardShareCoinsWithFirstTimeBonus(swap.ownerId, 'SWAP', swap.itemName, 1);
         await awardShareCoinsWithFirstTimeBonus(swap.borrowerId, 'SWAP', swap.itemName, 1);
@@ -6663,44 +6670,19 @@ Respond with ONLY the category name, nothing else.`
       if (rejection) return res.status(403).json(rejection);
     }
 
-    // Enforce Free tier borrow limit (max 2 borrows per 30-day window)
+    // Free plan borrow limits (borrow-allowance.ts). A borrow counts against the monthly limit when it is ACCEPTED, not when
+    // it is sent, so a request nobody answers never uses one up; sending only refuses a request that could not be accepted
+    // because the month is already used up. At most 3 borrow requests may wait for an answer at once.
     if (requestType === "BORROW") {
       const blockedBorrow = await getBlockingOverdueBorrow(req.user.id);
       if (blockedBorrow) {
         return res.status(403).json(overdueBorrowRestrictionResponse(blockedBorrow));
       }
 
-      const [borrowerRecord] = await db
-        .select({
-          subscriptionTier: users.subscriptionTier,
-          monthlyBorrowCount: users.monthlyBorrowCount,
-          monthlyBorrowResetAt: users.monthlyBorrowResetAt,
-        })
-        .from(users)
-        .where(eq(users.id, req.user.id))
-        .limit(1);
-
-      const tier = (borrowerRecord as any)?.subscriptionTier || 'free';
-      if (tier === 'free') {
-        const now = new Date();
-        const resetAt = (borrowerRecord as any)?.monthlyBorrowResetAt
-          ? new Date((borrowerRecord as any).monthlyBorrowResetAt)
-          : now;
-        const thirtyDayMs = 30 * 24 * 60 * 60 * 1000;
-
-        if (now.getTime() - resetAt.getTime() > thirtyDayMs) {
-          // Reset window
-          await db.update(users)
-            .set({ monthlyBorrowCount: 0, monthlyBorrowResetAt: now } as any)
-            .where(eq(users.id, req.user.id));
-        } else if (((borrowerRecord as any)?.monthlyBorrowCount || 0) >= 3) {
-          return res.status(403).json({
-            error: "You've reached your monthly borrow limit of 3 items on the Free plan. Upgrade to Member for unlimited borrows.",
-            code: "BORROW_LIMIT_REACHED",
-            currentTier: 'free',
-            limit: 3,
-          });
-        }
+      const [borrowerRecord] = await db.select({ tier: users.subscriptionTier }).from(users).where(eq(users.id, req.user.id)).limit(1);
+      if ((borrowerRecord?.tier || "free") === "free") {
+        if (await monthlyAllowanceUsedUp(req.user.id)) return res.status(403).json(borrowLimitBody());
+        if (await pendingBorrowCapReached(req.user.id)) return res.status(403).json(pendingBorrowLimitBody());
       }
     }
 
@@ -6745,6 +6727,18 @@ Respond with ONLY the category name, nothing else.`
     // Prevent owners from requesting their own items
     if (item.ownerId === req.user.id) {
       return res.status(403).json({ error: "You cannot request your own item" });
+    }
+
+    // One pending request per person per item: the first has to be answered (or withdrawn) before another can be sent.
+    {
+      const [alreadyPending] = await db
+        .select({ id: itemRequests.id })
+        .from(itemRequests)
+        .where(and(eq(itemRequests.itemId, itemId), eq(itemRequests.requesterId, req.user.id), eq(itemRequests.status, "PENDING")))
+        .limit(1);
+      if (alreadyPending) {
+        return res.status(409).json({ error: DUPLICATE_PENDING_REQUEST_MESSAGE, code: DUPLICATE_PENDING_REQUEST_CODE, requestId: alreadyPending.id });
+      }
     }
 
     // Cooldown check: block re-request if declined within 7 days and listing not updated since
@@ -6803,8 +6797,17 @@ Respond with ONLY the category name, nothing else.`
       if (fundsBlock) return res.status(fundsBlock.status).json(fundsBlock.body);
     }
 
-    // Create the request
-    const [request] = await db
+    // Create the request. The one-pending-request check is repeated under a lock on (item, requester), so two taps at once
+    // cannot both get in.
+    const createdRequest = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${itemId}, ${req.user.id})`);
+      const [alreadyPending] = await tx
+        .select({ id: itemRequests.id })
+        .from(itemRequests)
+        .where(and(eq(itemRequests.itemId, itemId), eq(itemRequests.requesterId, req.user.id), eq(itemRequests.status, "PENDING")))
+        .limit(1);
+      if (alreadyPending) return null;
+      const [row] = await tx
       .insert(itemRequests)
       .values({
         itemId,
@@ -6825,20 +6828,12 @@ Respond with ONLY the category name, nothing else.`
           : {}),
       })
       .returning();
-
-    // Increment monthly borrow count for Free tier users
-    if (requestType === "BORROW") {
-      const [borrowerSub] = await db
-        .select({ subscriptionTier: users.subscriptionTier })
-        .from(users)
-        .where(eq(users.id, req.user.id))
-        .limit(1);
-      if ((borrowerSub as any)?.subscriptionTier === 'free') {
-        await db.update(users)
-          .set({ monthlyBorrowCount: sql`${users.monthlyBorrowCount} + 1` } as any)
-          .where(eq(users.id, req.user.id));
-      }
+      return row;
+    });
+    if (!createdRequest) {
+      return res.status(409).json({ error: DUPLICATE_PENDING_REQUEST_MESSAGE, code: DUPLICATE_PENDING_REQUEST_CODE });
     }
+    const request = createdRequest;
 
     // Get requester info for notification
     const [requester] = await db
@@ -7241,6 +7236,11 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
+    // An item that has been given away or swapped is gone: nothing can be accepted for it.
+    if (status === "ACCEPTED" && request.item_requests.status === "PENDING" && (await requestInvolvesGoneItem(request.item_requests))) {
+      return res.status(409).json({ error: ITEM_NO_LONGER_AVAILABLE_MESSAGE, code: ITEM_NO_LONGER_AVAILABLE_CODE });
+    }
+
     // An accepted exchange holds its items: refuse to accept one whose items another accepted request already holds.
     if (status === "ACCEPTED" && request.item_requests.status !== "ACCEPTED") {
       const conflict = await findReservationConflict(request.item_requests);
@@ -7322,6 +7322,7 @@ Respond with ONLY the category name, nothing else.`
       const accepted = await acceptWithFunds({
         request: request.item_requests,
         item: request.items,
+        borrowAllowance: true,
         commit: async (tx) => {
           const [row] = await tx
             .update(itemRequests)
@@ -7910,6 +7911,11 @@ Respond with ONLY the category name, nothing else.`
         });
       }
 
+      // An item that has been given away or swapped is gone: nothing can be accepted for it.
+      if (request.item_requests.status === "PENDING" && (await requestInvolvesGoneItem(request.item_requests))) {
+        return res.status(409).json({ error: ITEM_NO_LONGER_AVAILABLE_MESSAGE, code: ITEM_NO_LONGER_AVAILABLE_CODE });
+      }
+
       // A borrower with an overdue borrow cannot start another.
       if (request.item_requests.requestType === "BORROW") {
         const blockedBorrow = await getBlockingOverdueBorrow(request.item_requests.requesterId);
@@ -7957,6 +7963,7 @@ Respond with ONLY the category name, nothing else.`
         const accepted = await acceptWithFunds({
           request: request.item_requests,
           item: request.items,
+          borrowAllowance: true,
           commit: async (tx) => {
             const [row] = await tx
               .update(itemRequests)
@@ -9701,6 +9708,8 @@ Respond with ONLY the category name, nothing else.`
           if (offeredIds.length > 0) {
             await db.update(items).set({ isAvailable: false, isSwapped: true }).where(inArray(items.id, offeredIds));
           }
+          // The items are gone: every other pending request for them is declined ("This item is no longer available.").
+          await declineRequestsForGoneItems(requestId).catch((error) => console.error("Error declining the other requests for swapped items:", error));
         }
 
         // Award ShareCoins, trust points, referral bonuses, and achievements for SWAP
@@ -10127,10 +10136,13 @@ Respond with ONLY the category name, nothing else.`
         if (swapOfferedIds.length > 0) {
           await db.update(items).set({ isAvailable: false, isSwapped: true }).where(inArray(items.id, swapOfferedIds));
         }
+        // The items are gone: every other pending request for them is declined ("This item is no longer available.").
+        await declineRequestsForGoneItems(requestId).catch((error) => console.error("Error declining the other requests for swapped items:", error));
       }
 
       // System messages
       if (isGiftPin) {
+        await declineRequestsForGoneItems(requestId).catch((error) => console.error("Error declining the other requests for a gifted item:", error));
         await db.insert(messages).values({
           content: `🎁 Gift confirmed via PIN — "${request.items.name}" successfully received!`,
           senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId,

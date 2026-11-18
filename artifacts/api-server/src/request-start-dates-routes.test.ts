@@ -221,6 +221,9 @@ after(async () => {
 });
 
 async function createViaApi(requestType: string, startDate: string) {
+  // One pending request per person per item: the ones this test already made are set aside first.
+  await db.update(itemRequests).set({ status: "CANCELLED" })
+    .where(and(eq(itemRequests.itemId, itemId), eq(itemRequests.requesterId, userIds[1]), eq(itemRequests.status, "PENDING")));
   const response = await requester.request(`/api/items/${itemId}/request`, {
     method: "POST",
     body: JSON.stringify({
@@ -353,7 +356,7 @@ test("accepting a PENDING request whose start has passed returns 409 and changes
     assert.equal(response.status, 409, requestType);
     const body = (await response.json()) as { code: string; error: string };
     assert.equal(body.code, "REQUEST_DATES_PASSED");
-    assert.equal(body.error, "These dates have passed. Counter with new dates or decline.");
+    assert.equal(body.error, "Dates have passed. Counter with new dates or decline.");
     assert.equal(await requestStatus(requestId), "PENDING");
   }
 });
@@ -435,7 +438,7 @@ test("accepting a counter whose countered start has passed returns 409 for eithe
   assert.equal(byRequester.status, 409);
   const requesterBody = (await byRequester.json()) as { code: string; error: string };
   assert.equal(requesterBody.code, "REQUEST_DATES_PASSED");
-  assert.equal(requesterBody.error, "These dates have passed. Counter with new dates or decline.");
+  assert.equal(requesterBody.error, "Dates have passed. Counter with new dates or decline.");
   assert.deepEqual(await counterState(counteredByOwner), { status: "PENDING", negotiationStatus: "counter_proposed" });
 
   const counteredByRequester = await createPendingRequest("BORROW", "2026-10-10", {

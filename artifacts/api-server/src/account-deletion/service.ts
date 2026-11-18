@@ -1,4 +1,5 @@
 import { unlink } from "node:fs/promises";
+import { notPassedOnItemSql } from "../passed-on-items";
 import { deletePrivateFile } from "../storage";
 import path from "node:path";
 import { and, eq, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
@@ -158,7 +159,8 @@ export async function cancelDeletion(userId: number): Promise<DeletionState> {
       .set({ accountStatus: "active", deletionRequestedAt: null })
       .where(and(eq(users.id, userId), eq(users.accountStatus, "pending_deletion")))
       .returning({ id: users.id });
-    if (row) await tx.update(items).set({ isAvailable: true }).where(and(eq(items.ownerId, userId), eq(items.isDeleted, false)));
+    // Swapped and gifted items stay off the market.
+    if (row) await tx.update(items).set({ isAvailable: true }).where(and(eq(items.ownerId, userId), eq(items.isDeleted, false), notPassedOnItemSql));
   });
   const user = await loadUser(userId);
   return stateOf(user.accountStatus ?? "active", user.deletionRequestedAt);

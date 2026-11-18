@@ -158,3 +158,25 @@ test("relist also refuses a gift that completed early", async () => {
   assert.equal(await availableOf(item), false);
 });
 
+test("reactivating a deactivated account lists only the ordinary items", async () => {
+  const s = await scenario("reactivate", asker.id);
+  await db.update(users).set({ accountStatus: "deactivated", deactivatedAt: new Date() } as any).where(eq(users.id, s.id));
+  const client = await new Client().prime();
+  const res = await client.post("/api/reactivate-account", { username: s.username, password: PASSWORD });
+  assert.equal(res.status, 200, res.text);
+  assert.equal(await availableOf(s.plain), true, "an ordinary item comes back");
+  assert.equal(await availableOf(s.swapped), false, "a swapped item stays off");
+  assert.equal(await availableOf(s.gifted), false, "a gifted item stays off");
+});
+
+test("cancelling a pending deletion lists only the ordinary items", async () => {
+  const s = await scenario("cancel-deletion", asker.id);
+  await db.update(users).set({ accountStatus: "pending_deletion", deletionRequestedAt: new Date() } as any).where(eq(users.id, s.id));
+  await cancelDeletion(s.id);
+  const [u] = await db.select({ status: users.accountStatus }).from(users).where(eq(users.id, s.id));
+  assert.equal(u.status, "active");
+  assert.equal(await availableOf(s.plain), true);
+  assert.equal(await availableOf(s.swapped), false);
+  assert.equal(await availableOf(s.gifted), false);
+});
+

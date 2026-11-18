@@ -18,6 +18,7 @@ import {
 import { db, pool } from "@workspace/db";
 import { eq, or, and, ilike, ne } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
+import { notPassedOnItemSql } from "./passed-on-items";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./mail";
 import { computeActiveStatus, computeResponseTime } from "./user-stats";
 import { resolveGoogleOAuthCallbackURL } from "./google-oauth-config";
@@ -488,7 +489,8 @@ async function reactivateAccountRecord(userId: number): Promise<boolean> {
     .where(and(eq(users.id, userId), eq(users.accountStatus, "deactivated")))
     .returning({ id: users.id });
   if (!reactivated) return false;
-  await db.update(items).set({ isAvailable: true }).where(eq(items.ownerId, userId));
+  // Swapped and gifted items stay off the market: only the listings the shutdown turned off come back.
+  await db.update(items).set({ isAvailable: true }).where(and(eq(items.ownerId, userId), notPassedOnItemSql));
   return true;
 }
 

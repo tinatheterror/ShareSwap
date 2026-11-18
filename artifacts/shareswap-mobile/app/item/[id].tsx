@@ -118,6 +118,9 @@ export default function ItemDetailScreen() {
   const [showSwapTooltip, setShowSwapTooltip] = useState(false);
   const [showEarnModal, setShowEarnModal] = useState(false);
   const [earnRequired, setEarnRequired] = useState(0);
+  // The server's own figures when it sent them: what can be spent now, and what accepted requests have reserved.
+  const [earnAvailable, setEarnAvailable] = useState<number | undefined>(undefined);
+  const [earnReserved, setEarnReserved] = useState(0);
   const [earnContext, setEarnContext] = useState<"borrow" | "swap">("borrow");
   const { width: screenWidth } = useWindowDimensions();
 
@@ -313,6 +316,8 @@ export default function ItemDetailScreen() {
       if (e.code === "INSUFFICIENT_SHARECOINS") {
         const required = e.required ?? 0;
         setEarnRequired(required);
+        setEarnAvailable(typeof (e as any).available === "number" ? (e as any).available : undefined);
+        setEarnReserved((e as any).reserved ?? 0);
         setEarnContext(type === "SWAP" ? "swap" : "borrow");
         // Close any open sheet first — iOS can't stack two native Modals
         setShowBorrowSheet(false);
@@ -812,6 +817,8 @@ export default function ItemDetailScreen() {
         onInsufficientBalance={(required) => {
           setShowBorrowSheet(false);
           setEarnRequired(required);
+          setEarnAvailable(undefined);
+          setEarnReserved(0);
           setEarnContext("borrow");
           // Small delay so borrow sheet finishes closing before earn modal opens
           setTimeout(() => setShowEarnModal(true), 300);
@@ -960,7 +967,8 @@ export default function ItemDetailScreen() {
       <InsufficientShareCoinsModal
         isOpen={showEarnModal}
         onClose={() => setShowEarnModal(false)}
-        currentBalance={Number((user as any)?.shareCoins ?? 0)}
+        currentBalance={earnAvailable ?? Number((user as any)?.shareCoins ?? 0)}
+        reserved={earnReserved}
         required={earnRequired}
         context={earnContext}
       />

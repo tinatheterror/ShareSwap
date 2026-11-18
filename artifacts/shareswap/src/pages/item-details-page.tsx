@@ -70,6 +70,9 @@ export default function ItemDetailsPage() {
   const [insufficientCoinsModal, setInsufficientCoinsModal] = useState<{
     required: number;
     context: "borrow" | "swap";
+    /** The server's own figures, when it sent them: what can be spent now, and what accepted requests have reserved. */
+    available?: number;
+    reserved?: number;
   } | null>(null);
   const [prefill, setPrefill] = useState<{
     startDate?: string | null;
@@ -664,8 +667,8 @@ export default function ItemDetailsPage() {
 
         {requestType && (
           <ItemRequestForm
-            onInsufficientCoins={(required, context) =>
-              setInsufficientCoinsModal({ required, context: context ?? "borrow" })
+            onInsufficientCoins={(required, context, server) =>
+              setInsufficientCoinsModal({ required, context: context ?? "borrow", available: server?.available, reserved: server?.reserved })
             }
             item={item}
             requestType={requestType}
@@ -705,7 +708,8 @@ export default function ItemDetailsPage() {
           <InsufficientShareCoinsModal
             isOpen={!!insufficientCoinsModal}
             onClose={() => setInsufficientCoinsModal(null)}
-            currentBalance={Number(user?.shareCoins || 0)}
+            currentBalance={insufficientCoinsModal.available ?? Number(user?.shareCoins || 0)}
+            reserved={insufficientCoinsModal.reserved}
             required={insufficientCoinsModal.required}
             context={insufficientCoinsModal.context}
           />

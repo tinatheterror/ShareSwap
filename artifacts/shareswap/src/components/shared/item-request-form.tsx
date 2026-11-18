@@ -86,7 +86,7 @@ type Props = {
   onClose: () => void;
   swapOfferItem?: SelectItem[] | null;
   swapRequestedExtraItems?: SelectItem[] | null;
-  onInsufficientCoins?: (required: number, context?: "borrow" | "swap") => void;
+  onInsufficientCoins?: (required: number, context?: "borrow" | "swap", server?: { available?: number; reserved?: number }) => void;
   prefill?: Prefill | null;
 };
 
@@ -236,7 +236,7 @@ export function ItemRequestForm({
       } else if ((error as any).code === "INSUFFICIENT_SHARECOINS" && onInsufficientCoins) {
         // The server's own check, for when the balance shown here was out of date: same modal as the check before sending.
         onClose();
-        onInsufficientCoins((error as any).required ?? 0, requestType === "SWAP" ? "swap" : "borrow");
+        onInsufficientCoins((error as any).required ?? 0, requestType === "SWAP" ? "swap" : "borrow", { available: (error as any).available, reserved: (error as any).reserved });
       } else if ((error as any).code === "OVERDUE_BORROW_RESTRICTED") {
         toast({
           title: "Return overdue item first",

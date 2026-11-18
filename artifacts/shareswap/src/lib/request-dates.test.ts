@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { REQUEST_DATES_PASSED_MESSAGE, acceptBlockedByDates } from "./request-dates";
+import { REQUEST_DATES_PASSED_MESSAGE, REQUEST_NOT_ACCEPTABLE_NOW_CODE, REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE, acceptBlockedByDates } from "./request-dates";
 
 describe("acceptBlockedByDates", () => {
   it("blocks Accept only for PENDING requests whose start day the API says has passed", () => {
@@ -21,5 +21,13 @@ describe("acceptBlockedByDates", () => {
     expect(REQUEST_DATES_PASSED_MESSAGE).toBe(
       "These dates have passed. Counter with new dates or decline.",
     );
+  });
+});
+
+describe("the answer when a request cannot be accepted right now", () => {
+  it("is the server's own wording, with no amount, role or reason in it", () => {
+    expect(REQUEST_NOT_ACCEPTABLE_NOW_CODE).toBe("REQUEST_NOT_ACCEPTABLE_NOW");
+    expect(REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE).toBe("This can't be accepted right now. Please try again later.");
+    expect(REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE).not.toMatch(/ShareCoin|requester|borrower|payer|balance|\d/i);
   });
 });

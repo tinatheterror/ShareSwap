@@ -23,7 +23,7 @@ import { ArrowLeftRight, Shield, Coins, Calendar, CreditCard, Package } from "lu
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiPatch, photoUrl } from "@/lib/api";
 import { fmtCalendarDate, fmtCalendarRange, fmtDate as fmtDateUtil, safeDate } from "@/lib/dateUtils";
-import { REQUEST_DATES_PASSED_MESSAGE, acceptBlockedByDates } from "@/lib/requestDates";
+import { REQUEST_DATES_PASSED_MESSAGE, REQUEST_NOT_ACCEPTABLE_NOW_CODE, REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE, acceptBlockedByDates } from "@/lib/requestDates";
 import { useAuth } from "@/context/AuthContext";
 import { calcSwap, getTierSC } from "@/components/SwapInventorySelector";
 import { InsufficientShareCoinsModal } from "@/components/InsufficientShareCoinsModal";
@@ -293,6 +293,9 @@ export default function ChatScreen() {
   const [text, setText] = useState("");
   const [showEarnModal, setShowEarnModal] = useState(false);
   const [earnRequired, setEarnRequired] = useState(0);
+  // The server's own figures for the person who would pay: what they can spend now, and what accepted requests have reserved.
+  const [earnAvailable, setEarnAvailable] = useState<number | undefined>(undefined);
+  const [earnReserved, setEarnReserved] = useState(0);
   const [earnContext, setEarnContext] = useState<"borrow" | "swap">("borrow");
 
   // Payment sheets
@@ -455,6 +458,8 @@ export default function ChatScreen() {
       if (e?.code === "INSUFFICIENT_SHARECOINS") {
         // The server only says this to the person who would pay, about their own balance.
         setEarnRequired(e.required ?? 0);
+        setEarnAvailable(typeof e.available === "number" ? e.available : undefined);
+        setEarnReserved(e.reserved ?? 0);
         setEarnContext(request?.requestType === "SWAP" ? "swap" : "borrow");
         setShowEarnModal(true);
       } else if (e?.code === "OVERDUE_BORROW_RESTRICTED") {
@@ -462,6 +467,9 @@ export default function ChatScreen() {
           "Borrower must return an overdue item",
           e.message || "The borrower must return their overdue item before starting another borrow.",
         );
+      } else if (e?.code === REQUEST_NOT_ACCEPTABLE_NOW_CODE) {
+        // The server's own words, which say nothing about why (see api-server/src/sharecoin-funds.ts).
+        Alert.alert("Can't accept right now", e.error || e.message || REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE);
       } else {
         Alert.alert("Error", e.message || "Failed to accept request");
       }
@@ -514,23 +522,7 @@ export default function ChatScreen() {
 
   const acceptCounterMutation = useMutation({
     mutationFn: () => {
-      // Only the requester pays ShareCoins. If they are accepting an owner's
-      // counter, validate the final dates before sending the acceptance.
-      if (request?.requestType === "BORROW" && request.requesterId === user?.id) {
-        const weeklyPrice = parseFloat(String(request.item?.shareCoinPrice ?? 0)) || 5;
-        const startDate = request.counterStartDate || request.startDate;
-        const endDate = request.counterEndDate || request.endDate;
-        const days = startDate && endDate
-          ? Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000))
-          : 0;
-        const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
-        if (Number((user as any)?.shareCoins ?? 0) < required) {
-          const error: any = new Error("Insufficient ShareCoins");
-          error.code = "PREFLIGHT_INSUFFICIENT";
-          error.required = required;
-          throw error;
-        }
-      }
+      // The server checks whoever would pay (with its own rounding) and answers with the Not Enough ShareCoins modal.
       return apiPost(`/api/requests/${requestId}/respond-to-counter`, { accept: true });
     },
     onSuccess: () => {
@@ -539,9 +531,11 @@ export default function ChatScreen() {
       invalidateAll();
     },
     onError: (e: any) => {
-      if (e?.code === "PREFLIGHT_INSUFFICIENT" || e?.code === "INSUFFICIENT_SHARECOINS") {
+      if (e?.code === "INSUFFICIENT_SHARECOINS") {
         // Only the person who would pay is ever told this (the server says nothing to the other person).
         setEarnRequired(e.required ?? 0);
+        setEarnAvailable(typeof e.available === "number" ? e.available : undefined);
+        setEarnReserved(e.reserved ?? 0);
         setEarnContext(request?.requestType === "SWAP" ? "swap" : "borrow");
         setShowEarnModal(true);
       } else if (e?.code === "OVERDUE_BORROW_RESTRICTED") {
@@ -549,6 +543,8 @@ export default function ChatScreen() {
           "Borrower must return an overdue item",
           e.message || "The borrower must return their overdue item before starting another borrow.",
         );
+      } else if (e?.code === REQUEST_NOT_ACCEPTABLE_NOW_CODE) {
+        Alert.alert("Can't accept right now", e.error || e.message || REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE);
       } else {
         Alert.alert("Error", e.message || "Failed to accept counter");
       }
@@ -563,25 +559,6 @@ export default function ChatScreen() {
 
   const counterMutation = useMutation({
     mutationFn: (payload: CounterPayload) => {
-      // Only a borrower/requester spends ShareCoins. Validate their chosen
-      // date range before sending the counter, rather than blocking the owner
-      // from accepting it later.
-      if (request?.requestType === "BORROW" && request.requesterId === user?.id) {
-        const weeklyPrice = parseFloat(String(request.item?.shareCoinPrice ?? 0)) || 5;
-        const startD = payload.startDate || request.counterStartDate || request.startDate;
-        const endD = payload.endDate || request.counterEndDate || request.endDate;
-        const days = startD && endD
-          ? Math.max(1, Math.ceil((new Date(endD).getTime() - new Date(startD).getTime()) / 86400000))
-          : 0;
-        const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
-        if (Number((user as any)?.shareCoins ?? 0) < required) {
-          const err: any = new Error("Insufficient ShareCoins");
-          err.code = "PREFLIGHT_INSUFFICIENT";
-          err.required = required;
-          err.context = "borrow";
-          throw err;
-        }
-      }
       if (payload.isResponse) {
         // Counter-back: respond to an existing counter with new terms
         const { isResponse, ...counterFields } = payload;
@@ -595,9 +572,11 @@ export default function ChatScreen() {
       invalidateAll();
     },
     onError: (e: any) => {
-      if (e?.code === "PREFLIGHT_INSUFFICIENT" || e?.code === "INSUFFICIENT_SHARECOINS") {
+      if (e?.code === "INSUFFICIENT_SHARECOINS") {
         setShowCounterSheet(false);
         setEarnRequired(e.required ?? 0);
+        setEarnAvailable(typeof e.available === "number" ? e.available : undefined);
+        setEarnReserved(e.reserved ?? 0);
         setEarnContext(request?.requestType === "SWAP" ? "swap" : "borrow");
         setShowEarnModal(true);
       } else {
@@ -1861,7 +1840,8 @@ export default function ChatScreen() {
       <InsufficientShareCoinsModal
         isOpen={showEarnModal}
         onClose={() => setShowEarnModal(false)}
-        currentBalance={Number((user as any)?.shareCoins ?? 0)}
+        currentBalance={earnAvailable ?? Number((user as any)?.shareCoins ?? 0)}
+        reserved={earnReserved}
         required={earnRequired}
         context={earnContext}
       />

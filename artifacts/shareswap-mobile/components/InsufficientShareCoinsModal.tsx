@@ -13,7 +13,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  /** What the person can spend now (the server's figure when it sent one). */
   currentBalance: number;
+  /** ShareCoins set aside for requests they have accepted; shown only when there are some. */
+  reserved?: number;
   required: number;
   context?: "borrow" | "swap";
   /** Called when an earn route is tapped, before navigation — use to close parent sheets/modals */
@@ -24,6 +27,7 @@ export function InsufficientShareCoinsModal({
   isOpen,
   onClose,
   currentBalance,
+  reserved = 0,
   required,
   context = "borrow",
   onBeforeNavigate,
@@ -93,9 +97,14 @@ export function InsufficientShareCoinsModal({
                 {" "}to {context === "borrow" ? "borrow this item" : "complete this swap"}.
               </Text>
               <Text style={s.balanceText}>
-                Your balance:{" "}
+                {reserved > 0 ? "Available to spend:" : "Your balance:"}{" "}
                 <Text style={s.balanceBold}>{currentBalance} ShareCoins</Text>
               </Text>
+              {reserved > 0 && (
+                <Text style={s.balanceText}>
+                  {reserved} ShareCoins {reserved === 1 ? "is" : "are"} reserved for requests you have accepted.
+                </Text>
+              )}
             </View>
 
             {/* Earn routes */}

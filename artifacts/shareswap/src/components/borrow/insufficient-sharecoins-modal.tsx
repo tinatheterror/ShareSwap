@@ -6,7 +6,10 @@ import { useLocation } from "wouter";
 type Props = {
   isOpen: boolean;
   onClose: () => void;
+  /** What the person can spend now (the server's figure when it sent one). */
   currentBalance: number;
+  /** ShareCoins set aside for requests they have accepted; shown only when there are some. */
+  reserved?: number;
   required: number;
   context?: "borrow" | "swap";
 };
@@ -15,6 +18,7 @@ export function InsufficientShareCoinsModal({
   isOpen,
   onClose,
   currentBalance,
+  reserved = 0,
   required,
   context = "borrow",
 }: Props) {
@@ -71,9 +75,14 @@ export function InsufficientShareCoinsModal({
               to {context === "borrow" ? "borrow this item" : "complete this swap"}.
             </p>
             <p className="text-sm text-muted-foreground">
-              Your balance:{" "}
+              {reserved > 0 ? "Available to spend:" : "Your balance:"}{" "}
               <span className="font-semibold text-gray-700">{currentBalance} ShareCoins</span>
             </p>
+            {reserved > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {reserved} ShareCoins {reserved === 1 ? "is" : "are"} reserved for requests you have accepted.
+              </p>
+            )}
           </div>
 
           {/* Earn routes */}

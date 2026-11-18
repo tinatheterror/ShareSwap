@@ -9,7 +9,7 @@ import { useCancelRequest } from "@/hooks/use-cancel-request";
 import { CancelDialog } from "@/components/cancel-dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCalendarDate, formatDisplayName } from "@/lib/utils";
-import { REQUEST_DATES_PASSED_MESSAGE, acceptBlockedByDates } from "@/lib/request-dates";
+import { REQUEST_DATES_PASSED_MESSAGE, REQUEST_NOT_ACCEPTABLE_NOW_CODE, REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE, acceptBlockedByDates } from "@/lib/request-dates";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -423,6 +423,15 @@ export function ChatWidget() {
   // Insufficient ShareCoins gate (for deposit step after counter-proposal)
   const [showInsufficientCoinsModal, setShowInsufficientCoinsModal] = useState(false);
   const [insufficientCoinsRequired, setInsufficientCoinsRequired] = useState(0);
+  // The server's own figures for the person who would pay: what they can spend now, and what accepted requests have reserved.
+  const [insufficientCoinsAvailable, setInsufficientCoinsAvailable] = useState<number | undefined>(undefined);
+  const [insufficientCoinsReserved, setInsufficientCoinsReserved] = useState(0);
+  const showServerShortfall = (error: { required?: number; available?: number; reserved?: number }) => {
+    setInsufficientCoinsRequired(error.required ?? 0);
+    setInsufficientCoinsAvailable(typeof error.available === "number" ? error.available : undefined);
+    setInsufficientCoinsReserved(error.reserved ?? 0);
+    setShowInsufficientCoinsModal(true);
+  };
 
   // Swap counter modal state
   const [showSwapCounterModal, setShowSwapCounterModal] = useState(false);
@@ -631,13 +640,7 @@ export function ChatWidget() {
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        const error = new Error(body.error || "Failed to accept request") as Error & {
-          code?: string;
-          required?: number;
-        };
-        error.code = body.code;
-        error.required = body.required;
-        throw error;
+        throw Object.assign(new Error(body.error || "Failed to accept request"), body);
       }
       return response.json();
     },
@@ -649,12 +652,18 @@ export function ChatWidget() {
     onError: (error: any) => {
       if (error?.code === "INSUFFICIENT_SHARECOINS") {
         // The server only says this to the person who would pay, so it is always the current user's own balance.
-        setInsufficientCoinsRequired(error.required ?? 0);
-        setShowInsufficientCoinsModal(true);
+        showServerShortfall(error);
       } else if (error?.code === "OVERDUE_BORROW_RESTRICTED") {
         toast({
           title: "Borrower must return an overdue item",
           description: error.message,
+          variant: "destructive",
+        });
+      } else if (error?.code === REQUEST_NOT_ACCEPTABLE_NOW_CODE) {
+        // The server's own words, which say nothing about why (see api-server/src/sharecoin-funds.ts).
+        toast({
+          title: "Can't accept right now",
+          description: error.error || error.message || REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE,
           variant: "destructive",
         });
       } else {
@@ -713,8 +722,15 @@ export function ChatWidget() {
     onError: (error: any) => {
       if (error?.code === "INSUFFICIENT_SHARECOINS") {
         // Only the person who would pay is ever told this, about their own balance.
-        setInsufficientCoinsRequired(error.required ?? 0);
-        setShowInsufficientCoinsModal(true);
+        showServerShortfall(error);
+        return;
+      }
+      if (error?.code === REQUEST_NOT_ACCEPTABLE_NOW_CODE) {
+        toast({
+          title: "Can't accept right now",
+          description: error.error || error.message || REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE,
+          variant: "destructive",
+        });
         return;
       }
       toast({
@@ -839,8 +855,7 @@ export function ChatWidget() {
     onError: (err: any) => {
       if (err?.code === "INSUFFICIENT_SHARECOINS") {
         // The sender would pay under these terms (the server only checks the person who would pay).
-        setInsufficientCoinsRequired(err.required ?? 0);
-        setShowInsufficientCoinsModal(true);
+        showServerShortfall(err);
         return;
       }
       toast({ title: "Could not send counter", description: err?.message || "Please try again.", variant: "destructive" });
@@ -874,8 +889,7 @@ export function ChatWidget() {
     },
     onError: (err: any) => {
       if (err?.code === "INSUFFICIENT_SHARECOINS") {
-        setInsufficientCoinsRequired(err.required ?? 0);
-        setShowInsufficientCoinsModal(true);
+        showServerShortfall(err);
         return;
       }
       toast({ title: "Error", description: err?.message || "Could not send counter", variant: "destructive" });
@@ -1462,23 +1476,7 @@ export function ChatWidget() {
                 size="sm"
                 className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
                 onClick={() => {
-                  // A borrower may accept an owner's counter only when their
-                  // balance covers its final date range. Owners are never
-                  // checked against the borrower's ShareCoin balance.
-                  if (request.requestType === "BORROW" && request.requesterId === user?.id) {
-                    const weeklyPrice = parseFloat((request.item as any)?.shareCoinPrice || "0") || 5;
-                    const startDate = request.counterStartDate || request.startDate;
-                    const endDate = request.counterEndDate || request.endDate;
-                    const days = startDate && endDate
-                      ? Math.max(1, Math.ceil((parseLocalDate(endDate).getTime() - parseLocalDate(startDate).getTime()) / 86_400_000))
-                      : 0;
-                    const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
-                    if (Number((user as any)?.shareCoins ?? 0) < required) {
-                      setInsufficientCoinsRequired(required);
-                      setShowInsufficientCoinsModal(true);
-                      return;
-                    }
-                  }
+                  // The server checks whoever would pay (with its own rounding) and answers with the Not Enough ShareCoins modal.
                   respondToCounterMutation.mutate({ requestId: request.id, accept: true });
                 }}
                 disabled={respondToCounterMutation.isPending || acceptDisabledByDates}
@@ -2375,21 +2373,6 @@ export function ChatWidget() {
                       <div className="px-3 py-2 border-t border-teal-100 bg-teal-50">
                         <Button className="w-full h-10 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl"
                           onClick={() => {
-                            // Check ShareCoin balance against the (possibly counter-proposed) date range
-                            const rawSC = parseFloat(pr.item.shareCoinPrice || "0") || 5;
-                            const coinCost = (() => {
-                              if (!pr.startDate || !pr.endDate) return rawSC;
-                              const s = new Date(pr.startDate.split("T")[0]);
-                              const e = new Date(pr.endDate.split("T")[0]);
-                              const days = Math.max(1, Math.ceil((e.getTime() - s.getTime()) / 86_400_000));
-                              return Math.max(1, Math.ceil((rawSC / 7) * days));
-                            })();
-                            const balance = Number((user as any)?.shareCoins ?? 0);
-                            if (balance < coinCost) {
-                              setInsufficientCoinsRequired(coinCost);
-                              setShowInsufficientCoinsModal(true);
-                              return;
-                            }
                             setSelectedRequest(pr);
                             setShowTrustDepositModal(true);
                           }}>
@@ -2767,7 +2750,8 @@ export function ChatWidget() {
       <InsufficientShareCoinsModal
         isOpen={showInsufficientCoinsModal}
         onClose={() => setShowInsufficientCoinsModal(false)}
-        currentBalance={Number((user as any)?.shareCoins ?? 0)}
+        currentBalance={insufficientCoinsAvailable ?? Number((user as any)?.shareCoins ?? 0)}
+        reserved={insufficientCoinsReserved}
         required={insufficientCoinsRequired}
         context="borrow"
       />
@@ -3094,20 +3078,6 @@ export function ChatWidget() {
                 if (chatProposedStart && chatProposedEnd && chatProposedEnd < chatProposedStart) {
                   toast({ title: "Invalid dates", description: "End date cannot be before start date.", variant: "destructive" });
                   return;
-                }
-                // The requester is the person who spends ShareCoins. Check their
-                // proposed duration before sending, never when the owner accepts.
-                if (chatCounterRequest.requestType === "BORROW" && chatCounterRequest.requesterId === user?.id) {
-                  const weeklyPrice = parseFloat((chatCounterRequest.item as any)?.shareCoinPrice || "0") || 5;
-                  const days = chatProposedStart && chatProposedEnd
-                    ? Math.max(1, Math.ceil((parseLocalDate(chatProposedEnd).getTime() - parseLocalDate(chatProposedStart).getTime()) / 86_400_000))
-                    : 0;
-                  const required = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
-                  if (Number((user as any)?.shareCoins ?? 0) < required) {
-                    setInsufficientCoinsRequired(required);
-                    setShowInsufficientCoinsModal(true);
-                    return;
-                  }
                 }
                 chatCounterMutation.mutate({
                   requestId: chatCounterRequest.id,

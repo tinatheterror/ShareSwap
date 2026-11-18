@@ -1,4 +1,4 @@
-import { pgTable, text, serial, bigserial, boolean, timestamp, integer, bigint, decimal, numeric, varchar, index, uniqueIndex, date, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, bigserial, boolean, timestamp, integer, bigint, decimal, numeric, varchar, index, uniqueIndex, date, jsonb, check } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations, sql } from "drizzle-orm";
 import { LEGACY_PAYMENT_CURRENCY } from "../currency";
@@ -1149,6 +1149,36 @@ export const requestLifecycleEvents = pgTable("request_lifecycle_events", {
 }, (table) => ({
   requestCreatedIdx: index("request_lifecycle_events_request_created_idx").on(table.requestId, table.createdAt),
   idempotencyUniq: uniqueIndex("request_lifecycle_events_idempotency_uniq").on(table.idempotencyKey),
+}));
+
+/**
+ * ShareCoins reserved for an accepted borrow or swap (0034). Accepting reserves what the payer will owe; the payer's spendable
+ * balance is their balance minus their ACTIVE holds; the handoff SETTLES the hold (the coins move, exactly this amount) and every
+ * way the request can end RELEASES it. `kind` is only BORROW or SWAP: rentals are paid in money and borrow deposits are card
+ * authorizations, so neither holds ShareCoins. At most one ACTIVE hold per request. Design: docs/sharecoin-funds-design.md.
+ */
+export const SHARECOIN_HOLD_KINDS = ["BORROW", "SWAP"] as const;
+export const SHARECOIN_HOLD_STATUSES = ["ACTIVE", "SETTLED", "RELEASED"] as const;
+export const SHARECOIN_HOLD_SETTLE_REASONS = ["handoff_manual", "handoff_pin", "handoff_auto", "dispute_settled"] as const;
+export const SHARECOIN_HOLD_RELEASE_REASONS = ["cancelled", "expired", "deposit_timeout", "account_deleted", "dispute_released", "flag_rejected", "request_ended", "migration"] as const;
+export const shareCoinHolds = pgTable("sharecoin_holds", {
+  id: serial("id").primaryKey(),
+  requestId: integer("request_id").notNull().references(() => itemRequests.id, { onDelete: "cascade" }),
+  payerId: integer("payer_id").notNull().references(() => users.id),
+  receiverId: integer("receiver_id").notNull().references(() => users.id),
+  kind: text("kind").notNull(),
+  amount: integer("amount").notNull(),
+  status: text("status").notNull().default("ACTIVE"),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+}, (table) => ({
+  activeRequestUniq: uniqueIndex("sharecoin_holds_active_request_uidx").on(table.requestId).where(sql`${table.status} = 'ACTIVE'`),
+  payerActiveIdx: index("sharecoin_holds_payer_active_idx").on(table.payerId).where(sql`${table.status} = 'ACTIVE'`),
+  kindCheck: check("sharecoin_holds_kind_check", sql`${table.kind} IN ('BORROW', 'SWAP')`),
+  statusCheck: check("sharecoin_holds_status_check", sql`${table.status} IN ('ACTIVE', 'SETTLED', 'RELEASED')`),
+  amountCheck: check("sharecoin_holds_amount_check", sql`${table.amount} > 0`),
+  reasonCheck: check("sharecoin_holds_reason_check", sql`(${table.status} = 'ACTIVE' AND ${table.reason} IS NULL) OR (${table.status} = 'SETTLED' AND ${table.reason} IN ('handoff_manual', 'handoff_pin', 'handoff_auto', 'dispute_settled')) OR (${table.status} = 'RELEASED' AND ${table.reason} IN ('cancelled', 'expired', 'deposit_timeout', 'account_deleted', 'dispute_released', 'flag_rejected', 'request_ended', 'migration'))`),
 }));
 
 export const securityClaims = pgTable("security_claims", {

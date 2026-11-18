@@ -1,6 +1,6 @@
-import { and, eq, gte, inArray } from "drizzle-orm";
-import { db, itemRequests, items, notifications, requestLifecycleEvents, users } from "@workspace/db";
-import { calcBorrowShareCoinCost } from "./handoff-deadline-service";
+import { and, eq, gte, inArray, notInArray, sql } from "drizzle-orm";
+import { db, itemRequests, items, notifications, requestLifecycleEvents, shareCoinHolds, shareCoinsTransactions, users } from "@workspace/db";
+import type { SHARECOIN_HOLD_RELEASE_REASONS, SHARECOIN_HOLD_SETTLE_REASONS } from "@workspace/db";
 import { sendPushToUser } from "./push-notifications";
 
 // The one place that decides what a ShareCoin action costs, who pays it and whether they can. Every gate (sending a
@@ -27,13 +27,28 @@ export const FUNDS_UNBLOCKED_EVENT = "FUNDS_UNBLOCKED";
 export const FUNDS_NEEDED_NOTIFICATION = "sharecoin_needed";
 export const REQUEST_ACCEPTABLE_NOTIFICATION = "request_acceptable";
 
+// ShareCoin borrow cost, in whole ShareCoins (the one rounding every gate, hold, deposit step and handoff shares). End date = return day (not last usage day), so usage days
+// = end - start (no +1). Formula: round( (weeklyPrice / 7) × days ).
+// e.g. 10 SC/week item, start=Mon, return=Fri → 4 usage days → round(10/7 × 4) = 6 SC
+export function calcBorrowShareCoinCost(
+  shareCoinPrice: number,
+  startDate: Date | string | null | undefined,
+  endDate: Date | string | null | undefined,
+): number {
+  if (!startDate || !endDate || shareCoinPrice <= 0) return Math.max(1, Math.round(shareCoinPrice));
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000));
+  return Math.max(1, Math.round((shareCoinPrice / 7) * borrowDays));
+}
+
 const TIER_SHARECOINS: Record<number, number> = { 1: 5, 2: 10, 3: 20, 4: 40 };
 /** What one item is worth in ShareCoins by tier (mirrors the apps' getTierShareCoins; an unset tier counts as tier 2). */
 export function tierShareCoins(tier: number | null | undefined): number {
   return TIER_SHARECOINS[tier ?? 2] ?? 10;
 }
 
-type Executor = typeof db;
+export type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export interface QuoteInput {
   requestType: string | null;
@@ -107,10 +122,28 @@ export async function quoteRequest(input: QuoteInput, exec: Executor = db): Prom
   return null;
 }
 
-/** The whole ShareCoins a person can spend now. */
-export async function spendableBalance(userId: number, exec: Executor = db): Promise<number> {
+/** Requests in these statuses can never settle, so a hold on one reserves nothing even before it is released. */
+const ENDED_REQUEST_STATUSES = ["CANCELLED", "DECLINED", "EXPIRED", "REJECTED", "DEPOSIT_FAILED"] as const;
+
+/** A person's whole ShareCoins, holds not subtracted. */
+export async function totalBalance(userId: number, exec: Executor = db): Promise<number> {
   const [row] = await exec.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, userId)).limit(1);
   return Math.max(0, Math.floor(parseFloat(String(row?.shareCoins ?? "0")) || 0));
+}
+
+/** What a person has reserved for accepted borrows and swaps that have not been settled or released yet. */
+export async function reservedBalance(userId: number, exec: Executor = db): Promise<number> {
+  const [row] = await exec
+    .select({ total: sql<number>`COALESCE(SUM(${shareCoinHolds.amount}), 0)::int` })
+    .from(shareCoinHolds)
+    .innerJoin(itemRequests, eq(itemRequests.id, shareCoinHolds.requestId))
+    .where(and(eq(shareCoinHolds.payerId, userId), eq(shareCoinHolds.status, "ACTIVE"), notInArray(itemRequests.status, [...ENDED_REQUEST_STATUSES])));
+  return Number(row?.total ?? 0);
+}
+
+/** The whole ShareCoins a person can spend now: their balance minus what is held for accepted requests. Every spend checks this. */
+export async function spendableBalance(userId: number, exec: Executor = db): Promise<number> {
+  return Math.max(0, (await totalBalance(userId, exec)) - (await reservedBalance(userId, exec)));
 }
 
 export type FundsGate =
@@ -191,18 +224,22 @@ export async function applyFundsGate(args: {
           maxOffset: MAX_SWAP_OFFSET_SC,
         },
       };
-    case "actor_short":
+    case "actor_short": {
       // The person who would pay: told plainly, about their own balance only (the apps open the Not Enough ShareCoins modal).
+      // `available` is what they can spend now; `reserved` is what their accepted requests have set aside (also theirs alone).
+      const reserved = await reservedBalance(args.actorId, exec);
       return {
         status: 402,
         body: {
           code: INSUFFICIENT_SHARECOINS_CODE,
-          error: `You need ${gate.required} ShareCoins but only have ${gate.available}.`,
+          error: `You need ${gate.required} ShareCoins but only have ${gate.available} available${reserved > 0 ? ` (${reserved} are reserved for accepted requests)` : ""}.`,
           required: gate.required,
           available: gate.available,
+          reserved,
           currentBalance: gate.available,
         },
       };
+    }
     case "other_short":
       if (args.mode === "send") return null;
       if (args.context) {
@@ -325,9 +362,275 @@ export async function gateRequestFunds(
   item: ItemRow,
   overrides: Partial<QuoteInput> = {},
 ): Promise<FundsBlock | null> {
+  // A request that already holds its coins is not checked against them a second time (its own hold is not "spent").
+  if (mode === "accept" && request.status !== "PENDING" && (await hasActiveHold(request.id))) return null;
   const quote = await quoteRequest(quoteInputFromRows(request, item, overrides));
   return applyFundsGate({
     actorId, quote, mode,
     context: { requestId: request.id, itemId: item.id, itemName: item.name, ownerId: item.ownerId!, requesterId: request.requesterId! },
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Holds (Phase 2). Accepting reserves what the payer will owe, in the same transaction that accepts, under a lock on the
+// payer's row, so two accepts that together need more than the payer has cannot both succeed. The handoff settles the hold
+// (the coins move, exactly the quoted amount); every other way the request can end releases it.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+export type HoldRow = typeof shareCoinHolds.$inferSelect;
+export type HoldSettleReason = (typeof SHARECOIN_HOLD_SETTLE_REASONS)[number];
+export type HoldReleaseReason = (typeof SHARECOIN_HOLD_RELEASE_REASONS)[number];
+
+/** The statuses from which a request can still end in a coin transfer (the hold exists until the handoff settles it). */
+export const PRE_SETTLEMENT_STATUSES = ["ACCEPTED", "DEPOSIT_CONFIRMED", "HANDOFF_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "HANDOFF_DISPUTED", "HANDOFF_FLAGGED"] as const;
+
+export async function activeHoldFor(requestId: number, exec: Executor = db): Promise<HoldRow | null> {
+  const [hold] = await exec.select().from(shareCoinHolds).where(and(eq(shareCoinHolds.requestId, requestId), eq(shareCoinHolds.status, "ACTIVE"))).limit(1);
+  return hold ?? null;
+}
+
+export async function hasActiveHold(requestId: number, exec: Executor = db): Promise<boolean> {
+  return (await activeHoldFor(requestId, exec)) !== null;
+}
+
+export type PlaceHoldResult = { ok: true; hold: HoldRow | null } | { ok: false; required: number; available: number };
+
+/**
+ * Reserves `quote.amount` of the payer's spendable balance for the request. Call it inside the accepting transaction: it
+ * locks the payer's users row (SELECT ... FOR UPDATE) BEFORE it computes the spendable balance and inserts the hold, so a
+ * second transaction for the same payer waits for the first and then sees its hold. A request that already holds its coins
+ * keeps that hold. A quote of nothing places nothing.
+ */
+export async function placeHold(tx: Executor, requestId: number, quote: FundsQuote | null): Promise<PlaceHoldResult> {
+  if (!quote || quote.amount <= 0) return { ok: true, hold: null };
+  await tx.select({ id: users.id }).from(users).where(eq(users.id, quote.payerId)).for("update");
+  const existing = await activeHoldFor(requestId, tx);
+  if (existing) return { ok: true, hold: existing };
+  const available = await spendableBalance(quote.payerId, tx);
+  if (available < quote.amount) return { ok: false, required: quote.amount, available };
+  const [hold] = await tx
+    .insert(shareCoinHolds)
+    .values({ requestId, payerId: quote.payerId, receiverId: quote.receiverId, kind: quote.kind, amount: quote.amount })
+    .returning();
+  return { ok: true, hold };
+}
+
+/** Frees a request's hold (whoever's it is) for the stated reason. Returns whether there was one. Safe to repeat. */
+export async function releaseHold(exec: Executor, requestId: number, reason: HoldReleaseReason): Promise<boolean> {
+  const rows = await exec
+    .update(shareCoinHolds)
+    .set({ status: "RELEASED", reason, resolvedAt: new Date() })
+    .where(and(eq(shareCoinHolds.requestId, requestId), eq(shareCoinHolds.status, "ACTIVE")))
+    .returning({ id: shareCoinHolds.id });
+  return rows.length > 0;
+}
+
+/** Releases every ACTIVE hold of a person (they are the payer) and of the requests given, for an account deletion. */
+export async function releaseHoldsForDeletion(exec: Executor, userId: number, requestIds: number[]): Promise<number> {
+  const rows = await exec.execute(sql`
+    UPDATE sharecoin_holds SET status = 'RELEASED', reason = 'account_deleted', resolved_at = now()
+    WHERE status = 'ACTIVE' AND (payer_id = ${userId} OR receiver_id = ${userId}${requestIds.length > 0 ? sql` OR request_id IN (${sql.join(requestIds.map((id) => sql`${id}`), sql`, `)})` : sql``})
+    RETURNING id`);
+  return rows.rows.length;
+}
+
+/**
+ * Safety net: releases the ACTIVE hold of any request that ended (cancelled, expired, declined, ...) without anything
+ * releasing it. Every ending releases its own hold; this only catches a path that does not, and spendable balance already
+ * ignores such holds, so nothing is ever kept reserved for a request that is over.
+ */
+export async function releaseHoldsOfEndedRequests(exec: Executor = db): Promise<number> {
+  const rows = await exec.execute(sql`
+    UPDATE sharecoin_holds h SET status = 'RELEASED',
+      reason = CASE r.status WHEN 'CANCELLED' THEN 'cancelled' WHEN 'EXPIRED' THEN 'expired' ELSE 'request_ended' END,
+      resolved_at = now()
+    FROM item_requests r
+    WHERE r.id = h.request_id AND h.status = 'ACTIVE'
+      AND r.status IN (${sql.join(ENDED_REQUEST_STATUSES.map((s) => sql`${s}`), sql`, `)})
+    RETURNING h.id`);
+  return rows.rows.length;
+}
+
+export interface SettleResult {
+  /** True when a hold (or the legacy fallback quote) moved coins. */
+  settled: boolean;
+  /** What actually moved. */
+  paid: number;
+  kind: "BORROW" | "SWAP" | null;
+  payerId: number | null;
+  receiverId: number | null;
+}
+
+const NOT_SETTLED: SettleResult = { settled: false, paid: 0, kind: null, payerId: null, receiverId: null };
+
+async function moveCoins(
+  tx: Executor,
+  m: { payerId: number; receiverId: number; kind: "BORROW" | "SWAP"; amount: number; itemName: string; suffix: string },
+): Promise<number> {
+  // All or nothing: a conditional debit that returns the row only if the payer had it. The receiver gets exactly what was debited.
+  let paid = m.amount;
+  const debit = await tx
+    .update(users)
+    .set({ shareCoins: sql`${users.shareCoins} - ${m.amount}` })
+    .where(and(eq(users.id, m.payerId), sql`${users.shareCoins} >= ${m.amount}`))
+    .returning({ id: users.id });
+  if (debit.length === 0) {
+    // The hold was meant to make this impossible. If a balance was lowered some other way, take what is there (never below
+    // zero, never more than owed) and say so loudly rather than fail a handoff that already happened.
+    const [row] = await tx.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, m.payerId)).for("update");
+    paid = Math.min(m.amount, Math.max(0, Math.floor(parseFloat(String(row?.shareCoins ?? "0")) || 0)));
+    console.error(`[sharecoin-funds] payer ${m.payerId} could not cover ${m.amount} SC at settlement; collected ${paid}`);
+    if (paid > 0) await tx.update(users).set({ shareCoins: sql`${users.shareCoins} - ${paid}` }).where(eq(users.id, m.payerId));
+  }
+  if (paid <= 0) return 0;
+  await tx.update(users).set({ shareCoins: sql`${users.shareCoins} + ${paid}` }).where(eq(users.id, m.receiverId));
+  const label = m.kind === "BORROW"
+    ? { payer: `Borrowed: ${m.itemName}${m.suffix}`, payerType: "BORROW_CHARGE", receiver: `Lent: ${m.itemName}${m.suffix}`, receiverType: "LEND_REWARD" }
+    : { payer: `Swap offset paid: ${m.itemName}${m.suffix}`, payerType: "SWAP_OFFSET_PAID", receiver: `Swap offset received: ${m.itemName}${m.suffix}`, receiverType: "SWAP_OFFSET_RECEIVED" };
+  await tx.insert(shareCoinsTransactions).values([
+    { userId: m.payerId, amount: (-paid).toString(), description: label.payer, transactionType: label.payerType },
+    { userId: m.receiverId, amount: paid.toString(), description: label.receiver, transactionType: label.receiverType },
+  ]);
+  return paid;
+}
+
+/**
+ * The handoff has happened: move the coins the request holds. Run it in a transaction (so the hold, the debit and the credit
+ * stand or fall together). With a hold, exactly the held amount moves. A request that has none (it predates holds) falls back
+ * to `fallbackQuote`, limited to what the payer can spend without touching what other requests hold. Safe to repeat: a
+ * settled hold is not settled twice.
+ */
+export async function settleRequestCoins(
+  tx: Executor,
+  args: { requestId: number; reason: HoldSettleReason; itemName: string; fallbackQuote?: FundsQuote | null; descriptionSuffix?: string; /** Without a hold, move the whole amount or nothing (an auto-confirmed handoff never charges part of it). */ fallbackAllOrNothing?: boolean },
+): Promise<SettleResult> {
+  const suffix = args.descriptionSuffix ?? "";
+  const [hold] = await tx
+    .select()
+    .from(shareCoinHolds)
+    .where(and(eq(shareCoinHolds.requestId, args.requestId), eq(shareCoinHolds.status, "ACTIVE")))
+    .for("update")
+    .limit(1);
+  if (hold) {
+    const paid = await moveCoins(tx, { payerId: hold.payerId, receiverId: hold.receiverId, kind: hold.kind as "BORROW" | "SWAP", amount: hold.amount, itemName: args.itemName, suffix });
+    await tx.update(shareCoinHolds).set({ status: "SETTLED", reason: args.reason, resolvedAt: new Date() }).where(eq(shareCoinHolds.id, hold.id));
+    return { settled: true, paid, kind: hold.kind as "BORROW" | "SWAP", payerId: hold.payerId, receiverId: hold.receiverId };
+  }
+  const quote = args.fallbackQuote;
+  if (!quote || quote.amount <= 0) return NOT_SETTLED;
+  await tx.select({ id: users.id }).from(users).where(eq(users.id, quote.payerId)).for("update");
+  const spendable = await spendableBalance(quote.payerId, tx);
+  const amount = args.fallbackAllOrNothing ? (spendable >= quote.amount ? quote.amount : 0) : Math.min(quote.amount, spendable);
+  if (amount <= 0) return { ...NOT_SETTLED, kind: quote.kind, payerId: quote.payerId, receiverId: quote.receiverId };
+  const paid = await moveCoins(tx, { payerId: quote.payerId, receiverId: quote.receiverId, kind: quote.kind, amount, itemName: args.itemName, suffix });
+  return { settled: paid > 0, paid, kind: quote.kind, payerId: quote.payerId, receiverId: quote.receiverId };
+}
+
+export type AcceptFundsFailure = "funds" | "changed";
+export type AcceptFundsResult<T> = { ok: true; value: T; hold: HoldRow | null } | { ok: false; reason: AcceptFundsFailure };
+
+class AcceptChanged extends Error {}
+
+/**
+ * Accepts a request with its coins reserved, atomically. In ONE transaction: reserve the payer's coins (payer row locked
+ * first), then run `commit`, which makes the status change and returns its result, or null if the request is no longer in
+ * the state it was read in (nothing is kept). On a refusal nothing at all was written.
+ */
+export async function acceptWithFunds<T>(args: {
+  request: RequestRow;
+  item: ItemRow;
+  commit: (tx: Executor) => Promise<T | null>;
+  now?: Date;
+}): Promise<AcceptFundsResult<T>> {
+  const { request, item } = args;
+  const quote = await quoteRequest(quoteInputFromRows(request, item));
+  try {
+    return await db.transaction(async (tx): Promise<AcceptFundsResult<T>> => {
+      const placed = await placeHold(tx, request.id, quote);
+      if (!placed.ok) return { ok: false, reason: "funds" };
+      const value = await args.commit(tx);
+      if (value === null) throw new AcceptChanged();
+      return { ok: true, value, hold: placed.hold };
+    });
+  } catch (error) {
+    if (error instanceof AcceptChanged) return { ok: false, reason: "changed" };
+    throw error;
+  }
+}
+
+export const REQUEST_CHANGED_CODE = "REQUEST_CHANGED";
+
+/**
+ * The response for an accept that was refused, by whoever clicked:
+ *   funds    the same gate as before (402 modal to the payer, neutral to the other person with a private nudge).
+ *   changed  someone else changed the request first.
+ */
+export async function acceptFailureResponse(args: {
+  reason: AcceptFundsFailure;
+  actorId: number;
+  request: RequestRow;
+  item: ItemRow;
+}): Promise<FundsBlock> {
+  const { reason, actorId, request, item } = args;
+  if (reason === "changed") {
+    return { status: 409, body: { code: REQUEST_CHANGED_CODE, error: "This request changed before it could be accepted. Please refresh and try again." } };
+  }
+  const block = await gateRequestFunds(actorId, "accept", request, item);
+  return block ?? { status: 409, body: { code: REQUEST_NOT_ACCEPTABLE_NOW_CODE, error: REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE } };
+}
+
+/**
+ * Run once, when the holds table is first created (test data only; see docs/sharecoin-funds-design.md): an open borrow or
+ * swap that is past acceptance, owes coins and holds none cannot be honoured under the new rules, so it is cancelled and
+ * both people are told. Requests that owe nothing are left alone. No Stripe call is made; the ids of any that had a card
+ * deposit are returned so the owner can release those by hand.
+ */
+export async function cancelAcceptedRequestsWithoutHolds(exec: Executor = db): Promise<{ cancelled: number[]; withCardDeposit: number[] }> {
+  const rows = await exec
+    .select()
+    .from(itemRequests)
+    .innerJoin(items, eq(items.id, itemRequests.itemId))
+    .where(and(inArray(itemRequests.status, [...PRE_SETTLEMENT_STATUSES]), inArray(itemRequests.requestType, ["BORROW", "SWAP"])));
+  const result = { cancelled: [] as number[], withCardDeposit: [] as number[] };
+  for (const row of rows) {
+    const request = row.item_requests;
+    if (request.shareCoinsCharged) continue;
+    if (await hasActiveHold(request.id, exec)) continue;
+    const quote = await quoteRequest(quoteInputFromRows(request, row.items), exec);
+    if (!quote || quote.amount <= 0) continue;
+    const now = new Date();
+    await exec.update(itemRequests).set({
+      status: "CANCELLED", unarchivedAt: now, cancelledAt: now, cancelledFromStatus: request.status, cancelReason: "sharecoin_hold_migration",
+      cancelledWithPenalty: false, cancelDepositState: request.depositPaymentIntentId ? "authorized" : "none",
+    } as any).where(and(eq(itemRequests.id, request.id), eq(itemRequests.status, request.status)));
+    await exec.update(items).set({ isAvailable: true, updatedAt: now }).where(eq(items.id, row.items.id));
+    const message = `The request for "${short(row.items.name, 30)}" was cancelled because ShareCoins are now reserved when a request is accepted. You can send it again.`;
+    await exec.insert(notifications).values([request.requesterId, row.items.ownerId].filter((id): id is number => typeof id === "number").map((userId) => ({
+      userId, type: "request_cancelled", title: "Request cancelled", message, itemId: row.items.id, requestId: request.id, isRead: false,
+    })) as any);
+    result.cancelled.push(request.id);
+    if (request.depositPaymentIntentId) result.withCardDeposit.push(request.id);
+  }
+  return result;
+}
+
+/**
+ * The deposit step of a borrow (the card hold, or paying the deposit) needs the borrower's ShareCoins to be set aside for
+ * the borrow. Normally accepting already did that; a request accepted before holds existed gets its hold now, or the
+ * borrower gets the Not Enough ShareCoins answer. Uses the same quote and rounding as every other gate, never a figure the
+ * client sent. Pass the surrounding transaction as `tx` when there is one. Returns the block to send, or null to go on.
+ */
+export async function ensureFundsHeld(
+  args: { actorId: number; request: RequestRow; item: ItemRow },
+  tx?: Executor,
+): Promise<{ block: FundsBlock | null; amount: number }> {
+  const quote = await quoteRequest(quoteInputFromRows(args.request, args.item), tx ?? db);
+  if (!quote || quote.amount <= 0) return { block: null, amount: 0 };
+  const placed = tx ? await placeHold(tx, args.request.id, quote) : await db.transaction((inner) => placeHold(inner, args.request.id, quote));
+  if (placed.ok) return { block: null, amount: quote.amount };
+  const block = await applyFundsGate({
+    actorId: args.actorId, quote, mode: "accept",
+    context: { requestId: args.request.id, itemId: args.item.id, itemName: args.item.name, ownerId: args.item.ownerId!, requesterId: args.request.requesterId! },
+  });
+  return { block: block ?? { status: 409, body: { code: REQUEST_NOT_ACCEPTABLE_NOW_CODE, error: REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE } }, amount: quote.amount };
 }

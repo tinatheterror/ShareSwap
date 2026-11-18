@@ -1,6 +1,6 @@
 # ShareCoin funds: checks, holds and discretion
 
-Status: Phase 1 in progress; Phase 2 (holds) awaiting schema sign-off. Decisions below were made by the owner.
+Status: Phase 1 and Phase 2 (holds) built; the pending-request clean-up is built after them; Phase 3 not started. Decisions below were made by the owner.
 
 ## Goals
 
@@ -60,12 +60,20 @@ Debits are conditional (`… WHERE share_coins >= n`), inside the transaction th
 - Discretion: neutral response, private nudge, unblock notice (tracked with `request_lifecycle_events`, no new table); the apps drop their `payerIsRequester` branches.
 - Tests: every gate, the discretion rules (no amounts or role flags in what the non-payer sees), the max offset.
 
-## Phase 2 — holds at accept (schema; shown to the owner before it is built)
+## Phase 2 — holds at accept (schema `sharecoin_holds`, 0034)
 
-- Accepting creates a hold on the payer for the quoted amount; available balance = balance minus active holds, and every spend checks available balance.
-- Cancel, decline, expiry and the deposit timeout release the hold; handoff (manual, PIN, auto-confirm) settles it and cannot fail for lack of funds.
-- The quote is stored at accept time, so later tier edits or balance changes cannot change what is owed. A counter re-quotes and replaces the hold.
-- Modal shows available balance, and "N SC reserved for accepted swaps" when holds exist.
+Approved with these decisions:
+
+- **Accepting reserves.** `acceptWithFunds` (sharecoin-funds.ts) does, in ONE transaction: lock the payer's `users` row (`SELECT … FOR UPDATE`), compute spendable balance, insert the hold, make the status change. Two simultaneous accepts for one payer queue on that lock; the second sees the first's hold. Nothing is written when it is refused.
+- **Spendable balance** = balance minus ACTIVE holds (a hold on a request that has already ended — cancelled, expired, declined — is not counted even before it is released). Every ShareCoin spend uses it: the send, counter and accept gates, the deposit step, the handoff's fallback for a request that has no hold, and the Persona sandbox reset's take-back.
+- **kind** is `BORROW` or `SWAP`, enforced by a CHECK (with `status` and `reason`). Rentals are paid in money and borrow deposits are card authorizations, so neither holds ShareCoins; a rental accept makes no hold. At most one ACTIVE hold per request (partial unique index).
+- **The quote is stored** in the hold at accept, so later tier edits or balance changes cannot change what is owed. A counter can only be made while a request is pending, before any hold exists, so there is nothing to replace: the hold is made from the final terms when the counter is accepted.
+- **Settling.** The handoff (manual, PIN, auto-confirm) settles the hold in one transaction: a conditional debit of exactly the held amount, the receiver credited exactly what was debited, the hold `SETTLED`. A request from before holds (nothing held) settles the old way, limited to what the payer can spend without touching other holds (all-or-nothing for an auto-confirmed borrow).
+- **Releasing.** Cancel (borrow, rent, swap), the deposit timeout, both expiry sweeps, declined terms, the test-data cleanup, a handoff dispute decided for the borrower (`dispute_released`) and account deletion (`account_deleted`, which also cancels the person's accepted requests) release the hold. A sweep (`sharecoin-funds-recheck`) releases any ended request's hold that nothing released.
+- **Disputes keep the hold until resolved**: decided for the owner, the handoff stands and the hold settles (`dispute_settled`); decided for the borrower it is released. `flag_rejected` is an allowed release reason for when an admin can reject a flagged exchange (there is no such action yet; flagged exchanges keep their hold).
+- **Deposit step.** `pay-deposit`, `create-deposit-hold` and the refundable-deposit confirmation no longer do their own balance arithmetic or trust a client figure: they call `ensureFundsHeld`, which uses the same quote and rounding (`calcBorrowShareCoinCost`, now in the funds module) and answers the Not Enough ShareCoins modal if the borrower cannot cover it.
+- **Migration.** When the table is first created, accepted borrows and swaps that owe coins but hold none are cancelled and both people told (test data only; no Stripe call is made, and the ids of any with a card deposit are logged for a manual release).
+- **Modal** gets `reserved` (the payer's own reserved figure) next to `available`.
 
 ## Phase 3 — clean-up
 

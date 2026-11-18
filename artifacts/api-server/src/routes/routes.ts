@@ -118,7 +118,7 @@ import {
 import { findReservationConflict, heldItemIdSet, ITEM_ALREADY_COMMITTED_CODE, ITEM_ALREADY_COMMITTED_MESSAGE } from "../swap-reservation";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
-import { applyFundsGate, gateRequestFunds, notifyUnblockedRequests, quoteRequest, quoteSwap } from "../sharecoin-funds";
+import { acceptFailureResponse, acceptWithFunds, applyFundsGate, ensureFundsHeld, gateRequestFunds, notifyUnblockedRequests, quoteRequest, quoteSwap, releaseHold, releaseHoldsOfEndedRequests, settleRequestCoins } from "../sharecoin-funds";
 import { HANDOFF_CONFIRM_WINDOW_HOURS, SILENT_PERSON_NOTICE_TITLE, isConfirmNoticeType, silentPersonNotice } from "../handoff-confirm-copy";
 import {
   HANDOFF_SWEEP_INTERVAL_MS,
@@ -436,8 +436,41 @@ async function finishCompletedGift(gift: {
   return { isFirstTime: giftBonusResult.isFirstTime };
 }
 
-// Server-side swap coin offset application. The amount and who pays come from the same quote the funds gates use
-// (sharecoin-funds.ts), so what a person was checked against is what is settled.
+/**
+ * A borrow's handoff has happened: move the coins the request holds (exactly the amount reserved at accept; a request from
+ * before holds falls back to the quote, limited to what the borrower can spend). Then the lender's first-lend bonus and
+ * the "+N SC" notice, for what actually moved. Returns what moved.
+ */
+async function settleBorrowAtHandoff(args: {
+  requestId: number; borrowerId: number; ownerId: number | null; itemId: number; itemName: string; amount: number;
+  reason: "handoff_manual" | "handoff_pin";
+}): Promise<number> {
+  const settled = await db.transaction((tx) => settleRequestCoins(tx, {
+    requestId: args.requestId, reason: args.reason, itemName: args.itemName,
+    fallbackQuote: args.ownerId ? { kind: "BORROW", payerId: args.borrowerId, receiverId: args.ownerId, amount: args.amount } : null,
+  }));
+  const charged = settled.paid;
+  if (args.ownerId && charged > 0) {
+    // First-time lend bonus (only fires on their very first lend)
+    await awardShareCoinsWithFirstTimeBonus(args.ownerId, 'LEND', args.itemName, 1);
+
+    // Notify lender so their client refreshes balance and shows coin animation at handoff
+    await db.insert(notifications).values({
+      userId: args.ownerId,
+      type: "sharecoin_earned",
+      title: `+${charged} ShareCoin${charged !== 1 ? "s" : ""} Earned`,
+      message: `+${charged} SC earned for lending "${args.itemName.length > 20 ? args.itemName.slice(0, 20) + "…" : args.itemName}".`,
+      requestId: args.requestId,
+      itemId: args.itemId,
+      isRead: false,
+    });
+  }
+  return charged;
+}
+
+// Server-side swap coin offset application. The amount and who pays come from what the request holds (reserved at accept,
+// from the same quote the funds gates use); a request from before holds falls back to the quote. Settled in one
+// transaction, the receiver credited exactly what the payer paid, so a swap never creates coins.
 async function applySwapCoinOffset(
   ownerId: number,
   requesterId: number,
@@ -447,6 +480,7 @@ async function applySwapCoinOffset(
   counterSwapOwnerItemIds: number[] | null,
   counterSwapRequesterItemIds: number[] | null,
   itemName: string,
+  reason: "handoff_manual" | "handoff_pin" | "handoff_auto" = "handoff_manual",
 ): Promise<void> {
   const [requested] = await db.select({ swapRequestedItemIds: itemRequests.swapRequestedItemIds }).from(itemRequests).where(eq(itemRequests.id, requestId)).limit(1);
   const quote = await quoteSwap({
@@ -454,33 +488,15 @@ async function applySwapCoinOffset(
     swapOfferedItemIds, swapRequestedItemIds: (requested?.swapRequestedItemIds as number[] | null) ?? null,
     counterSwapOwnerItemIds, counterSwapRequesterItemIds,
   });
-  if (!quote) return; // fair swap (or a side with no items), nothing to transfer
 
-  const offset = quote.amount;
-  const payerId = quote.payerId;
-  const receiverId = quote.receiverId;
-
-  // The payer pays at most what they have, like a borrow charge (min(cost, balance)), and the receiver is credited exactly
-  // what the payer paid, so a swap never creates coins. The payer's row is locked so the balance cannot change between
-  // reading it and debiting it.
-  const paid = await db.transaction(async (tx) => {
-    const [payer] = await tx.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, payerId)).for("update");
-    const payerBalance = Math.floor(parseFloat(payer?.shareCoins || "0"));
-    const charged = Math.min(offset, Math.max(payerBalance, 0));
-    if (charged <= 0) return 0;
-
-    await tx.update(users).set({ shareCoins: sql`CAST(share_coins AS INTEGER) - ${charged}` }).where(eq(users.id, payerId));
-    await tx.insert(shareCoinsTransactions).values({ userId: payerId, amount: (-charged).toString(), description: `Swap offset paid: ${itemName}`, transactionType: "SWAP_OFFSET_PAID" });
-
-    await tx.update(users).set({ shareCoins: sql`CAST(share_coins AS INTEGER) + ${charged}` }).where(eq(users.id, receiverId));
-    await tx.insert(shareCoinsTransactions).values({ userId: receiverId, amount: charged.toString(), description: `Swap offset received: ${itemName}`, transactionType: "SWAP_OFFSET_RECEIVED" });
-    return charged;
-  });
-
-  if (paid === 0) {
-    console.log(`⚠️ Swap offset of ${offset} SC on "${itemName}" not collected: user ${payerId} has no ShareCoins to pay it with`);
-    return;
+  const settled = await db.transaction((tx) => settleRequestCoins(tx, { requestId, reason, itemName, fallbackQuote: quote }));
+  if (!settled.settled || settled.paid <= 0 || settled.payerId === null || settled.receiverId === null) {
+    if (quote) console.log(`⚠️ Swap offset of ${quote.amount} SC on "${itemName}" not collected: nothing was held and user ${quote.payerId} has no ShareCoins to pay it with`);
+    return; // fair swap (or a side with no items), nothing to transfer
   }
+  const paid = settled.paid;
+  const payerId = settled.payerId;
+  const receiverId = settled.receiverId;
 
   // Notify both parties (of what actually moved)
   await db.insert(notifications).values([
@@ -488,7 +504,7 @@ async function applySwapCoinOffset(
     { userId: receiverId, type: "sharecoin_earned", title: `+${paid} ShareCoins`, message: `+${paid} SC swap offset for "${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}".`, requestId, isRead: false },
   ]);
 
-  console.log(`✅ Swap offset: ${paid} SC${paid < offset ? ` (of ${offset} owed; all the payer had)` : ""} from user ${payerId} to user ${receiverId} for swap on "${itemName}"`);
+  console.log(`✅ Swap offset: ${paid} SC from user ${payerId} to user ${receiverId} for swap on "${itemName}"`);
 }
 
 // Helper function to check and award referral bonus when a referred user completes their first transaction
@@ -1429,17 +1445,17 @@ export async function confirmRefundableDeposit({
       // charges/finalization instead of treating the PI alone as completion.
       return { status: 200, body: { paymentIntentId: existing.id, depositAmount: pricing.depositAmount, resume: true } };
     }
-    const [payer] = await tx.select({ customerId: users.stripeCustomerId, paymentMethodId: users.stripePaymentMethodId, shareCoins: users.shareCoins })
+    const [payer] = await tx.select({ customerId: users.stripeCustomerId, paymentMethodId: users.stripePaymentMethodId })
       .from(users).where(eq(users.id, userId)).limit(1);
     if (!payer?.customerId || !payer.paymentMethodId) {
       return { status: 400, body: { error: "No payment method on file. Please add a card in Settings." } };
     }
-    const borrowShareCoins = request.requestType === "BORROW"
-      ? Math.max(1, Math.ceil(((parseFloat(row.items.shareCoinPrice || "0") || 5) / 7) * Math.max(1,
-          Math.ceil(((request.endDate?.getTime() || Date.now()) - (request.startDate?.getTime() || Date.now())) / 86400000))))
-      : null;
-    if (borrowShareCoins != null && parseFloat(payer.shareCoins || "0") < borrowShareCoins) {
-      return { status: 400, body: { error: "insufficient_sharecoins", required: borrowShareCoins, balance: Math.floor(parseFloat(payer.shareCoins || "0")) } };
+    // A borrow's ShareCoins are reserved for it (normally at accept), by the funds module's quote and rounding.
+    let borrowShareCoins: number | null = null;
+    if (request.requestType === "BORROW") {
+      const funds = await ensureFundsHeld({ actorId: userId, request, item: row.items }, tx);
+      if (funds.block) return { status: funds.block.status, body: funds.block.body };
+      borrowShareCoins = funds.amount > 0 ? funds.amount : null;
     }
     const chargeCurrency = currencyForNewCharge(request);
     const intent = await stripeClient.paymentIntents.create({
@@ -2001,6 +2017,7 @@ export function registerRoutes(
           swap.counterSwapOwnerItemIds,
           swap.counterSwapRequesterItemIds,
           swap.itemName,
+          "handoff_auto",
         );
 
         await awardSwapCompletionPoints(swap.ownerId, swap.borrowerId, swap.requestId, swap.itemId, swap.itemId);
@@ -7298,11 +7315,34 @@ Respond with ONLY the category name, nothing else.`
           }
         : {};
 
-    const [updatedRequest] = await db
-      .update(itemRequests)
-      .set({ status, ...counterPromotionFields, ...(status === "ACCEPTED" ? { acceptedAt: new Date() } : {}) })
-      .where(eq(itemRequests.id, requestId))
-      .returning();
+    // Accepting reserves the payer's ShareCoins in the same transaction as the status change (sharecoin-funds.ts), under a
+    // lock on the payer's row. If they cannot be reserved after all (another accept got there first) nothing was changed.
+    let updatedRequest: typeof itemRequests.$inferSelect;
+    if (status === "ACCEPTED") {
+      const accepted = await acceptWithFunds({
+        request: request.item_requests,
+        item: request.items,
+        commit: async (tx) => {
+          const [row] = await tx
+            .update(itemRequests)
+            .set({ status, ...counterPromotionFields, acceptedAt: new Date() })
+            .where(and(eq(itemRequests.id, requestId), eq(itemRequests.status, request.item_requests.status)))
+            .returning();
+          return row ?? null;
+        },
+      });
+      if (!accepted.ok) {
+        const block = await acceptFailureResponse({ reason: accepted.reason, actorId: req.user.id, request: request.item_requests, item: request.items });
+        return res.status(block.status).json(block.body);
+      }
+      updatedRequest = accepted.value;
+    } else {
+      [updatedRequest] = await db
+        .update(itemRequests)
+        .set({ status, ...counterPromotionFields })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+    }
 
     // Generate handoff PIN on acceptance (owner gets a unique 4-digit code to verify the exchange)
     if (status === "ACCEPTED") {
@@ -7901,20 +7941,39 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          negotiationStatus: "terms_accepted",
-          status: requestAccepted ? "ACCEPTED" : request.item_requests.status,
-          deliveryMethod: finalDeliveryMethod,
-          depositMethod: finalDepositMethod,
-          startDate: finalStartDate,
-          endDate: finalEndDate,
-          termsAcceptedAt: new Date(),
-          ...(requestAccepted ? { acceptedAt: new Date() } : {}),
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
+      const termsFields = {
+        negotiationStatus: "terms_accepted" as const,
+        status: requestAccepted ? "ACCEPTED" : request.item_requests.status,
+        deliveryMethod: finalDeliveryMethod,
+        depositMethod: finalDepositMethod,
+        startDate: finalStartDate,
+        endDate: finalEndDate,
+        termsAcceptedAt: new Date(),
+        ...(requestAccepted ? { acceptedAt: new Date() } : {}),
+      };
+      let updated: typeof itemRequests.$inferSelect;
+      if (requestAccepted) {
+        // The accept reserves the payer's ShareCoins in the same transaction (sharecoin-funds.ts).
+        const accepted = await acceptWithFunds({
+          request: request.item_requests,
+          item: request.items,
+          commit: async (tx) => {
+            const [row] = await tx
+              .update(itemRequests)
+              .set(termsFields)
+              .where(and(eq(itemRequests.id, requestId), eq(itemRequests.status, request.item_requests.status)))
+              .returning();
+            return row ?? null;
+          },
+        });
+        if (!accepted.ok) {
+          const block = await acceptFailureResponse({ reason: accepted.reason, actorId: req.user.id, request: request.item_requests, item: request.items });
+          return res.status(block.status).json(block.body);
+        }
+        updated = accepted.value;
+      } else {
+        [updated] = await db.update(itemRequests).set(termsFields).where(eq(itemRequests.id, requestId)).returning();
+      }
 
       // Generate handoff PIN when owner formally accepts
       if (requestAccepted) {
@@ -8028,6 +8087,7 @@ Respond with ONLY the category name, nothing else.`
         .set({ negotiationStatus: "terms_declined", status: "CANCELLED", termsDeclinedAt: new Date() })
         .where(eq(itemRequests.id, requestId))
         .returning();
+      await releaseHold(db, requestId, "cancelled");
 
       await logRequestEvent(req.user.id, otherUserId, requestId, "terms_declined", {
         declinedByRole: isOwner ? "owner" : "requester",
@@ -8277,6 +8337,11 @@ Respond with ONLY the category name, nothing else.`
         if (protectionEnd && protectionEnd.getTime() > Date.now() + PRECHECK_AUTHORIZATION_WINDOW_HOURS * 3600000) {
           await tx.update(itemRequests).set({ depositMode: "refundable_charge", depositSelectionState: "consent_required", depositSelectionReason: "request_exceeds_authorization_window", depositRequiredProtectionEnd: protectionEnd }).where(eq(itemRequests.id, requestId));
           return { status: 409, body: refundableConsentBody(requestId, calculation.amount, protectionEnd, "request_exceeds_authorization_window", "borrow") };
+        }
+        // The borrower's ShareCoins must be reserved for this borrow before a card is touched (normally done at accept).
+        {
+          const funds = await ensureFundsHeld({ actorId: req.user.id, request: row.request, item: row.item }, tx);
+          if (funds.block) return { status: funds.block.status, body: funds.block.body };
         }
         const [userRecord] = await tx.select({ stripeCustomerId: users.stripeCustomerId, stripePaymentMethodId: users.stripePaymentMethodId })
           .from(users).where(eq(users.id, req.user.id)).limit(1);
@@ -9005,7 +9070,6 @@ Respond with ONLY the category name, nothing else.`
         trustScore,
         paymentIntentId,
         platformFeeChargeId,
-        shareCoinAmount 
       } = req.body;
       
       const [request] = await db
@@ -9036,23 +9100,12 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Deposit amount does not match the server-calculated amount" });
       }
 
-      // For BORROW requests, verify the requester has enough ShareCoins
-      if (request.item_requests.requestType === "BORROW" && shareCoinAmount) {
-        const [requester] = await db
-          .select({ shareCoins: users.shareCoins })
-          .from(users)
-          .where(eq(users.id, req.user.id))
-          .limit(1);
-        const balance = parseFloat(requester?.shareCoins ?? "0");
-        const required = parseFloat(shareCoinAmount);
-        if (balance < required) {
-          return res.status(400).json({
-            error: "insufficient_sharecoins",
-            message: `You need ${required} ShareCoins but only have ${Math.floor(balance)}.`,
-            required,
-            balance: Math.floor(balance),
-          });
-        }
+      // A borrow's ShareCoins are reserved for it (normally at accept). The amount is the server's, never the client's.
+      let heldShareCoins = 0;
+      if (request.item_requests.requestType === "BORROW") {
+        const funds = await ensureFundsHeld({ actorId: req.user.id, request: request.item_requests, item: request.items });
+        if (funds.block) return res.status(funds.block.status).json(funds.block.body);
+        heldShareCoins = funds.amount;
       }
 
       // Read the exact card-network authorization deadline from Stripe. The
@@ -9096,7 +9149,7 @@ Respond with ONLY the category name, nothing else.`
           depositRenewalStatus: paymentIntentId ? "healthy" : null,
           depositRenewalError: null,
           platformFeeChargeId: platformFeeChargeId ?? null,
-          shareCoinAmount: shareCoinAmount?.toString(),
+          shareCoinAmount: heldShareCoins > 0 ? heldShareCoins.toString() : undefined,
         })
         // Conditional so a request that expired (or is being expired) mid-payment is
         // never revived; the fresh authorization is released instead.
@@ -9330,6 +9383,9 @@ Respond with ONLY the category name, nothing else.`
       if (!updated) {
         return res.status(409).json({ error: "Deposit changed before cancellation could complete" });
       }
+
+      // A swap's reserved ShareCoins are free again (a gift holds none).
+      await releaseHold(db, requestId, "cancelled");
 
       // Make item available again
       await db
@@ -9621,64 +9677,10 @@ Respond with ONLY the category name, nothing else.`
           : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
         
         if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
-          const [borrower] = await db
-            .select({ shareCoins: users.shareCoins })
-            .from(users)
-            .where(eq(users.id, request.item_requests.requesterId))
-            .limit(1);
-
-          const currentBalance = Math.floor(parseFloat(borrower?.shareCoins || "0"));
-          const charged = Math.min(shareCoinAmount, Math.max(currentBalance, 0));
-
-          // Deduct ShareCoins from borrower (charge what they have, at most the full amount)
-          await db
-            .update(users)
-            .set({ shareCoins: (currentBalance - charged).toString() })
-            .where(eq(users.id, request.item_requests.requesterId));
-
-          // Record the transaction
-          await db.insert(shareCoinsTransactions).values({
-            userId: request.item_requests.requesterId,
-            amount: (-charged).toString(),
-            description: `Borrowed: ${request.items.name}`,
-            transactionType: "BORROW_CHARGE",
+          await settleBorrowAtHandoff({
+            requestId, borrowerId: request.item_requests.requesterId, ownerId: request.items.ownerId, itemId: request.items.id,
+            itemName: request.items.name, amount: shareCoinAmount, reason: "handoff_manual",
           });
-
-          // Award ShareCoins to lender
-          if (request.items.ownerId && charged > 0) {
-            const [lender] = await db
-              .select({ shareCoins: users.shareCoins })
-              .from(users)
-              .where(eq(users.id, request.items.ownerId))
-              .limit(1);
-
-            const lenderBalance = Math.floor(parseFloat(lender?.shareCoins || "0"));
-            await db
-              .update(users)
-              .set({ shareCoins: (lenderBalance + charged).toString() })
-              .where(eq(users.id, request.items.ownerId));
-
-            await db.insert(shareCoinsTransactions).values({
-              userId: request.items.ownerId,
-              amount: charged.toString(),
-              description: `Lent: ${request.items.name}`,
-              transactionType: "LEND_REWARD",
-            });
-
-            // First-time lend bonus (only fires on their very first lend)
-            await awardShareCoinsWithFirstTimeBonus(request.items.ownerId, 'LEND', request.items.name, 1);
-
-            // Notify lender so their client refreshes balance and shows coin animation at handoff
-            await db.insert(notifications).values({
-              userId: request.items.ownerId,
-              type: "sharecoin_earned",
-              title: `+${charged} ShareCoin${charged !== 1 ? "s" : ""} Earned`,
-              message: `+${charged} SC earned for lending "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}".`,
-              requestId,
-              itemId: request.items.id,
-              isRead: false,
-            });
-          }
         }
 
         // Mark item as unavailable
@@ -10103,31 +10105,9 @@ Respond with ONLY the category name, nothing else.`
           effectiveEnd3,
         );
         if (shareCoinAmount > 0) {
-          const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId)).limit(1);
-          const currentBalance = Math.floor(parseFloat(borrower?.shareCoins || "0"));
-          const charged = Math.min(shareCoinAmount, Math.max(currentBalance, 0));
-          await db.update(users).set({ shareCoins: (currentBalance - charged).toString() }).where(eq(users.id, borrowerId));
-          await db.insert(shareCoinsTransactions).values({ userId: borrowerId, amount: (-charged).toString(), description: `Borrowed: ${request.items.name}`, transactionType: "BORROW_CHARGE" });
-          if (ownerId && charged > 0) {
-            const [lender] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId)).limit(1);
-            const lenderBalance = Math.floor(parseFloat(lender?.shareCoins || "0"));
-            await db.update(users).set({ shareCoins: (lenderBalance + charged).toString() }).where(eq(users.id, ownerId));
-            await db.insert(shareCoinsTransactions).values({ userId: ownerId, amount: charged.toString(), description: `Lent: ${request.items.name}`, transactionType: "LEND_REWARD" });
-
-            // First-time lend bonus (only fires on their very first lend)
-            await awardShareCoinsWithFirstTimeBonus(ownerId, 'LEND', request.items.name, 1);
-
-            // Notify lender so their client refreshes balance and shows coin animation at handoff
-            await db.insert(notifications).values({
-              userId: ownerId,
-              type: "sharecoin_earned",
-              title: `+${charged} ShareCoin${charged !== 1 ? "s" : ""} Earned`,
-              message: `+${charged} SC earned for lending "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}".`,
-              requestId,
-              itemId: request.items.id,
-              isRead: false,
-            });
-          }
+          await settleBorrowAtHandoff({
+            requestId, borrowerId, ownerId, itemId: request.items.id, itemName: request.items.name, amount: shareCoinAmount, reason: "handoff_pin",
+          });
           const coinLabel = `${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""}`;
           await db.insert(messages).values({ content: `🪙 ${coinLabel} charged`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId, metadata: { visibleToUserId: borrowerId } });
           if (ownerId) await db.insert(messages).values({ content: `🪙 ${coinLabel} earned`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId, metadata: { visibleToUserId: ownerId } });
@@ -10172,6 +10152,7 @@ Respond with ONLY the category name, nothing else.`
             request.item_requests.counterSwapOwnerItemIds as number[] | null,
             request.item_requests.counterSwapRequesterItemIds as number[] | null,
             request.items.name,
+            "handoff_pin",
           );
           await awardSwapCompletionPoints(ownerId, borrowerId, requestId, request.items.id, request.items.id);
           await db.insert(notifications).values([
@@ -12635,7 +12616,12 @@ Respond with ONLY the category name, nothing else.`
     name: "sharecoin-funds-recheck",
     envMode: "live",
     supportsDryRun: false,
-    run: async () => `notified=${await notifyUnblockedRequests()}`,
+    run: async () => {
+      // Also frees the coins of any ended request whose own ending did not release them (they are not counted as reserved
+      // meanwhile, so this only tidies the record).
+      const released = await releaseHoldsOfEndedRequests();
+      return `notified=${await notifyUnblockedRequests()} releasedHolds=${released}`;
+    },
   });
   options.onScheduledJobs?.({
     runReturnRecovery: async () => {

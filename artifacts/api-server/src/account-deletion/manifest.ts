@@ -435,6 +435,15 @@ export const DELETION_MANIFEST: Record<string, TableManifest> = {
     anonymize: [],
     delete: [],
   },
+  sharecoin_holds: {
+    rows: "delete",
+    retention: null,
+    note: "ShareCoins reserved for accepted requests (no cash value); released when the account is deleted.",
+    userColumns: ["payer_id", "receiver_id"],
+    keep: [],
+    anonymize: [],
+    delete: ["id", "request_id", "payer_id", "receiver_id", "kind", "amount", "status", "reason", "created_at", "resolved_at"],
+  },
   swap_cooldowns: {
     rows: "delete",
     retention: null,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { eq, inArray } from "drizzle-orm";
-import { db, itemRequests, items, messages, notifications, pool, requestLifecycleEvents, users } from "@workspace/db";
+import { db, itemRequests, items, messages, notifications, pool, requestLifecycleEvents, shareCoinHolds, users } from "@workspace/db";
 import app from "./app.js";
 import { hashPassword } from "./auth.js";
 import { registerRoutes } from "./routes/routes.js";
@@ -67,7 +67,11 @@ class Client {
   }
 }
 
-const setCoins = (id: number, amount: number) => db.update(users).set({ shareCoins: `${amount}.00` }).where(eq(users.id, id));
+// Earlier tests accept requests, which reserve coins; each test here sets the balance it means to spend, so the holds go too.
+const setCoins = async (id: number, amount: number) => {
+  await db.delete(shareCoinHolds).where(eq(shareCoinHolds.payerId, id));
+  await db.update(users).set({ shareCoins: `${amount}.00` }).where(eq(users.id, id));
+};
 
 async function newItem(ownerOfItem: number, tier: number, extra: Partial<typeof items.$inferInsert> = {}) {
   const [item] = await db.insert(items).values({

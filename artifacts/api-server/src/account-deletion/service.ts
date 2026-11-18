@@ -12,6 +12,7 @@ import { hashBannedAppleSub } from "./banned-apple";
 import { accountEmail, hashBannedEmail } from "./banned-email";
 import { getDeletionEligibility, type DeletionBlocker } from "./eligibility";
 import { DELETION_GRACE_DAYS, TERMINAL_REQUEST_STATUSES } from "./retention";
+import { releaseHoldsForDeletion } from "../sharecoin-funds";
 
 // The life of a deletion: request (the account stays usable for the grace period, so the person can withdraw a small
 // balance or change their mind), cancel, and finalize (the manifest runs). Finalizing is idempotent: a second call on
@@ -240,6 +241,8 @@ export async function finalizeDeletion(userId: number, deps: DeletionDeps = {}):
         AND t.status NOT IN (${sql.join(TERMINAL_REQUEST_STATUSES.map((s) => sql`${s}`), sql`, `)})
       RETURNING t.id, t.requester_id, i.owner_id, i.id AS item_id, i.name AS item_name`)).rows as
       { id: number; requester_id: number | null; owner_id: number | null; item_id: number; item_name: string }[];
+    // The ShareCoins reserved for those requests, and any reserved by or for this person, are free again.
+    await releaseHoldsForDeletion(tx, userId, cancelled.map((request) => request.id));
     for (const request of cancelled) {
       const otherSide = request.requester_id === userId ? request.owner_id : request.requester_id;
       if (otherSide && otherSide !== userId) {

@@ -21,6 +21,7 @@ import { buildRefundLedgerRows, insertRefundLedger, refundUpfrontCharges, type L
 import { classifyDepositState, expiredReasonFor } from "./deposit-state";
 import * as copy from "./request-expiry-copy";
 import { runExchangeExpirySweep } from "./exchange-expiry-service";
+import { releaseHold } from "./sharecoin-funds";
 
 // A BORROW/RENT request that nobody handed off before its late-handoff cutoff
 // moves to EXPIRED (final, and separate from CANCELLED/DECLINED).
@@ -257,6 +258,8 @@ export async function expireRequestIfDue(
       .returning({ id: itemRequests.id });
     if (!claimed) return false;
 
+    // The coins reserved for this borrow or swap are free again.
+    await releaseHold(tx, requestId, "expired");
     await insertRefundLedger(tx, requestId, "expiry", ledger);
 
     // The item frees up for other neighbours.

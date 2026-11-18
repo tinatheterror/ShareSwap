@@ -9,6 +9,7 @@ import {
   type DepositRenewalStripeClient,
 } from "./deposit-renewal-service";
 import { recordWalletEntry, toCents } from "./wallet-ledger";
+import { releaseHold } from "./sharecoin-funds";
 
 /**
  * One-off cleanup of the owner's USD test data (the requests from before the move to CAD, and the wallet balances they left).
@@ -228,6 +229,7 @@ async function closeRequest(req: CleanupRequest, stripe: DepositRenewalStripeCli
       cancelledAt: now, cancelledFromStatus: request.status, cancelReason: "test_data_cleanup", cancelledWithPenalty: false,
     }).where(and(eq(itemRequests.id, req.id), eq(itemRequests.depositRenewalStatus, "terminal_action"), eq(itemRequests.depositOperationToken, claim.operationToken))).returning({ id: itemRequests.id });
     if (!updated) return false;
+    await releaseHold(tx, req.id, "cancelled");
     const held = await tx.select({ id: rentalPayouts.id, userId: rentalPayouts.userId, netAmount: rentalPayouts.netAmount }).from(rentalPayouts)
       .where(and(eq(rentalPayouts.requestId, req.id), eq(rentalPayouts.status, "held")));
     for (const payout of held) {

@@ -12,6 +12,7 @@ import { buildRefundLedgerRows, insertRefundLedger, refundUpfrontCharges, type U
 import { resolveFrozenRentalEarnings } from "./rental-earnings-freeze";
 import { closeChargeback, recordChargeback } from "./wallet-chargebacks";
 import { toCents } from "./wallet-ledger";
+import { releaseHold, settleRequestCoins } from "./sharecoin-funds";
 
 /**
  * An admin's decision on a handoff dispute opened after an auto-confirm (status HANDOFF_DISPUTED).
@@ -65,6 +66,8 @@ export async function resolveHandoffDispute(input: {
       const [moved] = await tx.update(itemRequests).set({ status: "IN_PROGRESS" })
         .where(and(eq(itemRequests.id, requestId), eq(itemRequests.status, "HANDOFF_DISPUTED"))).returning({ id: itemRequests.id });
       if (!moved) return null;
+      // The hold was kept while the dispute was open; the handoff stands, so the coins it reserved now move.
+      await settleRequestCoins(tx, { requestId, reason: "dispute_settled", itemName: item.name });
       const earnings = await resolveFrozenRentalEarnings(requestId, "owner", tx);
       await tx.insert(requestLifecycleEvents).values({
         requestId, eventType: "HANDOFF_DISPUTE_RESOLVED", idempotencyKey: handoffDisputeResolvedKey(requestId), actorId: adminId, details: { decision },
@@ -73,10 +76,11 @@ export async function resolveHandoffDispute(input: {
         { userId: ownerId, type: "dispute_resolved", title: "Handoff dispute resolved", requestId, isRead: false, message: `The handoff of "${name}" stands. Any earnings on hold have been returned to your wallet.` },
         { userId: borrowerId, type: "dispute_resolved", title: "Handoff dispute resolved", requestId, isRead: false, message: `The handoff of "${name}" stands and the rental continues.` },
       ] as any);
-      return earnings;
+      return { earnings };
     });
+    // (`earnings` is null for a request with no frozen rental earnings, a borrow for example: that is not a failed resolve.)
     if (done === null) return { status: 409, body: { error: "Dispute changed before it could be resolved" } };
-    return { status: 200, body: { success: true, decision, earnings: done } };
+    return { status: 200, body: { success: true, decision, earnings: done.earnings } };
   }
 
   // ── borrower ──
@@ -128,6 +132,8 @@ export async function resolveHandoffDispute(input: {
       eq(itemRequests.depositOperationToken, claim.operationToken),
     )).returning({ id: itemRequests.id });
     if (!updated) return null;
+    // The handoff did not happen: the coins reserved for it are free again.
+    await releaseHold(tx, requestId, "dispute_released");
     await insertRefundLedger(tx, requestId, "cancel", ledger);
     await tx.update(items).set({ isAvailable: true, updatedAt: now }).where(eq(items.id, item.id));
     const earnings = await resolveFrozenRentalEarnings(requestId, "borrower", tx);

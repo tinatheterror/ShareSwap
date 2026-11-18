@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, itemRequests, items, messages, notifications, users } from "@workspace/db";
 import * as copy from "./request-expiry-copy";
 import { calendarDayInZone, endOfLocalDay, PLATFORM_TIME_ZONE } from "./request-dates";
+import { releaseHold } from "./sharecoin-funds";
 
 // An accepted SWAP or GIFT that nobody confirms by the end of the 7th day after acceptance expires on its own.
 //
@@ -153,6 +154,8 @@ async function expireExchange(
       .returning({ requesterId: itemRequests.requesterId });
     if (!claimed) return null;
 
+    // The coins reserved for this swap are free again.
+    await releaseHold(tx, requestId, "expired");
     const ownerId = item.ownerId!;
     const requesterId = claimed.requesterId!;
     await tx.insert(messages).values({

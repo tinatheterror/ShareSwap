@@ -4,12 +4,13 @@ import { eq, inArray, or } from "drizzle-orm";
 import passport from "passport";
 import {
   bannedEmailHashes, connectCleanupFailures, db, deliveryArrangements, itemRequests, items, messages, notifications, platformCommissions, pool,
-  rentalPayouts, rentalReturns, requestLifecycleEvents, securityClaims, shareCoinsTransactions, userPushTokens, userReviews,
+  rentalPayouts, rentalReturns, requestLifecycleEvents, securityClaims, shareCoinHolds, shareCoinsTransactions, userPushTokens, userReviews,
   userSubscriptions, users, verifications, wishlistOffers, wishlists,
 } from "@workspace/db";
 import { hashPassword } from "../auth.js";
 import { Client, startApp } from "../auth-test-client.js";
 import { hashBannedEmail, isBannedEmail } from "./banned-email.js";
+import { reservedBalance, spendableBalance } from "../sharecoin-funds.js";
 import { createStripeCleanup, type StripeCleanupClient } from "./stripe-cleanup.js";
 import {
   DeletionError, cancelDeletion, finalizeDeletion, finalizeDueDeletions, requestDeletion, retryConnectFailures, scheduledFor,
@@ -353,6 +354,30 @@ test("open bookings nothing has moved for are cancelled and the other side is to
   const told = await db.select().from(notifications).where(eq(notifications.userId, other.id));
   assert.equal(told.length, 2);
   assert.ok(told.every((n) => !n.message.includes("@")), "no address in what the other side reads");
+});
+
+test("deleting an account releases the ShareCoins reserved by or for it and cancels its accepted requests", async () => {
+  const leaver = await makeUser("holds-leaver", { shareCoins: "40.00" });
+  const other = await makeUser("holds-other", { shareCoins: "50.00" });
+  const theirs = await makeItem(other.id);
+  const mine = await makeItem(leaver.id);
+  // The leaver borrows from the other person (the leaver is the payer); the other person borrows from the leaver (the other pays).
+  const outgoing = await makeRequest(theirs.id, leaver.id, { status: "ACCEPTED" });
+  const incoming = await makeRequest(mine.id, other.id, { status: "ACCEPTED" });
+  await db.insert(shareCoinHolds).values([
+    { requestId: outgoing.id, payerId: leaver.id, receiverId: other.id, kind: "BORROW", amount: 14 },
+    { requestId: incoming.id, payerId: other.id, receiverId: leaver.id, kind: "BORROW", amount: 9 },
+  ]);
+  assert.equal(await spendableBalance(other.id), 41, "the other person has 9 reserved for the leaver's item");
+  assert.equal(await reservedBalance(leaver.id), 14);
+
+  await pending(leaver.id);
+  await finalizeDeletion(leaver.id, deps());
+
+  for (const id of [outgoing.id, incoming.id]) assert.equal((await requestRow(id)).status, "CANCELLED");
+  assert.equal(await reservedBalance(other.id), 0, "nothing stays reserved for a request that is gone");
+  assert.equal(await spendableBalance(other.id), 50);
+  assert.equal((await db.select().from(shareCoinHolds).where(inArray(shareCoinHolds.requestId, [outgoing.id, incoming.id]))).filter((h) => h.status === "ACTIVE").length, 0);
 });
 
 test("Stripe cleanup runs first; when it fails nothing is deleted and a retry succeeds", async () => {

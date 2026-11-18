@@ -4,7 +4,6 @@ import {
   items,
   messages,
   notifications,
-  shareCoinsTransactions,
   users,
 } from "@workspace/db";
 import { and, eq, gte, inArray, lt } from "drizzle-orm";
@@ -107,20 +106,9 @@ export interface HandoffDeadlineResult {
   candidates: HandoffDeadlineCandidate[];
 }
 
-// ShareCoin borrow cost. End date = return day (not last usage day), so usage days
-// = end - start (no +1). Formula: round( (weeklyPrice / 7) × days ).
-// e.g. 10 SC/week item, start=Mon, return=Fri → 4 usage days → round(10/7 × 4) = 6 SC
-export function calcBorrowShareCoinCost(
-  shareCoinPrice: number,
-  startDate: Date | string | null | undefined,
-  endDate: Date | string | null | undefined,
-): number {
-  if (!startDate || !endDate || shareCoinPrice <= 0) return Math.max(1, shareCoinPrice);
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000));
-  return Math.max(1, Math.round((shareCoinPrice / 7) * borrowDays));
-}
+// The borrow price formula lives in sharecoin-funds.ts, the one place that decides what a ShareCoin action costs.
+import { calcBorrowShareCoinCost, hasActiveHold, releaseHold, settleRequestCoins } from "./sharecoin-funds";
+export { calcBorrowShareCoinCost };
 
 const short = (name: string, max: number) => (name.length > max ? name.slice(0, max) + "…" : name);
 
@@ -239,11 +227,15 @@ export async function processHandoffDeadlines(
       if (dryRun) {
         let coinNote = "no ShareCoin charge";
         if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
-          const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId2)).limit(1);
-          const balance = Math.floor(parseFloat(borrower?.shareCoins || "0"));
-          coinNote = balance >= shareCoinAmount
-            ? `would move ${shareCoinAmount} ShareCoins borrower ${borrowerId2} -> owner ${ownerId2} (borrower balance ${balance})`
-            : `borrower ${borrowerId2} has ${balance} of ${shareCoinAmount} ShareCoins: no coins moved, status still advances`;
+          if (await hasActiveHold(reqId)) {
+            coinNote = `would settle the ${shareCoinAmount} ShareCoins held for borrower ${borrowerId2} -> owner ${ownerId2}`;
+          } else {
+            const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId2)).limit(1);
+            const balance = Math.floor(parseFloat(borrower?.shareCoins || "0"));
+            coinNote = balance >= shareCoinAmount
+              ? `would move ${shareCoinAmount} ShareCoins borrower ${borrowerId2} -> owner ${ownerId2} (borrower balance ${balance})`
+              : `borrower ${borrowerId2} has ${balance} of ${shareCoinAmount} ShareCoins: no coins moved, status still advances`;
+          }
         }
         result.candidates.push({
           requestId: reqId,
@@ -270,18 +262,11 @@ export async function processHandoffDeadlines(
         if (!claimed) return false;
 
         if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
-          const [borrower] = await tx.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId2)).limit(1);
-          const currentBalance = Math.floor(parseFloat(borrower?.shareCoins || "0"));
-          if (currentBalance >= shareCoinAmount) {
-            await tx.update(users).set({ shareCoins: (currentBalance - shareCoinAmount).toString() }).where(eq(users.id, borrowerId2));
-            await tx.insert(shareCoinsTransactions).values({ userId: borrowerId2, amount: (-shareCoinAmount).toString(), description: `Borrowed: ${itemName} (auto-confirmed)`, transactionType: "BORROW_CHARGE" });
-            if (ownerId2) {
-              const [lender] = await tx.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId2)).limit(1);
-              const lenderBalance = Math.floor(parseFloat(lender?.shareCoins || "0"));
-              await tx.update(users).set({ shareCoins: (lenderBalance + shareCoinAmount).toString() }).where(eq(users.id, ownerId2));
-              await tx.insert(shareCoinsTransactions).values({ userId: ownerId2, amount: shareCoinAmount.toString(), description: `Lent: ${itemName} (auto-confirmed)`, transactionType: "LEND_REWARD" });
-            }
-          }
+          // Settles what was reserved at accept; the borrower always has it, so an auto-confirmed borrow is never left uncharged.
+          await settleRequestCoins(tx, {
+            requestId: reqId, reason: "handoff_auto", itemName, descriptionSuffix: " (auto-confirmed)", fallbackAllOrNothing: true,
+            fallbackQuote: ownerId2 ? { kind: "BORROW", payerId: borrowerId2, receiverId: ownerId2, amount: shareCoinAmount } : null,
+          });
         }
 
         await tx.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
@@ -396,6 +381,8 @@ export async function processHandoffDeadlines(
         .where(and(eq(itemRequests.id, reqId), eq(itemRequests.status, "ACCEPTED")))
         .returning({ id: itemRequests.id });
       if (!claimed) return false;
+      // The coins reserved for this borrow or swap are free again.
+      await releaseHold(tx, reqId, "deposit_timeout");
 
       await tx.update(items)
         .set({ isAvailable: true, updatedAt: new Date() })

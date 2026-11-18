@@ -20,6 +20,7 @@ import { legacyCancelPenaltyExempt, LEGACY_CANCEL_ACK_UNTIL_ENV } from "./legacy
 import { buildRefundLedgerRows, insertRefundLedger, refundUpfrontCharges, type UpfrontRefund } from "./request-refunds";
 import { applyCancellationAfterDepositPenalty, trustLevelForScore } from "./trust-score-service";
 import { usersAreBlocked } from "./content-visibility";
+import { releaseHold } from "./sharecoin-funds";
 
 // Cancelling a BORROW or RENT request (POST /api/requests/:id/cancel).
 //
@@ -277,6 +278,8 @@ export async function cancelBorrowRentRequest(
       if (!updated) return null;
 
       await insertRefundLedger(tx, requestId, "cancel", ledger);
+      // Whoever cancelled, the coins reserved for this borrow are free again.
+      await releaseHold(tx, requestId, "cancelled");
       await tx.update(items).set({ isAvailable: true, updatedAt: now }).where(eq(items.id, item.id));
 
       // Void any held rental payout and reverse the owner's pending balance.

@@ -2,6 +2,7 @@ import { and, eq, inArray, isNotNull, lt, or } from "drizzle-orm";
 import { db, notifications, reputationActivities, shareCoinsTransactions, users, verifications } from "@workspace/db";
 import { trustLevelForScore } from "./trust-score-service";
 import { sendVerificationResetEmail } from "./mail";
+import { spendableBalance } from "./sharecoin-funds";
 import { verificationRecipient } from "./verification";
 
 /**
@@ -183,7 +184,9 @@ export async function applySandboxReset(candidates: ResetCandidate[], deps: { se
         // Take back what the approvals granted: one negative row per grant reversed, never below 0.
         const [account] = await tx.select({ score: users.trustScore, coins: users.shareCoins }).from(users).where(eq(users.id, candidate.userId)).for("update");
         let score = Math.max(0, account?.score ?? 0);
-        let balance = Math.max(0, Number(account?.coins ?? 0));
+        const wholeBalance = Math.max(0, Number(account?.coins ?? 0));
+        // Coins reserved for accepted requests are not spendable, so they are not taken back from under those requests.
+        let balance = Math.min(wholeBalance, await spendableBalance(candidate.userId, tx));
         const plan = plannedReversal({ ...candidate, verificationIds: reset.map((r) => r.id) });
         let trustTaken = 0;
         let coinsTaken = 0;
@@ -200,7 +203,7 @@ export async function applySandboxReset(candidates: ResetCandidate[], deps: { se
           await tx.insert(shareCoinsTransactions).values({ userId: candidate.userId, amount: (-take).toString(), transactionType: REVERSAL_TYPE, description: take < grant.amount ? `${REVERSAL_COINS_DESCRIPTION} (took ${take} of ${grant.amount}: already spent)` : REVERSAL_COINS_DESCRIPTION });
         }
         if (trustTaken > 0 || coinsTaken > 0) {
-          await tx.update(users).set({ trustScore: score, reputationLevel: trustLevelForScore(score), shareCoins: balance.toFixed(2) }).where(eq(users.id, candidate.userId));
+          await tx.update(users).set({ trustScore: score, reputationLevel: trustLevelForScore(score), shareCoins: (wholeBalance - coinsTaken).toFixed(2) }).where(eq(users.id, candidate.userId));
         }
         await tx.insert(notifications).values({
           userId: candidate.userId, type: RESET_NOTIFICATION_TYPE, title: RESET_NOTIFICATION_TITLE, message: RESET_NOTIFICATION_MESSAGE, isRead: false,

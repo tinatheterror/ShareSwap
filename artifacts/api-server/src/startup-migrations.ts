@@ -465,6 +465,28 @@ export async function ensureAdminAlertQueueTable() {
   }
 }
 
+const SHARECOIN_HOLDS_FILE = "lib/db/scripts/0034_sharecoin_holds.sql";
+
+/**
+ * sharecoin_holds (0034): coins reserved for accepted borrows and swaps. When the table is first created, accepted requests
+ * that owe coins but hold none (test data from before holds) are cancelled, once; see cancelAcceptedRequestsWithoutHolds.
+ */
+export async function ensureShareCoinHoldsTable() {
+  const { rows } = await pool.query(`SELECT to_regclass('sharecoin_holds') IS NOT NULL AS present`);
+  if (rows[0]?.present === true) return;
+  try {
+    await runMigrationFile(SHARECOIN_HOLDS_FILE);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === "42P07" || code === "23505") return;
+    throw err;
+  }
+  const { cancelAcceptedRequestsWithoutHolds } = await import("./sharecoin-funds");
+  const { cancelled, withCardDeposit } = await cancelAcceptedRequestsWithoutHolds();
+  if (cancelled.length > 0) console.log(`[startup-migrations] sharecoin_holds: cancelled ${cancelled.length} accepted request(s) that owed ShareCoins without a hold: ${cancelled.join(", ")}`);
+  if (withCardDeposit.length > 0) console.warn(`[startup-migrations] sharecoin_holds: these cancelled requests had a card deposit to release by hand: ${withCardDeposit.join(", ")}`);
+}
+
 export async function applyStartupMigrations() {
   for (const relativePath of migrationRelativePaths) {
     await runMigrationFile(relativePath);
@@ -487,6 +509,7 @@ export async function applyStartupMigrations() {
   await ensureIdVerifiedColumnDropped();
   await ensureBiometricConsentsTable();
   await ensureAdminAlertQueueTable();
+  await ensureShareCoinHoldsTable();
   await ensurePersonaRedactionsTable();
   await ensureRentalPayoutHoldUntilDropped();
   await ensureScheduledJobRunsTable();

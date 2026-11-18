@@ -3,6 +3,14 @@
 
 export const HANDOFF_CONFIRM_WINDOW_HOURS = 24;
 
+/**
+ * After the sweep auto-confirms a borrow or rental, either person may still open a dispute for this long. A borrow's
+ * ShareCoins stay held for the whole window and are settled when it closes (settleElapsedAutoConfirmedBorrows).
+ */
+export const AUTO_CONFIRM_DISPUTE_WINDOW_HOURS = 24;
+export const DISPUTE_WINDOW_CLOSED_CODE = "DISPUTE_WINDOW_CLOSED";
+export const DISPUTE_WINDOW_CLOSED_MESSAGE = `This exchange was confirmed automatically more than ${AUTO_CONFIRM_DISPUTE_WINDOW_HOURS} hours ago, so it can no longer be disputed.`;
+
 export type ConfirmNoticeType = "SWAP" | "GIFT";
 
 export const SILENT_PERSON_NOTICE_TITLE: Record<ConfirmNoticeType, string> = {

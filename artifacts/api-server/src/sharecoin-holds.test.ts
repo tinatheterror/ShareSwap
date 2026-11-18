@@ -16,6 +16,7 @@ import {
   quoteInputFromRows,
   quoteRequest,
   releaseHoldsOfEndedRequests,
+  settleElapsedAutoConfirmedBorrows,
   reservedBalance,
   settleRequestCoins,
   spendableBalance,
@@ -324,8 +325,20 @@ test("the handoff settles a swap's hold: exactly the held amount moves, the hold
   assert.equal(await reservedBalance(ownerId), 0, "nothing is reserved any more");
 });
 
-test("an auto-confirmed borrow settles its hold and charges the borrower in full, even if their other holds used up the rest", async () => {
-  await setCoins(requesterId, 14); // exactly the borrow's price, and all of it is reserved once accepted
+/** A borrow accepted through the route (its coins held) and then auto-confirmed `hoursAgo` hours ago, as the sweep leaves it. */
+async function autoConfirmedBorrow(hoursAgo: number) {
+  const borrow = await pendingBorrow();
+  assert.equal((await accept(borrow.id)).status, 200);
+  await db.update(itemRequests).set({
+    status: "IN_PROGRESS", handoffAutoAdvanced: true, handoffConfirmedAt: new Date(Date.now() - hoursAgo * 3_600_000),
+    ownerConfirmedHandoff: true, borrowerConfirmedHandoff: false, depositStatus: "held",
+  } as any).where(eq(itemRequests.id, borrow.id));
+  return borrow;
+}
+const WINDOW_END_SWEEP = () => new Date(Date.now() + 25 * 3_600_000);
+
+test("an auto-confirmed borrow keeps its coins held for the 24-hour dispute window, then settles them in full", async () => {
+  await setCoins(requesterId, 14); // exactly the borrow's price, all of it reserved once accepted
   await setCoins(ownerId, 0);
   const borrow = await pendingBorrow();
   assert.equal((await accept(borrow.id)).status, 200);
@@ -338,14 +351,74 @@ test("an auto-confirmed borrow settles its hold and charges the borrower in full
   } as any).where(eq(itemRequests.id, borrow.id));
   const result = await processHandoffDeadlines({ onSwapAutoConfirmed: async () => {}, onGiftAutoConfirmed: async () => {} }, { onlyRequestIds: [borrow.id] });
   assert.equal(result.autoAdvancedCount, 1);
-
   assert.equal(await requestStatus(borrow.id), "IN_PROGRESS");
+  assert.deepEqual((await holdsOf(borrow.id)).map((h) => h.status), ["ACTIVE"], "still held: nothing moved yet");
+  assert.equal(await totalBalance(requesterId), 14);
+  assert.equal(await totalBalance(ownerId), 0);
+
+  assert.equal(await settleElapsedAutoConfirmedBorrows({ now: WINDOW_END_SWEEP() }), 1);
   const [hold] = await holdsOf(borrow.id);
   assert.deepEqual([hold.status, hold.reason], ["SETTLED", "handoff_auto"]);
   assert.equal(await totalBalance(requesterId), 0, "charged the whole 14");
   assert.equal(await totalBalance(ownerId), 14, "the lender got exactly what the borrower paid");
-  const charge = (await ledgerRows(requesterId)).find((t) => t.transactionType === "BORROW_CHARGE");
-  assert.equal(Number(charge?.amount), -14);
+  assert.equal(Number((await ledgerRows(requesterId)).find((t) => t.transactionType === "BORROW_CHARGE")?.amount), -14);
+  await setCoins(requesterId, 100);
+  await setCoins(ownerId, 100);
+});
+
+test("a dispute opened inside the window keeps the hold; decided for the owner it settles, and the window closing does not settle it first", async () => {
+  await setCoins(requesterId, 40);
+  await setCoins(ownerId, 0);
+  const borrow = await autoConfirmedBorrow(2);
+  const opened = await requester.post(`/api/requests/${borrow.id}/deny-handoff`, { description: "never got it" });
+  assert.equal(opened.status, 200, opened.text.slice(0, 300));
+  assert.equal(await requestStatus(borrow.id), "HANDOFF_DISPUTED");
+
+  assert.equal(await settleElapsedAutoConfirmedBorrows({ now: WINDOW_END_SWEEP() }), 0, "a disputed borrow is not settled by the window closing");
+  assert.deepEqual((await holdsOf(borrow.id)).map((h) => h.status), ["ACTIVE"]);
+  assert.equal(await totalBalance(requesterId), 40);
+
+  const decided = await resolveHandoffDispute({ requestId: borrow.id, decision: "owner", adminId: null, stripe: {} as any });
+  assert.equal(decided.status, 200, JSON.stringify(decided.body));
+  assert.deepEqual((await holdsOf(borrow.id)).map((h) => [h.status, h.reason]), [["SETTLED", "dispute_settled"]]);
+  assert.equal(await totalBalance(requesterId), 26);
+  assert.equal(await totalBalance(ownerId), 14);
+  await setCoins(requesterId, 100);
+  await setCoins(ownerId, 100);
+});
+
+test("a dispute opened inside the window and decided for the borrower releases the hold; no coins move", async () => {
+  await setCoins(requesterId, 40);
+  await setCoins(ownerId, 0);
+  const borrow = await autoConfirmedBorrow(2);
+  assert.equal((await owner.post(`/api/requests/${borrow.id}/deny-handoff`, { description: "borrower says no" })).status, 200);
+  assert.equal(await requestStatus(borrow.id), "HANDOFF_DISPUTED");
+
+  const decided = await resolveHandoffDispute({ requestId: borrow.id, decision: "borrower", adminId: null, stripe: { paymentIntents: {}, refunds: {} } as any });
+  assert.equal(decided.status, 200, JSON.stringify(decided.body));
+  assert.equal(await requestStatus(borrow.id), "CANCELLED");
+  assert.deepEqual((await holdsOf(borrow.id)).map((h) => [h.status, h.reason]), [["RELEASED", "dispute_released"]]);
+  assert.equal(await totalBalance(requesterId), 40);
+  assert.equal(await totalBalance(ownerId), 0);
+  assert.equal(await spendableBalance(requesterId), 40);
+  await setCoins(requesterId, 100);
+  await setCoins(ownerId, 100);
+});
+
+test("a dispute after the 24-hour window is refused with a clear error, and the hold then settles", async () => {
+  await setCoins(requesterId, 40);
+  await setCoins(ownerId, 0);
+  const borrow = await autoConfirmedBorrow(25);
+  for (const who of [requester, owner]) {
+    const refused = await who.post(`/api/requests/${borrow.id}/deny-handoff`, { description: "too late" });
+    assert.equal(refused.status, 409);
+    assert.equal(refused.json.code, "DISPUTE_WINDOW_CLOSED");
+    assert.match(refused.json.error, /24 hours/);
+  }
+  assert.equal(await requestStatus(borrow.id), "IN_PROGRESS");
+  assert.equal(await settleElapsedAutoConfirmedBorrows(), 1);
+  assert.deepEqual((await holdsOf(borrow.id)).map((h) => h.status), ["SETTLED"]);
+  assert.equal(await totalBalance(ownerId), 14);
   await setCoins(requesterId, 100);
   await setCoins(ownerId, 100);
 });

@@ -9,6 +9,7 @@ import {
   notifications,
   pool,
   requestLifecycleEvents,
+  shareCoinHolds,
   shareCoinsTransactions,
   users,
 } from "@workspace/db";
@@ -23,6 +24,7 @@ import {
   type AutoConfirmedSwapContext,
   type HandoffDeadlineDeps,
 } from "./handoff-deadline-service.js";
+import { settleElapsedAutoConfirmedBorrows } from "./sharecoin-funds.js";
 
 const UNIQUE = `handoff-deadlines-${Date.now()}`;
 const HOUR = 3_600_000;
@@ -96,6 +98,12 @@ async function newRequest(overrides: Partial<typeof itemRequests.$inferInsert> =
   return { id: request.id, itemId: request.itemId! };
 }
 
+/** Accepting a borrow holds its ShareCoins (7 SC here: a 7 SC/week item for 7 days). */
+async function holdCoins(requestId: number, amount = 7) {
+  await db.insert(shareCoinHolds).values({ requestId, payerId: borrowerId, receiverId: ownerId, kind: "BORROW", amount });
+}
+const holdStatus = async (requestId: number) => (await db.select().from(shareCoinHolds).where(eq(shareCoinHolds.requestId, requestId))).map((h) => h.status);
+
 async function setCoins(userId: number, amount: string) {
   await db.update(users).set({ shareCoins: amount }).where(eq(users.id, userId));
 }
@@ -140,6 +148,7 @@ after(async () => {
     await db.delete(messages).where(inArray(messages.requestId, requestIds));
     await db.delete(notifications).where(inArray(notifications.requestId, requestIds));
     await db.delete(requestLifecycleEvents).where(inArray(requestLifecycleEvents.requestId, requestIds));
+    await db.delete(shareCoinHolds).where(inArray(shareCoinHolds.requestId, requestIds));
     await db.delete(itemRequests).where(inArray(itemRequests.id, requestIds));
   }
   if (userIds.length) await db.delete(shareCoinsTransactions).where(inArray(shareCoinsTransactions.userId, userIds));
@@ -150,10 +159,11 @@ after(async () => {
 
 // ── auto-confirm ───────────────────────────────────────────────────────────────
 
-test("auto-confirm produces the same outcome as the endpoint always did, once", async () => {
+test("auto-confirm produces the same outcome as the endpoint always did, once; the coins stay held until the dispute window closes", async () => {
   await setCoins(borrowerId, "50.00");
   await setCoins(ownerId, "0.00");
   const { id, itemId } = await newRequest();
+  await holdCoins(id);
 
   const first = await run([id]);
   assert.equal(first.autoAdvancedCount, 1);
@@ -164,31 +174,44 @@ test("auto-confirm produces the same outcome as the endpoint always did, once", 
   assert.equal(after.handoffAutoAdvanced, true);
   assert.equal(after.depositStatus, "held");
   assert.equal(after.itemAvailable, false);
-  assert.equal(after.borrowerCoins, 43); // 7 SC/week item, 7-day period
-  assert.equal(after.ownerCoins, 7);
+  assert.equal(after.borrowerCoins, 50, "nothing is charged yet: the 7 SC stay held while either person may still dispute");
+  assert.equal(after.ownerCoins, 0);
+  assert.deepEqual(await holdStatus(id), ["ACTIVE"]);
   assert.deepEqual(after.notificationTypes, ["handoff_auto_advanced", "handoff_auto_advanced"]);
 
   const second = await run([id]);
   assert.equal(second.autoAdvancedCount, 0);
-  const again = await snapshot(id, itemId);
-  assert.equal(again.borrowerCoins, 43);
-  assert.equal(again.ownerCoins, 7);
-  assert.equal(again.notificationTypes.length, 2);
+  assert.equal((await snapshot(id, itemId)).notificationTypes.length, 2);
+
+  // 23 hours in the window is still open; at 24 it closes and the hold settles, once.
+  assert.equal(await settleElapsedAutoConfirmedBorrows({ now: new Date(Date.now() + 23 * HOUR) }), 0);
+  assert.deepEqual(await holdStatus(id), ["ACTIVE"]);
+  assert.equal(await settleElapsedAutoConfirmedBorrows({ now: new Date(Date.now() + 25 * HOUR) }), 1);
+  const settled = await snapshot(id, itemId);
+  assert.equal(settled.borrowerCoins, 43); // 7 SC/week item, 7-day period
+  assert.equal(settled.ownerCoins, 7);
+  assert.deepEqual(await holdStatus(id), ["SETTLED"]);
+  assert.equal(await settleElapsedAutoConfirmedBorrows({ now: new Date(Date.now() + 26 * HOUR) }), 0);
+  assert.equal((await snapshot(id, itemId)).borrowerCoins, 43, "not charged twice");
 });
 
-test("overlapping runs claim a request exactly once (no double charge)", async () => {
+test("overlapping runs claim a request exactly once (one hold, nothing charged twice)", async () => {
   await setCoins(borrowerId, "50.00");
   await setCoins(ownerId, "0.00");
   const { id, itemId } = await newRequest();
+  await holdCoins(id);
 
   const results = await Promise.all([run([id]), run([id]), run([id])]);
   assert.equal(results.reduce((sum, r) => sum + r.autoAdvancedCount, 0), 1);
 
   const after = await snapshot(id, itemId);
   assert.equal(after.status, "IN_PROGRESS");
-  assert.equal(after.borrowerCoins, 43);
-  assert.equal(after.ownerCoins, 7);
+  assert.equal(after.borrowerCoins, 50);
+  assert.deepEqual(await holdStatus(id), ["ACTIVE"]);
   assert.equal(after.notificationTypes.length, 2);
+  await Promise.all([settleElapsedAutoConfirmedBorrows({ now: new Date(Date.now() + 25 * HOUR) }), settleElapsedAutoConfirmedBorrows({ now: new Date(Date.now() + 25 * HOUR) })]);
+  assert.equal((await snapshot(id, itemId)).borrowerCoins, 43);
+  assert.equal((await snapshot(id, itemId)).ownerCoins, 7);
 });
 
 test("a borrower who cannot afford the period still advances without coins moving", async () => {

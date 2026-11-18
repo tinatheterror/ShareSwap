@@ -107,7 +107,7 @@ export interface HandoffDeadlineResult {
 }
 
 // The borrow price formula lives in sharecoin-funds.ts, the one place that decides what a ShareCoin action costs.
-import { calcBorrowShareCoinCost, hasActiveHold, releaseHold, settleRequestCoins } from "./sharecoin-funds";
+import { calcBorrowShareCoinCost, hasActiveHold, releaseHold } from "./sharecoin-funds";
 export { calcBorrowShareCoinCost };
 
 const short = (name: string, max: number) => (name.length > max ? name.slice(0, max) + "…" : name);
@@ -255,19 +255,12 @@ export async function processHandoffDeadlines(
             isAutoGift
               // A gift has no deposit and no coin charge; same fields the gift's own confirmation and PIN path leave.
               ? { status: "COMPLETED", handoffConfirmedAt: now, actualHandoffAt: now, handoffAutoAdvanced: true }
-              : { status: completesAtHandoff ? "COMPLETED" : "IN_PROGRESS", handoffConfirmedAt: now, borrowPeriodStartedAt: now, actualHandoffAt: now, shareCoinsCharged: true, shareCoinsChargedAt: now, depositStatus: "held", handoffAutoAdvanced: true },
+              // A borrow's ShareCoins are NOT charged here: they stay held for the dispute window and are settled when it closes.
+              : { status: completesAtHandoff ? "COMPLETED" : "IN_PROGRESS", handoffConfirmedAt: now, borrowPeriodStartedAt: now, actualHandoffAt: now, ...(request.item_requests.requestType === "BORROW" ? {} : { shareCoinsCharged: true, shareCoinsChargedAt: now }), depositStatus: "held", handoffAutoAdvanced: true },
           )
           .where(and(eq(itemRequests.id, reqId), eq(itemRequests.status, "AWAITING_HANDOFF_CONFIRM")))
           .returning({ id: itemRequests.id });
         if (!claimed) return false;
-
-        if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
-          // Settles what was reserved at accept; the borrower always has it, so an auto-confirmed borrow is never left uncharged.
-          await settleRequestCoins(tx, {
-            requestId: reqId, reason: "handoff_auto", itemName, descriptionSuffix: " (auto-confirmed)", fallbackAllOrNothing: true,
-            fallbackQuote: ownerId2 ? { kind: "BORROW", payerId: borrowerId2, receiverId: ownerId2, amount: shareCoinAmount } : null,
-          });
-        }
 
         await tx.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
 

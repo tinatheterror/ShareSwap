@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, notInArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, notInArray, sql } from "drizzle-orm";
 import { db, itemRequests, items, notifications, requestLifecycleEvents, shareCoinHolds, shareCoinsTransactions, users } from "@workspace/db";
 import type { SHARECOIN_HOLD_RELEASE_REASONS, SHARECOIN_HOLD_SETTLE_REASONS } from "@workspace/db";
 import { borrowLimitBody, BORROW_LIMIT_MESSAGE, monthlyBorrowSlotAvailable, takeMonthlyBorrowSlot } from "./borrow-allowance";
@@ -42,6 +42,8 @@ export function calcBorrowShareCoinCost(
   const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000));
   return Math.max(1, Math.round((shareCoinPrice / 7) * borrowDays));
 }
+
+import { AUTO_CONFIRM_DISPUTE_WINDOW_HOURS } from "./handoff-confirm-copy";
 
 const TIER_SHARECOINS: Record<number, number> = { 1: 5, 2: 10, 3: 20, 4: 40 };
 /** What one item is worth in ShareCoins by tier (mirrors the apps' getTierShareCoins; an unset tier counts as tier 2). */
@@ -669,4 +671,48 @@ export async function ensureFundsHeld(
     context: { requestId: args.request.id, itemId: args.item.id, itemName: args.item.name, ownerId: args.item.ownerId!, requesterId: args.request.requesterId! },
   });
   return { block: block ?? { status: 409, body: { code: REQUEST_NOT_ACCEPTABLE_NOW_CODE, error: REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE } }, amount: quote.amount };
+}
+
+/**
+ * A borrow the sweep auto-confirmed keeps its coins held while either person may still dispute it (the dispute window,
+ * AUTO_CONFIRM_DISPUTE_WINDOW_HOURS). When the window closes without a dispute the hold settles: the coins move, exactly the
+ * held amount. A disputed borrow (HANDOFF_DISPUTED) is left alone until an admin decides it. Returns how many it settled.
+ */
+export async function settleElapsedAutoConfirmedBorrows(options: { now?: Date; exec?: Executor } = {}): Promise<number> {
+  const exec = options.exec ?? db;
+  const now = options.now ?? new Date();
+  const closedBefore = new Date(now.getTime() - AUTO_CONFIRM_DISPUTE_WINDOW_HOURS * 3_600_000);
+  const due = await exec
+    .select({ requestId: itemRequests.id, itemId: items.id, itemName: items.name, ownerId: items.ownerId })
+    .from(shareCoinHolds)
+    .innerJoin(itemRequests, eq(itemRequests.id, shareCoinHolds.requestId))
+    .innerJoin(items, eq(items.id, itemRequests.itemId))
+    .where(and(
+      eq(shareCoinHolds.status, "ACTIVE"),
+      eq(shareCoinHolds.kind, "BORROW"),
+      eq(itemRequests.handoffAutoAdvanced, true),
+      lte(itemRequests.handoffConfirmedAt, closedBefore),
+      notInArray(itemRequests.status, ["HANDOFF_DISPUTED", "HANDOFF_FLAGGED", ...ENDED_REQUEST_STATUSES]),
+    ))
+    .limit(200);
+  let settled = 0;
+  for (const row of due) {
+    const paid = await db.transaction(async (tx) => {
+      // The request row is locked and re-read: a dispute opened a moment ago wins.
+      const [current] = await tx.select({ status: itemRequests.status }).from(itemRequests).where(eq(itemRequests.id, row.requestId)).for("update");
+      if (!current || current.status === "HANDOFF_DISPUTED" || current.status === "HANDOFF_FLAGGED") return 0;
+      const result = await settleRequestCoins(tx, { requestId: row.requestId, reason: "handoff_auto", itemName: row.itemName, descriptionSuffix: " (auto-confirmed)" });
+      if (!result.settled) return 0;
+      await tx.update(itemRequests).set({ shareCoinsCharged: true, shareCoinsChargedAt: now }).where(eq(itemRequests.id, row.requestId));
+      return result.paid;
+    });
+    if (paid > 0 && row.ownerId) {
+      settled++;
+      await exec.insert(notifications).values({
+        userId: row.ownerId, type: "sharecoin_earned", title: `+${paid} ShareCoin${paid !== 1 ? "s" : ""} Earned`,
+        message: `+${paid} SC earned for lending "${short(row.itemName, 20)}".`, itemId: row.itemId, requestId: row.requestId, isRead: false,
+      } as any);
+    } else if (paid > 0) settled++;
+  }
+  return settled;
 }

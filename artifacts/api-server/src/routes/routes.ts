@@ -120,8 +120,8 @@ import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from 
 import { validateBorrowPeriod } from "../borrow-period";
 import { DUPLICATE_PENDING_REQUEST_CODE, DUPLICATE_PENDING_REQUEST_MESSAGE, ITEM_NO_LONGER_AVAILABLE_CODE, ITEM_NO_LONGER_AVAILABLE_MESSAGE, declineRequestsForGoneItems, requestInvolvesGoneItem } from "../item-availability";
 import { borrowLimitBody, monthlyAllowanceUsedUp, pendingBorrowCapReached, pendingBorrowLimitBody } from "../borrow-allowance";
-import { acceptFailureResponse, acceptWithFunds, applyFundsGate, ensureFundsHeld, gateRequestFunds, notifyUnblockedRequests, quoteRequest, quoteSwap, releaseHold, releaseHoldsOfEndedRequests, settleRequestCoins } from "../sharecoin-funds";
-import { HANDOFF_CONFIRM_WINDOW_HOURS, SILENT_PERSON_NOTICE_TITLE, isConfirmNoticeType, silentPersonNotice } from "../handoff-confirm-copy";
+import { acceptFailureResponse, acceptWithFunds, applyFundsGate, ensureFundsHeld, gateRequestFunds, notifyUnblockedRequests, quoteRequest, quoteSwap, releaseHold, releaseHoldsOfEndedRequests, settleElapsedAutoConfirmedBorrows, settleRequestCoins } from "../sharecoin-funds";
+import { AUTO_CONFIRM_DISPUTE_WINDOW_HOURS, DISPUTE_WINDOW_CLOSED_CODE, DISPUTE_WINDOW_CLOSED_MESSAGE, HANDOFF_CONFIRM_WINDOW_HOURS, SILENT_PERSON_NOTICE_TITLE, isConfirmNoticeType, silentPersonNotice } from "../handoff-confirm-copy";
 import {
   HANDOFF_SWEEP_INTERVAL_MS,
   HANDOFF_SWEEP_REQUEST_TYPES,
@@ -10238,6 +10238,11 @@ Respond with ONLY the category name, nothing else.`
         if (!(request.item_requests as any).handoffAutoAdvanced) {
           return res.status(400).json({ error: "This exchange was manually confirmed and cannot be disputed this way" });
         }
+        // Only for AUTO_CONFIRM_DISPUTE_WINDOW_HOURS after the auto-confirm; a borrow's coins are held until then and settle when it closes.
+        const confirmedAtMs = request.item_requests.handoffConfirmedAt ? new Date(request.item_requests.handoffConfirmedAt).getTime() : 0;
+        if (Date.now() >= confirmedAtMs + AUTO_CONFIRM_DISPUTE_WINDOW_HOURS * 3_600_000) {
+          return res.status(409).json({ error: DISPUTE_WINDOW_CLOSED_MESSAGE, code: DISPUTE_WINDOW_CLOSED_CODE });
+        }
         const { description } = req.body;
         const now2 = new Date();
         const deadline24h2 = new Date(now2.getTime() + 24 * 60 * 60 * 1000);
@@ -12632,7 +12637,9 @@ Respond with ONLY the category name, nothing else.`
       // Also frees the coins of any ended request whose own ending did not release them (they are not counted as reserved
       // meanwhile, so this only tidies the record).
       const released = await releaseHoldsOfEndedRequests();
-      return `notified=${await notifyUnblockedRequests()} releasedHolds=${released}`;
+      // Borrows the sweep auto-confirmed: their coins settle when the 24-hour dispute window closes.
+      const settled = await settleElapsedAutoConfirmedBorrows();
+      return `notified=${await notifyUnblockedRequests()} releasedHolds=${released} settledAutoConfirmed=${settled}`;
     },
   });
   options.onScheduledJobs?.({

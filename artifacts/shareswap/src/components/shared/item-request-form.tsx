@@ -459,51 +459,8 @@ export function ItemRequestForm({
                     return;
                   }
                 }
-                if (requestType === "BORROW" && onInsufficientCoins) {
-                  const weeklyPrice =
-                    parseFloat((item as any).shareCoinPrice || "0") || 5;
-                  let borrowDays = 0;
-                  if (data.startDate && data.endDate) {
-                    const start = new Date(data.startDate);
-                    const end = new Date(data.endDate);
-                    borrowDays = Math.max(
-                      1,
-                      Math.ceil(
-                        (end.getTime() - start.getTime()) /
-                          (1000 * 60 * 60 * 24),
-                      ),
-                    );
-                  }
-                  const proratedCost =
-                    borrowDays > 0
-                      ? Math.max(1, Math.ceil((weeklyPrice / 7) * borrowDays))
-                      : weeklyPrice;
-                  const balance = Number((user as any)?.shareCoins || 0);
-                  if (balance < proratedCost) {
-                    onClose();
-                    onInsufficientCoins(proratedCost, "borrow");
-                    return;
-                  }
-                }
-                if (requestType === "SWAP" && onInsufficientCoins && swapOfferItem?.length) {
-                  const yourSC = swapOfferItem.reduce(
-                    (s, i) => s + getTierShareCoins((i as any).tier || 2),
-                    0,
-                  );
-                  const theirSC = [item, ...(swapRequestedExtraItems ?? [])].reduce(
-                    (s, i) => s + getTierShareCoins((i as any).tier || 2),
-                    0,
-                  );
-                  const swapResult = calculateMultiSwap(yourSC, theirSC);
-                  if (swapResult.offsetDirection === "you_pay") {
-                    const balance = Number((user as any)?.shareCoins || 0);
-                    if (balance < swapResult.offset) {
-                      onClose();
-                      onInsufficientCoins(swapResult.offset, "swap");
-                      return;
-                    }
-                  }
-                }
+                // No balance check here: the server decides (with its own rounding, and what accepted requests have reserved) and
+                // answers with the Not Enough ShareCoins modal, handled in onError below.
                 requireCapability(capabilityForRequestType(requestType), () =>
                   createRequestMutation.mutate(data),
                 );

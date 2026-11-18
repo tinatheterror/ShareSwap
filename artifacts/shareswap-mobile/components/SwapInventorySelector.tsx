@@ -19,7 +19,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SwapFairnessSummary } from "@/components/SwapFairnessSummary";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/context/AuthContext";
 import { apiGet, photoUrl } from "@/lib/api";
 
 // ── Swap calculator (mirrors web lib) ─────────────────────────────────────────
@@ -78,7 +77,6 @@ const COLS = 3;
 export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
 
@@ -172,16 +170,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
 
   function handleContinue() {
     if (!canContinue) return;
-    if (valuation.offsetDirection === "you_pay" && valuation.offset > 0) {
-      const balance = Number((user as any)?.shareCoins ?? 0);
-      if (balance < valuation.offset) {
-        Alert.alert(
-          "Insufficient ShareCoins",
-          `This swap requires ${valuation.offset} ShareCoins to balance, but you only have ${balance}.\n\nEarn more by completing borrows and swaps.`,
-        );
-        return;
-      }
-    }
+    // No balance check here: the server checks whoever would pay when the request is sent and answers with the modal.
     setStep("message");
   }
 

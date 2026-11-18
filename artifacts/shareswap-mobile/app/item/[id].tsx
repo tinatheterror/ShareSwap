@@ -814,15 +814,6 @@ export default function ItemDetailScreen() {
         onConfirm={async (borrowData) => {
           await handleSendRequest("BORROW", undefined, borrowData);
         }}
-        onInsufficientBalance={(required) => {
-          setShowBorrowSheet(false);
-          setEarnRequired(required);
-          setEarnAvailable(undefined);
-          setEarnReserved(0);
-          setEarnContext("borrow");
-          // Small delay so borrow sheet finishes closing before earn modal opens
-          setTimeout(() => setShowEarnModal(true), 300);
-        }}
       />
 
       <ScrollView

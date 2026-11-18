@@ -80,8 +80,6 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (data: BorrowRequestData) => Promise<void>;
-  /** Called instead of opening a nested Modal — parent closes sheet first then shows earn modal */
-  onInsufficientBalance?: (required: number) => void;
 }
 
 const PRIMARY = "#0DCEA1";
@@ -199,7 +197,7 @@ function MiniCalendar({
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onInsufficientBalance }: Props) {
+export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: Props) {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -270,7 +268,6 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
   const targetName = targetItem.name ?? (targetItem as any).title ?? "Item";
 
   // ── Submit ─────────────────────────────────────────────────────────────────
-  const balance = Number((user as any)?.shareCoins ?? 0);
 
   async function handleSend() {
     if (!startDateObj || !endDateObj) {
@@ -288,11 +285,8 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm, onI
       Alert.alert("Choose an earlier return date", "Items can be borrowed for a maximum of 12 months.");
       return;
     }
-    if (balance < proratedCost && onInsufficientBalance) {
-      // Close this sheet first so parent can open earn modal without stacking two native Modals
-      onInsufficientBalance(proratedCost);
-      return;
-    }
+    // No balance check here: the server decides (with its own rounding, and what accepted requests have reserved) and
+    // answers with the Not Enough ShareCoins modal, which the parent shows.
     setSubmissionError(null);
     setSending(true);
     try {

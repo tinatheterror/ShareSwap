@@ -5,8 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftRight, Camera, Check, ChevronDown, ChevronUp, Coins, ExternalLink, Package, Plus, AlertTriangle, Info } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { getTierShareCoins, calculateMultiSwap, MAX_SWAP_OFFSET } from "@/lib/swap-calculator";
-import { useAuth } from "@/hooks/use-auth";
-import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sharecoins-modal";
 
 type Props = {
   targetItem: SelectItem;
@@ -20,9 +18,6 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
   const [selectedItemIds, setSelectedItemIds] = useState<number[]>([]);
   const [selectedOwnerItemIds, setSelectedOwnerItemIds] = useState<number[]>([]);
   const [showAllOwnerItems, setShowAllOwnerItems] = useState(false);
-  const [showInsufficientCoins, setShowInsufficientCoins] = useState(false);
-  const [insufficientRequired, setInsufficientRequired] = useState(0);
-  const { user } = useAuth();
 
   // Reset selections every time the dialog opens so stale state never carries over
   useEffect(() => {
@@ -84,14 +79,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
     const selectedOwner = ownerExtraItems.filter(i => selectedOwnerItemIds.includes(i.id));
     if (valuation.exceedsMax) return;
 
-    if (valuation.offsetDirection === "you_pay" && valuation.offset > 0) {
-      const balance = Number(user?.shareCoins || 0);
-      if (balance < valuation.offset) {
-        setInsufficientRequired(valuation.offset);
-        setShowInsufficientCoins(true);
-        return;
-      }
-    }
+    // No balance check here: the server checks whoever would pay when the request is sent and answers with the modal.
     onSelectItem(selected, selectedOwner);
   };
 
@@ -361,14 +349,6 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
           )}
         </DialogContent>
       </Dialog>
-
-      <InsufficientShareCoinsModal
-        isOpen={showInsufficientCoins}
-        onClose={() => setShowInsufficientCoins(false)}
-        currentBalance={Number(user?.shareCoins || 0)}
-        required={insufficientRequired}
-        context="swap"
-      />
     </>
   );
 }

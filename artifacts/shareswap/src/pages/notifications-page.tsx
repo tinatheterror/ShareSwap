@@ -74,6 +74,12 @@ export default function NotificationsPage() {
       return;
     }
 
+    // "You've reached your monthly borrow limit": the plan page is where that is solved.
+    if (notification.type === "borrow_limit_reached") {
+      navigate("/subscription");
+      return;
+    }
+
     if (notification.type === "dispute_resolved") {
       navigate("/my-balance");
       return;

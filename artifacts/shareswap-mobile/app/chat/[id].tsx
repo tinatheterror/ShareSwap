@@ -545,6 +545,16 @@ export default function ChatScreen() {
         );
       } else if (e?.code === REQUEST_NOT_ACCEPTABLE_NOW_CODE) {
         Alert.alert("Can't accept right now", e.error || e.message || REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE);
+      } else if (e?.code === "BORROW_LIMIT_REACHED") {
+        // The Free plan's monthly borrow limit, for the borrower accepting the owner's counter: the plan-limit answer.
+        Alert.alert(
+          "Monthly limit reached",
+          e.message || "Upgrade to Member for unlimited borrows.",
+          [
+            { text: "Not now", style: "cancel" },
+            { text: "Upgrade", onPress: () => router.push("/subscription" as never) },
+          ],
+        );
       } else {
         Alert.alert("Error", e.message || "Failed to accept counter");
       }
@@ -1034,21 +1044,20 @@ export default function ChatScreen() {
               <View style={card.btnRow}>
                 {isOwner && (
                   <>
-                    <Pressable
-                      style={[
-                        card.btn,
-                        { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 },
-                        acceptBlockedByDates(request) && { opacity: 0.4 },
-                      ]}
-                      onPress={() => acceptMutation.mutate()}
-                      disabled={anyMutating || acceptBlockedByDates(request)}
-                      accessibilityState={{ disabled: anyMutating || acceptBlockedByDates(request) }}
-                    >
-                      {acceptMutation.isPending
-                        ? <ActivityIndicator size="small" color="#fff" />
-                        : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept</Text>
-                      }
-                    </Pressable>
+                    {/* When the dates have passed there is no Accept at all: the message below stands in its place. */}
+                    {!acceptBlockedByDates(request) && (
+                      <Pressable
+                        style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 }]}
+                        onPress={() => acceptMutation.mutate()}
+                        disabled={anyMutating}
+                        accessibilityState={{ disabled: anyMutating }}
+                      >
+                        {acceptMutation.isPending
+                          ? <ActivityIndicator size="small" color="#fff" />
+                          : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept</Text>
+                        }
+                      </Pressable>
+                    )}
                     <Pressable
                       style={[card.btn, { borderColor: "transparent", backgroundColor: "#fef3c7", flex: 1 }]}
                       onPress={() => setShowCounterSheet(true)}

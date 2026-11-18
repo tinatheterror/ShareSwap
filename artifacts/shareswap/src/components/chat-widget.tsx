@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import {
   MessageCircle,
   Send,
@@ -730,6 +731,22 @@ export function ChatWidget() {
           title: "Can't accept right now",
           description: error.error || error.message || REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE,
           variant: "destructive",
+        });
+        return;
+      }
+      if (error?.code === "BORROW_LIMIT_REACHED") {
+        // The Free plan's monthly borrow limit, for the borrower accepting the owner's counter: the plan-limit answer.
+        toast({
+          title: "Monthly limit reached",
+          description: error.message,
+          variant: "destructive",
+          action: (
+            <ToastAction altText="Upgrade membership" asChild>
+              <Link href="/subscription" className="shrink-0 rounded-md border border-white/40 bg-white/20 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/30 transition-colors">
+                Upgrade
+              </Link>
+            </ToastAction>
+          ),
         });
         return;
       }
@@ -1472,17 +1489,19 @@ export function ChatWidget() {
           {/* Counter received: inline Accept / Counter / Decline */}
           {iReceivedCounter && (
             <>
-              <Button
-                size="sm"
-                className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
-                onClick={() => {
-                  // The server checks whoever would pay (with its own rounding) and answers with the Not Enough ShareCoins modal.
-                  respondToCounterMutation.mutate({ requestId: request.id, accept: true });
-                }}
-                disabled={respondToCounterMutation.isPending || acceptDisabledByDates}
-              >
-                Accept
-              </Button>
+              {!acceptDisabledByDates && (
+                <Button
+                  size="sm"
+                  className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    // The server checks whoever would pay (with its own rounding) and answers with the Not Enough ShareCoins modal.
+                    respondToCounterMutation.mutate({ requestId: request.id, accept: true });
+                  }}
+                  disabled={respondToCounterMutation.isPending}
+                >
+                  Accept
+                </Button>
+              )}
               {(request.counterRound ?? 0) < 2 && request.requestType !== "GIFT" && (
                 <Button
                   size="sm"
@@ -1514,12 +1533,12 @@ export function ChatWidget() {
           )}
 
               {/* Owner: terms were accepted by requester — formally confirm */}
-              {isOwner && iTermsAccepted && (
+              {isOwner && iTermsAccepted && !acceptDisabledByDates && (
                 <Button
                   size="sm"
                   className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
                   onClick={() => handleAcceptClick(request)}
-                  disabled={acceptMutation.isPending || acceptDisabledByDates}
+                  disabled={acceptMutation.isPending}
                 >
                   {acceptMutation.isPending ? "Confirming…" : "Confirm & Accept"}
                 </Button>
@@ -1531,14 +1550,16 @@ export function ChatWidget() {
               {/* Owner actions for pending requests (no active counter, terms not yet agreed) */}
               {isOwner && request.status === "PENDING" && !iCounterPending && !iTermsAccepted && (
                 <>
-                  <Button
-                    size="sm"
-                    className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
-                    onClick={() => handleAcceptClick(request)}
-                    disabled={acceptMutation.isPending || acceptDisabledByDates}
-                  >
-                    {acceptMutation.isPending ? "Accepting…" : "Accept"}
-                  </Button>
+                  {!acceptDisabledByDates && (
+                    <Button
+                      size="sm"
+                      className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
+                      onClick={() => handleAcceptClick(request)}
+                      disabled={acceptMutation.isPending}
+                    >
+                      {acceptMutation.isPending ? "Accepting…" : "Accept"}
+                    </Button>
+                  )}
                   {(request.counterRound ?? 0) < 2 && request.requestType !== "GIFT" && (
                     <Button
                       size="sm"

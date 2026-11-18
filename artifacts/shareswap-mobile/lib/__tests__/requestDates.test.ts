@@ -18,7 +18,7 @@ describe("acceptBlockedByDates", () => {
 
   it("uses the exact guidance copy", () => {
     expect(REQUEST_DATES_PASSED_MESSAGE).toBe(
-      "These dates have passed. Counter with new dates or decline.",
+      "Dates have passed. Counter with new dates or decline.",
     );
   });
 });

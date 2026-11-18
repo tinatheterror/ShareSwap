@@ -175,6 +175,11 @@ export default function NotificationsScreen() {
       router.push("/sharecoin-wallet" as never);
       return;
     }
+    // "You've reached your monthly borrow limit": the plan page is where that is solved.
+    if (notif.type === "borrow_limit_reached") {
+      router.push("/subscription" as never);
+      return;
+    }
 
     if (notif.requestId) {
       try {

@@ -275,7 +275,7 @@ test("a request for an item that has been given away cannot be accepted", async 
   const late = await request(gift.id, bobId, "GIFT");
   const response = await owner.patch(`/api/requests/${late}`, { status: "ACCEPTED" });
   assert.equal(response.status, 409);
-  assert.deepEqual(response.json, { error: ITEM_NO_LONGER_AVAILABLE_MESSAGE, code: ITEM_NO_LONGER_AVAILABLE_CODE });
+  assert.deepEqual([response.json.error, response.json.code, response.json.itemId, response.json.itemName], [ITEM_NO_LONGER_AVAILABLE_MESSAGE, ITEM_NO_LONGER_AVAILABLE_CODE, gift.id, gift.name]);
   assert.equal(await statusOf(late), "PENDING");
 
   // Also by accepting a counter.
@@ -312,4 +312,29 @@ test("items that are still here are unaffected: the same accept works", async ()
   assert.equal((await owner.patch(`/api/requests/${id}`, { status: "ACCEPTED" })).status, 200);
   assert.deepEqual(involvedItemIds({ itemId: 7, requestType: "SWAP", swapOfferedItemIds: [8, 9], swapRequestedItemIds: [10], counterSwapOwnerItemIds: [7, 11], counterSwapRequesterItemIds: [] } as any).sort((a, b) => a - b), [7, 8, 9, 10, 11]);
   assert.deepEqual(involvedItemIds({ itemId: 7, requestType: "BORROW", swapOfferedItemIds: [8] } as any), [7], "only a swap has sides");
+});
+
+test("an item the counter dropped does not block accepting: only the items the exchange would move count", async () => {
+  const ownerItem = await newItem(ownerId);
+  const offered = await newItem(aliceId); // the original offer
+  const counterItem = await newItem(aliceId); // what the counter asks for instead
+  await db.update(items).set({ isSwapped: true, isAvailable: false }).where(eq(items.id, offered.id)); // the dropped item has since gone elsewhere
+  const id = await request(ownerItem.id, aliceId, "SWAP", {
+    swapOfferedItemIds: [offered.id], negotiationStatus: "counter_proposed", counterProposedBy: ownerId, counterRound: 1,
+    counterSwapOwnerItemIds: [ownerItem.id], counterSwapRequesterItemIds: [counterItem.id],
+  } as any);
+  await clearCooldowns();
+  const response = await alice.post(`/api/requests/${id}/respond-to-counter`, { accept: true });
+  assert.equal(response.status, 200, response.text.slice(0, 300));
+
+  // Whereas a counter that still includes a swapped item is refused, and says which item it is.
+  const other = await newItem(ownerId);
+  const swappedAway = await newItem(aliceId);
+  await db.update(items).set({ isSwapped: true, isAvailable: false }).where(eq(items.id, swappedAway.id));
+  const blocked = await request(other.id, aliceId, "SWAP", {
+    swapOfferedItemIds: [swappedAway.id], counterSwapOwnerItemIds: [other.id], counterSwapRequesterItemIds: [swappedAway.id], negotiationStatus: "counter_proposed", counterProposedBy: ownerId, counterRound: 1,
+  } as any);
+  const refused = await alice.post(`/api/requests/${blocked}/respond-to-counter`, { accept: true });
+  assert.equal(refused.status, 409);
+  assert.deepEqual([refused.json.code, refused.json.itemId, refused.json.itemName], [ITEM_NO_LONGER_AVAILABLE_CODE, swappedAway.id, swappedAway.name]);
 });

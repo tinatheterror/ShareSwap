@@ -1,6 +1,7 @@
 import { and, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { db, itemRequests, items, messages, notifications } from "@workspace/db";
 import { sendPushToUser } from "./push-notifications";
+import { heldItemIds } from "./swap-reservation";
 
 // An item that has been given away or swapped is gone. Pending requests do not expire, so when a gift or a swap completes
 // every other PENDING request for the items it moved is declined (with the notice below), and nothing can be accepted
@@ -30,18 +31,28 @@ export function involvedItemIds(request: Pick<RequestRow, "itemId" | "requestTyp
   return [...new Set(ids.filter((id): id is number => typeof id === "number"))];
 }
 
-/** True when any item the request is about has already been swapped, or given away in a completed gift. */
-export async function requestInvolvesGoneItem(request: RequestRow, exec: Executor = db): Promise<boolean> {
-  const ids = involvedItemIds(request);
-  if (ids.length === 0) return false;
-  const [swapped] = await exec.select({ id: items.id }).from(items).where(and(inArray(items.id, ids), eq(items.isSwapped, true))).limit(1);
-  if (swapped) return true;
+/**
+ * The item (if any) that a request being accepted can no longer have: swapped, or given away in a completed gift. Only the items
+ * the exchange would actually move count: for a swap that is the sides as they stand (a counter replaces the original sides),
+ * so an item the counter dropped does not block it.
+ */
+export async function goneItemFor(request: RequestRow, exec: Executor = db): Promise<{ id: number; name: string } | null> {
+  const ids = heldItemIds(request);
+  if (ids.length === 0) return null;
+  const [swapped] = await exec.select({ id: items.id, name: items.name }).from(items).where(and(inArray(items.id, ids), eq(items.isSwapped, true))).limit(1);
+  if (swapped) return swapped;
   const [given] = await exec
-    .select({ id: itemRequests.id })
+    .select({ id: items.id, name: items.name })
     .from(itemRequests)
+    .innerJoin(items, eq(items.id, itemRequests.itemId))
     .where(and(inArray(itemRequests.itemId, ids), eq(itemRequests.requestType, "GIFT"), eq(itemRequests.status, "COMPLETED"), ne(itemRequests.id, request.id)))
     .limit(1);
-  return Boolean(given);
+  return given ?? null;
+}
+
+/** True when an item the request would move is already gone (see goneItemFor). */
+export async function requestInvolvesGoneItem(request: RequestRow, exec: Executor = db): Promise<boolean> {
+  return (await goneItemFor(request, exec)) !== null;
 }
 
 /**

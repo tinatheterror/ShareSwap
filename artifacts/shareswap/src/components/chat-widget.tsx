@@ -660,6 +660,12 @@ export function ChatWidget() {
           description: error.message,
           variant: "destructive",
         });
+      } else if (error?.code === "ITEM_NO_LONGER_AVAILABLE") {
+        toast({
+          title: "Item no longer available",
+          description: error.itemName ? `"${error.itemName}" has already been swapped or given away.` : error.message,
+          variant: "destructive",
+        });
       } else if (error?.code === REQUEST_NOT_ACCEPTABLE_NOW_CODE) {
         // The server's own words, which say nothing about why (see api-server/src/sharecoin-funds.ts).
         toast({
@@ -724,6 +730,14 @@ export function ChatWidget() {
       if (error?.code === "INSUFFICIENT_SHARECOINS") {
         // Only the person who would pay is ever told this, about their own balance.
         showServerShortfall(error);
+        return;
+      }
+      if (error?.code === "ITEM_NO_LONGER_AVAILABLE") {
+        toast({
+          title: "Item no longer available",
+          description: error.itemName ? `"${error.itemName}" has already been swapped or given away.` : error.message,
+          variant: "destructive",
+        });
         return;
       }
       if (error?.code === REQUEST_NOT_ACCEPTABLE_NOW_CODE) {

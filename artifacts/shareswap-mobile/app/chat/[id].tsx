@@ -467,6 +467,8 @@ export default function ChatScreen() {
           "Borrower must return an overdue item",
           e.message || "The borrower must return their overdue item before starting another borrow.",
         );
+      } else if (e?.code === "ITEM_NO_LONGER_AVAILABLE") {
+        Alert.alert("Item no longer available", e.itemName ? `"${e.itemName}" has already been swapped or given away.` : e.message);
       } else if (e?.code === REQUEST_NOT_ACCEPTABLE_NOW_CODE) {
         // The server's own words, which say nothing about why (see api-server/src/sharecoin-funds.ts).
         Alert.alert("Can't accept right now", e.error || e.message || REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE);
@@ -543,6 +545,8 @@ export default function ChatScreen() {
           "Borrower must return an overdue item",
           e.message || "The borrower must return their overdue item before starting another borrow.",
         );
+      } else if (e?.code === "ITEM_NO_LONGER_AVAILABLE") {
+        Alert.alert("Item no longer available", e.itemName ? `"${e.itemName}" has already been swapped or given away.` : e.message);
       } else if (e?.code === REQUEST_NOT_ACCEPTABLE_NOW_CODE) {
         Alert.alert("Can't accept right now", e.error || e.message || REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE);
       } else if (e?.code === "BORROW_LIMIT_REACHED") {

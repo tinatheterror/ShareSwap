@@ -119,7 +119,7 @@ import {
 import { findReservationConflict, heldItemIdSet, ITEM_ALREADY_COMMITTED_CODE, ITEM_ALREADY_COMMITTED_MESSAGE } from "../swap-reservation";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
-import { DUPLICATE_PENDING_REQUEST_CODE, DUPLICATE_PENDING_REQUEST_MESSAGE, ITEM_NO_LONGER_AVAILABLE_CODE, ITEM_NO_LONGER_AVAILABLE_MESSAGE, declineRequestsForGoneItems, requestInvolvesGoneItem } from "../item-availability";
+import { DUPLICATE_PENDING_REQUEST_CODE, DUPLICATE_PENDING_REQUEST_MESSAGE, ITEM_NO_LONGER_AVAILABLE_CODE, ITEM_NO_LONGER_AVAILABLE_MESSAGE, declineRequestsForGoneItems, goneItemFor } from "../item-availability";
 import { borrowLimitBody, monthlyAllowanceUsedUp, pendingBorrowCapReached, pendingBorrowLimitBody } from "../borrow-allowance";
 import { acceptFailureResponse, acceptWithFunds, applyFundsGate, ensureFundsHeld, gateRequestFunds, notifyUnblockedRequests, quoteRequest, quoteSwap, releaseHold, releaseHoldsOfEndedRequests, settleElapsedAutoConfirmedBorrows, settleRequestCoins } from "../sharecoin-funds";
 import { AUTO_CONFIRM_DISPUTE_WINDOW_HOURS, DISPUTE_WINDOW_CLOSED_CODE, DISPUTE_WINDOW_CLOSED_MESSAGE, HANDOFF_CONFIRM_WINDOW_HOURS, SILENT_PERSON_NOTICE_TITLE, isConfirmNoticeType, silentPersonNotice } from "../handoff-confirm-copy";
@@ -7264,8 +7264,9 @@ Respond with ONLY the category name, nothing else.`
     }
 
     // An item that has been given away or swapped is gone: nothing can be accepted for it.
-    if (status === "ACCEPTED" && request.item_requests.status === "PENDING" && (await requestInvolvesGoneItem(request.item_requests))) {
-      return res.status(409).json({ error: ITEM_NO_LONGER_AVAILABLE_MESSAGE, code: ITEM_NO_LONGER_AVAILABLE_CODE });
+    if (status === "ACCEPTED" && request.item_requests.status === "PENDING") {
+      const gone = await goneItemFor(request.item_requests);
+      if (gone) return res.status(409).json({ error: ITEM_NO_LONGER_AVAILABLE_MESSAGE, code: ITEM_NO_LONGER_AVAILABLE_CODE, itemId: gone.id, itemName: gone.name });
     }
 
     // An accepted exchange holds its items: refuse to accept one whose items another accepted request already holds.
@@ -7939,8 +7940,9 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // An item that has been given away or swapped is gone: nothing can be accepted for it.
-      if (request.item_requests.status === "PENDING" && (await requestInvolvesGoneItem(request.item_requests))) {
-        return res.status(409).json({ error: ITEM_NO_LONGER_AVAILABLE_MESSAGE, code: ITEM_NO_LONGER_AVAILABLE_CODE });
+      if (request.item_requests.status === "PENDING") {
+        const gone = await goneItemFor(request.item_requests);
+        if (gone) return res.status(409).json({ error: ITEM_NO_LONGER_AVAILABLE_MESSAGE, code: ITEM_NO_LONGER_AVAILABLE_CODE, itemId: gone.id, itemName: gone.name });
       }
 
       // A borrower with an overdue borrow cannot start another.

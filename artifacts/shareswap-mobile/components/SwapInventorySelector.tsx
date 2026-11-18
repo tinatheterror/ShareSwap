@@ -119,7 +119,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
 
   // ── Derived data ──────────────────────────────────────────────────────────
   const swappableItems = myItemsRaw.filter(
-    (i) => i.id !== targetItem.id && i.isSwappable && i.isAvailable !== false,
+    (i) => i.id !== targetItem.id && i.isSwappable && i.isAvailable !== false && !(i as any).isSwapped && !(i as any).isGifted,
   );
   const ownerExtraItems = (Array.isArray(ownerItemsRaw) ? ownerItemsRaw : []).filter(
     (i) => i.id !== targetItem.id,

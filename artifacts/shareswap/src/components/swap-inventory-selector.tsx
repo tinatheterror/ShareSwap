@@ -46,7 +46,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
   const targetSC = getTierShareCoins(targetTier);
 
   const swappableItems = myItems.filter(
-    (item) => item.id !== targetItem.id && item.isSwappable && item.isAvailable !== false,
+    (item) => item.id !== targetItem.id && item.isSwappable && item.isAvailable !== false && !item.isSwapped && !(item as any).isGifted,
   );
 
   const ownerExtraItems = ownerItems.filter(item => item.id !== targetItem.id);

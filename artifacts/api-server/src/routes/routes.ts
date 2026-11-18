@@ -116,7 +116,7 @@ import {
   type RequestExpirySweepOptions,
   type RequestExpirySweepResult,
 } from "../request-expiry-service";
-import { giftedItemIds, isItemPassedOn, ITEM_PASSED_ON_CODE, ITEM_PASSED_ON_MESSAGE } from "../passed-on-items";
+import { giftedItemIds, isItemPassedOn, ITEM_PASSED_ON_CODE, ITEM_PASSED_ON_MESSAGE, notPassedOnItemSql } from "../passed-on-items";
 import { findReservationConflict, heldItemIdSet, ITEM_ALREADY_COMMITTED_CODE, ITEM_ALREADY_COMMITTED_MESSAGE } from "../swap-reservation";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
 import { validateBorrowPeriod } from "../borrow-period";
@@ -8175,6 +8175,8 @@ Respond with ONLY the category name, nothing else.`
           eq(items.ownerId, userId),
           eq(items.isAvailable, true),
           eq(items.isSwappable, true),
+          // Swapped or given away: gone, the same rule accepting uses.
+          notPassedOnItemSql,
           lockedItemIds.length > 0 ? notInArray(items.id, lockedItemIds) : undefined
         )
       );

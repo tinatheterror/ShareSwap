@@ -193,3 +193,24 @@ test("/api/my-items says a gifted item was gifted even when a later request outr
   assert.equal(mine.find((i) => i.id === s.plain)!.isGifted, false);
   assert.equal(mine.find((i) => i.id === s.swapped)!.isSwapped, true);
 });
+
+test("the swap pickers leave out swapped and gifted items even if they are listed", async () => {
+  const s = await scenario("eligible", asker.id);
+  await db.update(items).set({ isAvailable: true }).where(inArray(items.id, [s.swapped, s.gifted, s.plain]));
+  const client = await new Client().signIn(asker.username);
+  const list = (await client.get(`/api/swap-eligible-items?partnerId=${s.id}`)).json as { id: number }[];
+  const ids = list.map((i) => i.id);
+  assert.ok(ids.includes(s.plain));
+  assert.ok(!ids.includes(s.swapped));
+  assert.ok(!ids.includes(s.gifted));
+});
+
+test("accepting counts a swapped or gifted item as gone even when it is listed again", async () => {
+  const s = await scenario("gone", asker.id);
+  await db.update(items).set({ isAvailable: true }).where(inArray(items.id, [s.swapped, s.gifted, s.plain]));
+  const row = async (itemId: number) => (await db.select().from(itemRequests).where(eq(itemRequests.id, await request(itemId, asker.id, "SWAP", { swapOfferedItemIds: [] }))))[0];
+  assert.equal((await goneItemFor(await row(s.swapped)))?.id, s.swapped);
+  assert.equal((await goneItemFor(await row(s.gifted)))?.id, s.gifted);
+  assert.equal(await goneItemFor(await row(s.plain)), null);
+  assert.equal(ITEM_NO_LONGER_AVAILABLE_MESSAGE, "This item is no longer available.");
+});

@@ -668,7 +668,7 @@ export async function cancelAcceptedRequestsWithoutHolds(exec: Executor = db): P
     } as any).where(and(eq(itemRequests.id, request.id), eq(itemRequests.status, request.status)));
     await exec.update(items).set({ isAvailable: true, updatedAt: now }).where(eq(items.id, row.items.id));
     // Short, with the point first: a notification row cuts long text off, and this one used to end at "because".
-    const message = `"${short(row.items.name, 22)}" was cancelled by an update. Please send it again.`;
+    const message = `"${short(row.items.name, 22)}" was cancelled after a ShareSwap update. Please send it again.`;
     await exec.insert(notifications).values([request.requesterId, row.items.ownerId].filter((id): id is number => typeof id === "number").map((userId) => ({
       userId, type: "request_cancelled", title: "Request cancelled", message, itemId: row.items.id, requestId: request.id, isRead: false,
     })) as any);

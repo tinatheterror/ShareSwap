@@ -418,13 +418,34 @@ export async function placeHold(tx: Executor, requestId: number, quote: FundsQuo
   return { ok: true, hold };
 }
 
-/** Frees a request's hold (whoever's it is) for the stated reason. Returns whether there was one. Safe to repeat. */
+/**
+ * A Free-plan borrow counts against the monthly limit when it is accepted; when that borrow ends without a handoff the slot is
+ * given back. Only if the borrow was counted in the window that is running now (an older window has already started over).
+ */
+async function returnBorrowSlots(exec: Executor, requestIds: number[]): Promise<void> {
+  if (requestIds.length === 0) return;
+  await exec.execute(sql`
+    UPDATE users u SET monthly_borrow_count = GREATEST(0, COALESCE(u.monthly_borrow_count, 0) - 1)
+    FROM item_requests r
+    WHERE r.id IN (${sql.join(requestIds.map((id) => sql`${id}`), sql`, `)})
+      AND r.request_type = 'BORROW' AND u.id = r.requester_id
+      AND COALESCE(u.subscription_tier, 'free') = 'free'
+      AND COALESCE(u.monthly_borrow_count, 0) > 0
+      AND u.monthly_borrow_reset_at IS NOT NULL AND r.accepted_at IS NOT NULL
+      AND r.accepted_at >= u.monthly_borrow_reset_at - interval '5 seconds'`);
+}
+
+/**
+ * Frees a request's hold (whoever's it is) for the stated reason. Returns whether there was one. Safe to repeat. A released
+ * borrow gives its Free-plan monthly slot back: it did not reach the handoff.
+ */
 export async function releaseHold(exec: Executor, requestId: number, reason: HoldReleaseReason): Promise<boolean> {
   const rows = await exec
     .update(shareCoinHolds)
     .set({ status: "RELEASED", reason, resolvedAt: new Date() })
     .where(and(eq(shareCoinHolds.requestId, requestId), eq(shareCoinHolds.status, "ACTIVE")))
-    .returning({ id: shareCoinHolds.id });
+    .returning({ id: shareCoinHolds.id, kind: shareCoinHolds.kind });
+  if (rows.some((row) => row.kind === "BORROW")) await returnBorrowSlots(exec, [requestId]);
   return rows.length > 0;
 }
 
@@ -433,8 +454,10 @@ export async function releaseHoldsForDeletion(exec: Executor, userId: number, re
   const rows = await exec.execute(sql`
     UPDATE sharecoin_holds SET status = 'RELEASED', reason = 'account_deleted', resolved_at = now()
     WHERE status = 'ACTIVE' AND (payer_id = ${userId} OR receiver_id = ${userId}${requestIds.length > 0 ? sql` OR request_id IN (${sql.join(requestIds.map((id) => sql`${id}`), sql`, `)})` : sql``})
-    RETURNING id`);
-  return rows.rows.length;
+    RETURNING request_id, kind`);
+  const released = rows.rows as { request_id: number; kind: string }[];
+  await returnBorrowSlots(exec, released.filter((row) => row.kind === "BORROW").map((row) => row.request_id));
+  return released.length;
 }
 
 /**
@@ -450,8 +473,10 @@ export async function releaseHoldsOfEndedRequests(exec: Executor = db): Promise<
     FROM item_requests r
     WHERE r.id = h.request_id AND h.status = 'ACTIVE'
       AND r.status IN (${sql.join(ENDED_REQUEST_STATUSES.map((s) => sql`${s}`), sql`, `)})
-    RETURNING h.id`);
-  return rows.rows.length;
+    RETURNING h.request_id, h.kind`);
+  const released = rows.rows as { request_id: number; kind: string }[];
+  await returnBorrowSlots(exec, released.filter((row) => row.kind === "BORROW").map((row) => row.request_id));
+  return released.length;
 }
 
 export interface SettleResult {

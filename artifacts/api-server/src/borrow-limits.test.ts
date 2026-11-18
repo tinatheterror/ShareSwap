@@ -12,7 +12,8 @@ import {
   FREE_PENDING_BORROW_LIMIT,
   PENDING_BORROW_LIMIT_MESSAGE,
 } from "./borrow-allowance.js";
-import { REQUEST_NOT_ACCEPTABLE_NOW_CODE, REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE } from "./sharecoin-funds.js";
+import { REQUEST_NOT_ACCEPTABLE_NOW_CODE, REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE, releaseHold } from "./sharecoin-funds.js";
+import { processHandoffDeadlines } from "./handoff-deadline-service.js";
 
 // The Free plan's borrow limits: a borrow counts against the 3 a month when it is ACCEPTED (not when it is sent), at most 3
 // borrow requests may wait for an answer at once, and accepting past the monthly limit is refused: the requester gets the
@@ -301,4 +302,60 @@ test("two simultaneous accepts for the last slot of the month: exactly one gets 
   assert.equal((await counters(requesterId)).n, FREE_MONTHLY_BORROW_LIMIT);
   const statuses = [await requestStatus(a.id), await requestStatus(b.id)].map((s) => (s === "PENDING" ? "PENDING" : "ACCEPTED"));
   assert.deepEqual(statuses.sort(), ["ACCEPTED", "PENDING"]);
+});
+
+// ── The slot comes back when the accepted borrow never reaches the handoff ───────
+
+test("cancelling an accepted borrow before the handoff gives the monthly slot back, once", async () => {
+  await clearPending(requesterId);
+  await setAllowance(requesterId, 0, null);
+  const request = await pendingBorrow(requesterId);
+  assert.equal((await owner.patch(`/api/requests/${request.id}`, { status: "ACCEPTED" })).status, 200);
+  assert.equal((await counters(requesterId)).n, 1);
+
+  const cancelled = await requester.post(`/api/requests/${request.id}/cancel`, { reason: "changed_plans", acknowledgePenalty: true });
+  assert.equal(cancelled.status, 200, cancelled.text.slice(0, 300));
+  assert.equal((await counters(requesterId)).n, 0, "the slot is back");
+  assert.equal(await requestStatus(request.id), "CANCELLED");
+
+  assert.equal(await releaseHold(db, request.id, "cancelled"), false, "nothing left to release");
+  assert.equal((await counters(requesterId)).n, 0, "and it is not given back twice");
+  // The slot is usable again: three more can still be accepted this month.
+  for (let i = 0; i < FREE_MONTHLY_BORROW_LIMIT; i++) {
+    const next = await pendingBorrow(requesterId);
+    assert.equal((await owner.patch(`/api/requests/${next.id}`, { status: "ACCEPTED" })).status, 200, `borrow ${i + 1}`);
+  }
+  assert.equal((await counters(requesterId)).n, FREE_MONTHLY_BORROW_LIMIT);
+});
+
+test("a borrow counted in an earlier window gives nothing back, and a Member's count is never touched", async () => {
+  // Accepted a month and a half ago, in a window that has since started over.
+  await clearPending(requesterId);
+  await setAllowance(requesterId, 0, null);
+  const oldRequest = await pendingBorrow(requesterId);
+  assert.equal((await owner.patch(`/api/requests/${oldRequest.id}`, { status: "ACCEPTED" })).status, 200);
+  await db.update(itemRequests).set({ acceptedAt: new Date(Date.now() - 45 * DAY) }).where(eq(itemRequests.id, oldRequest.id));
+  await setAllowance(requesterId, 2, new Date(Date.now() - 10 * DAY));
+  assert.ok(await releaseHold(db, oldRequest.id, "cancelled"));
+  assert.equal((await counters(requesterId)).n, 2, "this month's count is not reduced by last month's borrow");
+
+  const request = await pendingBorrow(memberId);
+  assert.equal((await owner.patch(`/api/requests/${request.id}`, { status: "ACCEPTED" })).status, 200);
+  await setAllowance(memberId, 2, new Date());
+  assert.ok(await releaseHold(db, request.id, "cancelled"));
+  assert.equal((await counters(memberId)).n, 2);
+});
+
+test("an unpaid in-app deposit that times out gives the slot back too", async () => {
+  await clearPending(requesterId);
+  await setAllowance(requesterId, 0, null);
+  const request = await pendingBorrow(requesterId, { depositMethod: "in_app" } as any);
+  assert.equal((await owner.patch(`/api/requests/${request.id}`, { status: "ACCEPTED" })).status, 200);
+  assert.equal((await counters(requesterId)).n, 1);
+  // It was accepted three days ago (and that is when this month's window began).
+  await db.update(itemRequests).set({ acceptedAt: new Date(Date.now() - 3 * DAY) }).where(eq(itemRequests.id, request.id));
+  await setAllowance(requesterId, 1, new Date(Date.now() - 3 * DAY));
+  const result = await processHandoffDeadlines({ onSwapAutoConfirmed: async () => {}, onGiftAutoConfirmed: async () => {} }, { onlyRequestIds: [request.id] });
+  assert.equal(result.depositExpiredCount, 1);
+  assert.equal((await counters(requesterId)).n, 0);
 });

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
@@ -215,6 +215,19 @@ export function SwapCounterModal({
   const [requesterItemIds, setRequesterItemIds] = useState<number[]>(initRequesterItemIds);
   const [note, setNote] = useState(request.counterNote ?? "");
 
+  // If the request is refreshed while this is open and it now carries a different counter (a new round), start from that
+  // counter. A refresh that changes nothing leaves what the person has selected alone.
+  const counterSignature = `${currentRound}|${initOwnerItemIds.join(",")}|${initRequesterItemIds.join(",")}`;
+  const lastSignature = useRef(counterSignature);
+  useEffect(() => {
+    if (lastSignature.current === counterSignature) return;
+    lastSignature.current = counterSignature;
+    setOwnerItemIds(initOwnerItemIds);
+    setRequesterItemIds(initRequesterItemIds);
+    setNote(request.counterNote ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [counterSignature]);
+
   const handleOpenChange = useCallback((o: boolean) => { if (!o) onClose(); }, [onClose]);
 
   const { data: myItems = [], isLoading: myLoading } = useQuery<SwapItem[]>({
@@ -241,7 +254,19 @@ export function SwapCounterModal({
 
   const ownerItem = request.item;
 
-  const ownerPanelItems: SwapItem[] = useMemo(() => {
+  // The items the request already carries (the offer, and the counter on the table). They are shown even when the
+  // eligible-items lists do not return them, so the counter being answered is always visibly preselected.
+  const carried = (items: Array<{ id: number; name: string; photos?: string[]; tier?: number | null }> | undefined, ownerId: number): SwapItem[] =>
+    (items ?? []).map((i) => ({
+      id: i.id, name: i.name, photos: i.photos ?? [], tier: i.tier ?? 2,
+      shareCoinPrice: String(getTierShareCoins(i.tier ?? 2)), originalValue: "", ownerId,
+    }));
+  const withCarried = (list: SwapItem[], extra: SwapItem[]): SwapItem[] => [
+    ...list,
+    ...extra.filter((e) => !list.some((i) => i.id === e.id)),
+  ];
+
+  const ownerPanelItemsBase: SwapItem[] = useMemo(() => {
     if (isOwner) {
       const hasIt = myItems.some((i) => i.id === ownerItem.id);
       if (!hasIt) {
@@ -257,10 +282,25 @@ export function SwapCounterModal({
     }
   }, [isOwner, myItems, partnerItems, ownerItem]);
 
-  const requesterPanelItems: SwapItem[] = useMemo(() => {
+  const requesterPanelItemsBase: SwapItem[] = useMemo(() => {
     if (isOwner) return partnerItems;
     return myItems;
   }, [isOwner, myItems, partnerItems]);
+
+  const ownerPanelItems: SwapItem[] = useMemo(
+    () => withCarried(ownerPanelItemsBase, carried((request as any).counterSwapOwnerItems, request.item.ownerId ?? 0).filter((i) => initOwnerItemIds.includes(i.id))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ownerPanelItemsBase, request],
+  );
+  const requesterPanelItems: SwapItem[] = useMemo(
+    () => withCarried(
+      requesterPanelItemsBase,
+      [...carried((request as any).counterSwapRequesterItems, request.requester.id), ...carried(request.swapOfferedItems, request.requester.id)]
+        .filter((i) => initRequesterItemIds.includes(i.id)),
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [requesterPanelItemsBase, request],
+  );
 
   const knownItemsMap = useMemo(() => {
     const map = new Map<number, SwapItem>();

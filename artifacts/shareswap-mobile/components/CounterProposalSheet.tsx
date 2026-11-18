@@ -57,6 +57,8 @@ interface ItemRequest {
   swapOfferedItems?: { id: number; name: string; photos: string[] | null; tier?: number | null }[];
   counterSwapOwnerItemIds: number[] | null;
   counterSwapRequesterItemIds: number[] | null;
+  counterSwapOwnerItems?: { id: number; name: string; photos: string[] | null; tier?: number | null }[];
+  counterSwapRequesterItems?: { id: number; name: string; photos: string[] | null; tier?: number | null }[];
   counterNote: string | null;
   item: RequestItem | null;
 }
@@ -376,13 +378,32 @@ export default function CounterProposalSheet({
 
   // Build item panels from owner/requester perspective (mirrors web SwapCounterModal)
   const ownerItem = request.item;
-  const ownerPanelItems: SwapEligibleItem[] = isOwner
-    ? (ownerItem && !mySwapItems.some((i) => i.id === ownerItem.id)
-        ? [{ id: ownerItem.id, name: ownerItem.name ?? "Item", photos: ownerItem.photos, tier: ownerItem.tier }, ...mySwapItems]
-        : mySwapItems)
-    : partnerSwapItems;
+  // The items the request already carries (the offer, and the counter on the table) are shown even when the eligible-items
+  // lists do not return them, so the counter being answered is always visibly preselected.
+  const withCarried = (list: SwapEligibleItem[], carried: { id: number; name: string; photos: string[] | null; tier?: number | null }[], wanted: number[]) => [
+    ...list,
+    ...carried
+      .filter((c) => wanted.includes(c.id) && !list.some((i) => i.id === c.id))
+      .map((c) => ({ id: c.id, name: c.name, photos: c.photos, tier: c.tier ?? 2 })),
+  ];
+  const wantedOwnerIds = request.counterSwapOwnerItemIds?.length ? request.counterSwapOwnerItemIds : request.item?.id ? [request.item.id] : [];
+  const wantedRequesterIds = request.counterSwapRequesterItemIds?.length ? request.counterSwapRequesterItemIds : (request.swapOfferedItemIds ?? []);
 
-  const requesterPanelItems: SwapEligibleItem[] = isOwner ? partnerSwapItems : mySwapItems;
+  const ownerPanelItems: SwapEligibleItem[] = withCarried(
+    isOwner
+      ? (ownerItem && !mySwapItems.some((i) => i.id === ownerItem.id)
+          ? [{ id: ownerItem.id, name: ownerItem.name ?? "Item", photos: ownerItem.photos, tier: ownerItem.tier }, ...mySwapItems]
+          : mySwapItems)
+      : partnerSwapItems,
+    request.counterSwapOwnerItems ?? [],
+    wantedOwnerIds,
+  );
+
+  const requesterPanelItems: SwapEligibleItem[] = withCarried(
+    isOwner ? partnerSwapItems : mySwapItems,
+    [...(request.counterSwapRequesterItems ?? []), ...(request.swapOfferedItems ?? [])],
+    wantedRequesterIds,
+  );
 
   // From the viewer's side, as on web: "Your Swap Items" are the owner's items when you own the listing, the requester's otherwise.
   const myPanelItems = isOwner ? ownerPanelItems : requesterPanelItems;

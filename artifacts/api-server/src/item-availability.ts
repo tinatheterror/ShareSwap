@@ -35,17 +35,21 @@ export function involvedItemIds(request: Pick<RequestRow, "itemId" | "requestTyp
  * The item (if any) that a request being accepted can no longer have: swapped, or given away in a completed gift. Only the items
  * the exchange would actually move count: for a swap that is the sides as they stand (a counter replaces the original sides),
  * so an item the counter dropped does not block it.
+ *
+ * An item is only gone while it is not listed: a completed swap or gift takes it off the market (isAvailable false) and the
+ * isSwapped flag is never cleared, so an owner who relists it (the relist route sets isAvailable true) has said it is theirs
+ * to trade again. Counting it as gone anyway made the counter picker offer an item that accepting then refused.
  */
 export async function goneItemFor(request: RequestRow, exec: Executor = db): Promise<{ id: number; name: string } | null> {
   const ids = heldItemIds(request);
   if (ids.length === 0) return null;
-  const [swapped] = await exec.select({ id: items.id, name: items.name }).from(items).where(and(inArray(items.id, ids), eq(items.isSwapped, true))).limit(1);
+  const [swapped] = await exec.select({ id: items.id, name: items.name }).from(items).where(and(inArray(items.id, ids), eq(items.isSwapped, true), eq(items.isAvailable, false))).limit(1);
   if (swapped) return swapped;
   const [given] = await exec
     .select({ id: items.id, name: items.name })
     .from(itemRequests)
     .innerJoin(items, eq(items.id, itemRequests.itemId))
-    .where(and(inArray(itemRequests.itemId, ids), eq(itemRequests.requestType, "GIFT"), eq(itemRequests.status, "COMPLETED"), ne(itemRequests.id, request.id)))
+    .where(and(inArray(itemRequests.itemId, ids), eq(itemRequests.requestType, "GIFT"), eq(itemRequests.status, "COMPLETED"), ne(itemRequests.id, request.id), eq(items.isAvailable, false)))
     .limit(1);
   return given ?? null;
 }

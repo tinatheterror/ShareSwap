@@ -338,3 +338,34 @@ test("an item the counter dropped does not block accepting: only the items the e
   assert.equal(refused.status, 409);
   assert.deepEqual([refused.json.code, refused.json.itemId, refused.json.itemName], [ITEM_NO_LONGER_AVAILABLE_CODE, swappedAway.id, swappedAway.name]);
 });
+
+test("an item the owner has relisted after it was swapped or given can be accepted again; unlisted, it is still gone", async () => {
+  // Swapped, then relisted (isSwapped stays set; the relist route only makes it available again).
+  const { ownerItem, winning } = await swapPair();
+  await accepted(winning);
+  assert.equal((await owner.post(`/api/requests/${winning}/handoff`, { confirmedBy: "owner" })).status, 200);
+  assert.equal((await alice.post(`/api/requests/${winning}/handoff`, { confirmedBy: "borrower" })).status, 200);
+  const [swapped] = await db.select({ s: items.isSwapped, a: items.isAvailable }).from(items).where(eq(items.id, ownerItem.id));
+  assert.deepEqual(swapped, { s: true, a: false }, "the completed swap took it off the market");
+
+  const whileGone = await request(ownerItem.id, bobId, "BORROW");
+  assert.equal((await owner.patch(`/api/requests/${whileGone}`, { status: "ACCEPTED" })).status, 409, "unlisted: gone");
+
+  assert.equal((await owner.post(`/api/items/${ownerItem.id}/relist`, {})).status, 200);
+  const [relisted] = await db.select({ s: items.isSwapped, a: items.isAvailable }).from(items).where(eq(items.id, ownerItem.id));
+  assert.deepEqual(relisted, { s: true, a: true }, "relisted: available again, flag untouched");
+  const afterRelist = await request(ownerItem.id, bobId, "GIFT");
+  assert.equal((await owner.patch(`/api/requests/${afterRelist}`, { status: "ACCEPTED" })).status, 200, "relisted: no longer refused");
+
+  // The same for a swap whose counter lists the relisted item on the owner's side (the case that was reported).
+  const counterTarget = await newItem(ownerId);
+  const offered = await newItem(aliceId);
+  await db.update(items).set({ isSwapped: true, isAvailable: true }).where(eq(items.id, counterTarget.id));
+  const counter = await request(counterTarget.id, aliceId, "SWAP", {
+    swapOfferedItemIds: [offered.id], negotiationStatus: "counter_proposed", counterProposedBy: aliceId, counterRound: 1,
+    counterSwapOwnerItemIds: [counterTarget.id], counterSwapRequesterItemIds: [offered.id],
+  } as any);
+  await clearCooldowns();
+  const response = await owner.post(`/api/requests/${counter}/respond-to-counter`, { accept: true });
+  assert.equal(response.status, 200, response.text.slice(0, 300));
+});

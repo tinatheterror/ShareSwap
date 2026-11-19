@@ -21,6 +21,10 @@ import {
 } from "./request-expiry-service.js";
 import { buildExpirySweepOptions, resolveRemindersEnabled } from "./scheduled-job-options";
 
+// The owner's handoff-code warning (handoff-owner-warning.test.ts) is a separate, default-on switch; these tests count notifications
+// and pushes for the expiry and its reminders, so it is switched off here.
+process.env.HANDOFF_OWNER_WARNING = "off";
+
 // Oct 2–5 (the agreed dates) → cutoff Oct 4 23:59:59 in Vancouver (PDT, UTC-7)
 // = 2026-10-05T06:59:59Z. Request dates never move; only the cutoff matters here.
 const CUTOFF = new Date("2026-10-05T06:59:59.999Z");

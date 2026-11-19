@@ -142,6 +142,8 @@ const FULL_BODY_TYPES = new Set([
   "security_deposit_charged", "security_claim_opened_owner", "security_claim_opened",
   "security_deposit_refunded", "security_deposit_retained", "security_claim_rejected",
   "deposit_hold_released", "deposit_unsecured", "deposit_renewal_failed",
+  // The owner's handoff-code warning is one sentence the owner needs whole (the name and the cutoff are in it).
+  "handoff_code_warning",
 ]);
 
 export function compactNotificationCopy<T extends { title?: string | null; message?: string | null; type?: string | null }>(

@@ -5,6 +5,7 @@ import {
   messages,
   notifications,
   rentalPayouts,
+  requestLifecycleEvents,
   users,
 } from "@workspace/db";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
@@ -22,6 +23,8 @@ import { classifyDepositState, expiredReasonFor } from "./deposit-state";
 import * as copy from "./request-expiry-copy";
 import { runExchangeExpirySweep } from "./exchange-expiry-service";
 import { releaseHold } from "./sharecoin-funds";
+import { handoffOwnerWarningEnabled } from "./handoff-flags";
+import { publicName } from "./public-identity";
 
 // A BORROW/RENT request that nobody handed off before its late-handoff cutoff
 // moves to EXPIRED (final, and separate from CANCELLED/DECLINED).
@@ -461,6 +464,11 @@ export interface RequestExpirySweepOptions {
   dryRun?: boolean;
   /** Report what would expire but do not expire it. Reminders still go out unless `reminders` is false. */
   expireDryRun?: boolean;
+  /**
+   * The owner-only warning 24 hours before the cutoff when the code has not been entered (borrows and rentals, not courier).
+   * Separate from `reminders`; defaults to the HANDOFF_OWNER_WARNING switch (on).
+   */
+  ownerWarning?: boolean;
   /** Send the "hand off soon" reminder. Default true. When false, reminder candidates are not even reported. */
   reminders?: boolean;
   /**
@@ -476,6 +484,8 @@ export interface RequestExpirySweepOptions {
 export interface RequestExpirySweepResult {
   expiredCount: number;
   remindedCount: number;
+  /** Owner warnings sent: "[name] hasn't entered the handoff code". */
+  warnedCount?: number;
   failedCount: number;
   dryRun: boolean;
   candidates: RequestExpiryCandidate[];
@@ -495,6 +505,7 @@ export async function runRequestExpirySweep(
   const dryRun = options.dryRun === true;
   const expireDryRun = dryRun || options.expireDryRun === true;
   const remindersEnabled = options.reminders !== false;
+  const ownerWarningEnabled = options.ownerWarning ?? handoffOwnerWarningEnabled();
   const oldestCutoffMs =
     options.maxCutoffAgeMs === undefined ? null : now.getTime() - options.maxCutoffAgeMs;
   const result: RequestExpirySweepResult = {
@@ -533,6 +544,10 @@ export async function runRequestExpirySweep(
       continue;
     }
 
+    if (ownerWarningEnabled && !dryRun && nowMs >= cutoff.getTime() - copy.HANDOFF_CODE_WARNING_LEAD_MS) {
+      if (await sendOwnerCodeWarning(request, row.items, cutoff, deps)) result.warnedCount = (result.warnedCount ?? 0) + 1;
+    }
+
     if (!remindersEnabled) continue;
     const reminderDue = nowMs >= cutoff.getTime() - HANDOFF_REMINDER_LEAD_MS && !request.expiryReminderSentAt;
     if (!reminderDue) continue;
@@ -556,6 +571,35 @@ export async function runRequestExpirySweep(
   result.failedCount += swaps.failedCount;
   result.candidates.push(...swaps.candidates);
   return result;
+}
+
+/**
+ * "[name] hasn't entered the handoff code. If you've handed it over, report a problem before [date, time]." To the owner only, once
+ * per request and cutoff (the lifecycle event's idempotency key is the claim), and only while the code has not been used.
+ */
+async function sendOwnerCodeWarning(
+  request: ExpiryRequest,
+  item: { id: number; name: string; ownerId: number | null },
+  cutoff: Date,
+  deps: RequestExpiryDeps,
+): Promise<boolean> {
+  if (!item.ownerId || !request.requesterId) return false;
+  if (request.pinUsed === true || request.deliveryMethod === "courier") return false;
+  const claimed = await db.insert(requestLifecycleEvents).values({
+    requestId: request.id, eventType: "HANDOFF_CODE_WARNING_SENT", idempotencyKey: `handoff-code-warning-${request.id}-${cutoff.getTime()}`,
+    details: { cutoff: cutoff.toISOString() },
+  }).onConflictDoNothing().returning({ id: requestLifecycleEvents.id });
+  if (claimed.length === 0) return false;
+
+  const [requester] = await db.select({ displayName: users.displayName, username: users.username }).from(users).where(eq(users.id, request.requesterId)).limit(1);
+  const notice = copy.handoffCodeWarning(publicName(requester) || (request.requestType === "RENT" ? "The renter" : "The borrower"), cutoff);
+  await db.insert(notifications).values({
+    userId: item.ownerId, type: copy.HANDOFF_CODE_WARNING_NOTIFICATION_TYPE, title: notice.title, message: notice.message, itemId: item.id, requestId: request.id,
+  });
+  if (deps.push) {
+    await Promise.resolve(deps.push(item.ownerId, { title: notice.title, body: notice.message, data: { screen: "chat", requestId: request.id, itemId: item.id } })).catch(() => {});
+  }
+  return true;
 }
 
 /** At-most-once: the conditional update on expiry_reminder_sent_at is the claim. */

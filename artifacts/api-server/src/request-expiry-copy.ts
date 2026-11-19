@@ -65,6 +65,18 @@ function reminderItemName(name: string | null | undefined): string {
   return cut.replace(/[\s,;:—–-]+$/g, "");
 }
 
+export const HANDOFF_CODE_WARNING_NOTIFICATION_TYPE = "handoff_code_warning";
+/** The owner is warned this long before the handoff cutoff, when the code has not been entered. */
+export const HANDOFF_CODE_WARNING_LEAD_MS = 24 * 3_600_000;
+
+/** To the owner only: "[name] hasn't entered the handoff code. If you've handed it over, report a problem before [date, time]." */
+export function handoffCodeWarning(requesterName: string, cutoff: Date) {
+  return {
+    title: "Handoff code not entered",
+    message: `${requesterName} hasn't entered the handoff code. If you've handed it over, report a problem before ${formatHandoffCutoff(cutoff)}.`,
+  };
+}
+
 /** Sent to both people a few hours before the cutoff, while nobody has confirmed a handoff. */
 export function handoffReminder(itemName: string, cutoff: Date) {
   return {

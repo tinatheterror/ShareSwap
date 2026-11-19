@@ -349,7 +349,7 @@ export default function ItemDetailsPage() {
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-xs">
-                    <p className="text-xs">Any item combination is allowed — ShareCoins cover the difference in value.</p>
+                    <p className="text-xs">ShareCoins cover the difference in value.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

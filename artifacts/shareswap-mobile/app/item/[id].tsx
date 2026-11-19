@@ -722,7 +722,7 @@ export default function ItemDetailScreen() {
           ) : null}
           {showSwapTooltip ? (
             <Text style={[styles.swapTooltip, { color: colors.mutedForeground, backgroundColor: colors.muted }]}>
-              Any item combination is allowed — ShareCoins cover the difference in value.
+              ShareCoins cover the difference in value.
             </Text>
           ) : null}
           {item.swapDesiredItem ? (

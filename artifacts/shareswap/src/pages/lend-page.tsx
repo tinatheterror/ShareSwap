@@ -2530,7 +2530,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                           </button>
                                         </TooltipTrigger>
                                         <TooltipContent side="top" className="max-w-xs">
-                                          <p className="text-xs">Any item combination is allowed — ShareCoins cover the difference in value.</p>
+                                          <p className="text-xs">ShareCoins cover the difference in value.</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>

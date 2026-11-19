@@ -41,6 +41,9 @@ interface ItemRequest {
   status: string;
   swapOfferedItemIds: number[] | null;
   swapOfferedItems?: { id: number; name: string; photos: string[]; tier?: number | null }[];
+  /** More of the owner's items the requester asked for on the first request (the listing item is request.item). */
+  swapRequestedItemIds?: number[] | null;
+  swapRequestedItems?: { id: number; name: string; photos: string[]; tier?: number | null }[];
   counterSwapOwnerItemIds: number[] | null;
   counterSwapRequesterItemIds: number[] | null;
   counterNote: string | null;
@@ -203,7 +206,7 @@ export function SwapCounterModal({
 
   const initOwnerItemIds: number[] = (() => {
     if (request.counterSwapOwnerItemIds?.length) return request.counterSwapOwnerItemIds;
-    return [request.itemId];
+    return [request.itemId, ...(request.swapRequestedItemIds?.length ? request.swapRequestedItemIds : (request.swapRequestedItems ?? []).map((i) => i.id))];
   })();
 
   const initRequesterItemIds: number[] = (() => {
@@ -288,7 +291,7 @@ export function SwapCounterModal({
   }, [isOwner, myItems, partnerItems]);
 
   const ownerPanelItems: SwapItem[] = useMemo(
-    () => withCarried(ownerPanelItemsBase, carried((request as any).counterSwapOwnerItems, request.item.ownerId ?? 0).filter((i) => initOwnerItemIds.includes(i.id))),
+    () => withCarried(ownerPanelItemsBase, carried([...((request as any).counterSwapOwnerItems ?? []), ...(request.swapRequestedItems ?? [])], request.item.ownerId ?? 0).filter((i) => initOwnerItemIds.includes(i.id))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [ownerPanelItemsBase, request],
   );

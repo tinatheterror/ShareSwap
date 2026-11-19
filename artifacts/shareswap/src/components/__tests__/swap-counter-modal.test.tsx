@@ -77,6 +77,17 @@ describe("SwapCounterModal preselection", () => {
     expect(isSelected("Stove X")).toBe(true);
   });
 
+  it("a first counter also starts with the extra items the requester asked for, not just the listing item", async () => {
+    open(request({
+      counterRound: 0, counterSwapOwnerItemIds: [], counterSwapRequesterItemIds: [],
+      swapRequestedItemIds: [12], swapRequestedItems: [{ id: 12, name: "Tent C", photos: [], tier: 2 }],
+    }), true);
+    await waitFor(() => expect(screen.getAllByText("Tent C").length).toBeGreaterThan(0));
+    expect(isSelected("Tent A")).toBe(true);  // the listing item
+    expect(isSelected("Tent C")).toBe(true);  // the extra item asked for
+    expect(isSelected("Tent B")).toBe(false); // an item nobody asked for
+  });
+
   it("a counter item that is missing from the eligible lists is still shown, selected", async () => {
     open(request({
       counterSwapOwnerItemIds: [99], counterSwapOwnerItems: [{ id: 99, name: "Tent Z", photos: [], tier: 2 }],

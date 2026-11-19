@@ -55,6 +55,9 @@ interface ItemRequest {
   counterProposedBy: number | null;
   swapOfferedItemIds: number[] | null;
   swapOfferedItems?: { id: number; name: string; photos: string[] | null; tier?: number | null }[];
+  /** More of the owner's items the requester asked for on the first request (the listing item is request.item). */
+  swapRequestedItemIds?: number[] | null;
+  swapRequestedItems?: { id: number; name: string; photos: string[] | null; tier?: number | null }[];
   counterSwapOwnerItemIds: number[] | null;
   counterSwapRequesterItemIds: number[] | null;
   counterSwapOwnerItems?: { id: number; name: string; photos: string[] | null; tier?: number | null }[];
@@ -298,6 +301,11 @@ function WebDateInput({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+/** The owner's extra items asked for on the first request, so the counter starts from the request as sent. */
+function requestedExtraIds(request: { swapRequestedItemIds?: number[] | null; swapRequestedItems?: { id: number }[] }): number[] {
+  return request.swapRequestedItemIds?.length ? request.swapRequestedItemIds : (request.swapRequestedItems ?? []).map((i) => i.id);
+}
+
 export default function CounterProposalSheet({
   visible,
   onClose,
@@ -352,7 +360,7 @@ export default function CounterProposalSheet({
       // SWAP: pre-fill with existing counter swap selections if any
       const initOwner = request.counterSwapOwnerItemIds?.length
         ? request.counterSwapOwnerItemIds
-        : request.item?.id ? [request.item.id] : [];
+        : request.item?.id ? [request.item.id, ...requestedExtraIds(request)] : [];
       const initRequester = request.counterSwapRequesterItemIds?.length
         ? request.counterSwapRequesterItemIds
         : (request.swapOfferedItemIds ?? []);
@@ -386,7 +394,7 @@ export default function CounterProposalSheet({
       .filter((c) => wanted.includes(c.id) && !list.some((i) => i.id === c.id))
       .map((c) => ({ id: c.id, name: c.name, photos: c.photos, tier: c.tier ?? 2 })),
   ];
-  const wantedOwnerIds = request.counterSwapOwnerItemIds?.length ? request.counterSwapOwnerItemIds : request.item?.id ? [request.item.id] : [];
+  const wantedOwnerIds = request.counterSwapOwnerItemIds?.length ? request.counterSwapOwnerItemIds : request.item?.id ? [request.item.id, ...requestedExtraIds(request)] : [];
   const wantedRequesterIds = request.counterSwapRequesterItemIds?.length ? request.counterSwapRequesterItemIds : (request.swapOfferedItemIds ?? []);
 
   const ownerPanelItems: SwapEligibleItem[] = withCarried(
@@ -395,7 +403,7 @@ export default function CounterProposalSheet({
           ? [{ id: ownerItem.id, name: ownerItem.name ?? "Item", photos: ownerItem.photos, tier: ownerItem.tier }, ...mySwapItems]
           : mySwapItems)
       : partnerSwapItems,
-    request.counterSwapOwnerItems ?? [],
+    [...(request.counterSwapOwnerItems ?? []), ...(request.swapRequestedItems ?? [])],
     wantedOwnerIds,
   );
 
@@ -415,7 +423,7 @@ export default function CounterProposalSheet({
 
   // ShareCoin value of each side's selection (a selected item missing from the lists falls back to what the request carries).
   const knownItems = new Map<number, { tier?: number | null }>();
-  for (const i of [...(request.swapOfferedItems ?? []), ...(request.item ? [request.item] : [])]) knownItems.set(i.id, i);
+  for (const i of [...(request.swapOfferedItems ?? []), ...(request.swapRequestedItems ?? []), ...(request.item ? [request.item] : [])]) knownItems.set(i.id, i);
   for (const i of [...ownerPanelItems, ...requesterPanelItems]) knownItems.set(i.id, i);
   const sideValue = (ids: number[]) => ids.reduce((sum, id) => sum + (knownItems.has(id) ? getTierSC(knownItems.get(id)?.tier) : 0), 0);
   const myValue = sideValue(mySelectedIds);

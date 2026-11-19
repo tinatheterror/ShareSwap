@@ -511,6 +511,7 @@ export const itemRequests = pgTable("item_requests", {
   pinExpiresAt: timestamp("pin_expires_at", { withTimezone: true }),  // 24h from acceptance
   pinUsed: boolean("pin_used").default(false),                // true once borrower uses PIN
   pinAttempts: integer("pin_attempts").default(0),            // rate-limit tracker
+  pinLockedUntil: timestamp("pin_locked_until", { withTimezone: true }), // code entry is locked until then (5 wrong tries = 15 minutes)
   noPinUsed: boolean("no_pin_used").default(false),           // true if fallback to manual
   confirmationMethod: text("confirmation_method"),            // "pin" | "manual"
   // Dispute tracking (Case 5: one confirms + one denies)

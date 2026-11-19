@@ -173,6 +173,22 @@ export async function ensurePaymentCurrencyColumn() {
   }
 }
 
+const HANDOFF_PIN_LOCKOUT_FILE = "lib/db/scripts/0036_handoff_pin_lockout.sql";
+
+/** item_requests.pin_locked_until (0036): the timed lockout of handoff-code entry. Every request query selects it. */
+export async function ensureHandoffPinLockoutColumn() {
+  const { rows } = await pool.query(
+    `SELECT EXISTS (SELECT 1 FROM information_schema.columns
+                     WHERE table_schema = current_schema() AND table_name = 'item_requests' AND column_name = 'pin_locked_until') AS present`,
+  );
+  if (rows[0]?.present === true) return;
+  try {
+    await runMigrationFile(HANDOFF_PIN_LOCKOUT_FILE);
+  } catch (err) {
+    if ((err as { code?: string }).code !== "42701") throw err;
+  }
+}
+
 const CONTENT_SAFEGUARDS_FILE = "lib/db/scripts/0012_content_safeguards.sql";
 
 /**
@@ -501,6 +517,7 @@ export async function applyStartupMigrations() {
   }
   await ensureCancellationRecord();
   await ensurePaymentCurrencyColumn();
+  await ensureHandoffPinLockoutColumn();
   await ensureContentSafeguards();
   await ensureWishlistHiddenAt();
   await ensureTermsAcceptanceColumns();

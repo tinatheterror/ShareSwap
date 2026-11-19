@@ -124,6 +124,8 @@ import { validateBorrowPeriod } from "../borrow-period";
 import { DUPLICATE_PENDING_REQUEST_CODE, DUPLICATE_PENDING_REQUEST_MESSAGE, ITEM_NO_LONGER_AVAILABLE_CODE, ITEM_NO_LONGER_AVAILABLE_MESSAGE, declineRequestsForGoneItems, goneItemFor } from "../item-availability";
 import { borrowLimitBody, monthlyAllowanceUsedUp, pendingBorrowCapReached, pendingBorrowLimitBody } from "../borrow-allowance";
 import { acceptFailureResponse, acceptWithFunds, applyFundsGate, ensureFundsHeld, gateRequestFunds, notifyUnblockedRequests, quoteRequest, quoteSwap, releaseHold, releaseHoldsOfEndedRequests, settleElapsedAutoConfirmedBorrows, settleRequestCoins } from "../sharecoin-funds";
+import { exchangeExpiryDeadline } from "../exchange-expiry-service";
+import { handoffOneCodeEnabled, handoffClientFlags, HANDOFF_CODE_MAX_TRIES, HANDOFF_CODE_LOCKOUT_MINUTES } from "../handoff-flags";
 import { autoConfirmDisputeWindowHours, oneSidedDenyWaitEnabled, handoffAutoConfirmEnabled, handoffReportProblemEnabled } from "../handoff-flags";
 import { DISPUTE_WINDOW_CLOSED_CODE, DISPUTE_WINDOW_CLOSED_MESSAGE, HANDOFF_CONFIRM_WINDOW_HOURS, SILENT_PERSON_NOTICE_TITLE, isConfirmNoticeType, silentPersonNotice } from "../handoff-confirm-copy";
 import {
@@ -7555,15 +7557,27 @@ Respond with ONLY the category name, nothing else.`
         endDate: itemRequests.endDate,
         counterStartDate: itemRequests.counterStartDate,
         counterEndDate: itemRequests.counterEndDate,
+        acceptedAt: itemRequests.acceptedAt,
+        existingPin: itemRequests.handoffPin,
       })
       .from(itemRequests)
       .where(eq(itemRequests.id, requestId))
       .limit(1);
+    const oneCode = handoffOneCodeEnabled();
     const handoffCutoff =
       pinRequest && (EXPIRABLE_REQUEST_TYPES as readonly string[]).includes(pinRequest.requestType)
         ? requestHandoffCutoff(pinRequest)
         : null;
-    const pinExpiresAt = handoffCutoff ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // One code per request: it is valid until the request ends (a swap or gift ends 7 days after acceptance), never regenerated.
+    const exchangeEnd = oneCode && pinRequest && (pinRequest.requestType === "SWAP" || pinRequest.requestType === "GIFT")
+      ? exchangeExpiryDeadline({ acceptedAt: pinRequest.acceptedAt })
+      : null;
+    const pinExpiresAt = handoffCutoff ?? exchangeEnd ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
+    if (oneCode && pinRequest?.existingPin) {
+      // Accepting again (new terms) keeps the code and its tries; only the end of its validity follows the new dates.
+      await db.update(itemRequests).set({ pinExpiresAt } as any).where(eq(itemRequests.id, requestId));
+      return pinRequest.existingPin;
+    }
     await db.update(itemRequests)
       .set({ handoffPin: pin, pinExpiresAt, pinUsed: false, pinAttempts: 0 } as any)
       .where(eq(itemRequests.id, requestId));
@@ -10021,6 +10035,41 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // What the handoff screens need: the switches (hide "Confirm without code", report a problem), the other person's name
+  // ("Ask [owner] for the handoff code") and, during a lockout, when entry opens again. Either person on the request.
+  app.get("/api/requests/:requestId/handoff-code-state", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+      if (!request) return res.status(404).json({ error: "Request not found" });
+      const isOwner = request.items.ownerId === req.user.id;
+      const isRequester = request.item_requests.requesterId === req.user.id;
+      if (!isOwner && !isRequester) return res.status(403).json({ error: "Unauthorized" });
+      const otherId = isOwner ? request.item_requests.requesterId : request.items.ownerId;
+      const [other] = otherId
+        ? await db.select({ displayName: users.displayName, username: users.username }).from(users).where(eq(users.id, otherId)).limit(1)
+        : [];
+      const lockedUntil: Date | null = (request.item_requests as any).pinLockedUntil ?? null;
+      const locked = !!lockedUntil && lockedUntil.getTime() > Date.now() && handoffOneCodeEnabled();
+      res.json({
+        ...handoffClientFlags(),
+        role: isOwner ? "owner" : "requester",
+        otherName: publicName(other) || (isOwner ? "the requester" : "the owner"),
+        locked,
+        lockedUntil: locked ? lockedUntil : null,
+        minutesRemaining: locked ? Math.max(1, Math.ceil((lockedUntil!.getTime() - Date.now()) / 60_000)) : 0,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load the handoff state" });
+    }
+  });
+
   // Borrower verifies handoff PIN — on success, completes the handoff immediately
   app.post("/api/requests/:requestId/verify-pin", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -10055,8 +10104,17 @@ Respond with ONLY the category name, nothing else.`
       const pinUsed = (request.item_requests as any).pinUsed;
       const pinAttempts = (request.item_requests as any).pinAttempts ?? 0;
 
-      // Rate limit: max 5 attempts
-      if (pinAttempts >= 5) {
+      const oneCode = handoffOneCodeEnabled();
+      const lockedUntil: Date | null = (request.item_requests as any).pinLockedUntil ?? null;
+      const lockoutBody = (until: Date) => {
+        const minutes = Math.max(1, Math.ceil((until.getTime() - Date.now()) / 60_000));
+        return { error: `Too many tries. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`, rateLimited: true, lockedUntil: until, minutesRemaining: minutes };
+      };
+      if (oneCode) {
+        // 5 wrong tries lock entry for 15 minutes; then the same code works again.
+        if (lockedUntil && lockedUntil.getTime() > Date.now()) return res.status(429).json(lockoutBody(lockedUntil));
+      } else if (pinAttempts >= 5) {
+        // Rate limit: max 5 attempts
         return res.status(429).json({ error: "Too many incorrect attempts. Please use the manual confirmation flow.", rateLimited: true });
       }
 
@@ -10071,6 +10129,15 @@ Respond with ONLY the category name, nothing else.`
 
       // Validate PIN
       if (pin !== storedPin) {
+        if (oneCode) {
+          // One statement, so simultaneous wrong tries cannot slip past the fifth: the fifth sets the lock and starts the count over.
+          const [counted] = await db.update(itemRequests).set({
+            pinAttempts: sql`CASE WHEN COALESCE(${itemRequests.pinAttempts}, 0) + 1 >= ${HANDOFF_CODE_MAX_TRIES} THEN 0 ELSE COALESCE(${itemRequests.pinAttempts}, 0) + 1 END`,
+            pinLockedUntil: sql`CASE WHEN COALESCE(${itemRequests.pinAttempts}, 0) + 1 >= ${HANDOFF_CODE_MAX_TRIES} THEN now() + ${HANDOFF_CODE_LOCKOUT_MINUTES} * interval '1 minute' ELSE ${itemRequests.pinLockedUntil} END`,
+          } as any).where(eq(itemRequests.id, requestId)).returning({ attempts: itemRequests.pinAttempts, lockedUntil: itemRequests.pinLockedUntil });
+          if (counted?.lockedUntil && counted.lockedUntil.getTime() > Date.now()) return res.status(429).json(lockoutBody(counted.lockedUntil));
+          return res.status(400).json({ error: "That code didn't match", incorrect: true, attemptsRemaining: HANDOFF_CODE_MAX_TRIES - (counted?.attempts ?? 0) });
+        }
         await db.update(itemRequests).set({ pinAttempts: pinAttempts + 1 } as any).where(eq(itemRequests.id, requestId));
         const remaining = 5 - (pinAttempts + 1);
         return res.status(400).json({ error: "That code didn't match", incorrect: true, attemptsRemaining: remaining });

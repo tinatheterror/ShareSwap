@@ -539,7 +539,8 @@ export default function HomeScreen() {
     : allItems.filter((i) => !isGiftItem(i)).slice(0, 10);
 
   // Group by category
-  const nonGiftItems = filtered.filter((i) => !isGiftItem(i));
+  // Free gifts have their own section while browsing, which is hidden during a search, so a search lists them with the rest.
+  const nonGiftItems = search.trim() ? filtered : filtered.filter((i) => !isGiftItem(i));
   const categoryGroups: [string, BrowseItem[]][] = ITEM_CATEGORIES.map(
     (cat): [string, BrowseItem[]] => [
       cat,

@@ -554,8 +554,8 @@ async function applySwapCoinOffset(
 
   // Notify both parties (of what actually moved)
   await db.insert(notifications).values([
-    { userId: payerId,    type: "sharecoin_earned", title: `-${paid} ShareCoins`, message: `-${paid} SC swap offset for "${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}".`,    requestId, isRead: false },
-    { userId: receiverId, type: "sharecoin_earned", title: `+${paid} ShareCoins`, message: `+${paid} SC swap offset for "${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}".`, requestId, isRead: false },
+    { userId: payerId,    type: "sharecoin_earned", title: `-${paid} ShareCoins`, message: `-${paid} ShareCoins swap offset for "${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}".`,    requestId, isRead: false },
+    { userId: receiverId, type: "sharecoin_earned", title: `+${paid} ShareCoins`, message: `+${paid} ShareCoins swap offset for "${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}".`, requestId, isRead: false },
   ]);
 
   console.log(`✅ Swap offset: ${paid} SC from user ${payerId} to user ${receiverId} for swap on "${itemName}"`);

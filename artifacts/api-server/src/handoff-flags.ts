@@ -66,6 +66,8 @@ export function handoffClientFlags(env: Env = process.env) {
     hideManualConfirm: handoffManualConfirmHidden(env),
     reportProblem: handoffReportProblemEnabled(env),
     oneCode: handoffOneCodeEnabled(env),
+    /** Whether the sweep still confirms for a silent person: the apps only promise "we'll complete this automatically" when it does. */
+    autoConfirm: handoffAutoConfirmEnabled(env),
   };
 }
 

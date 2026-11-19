@@ -34,6 +34,17 @@ interface HandoffSheetProps {
 
 type BorrowerView = "pin" | "manual" | "wrong_pin" | "expired" | "rate_limited";
 
+/** GET /api/requests/:id/handoff-code-state. Until it loads the screens use the server's defaults (code-only). */
+interface HandoffInfo {
+  hideManualConfirm: boolean;
+  reportProblem: boolean;
+  autoConfirm: boolean;
+  otherName: string;
+  locked: boolean;
+  lockedUntil: string | null;
+  minutesRemaining: number;
+}
+
 export function HandoffSheet({
   visible,
   onClose,
@@ -58,6 +69,12 @@ export function HandoffSheet({
   const [ownerPin, setOwnerPin] = useState<{ pin: string | null; pinUsed: boolean; expired: boolean } | null>(null);
   const [ownerPinLoading, setOwnerPinLoading] = useState(false);
   const [ownerPinError, setOwnerPinError] = useState<string | null>(null);
+  const [info, setInfo] = useState<HandoffInfo | null>(null);
+  const [lockMinutes, setLockMinutes] = useState<number | null>(null);
+  const hideManualConfirm = info?.hideManualConfirm ?? true;
+  const canReport = info?.reportProblem ?? true;
+  const autoConfirm = info?.autoConfirm ?? false;
+  const ownerName = info?.otherName || "the owner";
 
   const ref0 = useRef<TextInput>(null);
   const ref1 = useRef<TextInput>(null);
@@ -82,6 +99,25 @@ export function HandoffSheet({
       setAttemptsRemaining(null);
     }
   }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    setLockMinutes(null);
+    apiGet<HandoffInfo>(`/api/requests/${requestId}/handoff-code-state`)
+      .then((data) => {
+        if (cancelled || !data) return;
+        setInfo(data);
+        if (data.locked) {
+          setLockMinutes(data.minutesRemaining);
+          setBorrowerView("rate_limited");
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, requestId]);
 
   useEffect(() => {
     if (!visible || userRole !== "owner") return;
@@ -124,6 +160,7 @@ export function HandoffSheet({
     },
     onError: (err: any) => {
       if (err?.rateLimited) {
+        setLockMinutes(typeof err.minutesRemaining === "number" ? err.minutesRemaining : null);
         setBorrowerView("rate_limited");
         setPinDigits(["", "", "", ""]);
       } else if (err?.expired) {
@@ -159,7 +196,18 @@ export function HandoffSheet({
   });
 
   const denyHandoffMutation = useMutation({
-    mutationFn: () => apiPost(`/api/requests/${requestId}/deny-handoff`, {}),
+    mutationFn: async () => {
+      // Code-only handoff: reporting a problem opens the dispute at once. A request already past ACCEPTED/DEPOSIT_CONFIRMED
+      // (a handoff confirmed by one person under the old flow) still goes through the old report route.
+      if (canReport) {
+        try {
+          return await apiPost(`/api/requests/${requestId}/report-handoff-problem`, {});
+        } catch {
+          // fall through to the old route
+        }
+      }
+      return apiPost(`/api/requests/${requestId}/deny-handoff`, {});
+    },
     onSuccess: (data: any) => {
       invalidate();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -214,10 +262,12 @@ export function HandoffSheet({
         >
           <View style={[ss.handle, { backgroundColor: colors.border }]} />
           <Text style={[ss.title, { color: "#ef4444" }]}>
-            {isOwnerDeny ? "Item not handed off?" : "Item not received?"}
+            {canReport ? "Report a problem" : isOwnerDeny ? "Item not handed off?" : "Item not received?"}
           </Text>
           <Text style={[ss.sub, { color: colors.mutedForeground }]}>
-            {isOwnerDeny
+            {canReport
+              ? "Reporting this will open a dispute."
+              : isOwnerDeny
               ? otherPartyConfirmed
                 ? `The ${otherParty} already confirmed. Reporting this will open a dispute.`
                 : `The ${otherParty} will have 24 hours to respond.`
@@ -227,7 +277,7 @@ export function HandoffSheet({
           </Text>
           <View style={[ss.warnBox, { backgroundColor: "#fef2f2", borderColor: "#fecaca" }]}>
             <Text style={{ color: "#991b1b", fontSize: 13 }}>
-              {otherPartyConfirmed
+              {canReport || otherPartyConfirmed
                 ? "⚠️ This will open a dispute. Both parties must submit proof within 24 hours."
                 : isOwnerDeny
                 ? `We'll notify the ${otherParty} and wait for their response.`
@@ -250,7 +300,7 @@ export function HandoffSheet({
               {denyHandoffMutation.isPending ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={[ss.btnTxt, { color: "#fff" }]}>Report issue</Text>
+                <Text style={[ss.btnTxt, { color: "#fff" }]}>Report a problem</Text>
               )}
             </Pressable>
           </View>
@@ -273,7 +323,7 @@ export function HandoffSheet({
             <Text style={[ss.title, { color: colors.foreground }]}>Handoff code</Text>
           </View>
           <Text style={[ss.sub, { color: colors.mutedForeground }]}>
-            Show this code to the borrower after {itemName} has been handed off.
+            This is the handoff code for {itemName}. It stays the same for the whole request.
           </Text>
           <View style={[ss.ownerCodeBox, { backgroundColor: "#eef2ff", borderColor: "#c7d2fe" }]}>
             {ownerPinLoading ? (
@@ -294,7 +344,7 @@ export function HandoffSheet({
             )}
           </View>
           <Text style={[ss.footNote, { color: colors.mutedForeground }]}>
-            The borrower enters this code to start the borrow period.
+            You can show this in person or send it in chat once you've handed the item over.
           </Text>
           <Pressable
             style={[ss.btn, { borderColor: colors.border, marginTop: 4 }]}
@@ -304,7 +354,7 @@ export function HandoffSheet({
             <Text style={[ss.btnTxt, { color: colors.foreground }]}>Done</Text>
           </Pressable>
           <Pressable onPress={() => setShowDenyView(true)} style={{ marginTop: 8 }}>
-            <Text style={ss.redLink}>Item was not handed off?</Text>
+            <Text style={ss.redLink}>{canReport ? "Report a problem" : "Item was not handed off?"}</Text>
           </Pressable>
         </View>
       </Modal>
@@ -312,7 +362,7 @@ export function HandoffSheet({
   }
 
   // ── BORROWER manual confirm view ───────────────────────────────────────────
-  if (borrowerView === "manual") {
+  if (borrowerView === "manual" && !hideManualConfirm) {
     return (
       <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
         <Pressable style={ss.backdrop} onPress={onClose} />
@@ -360,9 +410,11 @@ export function HandoffSheet({
           <Pressable onPress={() => setShowDenyView(true)} style={{ marginTop: 8 }}>
             <Text style={ss.redLink}>Item was not received?</Text>
           </Pressable>
-          <Text style={[ss.footNote, { color: colors.mutedForeground }]}>
-            If only one person confirms, we'll complete this automatically in 24 hours.
-          </Text>
+          {autoConfirm && (
+            <Text style={[ss.footNote, { color: colors.mutedForeground }]}>
+              If only one person confirms, we'll complete this automatically in 24 hours.
+            </Text>
+          )}
         </View>
       </Modal>
     );
@@ -384,7 +436,7 @@ export function HandoffSheet({
         {/* Title row with key icon */}
         <View style={ss.titleRow}>
           <Text style={ss.keyIcon}>🔑</Text>
-          <Text style={[ss.title, { color: colors.foreground }]}>Enter handoff code</Text>
+          <Text style={[ss.title, { color: colors.foreground }]}>{`Ask ${ownerName} for the handoff code`}</Text>
         </View>
 
         {/* PIN boxes — hidden when expired or rate-limited */}
@@ -443,7 +495,7 @@ export function HandoffSheet({
               </View>
             ) : (
               <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign: "center" }}>
-                Enter the code after you've checked and received the item.
+                Only enter the code once you have the item.
               </Text>
             )}
           </>
@@ -456,7 +508,7 @@ export function HandoffSheet({
               This code has expired
             </Text>
             <Text style={{ color: "#b45309", fontSize: 12, textAlign: "center", marginTop: 2 }}>
-              Ask the owner to confirm manually, or confirm below.
+              {hideManualConfirm ? "Report a problem below if the item was not handed over." : "Ask the owner to confirm manually, or confirm below."}
             </Text>
           </View>
         )}
@@ -465,10 +517,9 @@ export function HandoffSheet({
         {borrowerView === "rate_limited" && (
           <View style={[ss.warnBox, { backgroundColor: "#fef2f2", borderColor: "#fecaca" }]}>
             <Text style={{ color: "#991b1b", fontSize: 14, fontFamily: "Inter_600SemiBold", textAlign: "center" }}>
-              Too many attempts
-            </Text>
-            <Text style={{ color: "#b91c1c", fontSize: 12, textAlign: "center", marginTop: 2 }}>
-              Please use the manual confirmation option below.
+              {lockMinutes !== null
+                ? `Too many tries. Try again in ${lockMinutes} minute${lockMinutes === 1 ? "" : "s"}.`
+                : "Too many tries. Try again later."}
             </Text>
           </View>
         )}
@@ -483,13 +534,15 @@ export function HandoffSheet({
               <Text style={[ss.btnTxt, { color: colors.foreground }]}>Cancel</Text>
             </Pressable>
           )}
-          <Pressable onPress={() => setBorrowerView("manual")} disabled={isProcessing}>
-            <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign: "center" }}>
-              Didn't get a code? Confirm without code →
-            </Text>
-          </Pressable>
+          {!hideManualConfirm && (
+            <Pressable onPress={() => setBorrowerView("manual")} disabled={isProcessing}>
+              <Text style={{ color: colors.mutedForeground, fontSize: 12, textAlign: "center" }}>
+                Didn't get a code? Confirm without code →
+              </Text>
+            </Pressable>
+          )}
           <Pressable onPress={() => setShowDenyView(true)} disabled={isProcessing}>
-            <Text style={ss.redLink}>Item was not received?</Text>
+            <Text style={ss.redLink}>{canReport ? "Report a problem" : "Item was not received?"}</Text>
           </Pressable>
         </View>
       </View>

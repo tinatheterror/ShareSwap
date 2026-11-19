@@ -29,6 +29,17 @@ interface HandoffConfirmationModalProps {
 
 type BorrowerView = "pin" | "manual" | "wrong_pin" | "expired" | "rate_limited";
 
+/** GET /api/requests/:id/handoff-code-state. Until it loads the screens use the server's defaults (code-only). */
+interface HandoffInfo {
+  hideManualConfirm: boolean;
+  reportProblem: boolean;
+  autoConfirm: boolean;
+  otherName: string;
+  locked: boolean;
+  lockedUntil: string | null;
+  minutesRemaining: number;
+}
+
 export function HandoffConfirmationModal({
   isOpen,
   onClose,
@@ -59,6 +70,12 @@ export function HandoffConfirmationModal({
   const [ownerPin, setOwnerPin] = useState<{ pin: string | null; pinExpiresAt: string | null; pinUsed: boolean; expired: boolean } | null>(null);
   const [ownerPinLoading, setOwnerPinLoading] = useState(false);
   const [ownerPinError, setOwnerPinError] = useState<string | null>(null);
+  const [info, setInfo] = useState<HandoffInfo | null>(null);
+  const [lockMinutes, setLockMinutes] = useState<number | null>(null);
+  const hideManualConfirm = info?.hideManualConfirm ?? true;
+  const canReport = info?.reportProblem ?? true;
+  const autoConfirm = info?.autoConfirm ?? false;
+  const ownerName = info?.otherName || "the owner";
   const inputRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -77,6 +94,26 @@ export function HandoffConfirmationModal({
       setTimeout(() => inputRefs[0].current?.focus(), 100);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setLockMinutes(null);
+    apiRequest("GET", `/api/requests/${requestId}/handoff-code-state`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: HandoffInfo | null) => {
+        if (cancelled || !data) return;
+        setInfo(data);
+        if (data.locked) {
+          setLockMinutes(data.minutesRemaining);
+          setView("rate_limited");
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, requestId]);
 
   useEffect(() => {
     if (!isOpen || userRole !== "owner") return;
@@ -126,6 +163,8 @@ export function HandoffConfirmationModal({
     },
     onError: (err: any) => {
       if (err.rateLimited) {
+        setLockMinutes(typeof err.minutesRemaining === "number" ? err.minutesRemaining : null);
+        setPinDigits(["", "", "", ""]);
         setView("rate_limited");
       } else if (err.expired) {
         setView("expired");
@@ -159,6 +198,12 @@ export function HandoffConfirmationModal({
 
   const denyHandoffMutation = useMutation({
     mutationFn: async () => {
+      // Code-only handoff: reporting a problem opens the dispute at once. A request already past ACCEPTED/DEPOSIT_CONFIRMED
+      // (a handoff confirmed by one person under the old flow) still goes through the old report route.
+      if (canReport) {
+        const res = await apiRequest("POST", `/api/requests/${requestId}/report-handoff-problem`, {});
+        if (res.ok) return res.json();
+      }
       const res = await apiRequest("POST", `/api/requests/${requestId}/deny-handoff`, {});
       return res.json();
     },
@@ -217,20 +262,20 @@ export function HandoffConfirmationModal({
                 Item not handed off?
               </DialogTitle>
               <DialogDescription>
-                {otherPartyConfirmed
-                  ? `The ${otherParty} already confirmed. Reporting this will open a dispute.`
+                {canReport || otherPartyConfirmed
+                  ? `Reporting this will open a dispute.`
                   : `The ${otherParty} will have 24 hours to respond.`}
               </DialogDescription>
             </DialogHeader>
             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-800">
-              {otherPartyConfirmed
+              {canReport || otherPartyConfirmed
                 ? "⚠️ This will open a dispute. Both parties must submit proof within 24 hours."
                 : `We'll notify the ${otherParty} and wait for their response.`}
             </div>
             <div className="flex gap-3 pt-1">
               <Button variant="outline" onClick={() => setShowDenyView(false)} disabled={isProcessing} className="flex-1">Go back</Button>
               <Button onClick={() => denyHandoffMutation.mutate()} disabled={isProcessing} variant="destructive" className="flex-1">
-                {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Reporting...</> : "Report issue"}
+                {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Reporting...</> : "Report a problem"}
               </Button>
             </div>
           </DialogContent>
@@ -247,7 +292,7 @@ export function HandoffConfirmationModal({
               Handoff code
             </DialogTitle>
             <DialogDescription>
-              Show this code to the borrower after {itemName} has been handed off.
+              This is the handoff code for {itemName}. It stays the same for the whole request.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -267,7 +312,7 @@ export function HandoffConfirmationModal({
                   <p className="mt-1 text-4xl font-bold tracking-[0.45em] text-indigo-900">{ownerPin.pin}</p>
                 </div>
                 <p className="text-xs text-center text-muted-foreground">
-                  The borrower enters this code to start the borrow period.
+                  You can show this in person or send it in chat once you&apos;ve handed the item over.
                 </p>
               </>
             ) : ownerPin?.pinUsed ? (
@@ -286,11 +331,13 @@ export function HandoffConfirmationModal({
           </div>
           <Button variant="outline" onClick={onClose} disabled={isProcessing} className="w-full">Done</Button>
           <button onClick={() => setShowDenyView(true)} className="text-xs text-red-500 hover:text-red-600 text-center w-full mt-1 underline-offset-2 hover:underline">
-            Item was not handed off?
+            {canReport ? "Report a problem" : "Item was not handed off?"}
           </button>
-          <p className="text-xs text-muted-foreground text-center -mt-1">
-            If only one person confirms, we'll complete this automatically in 24 hours.
-          </p>
+          {autoConfirm && (
+            <p className="text-xs text-muted-foreground text-center -mt-1">
+              If only one person confirms, we'll complete this automatically in 24 hours.
+            </p>
+          )}
         </DialogContent>
       </Dialog>
     );
@@ -309,20 +356,20 @@ export function HandoffConfirmationModal({
               Item not received?
             </DialogTitle>
             <DialogDescription>
-              {otherPartyConfirmed
-                ? "The owner already confirmed. Reporting this will open a dispute."
+              {canReport || otherPartyConfirmed
+                ? "Reporting this will open a dispute."
                 : "The owner will have 24 hours to respond."}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-800">
-            {otherPartyConfirmed
+            {canReport || otherPartyConfirmed
               ? "⚠️ This will open a dispute. Both parties must submit proof within 24 hours."
               : "We'll notify the owner and wait for their response before taking action."}
           </div>
           <div className="flex gap-3 pt-1">
             <Button variant="outline" onClick={() => setShowDenyView(false)} disabled={isProcessing} className="flex-1">Go back</Button>
             <Button onClick={() => denyHandoffMutation.mutate()} disabled={isProcessing} variant="destructive" className="flex-1">
-              {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Reporting...</> : "Report issue"}
+              {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Reporting...</> : "Report a problem"}
             </Button>
           </div>
         </DialogContent>
@@ -330,7 +377,7 @@ export function HandoffConfirmationModal({
     );
   }
 
-  if (view === "manual") {
+  if (view === "manual" && !hideManualConfirm) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="sm:max-w-sm">
@@ -359,9 +406,11 @@ export function HandoffConfirmationModal({
           <button onClick={() => setShowDenyView(true)} className="text-xs text-red-500 hover:text-red-600 text-center w-full mt-1 underline-offset-2 hover:underline">
             Item was not received?
           </button>
-          <p className="text-xs text-muted-foreground text-center -mt-1">
-            If only one person confirms, we'll complete this automatically in 24 hours.
-          </p>
+          {autoConfirm && (
+            <p className="text-xs text-muted-foreground text-center -mt-1">
+              If only one person confirms, we'll complete this automatically in 24 hours.
+            </p>
+          )}
         </DialogContent>
       </Dialog>
     );
@@ -373,7 +422,7 @@ export function HandoffConfirmationModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <KeyRound className="h-4 w-4 text-indigo-500" />
-            Enter handoff code
+            Ask {ownerName} for the handoff code
           </DialogTitle>
         </DialogHeader>
 
@@ -405,7 +454,7 @@ export function HandoffConfirmationModal({
 
           {view === "pin" && !verifyPinMutation.isPending && (
             <p className="text-xs text-center text-muted-foreground">
-              Enter the code after you've checked and received the item.
+              Only enter the code once you have the item.
             </p>
           )}
 
@@ -434,14 +483,17 @@ export function HandoffConfirmationModal({
           {view === "expired" && (
             <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-3 text-center">
               <p className="text-sm font-medium text-amber-800">This code has expired</p>
-              <p className="text-xs text-amber-700 mt-0.5">Ask the owner to confirm manually, or confirm below.</p>
+              <p className="text-xs text-amber-700 mt-0.5">{hideManualConfirm ? "Report a problem below if the item was not handed over." : "Ask the owner to confirm manually, or confirm below."}</p>
             </div>
           )}
 
           {view === "rate_limited" && (
             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-3 text-center">
-              <p className="text-sm font-medium text-red-800">Too many attempts</p>
-              <p className="text-xs text-red-700 mt-0.5">Please use the manual confirmation option below.</p>
+              <p className="text-sm font-medium text-red-800">
+                {lockMinutes !== null
+                  ? `Too many tries. Try again in ${lockMinutes} minute${lockMinutes === 1 ? "" : "s"}.`
+                  : "Too many tries. Try again later."}
+              </p>
             </div>
           )}
         </div>
@@ -452,17 +504,19 @@ export function HandoffConfirmationModal({
               Cancel
             </Button>
           )}
-          <button
-            onClick={() => setView("manual")}
-            className="text-xs text-muted-foreground hover:text-indigo-600 text-center w-full py-0.5 transition-colors"
-          >
-            Didn't get a code? Confirm without code →
-          </button>
+          {!hideManualConfirm && (
+            <button
+              onClick={() => setView("manual")}
+              className="text-xs text-muted-foreground hover:text-indigo-600 text-center w-full py-0.5 transition-colors"
+            >
+              Didn't get a code? Confirm without code →
+            </button>
+          )}
           <button
             onClick={() => setShowDenyView(true)}
             className="text-xs text-red-500 hover:text-red-600 text-center w-full py-0.5 transition-colors"
           >
-            Item was not received?
+            {canReport ? "Report a problem" : "Item was not received?"}
           </button>
         </div>
       </DialogContent>

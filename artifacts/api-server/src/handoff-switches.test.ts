@@ -143,6 +143,11 @@ test("extras are off unless explicitly on; code-only behaviours are on unless ex
     assert.equal(fn({ [name]: "typo" } as NodeJS.ProcessEnv), true, `${name}=typo stays on`);
     for (const raw of ["off", "false", "0", "no", " OFF "]) assert.equal(fn({ [name]: raw } as NodeJS.ProcessEnv), false, `${name}=${raw}`);
   }
+  assert.deepEqual(flags.handoffClientFlags({} as NodeJS.ProcessEnv), { hideManualConfirm: true, reportProblem: true, oneCode: true, autoConfirm: false });
+  assert.deepEqual(
+    flags.handoffClientFlags({ HANDOFF_HIDE_MANUAL_CONFIRM: "off", HANDOFF_REPORT_PROBLEM: "off", HANDOFF_AUTO_CONFIRM: "on" } as NodeJS.ProcessEnv),
+    { hideManualConfirm: false, reportProblem: false, oneCode: true, autoConfirm: true },
+  );
   assert.equal(flags.autoConfirmDisputeWindowHours({} as NodeJS.ProcessEnv), 0);
   assert.equal(flags.autoConfirmDisputeWindowHours({ HANDOFF_AUTO_CONFIRM_DISPUTE_WINDOW: "on" } as NodeJS.ProcessEnv), 24);
 });

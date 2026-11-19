@@ -1408,14 +1408,6 @@ export default function ChatScreen() {
           </View>
         )}
 
-        {/* Terminal state */}
-        {isTerminal && (
-          <View style={[card.detailsWrap, { borderTopColor: colors.border }]}>
-            <Text style={[card.detailText, { color: statusInfo.color, fontFamily: "Inter_500Medium" }]}>
-              This {request.requestType.toLowerCase()} request is {statusInfo.label.toLowerCase()}.
-            </Text>
-          </View>
-        )}
       </View>
     );
   }

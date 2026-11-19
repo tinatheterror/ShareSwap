@@ -99,17 +99,13 @@ export default function MySharedItemsScreen() {
   });
 
   function confirmDelete(item: MyItem) {
-    const status = getInventoryStatus(item);
-    const isPassedOn = status.status === "gifted" || status.status === "swapped";
     Alert.alert(
-      isPassedOn ? "Remove from History" : "Remove Item",
-      isPassedOn
-        ? `Remove "${item.name}" from your history? Transaction records are preserved.`
-        : `Remove "${item.name}" from circulation? Transaction history is preserved.`,
+      "Delete listing?",
+      `\u201C${item.name}\u201D will be permanently deleted. Past activity for this item will stay in your history. This can\u2019t be undone.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: isPassedOn ? "Remove from History" : "Remove Item",
+          text: "Delete",
           style: "destructive",
           onPress: () => deleteItemMutation.mutate(item.id),
         },

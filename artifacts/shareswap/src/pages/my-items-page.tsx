@@ -242,12 +242,6 @@ export default function MyItemsPage() {
     );
   }
 
-  // ── Deletion dialog content ────────────────────────────────────────────────
-
-  const deleteStatus = itemToDelete ? getInventoryStatus(itemToDelete) : null;
-  const isPassedOn =
-    deleteStatus?.status === "gifted" || deleteStatus?.status === "swapped";
-
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
@@ -524,30 +518,17 @@ export default function MyItemsPage() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <div className="flex items-start gap-3">
-                <div className="text-4xl">{isPassedOn ? "📜" : "🗑️"}</div>
+                <div className="text-4xl">🗑️</div>
                 <div>
                   <DialogTitle className="text-lg font-semibold mb-1">
-                    {isPassedOn ? "Remove from History" : "Remove Item"}
+                    Delete listing?
                   </DialogTitle>
                   <DialogDescription className="text-sm text-gray-600">
-                    {isPassedOn ? (
-                      <>
-                        This will remove{" "}
-                        <span className="font-medium">
-                          "{itemToDelete?.name}"
-                        </span>{" "}
-                        from your history view. Transaction records and reviews
-                        will still be preserved.
-                      </>
-                    ) : (
-                      <>
-                        Are you sure you want to remove{" "}
-                        <span className="font-medium">
-                          {itemToDelete?.name}
-                        </span>{" "}
-                        from circulation? Transaction history is preserved.
-                      </>
-                    )}
+                    <span className="font-medium">
+                      {`“${itemToDelete?.name ?? ""}”`}
+                    </span>{" "}
+                    will be permanently deleted. Past activity for this item
+                    will stay in your history. This can&apos;t be undone.
                   </DialogDescription>
                 </div>
               </div>
@@ -568,11 +549,7 @@ export default function MyItemsPage() {
                 className="flex-1 text-white"
                 style={{ backgroundColor: "#0DCEA1" }}
               >
-                {deleteItemMutation.isPending
-                  ? "Removing..."
-                  : isPassedOn
-                    ? "Yes, Remove from History"
-                    : "Yes, Remove Item"}
+                {deleteItemMutation.isPending ? "Deleting..." : "Delete"}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -24,6 +24,9 @@ import {
 } from "./run-scheduled-jobs";
 import type { ScheduledJobRunners } from "../routes/routes";
 
+// The one-sided extras are off by default (handoff-flags.ts). This file tests them, so it switches them on, as an operator would.
+for (const name of ["HANDOFF_AUTO_CONFIRM", "HANDOFF_FLAGGED", "HANDOFF_ONE_SIDED_DENY_WAIT", "HANDOFF_AUTO_CONFIRM_DISPUTE_WINDOW", "HANDOFF_REMINDER_2H", "HANDOFF_REMINDER_12H"]) process.env[name] = "on";
+
 // ── The reminder users get ──────────────────────────────────────────────────────
 // Sent to BOTH people on a BORROW/RENT request, once, 4 hours before the late-handoff
 // cutoff, only while the request is still ACCEPTED or DEPOSIT_CONFIRMED (nobody has

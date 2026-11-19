@@ -15,6 +15,9 @@ import {
 import { REQUEST_NOT_ACCEPTABLE_NOW_CODE, REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE, releaseHold } from "./sharecoin-funds.js";
 import { processHandoffDeadlines } from "./handoff-deadline-service.js";
 
+// The one-sided extras are off by default (handoff-flags.ts). This file tests them, so it switches them on, as an operator would.
+for (const name of ["HANDOFF_AUTO_CONFIRM", "HANDOFF_FLAGGED", "HANDOFF_ONE_SIDED_DENY_WAIT", "HANDOFF_AUTO_CONFIRM_DISPUTE_WINDOW", "HANDOFF_REMINDER_2H", "HANDOFF_REMINDER_12H"]) process.env[name] = "on";
+
 // The Free plan's borrow limits: a borrow counts against the 3 a month when it is ACCEPTED (not when it is sent), at most 3
 // borrow requests may wait for an answer at once, and accepting past the monthly limit is refused: the requester gets the
 // plan-limit answer, the owner only the neutral one.

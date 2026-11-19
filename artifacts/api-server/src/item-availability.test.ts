@@ -8,6 +8,9 @@ import { registerRoutes } from "./routes/routes.js";
 import { ensureJobSwitchesTable, ensureScheduledJobRunsTable } from "./startup-migrations.js";
 import { ITEM_NO_LONGER_AVAILABLE_CODE, ITEM_NO_LONGER_AVAILABLE_MESSAGE, declineRequestsForGoneItems, involvedItemIds } from "./item-availability.js";
 
+// The one-sided extras are off by default (handoff-flags.ts). This file tests them, so it switches them on, as an operator would.
+for (const name of ["HANDOFF_AUTO_CONFIRM", "HANDOFF_FLAGGED", "HANDOFF_ONE_SIDED_DENY_WAIT", "HANDOFF_AUTO_CONFIRM_DISPUTE_WINDOW", "HANDOFF_REMINDER_2H", "HANDOFF_REMINDER_12H"]) process.env[name] = "on";
+
 // When a gift or a swap completes, every other pending request for the items involved is declined with "This item is no
 // longer available."; and nothing can be accepted for an item that has been given away or swapped.
 

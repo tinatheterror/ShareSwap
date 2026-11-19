@@ -20,6 +20,9 @@ import {
 import { settleElapsedAutoConfirmedBorrows } from "./sharecoin-funds.js";
 import { withOverlapGuard } from "./overlap-guard";
 
+// The one-sided extras are off by default (handoff-flags.ts). This file tests them, so it switches them on, as an operator would.
+for (const name of ["HANDOFF_AUTO_CONFIRM", "HANDOFF_FLAGGED", "HANDOFF_ONE_SIDED_DENY_WAIT", "HANDOFF_AUTO_CONFIRM_DISPUTE_WINDOW", "HANDOFF_REMINDER_2H", "HANDOFF_REMINDER_12H"]) process.env[name] = "on";
+
 // Overlapping handoff sweeps, including the case the stale-run timeout creates on purpose: the old
 // run is abandoned while still going and a new run starts beside it. The sweep must still advance
 // each request exactly once, charge once, notify once and run the swap rewards once.

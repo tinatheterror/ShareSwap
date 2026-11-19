@@ -13,6 +13,9 @@ import { fakeStripe } from "./test-fixtures/fake-stripe.js";
 import { placeHold, quoteInputFromRows, quoteRequest, totalBalance } from "./sharecoin-funds.js";
 import { ITEM_NO_LONGER_AVAILABLE_MESSAGE } from "./item-availability.js";
 
+// The one-sided extras are off by default (handoff-flags.ts). This file tests them, so it switches them on, as an operator would.
+for (const name of ["HANDOFF_AUTO_CONFIRM", "HANDOFF_FLAGGED", "HANDOFF_ONE_SIDED_DENY_WAIT", "HANDOFF_AUTO_CONFIRM_DISPUTE_WINDOW", "HANDOFF_REMINDER_2H", "HANDOFF_REMINDER_12H"]) process.env[name] = "on";
+
 // The admin queue of exchanges waiting for a decision (disputes and flagged exchanges, oldest first, with both people's
 // messages and proof) and the two decisions: for the owner (the handoff stands, the hold settles) or for the requester (it
 // did not happen, the hold is released with the dispute or flag_rejected reason). Both people are told either way.

@@ -23,6 +23,9 @@ import {
   totalBalance,
 } from "./sharecoin-funds.js";
 
+// The one-sided extras are off by default (handoff-flags.ts). This file tests them, so it switches them on, as an operator would.
+for (const name of ["HANDOFF_AUTO_CONFIRM", "HANDOFF_FLAGGED", "HANDOFF_ONE_SIDED_DENY_WAIT", "HANDOFF_AUTO_CONFIRM_DISPUTE_WINDOW", "HANDOFF_REMINDER_2H", "HANDOFF_REMINDER_12H"]) process.env[name] = "on";
+
 // Phase 2 of docs/sharecoin-funds-design.md: accepting reserves what the payer will owe (a hold), under a lock on the payer's
 // row; every spend checks the balance minus holds; the handoff settles the hold exactly; every other ending releases it.
 

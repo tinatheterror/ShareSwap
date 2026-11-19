@@ -5,6 +5,9 @@ import { inArray } from "drizzle-orm";
 import { db, itemRequests, items, messages, notifications, pool, shareCoinsTransactions, users } from "@workspace/db";
 import { registerRoutes, type ScheduledJobRunners } from "./routes/routes.js";
 
+// The one-sided extras are off by default (handoff-flags.ts). This file tests them, so it switches them on, as an operator would.
+for (const name of ["HANDOFF_AUTO_CONFIRM", "HANDOFF_FLAGGED", "HANDOFF_ONE_SIDED_DENY_WAIT", "HANDOFF_AUTO_CONFIRM_DISPUTE_WINDOW", "HANDOFF_REMINDER_2H", "HANDOFF_REMINDER_12H"]) process.env[name] = "on";
+
 // The scheduled-jobs script reaches the handoff sweep through registerRoutes' onScheduledJobs
 // runners. That runner must pass requestTypes BORROW/RENT, so a SWAP is never selected. Dry run only:
 // it reads and reports, so it is safe on any test database. (The in-process timer's call site is

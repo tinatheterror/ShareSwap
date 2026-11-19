@@ -7,6 +7,9 @@ import { hashPassword } from "./auth.js";
 import { registerRoutes } from "./routes/routes.js";
 import { ensureJobSwitchesTable, ensureScheduledJobRunsTable } from "./startup-migrations.js";
 
+// The one-sided extras are off by default (handoff-flags.ts). This file tests them, so it switches them on, as an operator would.
+for (const name of ["HANDOFF_AUTO_CONFIRM", "HANDOFF_FLAGGED", "HANDOFF_ONE_SIDED_DENY_WAIT", "HANDOFF_AUTO_CONFIRM_DISPUTE_WINDOW", "HANDOFF_REMINDER_2H", "HANDOFF_REMINDER_12H"]) process.env[name] = "on";
+
 // One person confirms a swap or a gift: the other is told "[name] confirmed the [swap/gift]. Confirm, or report a
 // problem within 24 hours." and has 24 hours. Both confirming completes it (a gift through the same /handoff route a
 // swap uses); one reporting a problem opens a dispute; and the handoff sweep confirms it for the silent person.

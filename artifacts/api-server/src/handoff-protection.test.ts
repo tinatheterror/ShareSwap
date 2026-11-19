@@ -6,6 +6,9 @@ import { handoff12HourReminderEnabled, sendBorrowerHandoffReminders } from "./ha
 import { freezeRentalEarnings, resolveFrozenRentalEarnings } from "./rental-earnings-freeze.js";
 import { recordWalletEntry, rentalEarningKey } from "./wallet-ledger.js";
 
+// The one-sided extras are off by default (handoff-flags.ts). This file tests them, so it switches them on, as an operator would.
+for (const name of ["HANDOFF_AUTO_CONFIRM", "HANDOFF_FLAGGED", "HANDOFF_ONE_SIDED_DENY_WAIT", "HANDOFF_AUTO_CONFIRM_DISPUTE_WINDOW", "HANDOFF_REMINDER_2H", "HANDOFF_REMINDER_12H"]) process.env[name] = "on";
+
 // The 12 hour reminder is off by default (HANDOFF_REMINDER_12H). The tests below that cover it run with it switched on, as an
 // operator would; the tests at the end of the file cover the default.
 process.env.HANDOFF_REMINDER_12H = "on";

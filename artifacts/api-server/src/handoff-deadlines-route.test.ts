@@ -7,6 +7,9 @@ import { hashPassword } from "./auth.js";
 import { registerRoutes } from "./routes/routes.js";
 import { ensureJobSwitchesTable, ensureScheduledJobRunsTable } from "./startup-migrations.js";
 
+// The one-sided extras are off by default (handoff-flags.ts). This file tests them, so it switches them on, as an operator would.
+for (const name of ["HANDOFF_AUTO_CONFIRM", "HANDOFF_FLAGGED", "HANDOFF_ONE_SIDED_DENY_WAIT", "HANDOFF_AUTO_CONFIRM_DISPUTE_WINDOW", "HANDOFF_REMINDER_2H", "HANDOFF_REMINDER_12H"]) process.env[name] = "on";
+
 // POST /api/requests/check-handoff-deadlines reads the same job switch as the server timer
 // ("handoff-deadlines": a job_switches row, else HANDOFF_DEADLINE_SWEEP_MODE, else dry-run) and only
 // acts on BORROW, RENT and SWAP. Only live changes anything.

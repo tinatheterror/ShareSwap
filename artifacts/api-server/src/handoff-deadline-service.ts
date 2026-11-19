@@ -10,6 +10,7 @@ import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import * as depositCopy from "./deposit-copy";
 import { releaseHeldRentalPayout } from "./rental-payout-service";
 import { sendBorrowerHandoffReminders } from "./handoff-reminders";
+import { handoffAutoConfirmEnabled, handoffFlaggedEnabled } from "./handoff-flags";
 
 // Handoff deadline transitions, shared by the web-polled endpoint
 // (POST /api/requests/check-handoff-deadlines) and the server interval:
@@ -69,6 +70,10 @@ export interface HandoffDeadlineOptions {
    * for other types alone skips it.
    */
   requestTypes?: readonly string[];
+  /** Auto-confirm one-sided handoffs; defaults to the HANDOFF_AUTO_CONFIRM switch (off). */
+  autoConfirm?: boolean;
+  /** Flag a denial the other person never answered; defaults to the HANDOFF_FLAGGED switch (off). */
+  flagging?: boolean;
 }
 
 export interface AutoConfirmedSwapContext {
@@ -135,6 +140,9 @@ export async function processHandoffDeadlines(
     candidates: [],
   };
 
+  const autoConfirmOn = options.autoConfirm ?? handoffAutoConfirmEnabled();
+  const flaggingOn = options.flagging ?? handoffFlaggedEnabled();
+
   // ── Borrower reminders 12 and 2 hours before an auto-confirm (live runs only; a dry run changes nothing) ──
   if (!dryRun) await sendBorrowerHandoffReminders(now, { requestTypes: options.requestTypes, onlyRequestIds: options.onlyRequestIds });
 
@@ -165,7 +173,9 @@ export async function processHandoffDeadlines(
     const itemName = request.items.name;
 
     // ── Case 2: One denied, other is silent → flag for review (DO NOT auto-confirm) ──
+    // Off unless HANDOFF_FLAGGED is on: nothing is moved to HANDOFF_FLAGGED, and the request stays as it is.
     if ((ownerDenied || borrowerDenied) && !ownerConfirmed && !borrowerConfirmed) {
+      if (!flaggingOn) continue;
       if (dryRun) {
         result.candidates.push({
           requestId: reqId,
@@ -206,7 +216,8 @@ export async function processHandoffDeadlines(
     }
 
     // ── Case 1: One confirmed, other is silent (no denial) → auto-confirm ──
-    if ((ownerConfirmed || borrowerConfirmed) && !ownerDenied && !borrowerDenied) {
+    // Off unless HANDOFF_AUTO_CONFIRM is on: a half-confirmed handoff is left for the people (or the request's expiry).
+    if (autoConfirmOn && (ownerConfirmed || borrowerConfirmed) && !ownerDenied && !borrowerDenied) {
       // Use counter-proposed dates if present — they are the agreed-upon dates after negotiation
       const effectiveStart4 = request.item_requests.counterStartDate || request.item_requests.startDate;
       const effectiveEnd4   = request.item_requests.counterEndDate   || request.item_requests.endDate;

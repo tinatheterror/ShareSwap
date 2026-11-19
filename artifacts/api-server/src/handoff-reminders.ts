@@ -4,6 +4,7 @@ import { sendPushToUser } from "./push-notifications";
 import { isConfirmNoticeType, silentPersonReminder } from "./handoff-confirm-copy";
 import { publicName } from "./public-identity";
 import { envFlagOn } from "./scheduled-job-options";
+import { handoff2HourReminderEnabled } from "./handoff-flags";
 
 /**
  * Reminds the person who has not confirmed, before an auto-confirm, that the handoff will be confirmed for them when the
@@ -17,6 +18,8 @@ import { envFlagOn } from "./scheduled-job-options";
  * The 12 hour reminder is OFF unless HANDOFF_REMINDER_12H is explicitly on (on, true, 1 or yes): everyone, whichever type
  * of request and whichever side is waiting, then gets only the 2 hour reminder. Nothing is claimed for a 12 hour reminder
  * that is not sent, so switching it on later reminds the requests still waiting. The code for it is intact.
+ *
+ * The 2 hour reminder is OFF unless HANDOFF_REMINDER_2H is explicitly on, the same way. With both off nobody is reminded.
  */
 export const HANDOFF_REMINDER_HOURS = [12, 2] as const;
 
@@ -31,12 +34,16 @@ export interface HandoffReminderOptions {
   onlyRequestIds?: number[];
   /** The 12 hour reminder; defaults to the HANDOFF_REMINDER_12H switch (off). Tests and callers can say. */
   include12Hour?: boolean;
+  /** The 2 hour reminder; defaults to the HANDOFF_REMINDER_2H switch (off). */
+  include2Hour?: boolean;
 }
 
 /** Returns how many reminders were sent. Never throws: a failed reminder must not stop the sweep. */
 export async function sendBorrowerHandoffReminders(now: Date = new Date(), options: HandoffReminderOptions = {}): Promise<number> {
   try {
     const include12Hour = options.include12Hour ?? handoff12HourReminderEnabled();
+    const include2Hour = options.include2Hour ?? handoff2HourReminderEnabled();
+    if (!include12Hour && !include2Hour) return 0;
     // Without the 12 hour reminder only requests inside the last 2 hours are looked at.
     const horizon = new Date(now.getTime() + HANDOFF_REMINDER_HOURS[include12Hour ? 0 : 1] * HOUR_MS);
     const rows = await db
@@ -79,6 +86,8 @@ export async function sendBorrowerHandoffReminders(now: Date = new Date(), optio
       const deadline = request.deadline!;
       const hoursLeft = (deadline.getTime() - now.getTime()) / HOUR_MS;
       const step = hoursLeft <= HANDOFF_REMINDER_HOURS[1] ? HANDOFF_REMINDER_HOURS[1] : HANDOFF_REMINDER_HOURS[0];
+      // Nothing is claimed for a reminder that is switched off, so switching it on later still sends it.
+      if (step === HANDOFF_REMINDER_HOURS[1] && !include2Hour) continue;
       if (step === HANDOFF_REMINDER_HOURS[1]) {
         // Late for the 12 hour mark: claim it without sending, so it never goes out after the 2 hour one.
         await db.insert(requestLifecycleEvents).values({

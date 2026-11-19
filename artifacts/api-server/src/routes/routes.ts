@@ -124,7 +124,8 @@ import { validateBorrowPeriod } from "../borrow-period";
 import { DUPLICATE_PENDING_REQUEST_CODE, DUPLICATE_PENDING_REQUEST_MESSAGE, ITEM_NO_LONGER_AVAILABLE_CODE, ITEM_NO_LONGER_AVAILABLE_MESSAGE, declineRequestsForGoneItems, goneItemFor } from "../item-availability";
 import { borrowLimitBody, monthlyAllowanceUsedUp, pendingBorrowCapReached, pendingBorrowLimitBody } from "../borrow-allowance";
 import { acceptFailureResponse, acceptWithFunds, applyFundsGate, ensureFundsHeld, gateRequestFunds, notifyUnblockedRequests, quoteRequest, quoteSwap, releaseHold, releaseHoldsOfEndedRequests, settleElapsedAutoConfirmedBorrows, settleRequestCoins } from "../sharecoin-funds";
-import { AUTO_CONFIRM_DISPUTE_WINDOW_HOURS, DISPUTE_WINDOW_CLOSED_CODE, DISPUTE_WINDOW_CLOSED_MESSAGE, HANDOFF_CONFIRM_WINDOW_HOURS, SILENT_PERSON_NOTICE_TITLE, isConfirmNoticeType, silentPersonNotice } from "../handoff-confirm-copy";
+import { autoConfirmDisputeWindowHours, oneSidedDenyWaitEnabled, handoffAutoConfirmEnabled } from "../handoff-flags";
+import { DISPUTE_WINDOW_CLOSED_CODE, DISPUTE_WINDOW_CLOSED_MESSAGE, HANDOFF_CONFIRM_WINDOW_HOURS, SILENT_PERSON_NOTICE_TITLE, isConfirmNoticeType, silentPersonNotice } from "../handoff-confirm-copy";
 import {
   HANDOFF_SWEEP_INTERVAL_MS,
   HANDOFF_SWEEP_REQUEST_TYPES,
@@ -9899,7 +9900,7 @@ Respond with ONLY the category name, nothing else.`
             metadata: { visibleToUserId: otherPartyId },
           },
           // The swap/gift notice already says what happens if they do nothing.
-          ...(silentNotice ? [] : [{
+          ...(silentNotice || !handoffAutoConfirmEnabled() ? [] : [{
             content: `If only one person confirms, we'll complete this automatically in 24 hours.`,
             senderId: ownerId,
             receiverId: borrowerId,
@@ -10231,7 +10232,7 @@ Respond with ONLY the category name, nothing else.`
         }
         // Only for AUTO_CONFIRM_DISPUTE_WINDOW_HOURS after the auto-confirm; a borrow's coins are held until then and settle when it closes.
         const confirmedAtMs = request.item_requests.handoffConfirmedAt ? new Date(request.item_requests.handoffConfirmedAt).getTime() : 0;
-        if (Date.now() >= confirmedAtMs + AUTO_CONFIRM_DISPUTE_WINDOW_HOURS * 3_600_000) {
+        if (Date.now() >= confirmedAtMs + autoConfirmDisputeWindowHours() * 3_600_000) {
           return res.status(409).json({ error: DISPUTE_WINDOW_CLOSED_MESSAGE, code: DISPUTE_WINDOW_CLOSED_CODE });
         }
         const { description } = req.body;
@@ -10272,6 +10273,7 @@ Respond with ONLY the category name, nothing else.`
       const now = new Date();
       const deadline24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
+      const denyWaitOn = oneSidedDenyWaitEnabled();
       let updateData: any = {};
       let disputeTriggered = false;
 
@@ -10279,6 +10281,13 @@ Respond with ONLY the category name, nothing else.`
         updateData.ownerDeniedHandoff = true;
         if (borrowerAlreadyConfirmed) {
           // Case 5: Borrower confirmed, owner denies → dispute
+          disputeTriggered = true;
+          updateData.handoffDisputeTriggered = true;
+          updateData.handoffDisputeAt = now;
+          updateData.handoffProofDeadline = deadline24h;
+          updateData.status = "HANDOFF_DISPUTED";
+        } else if (!denyWaitOn) {
+          // The one-sided deny wait is off (HANDOFF_ONE_SIDED_DENY_WAIT): the report opens the dispute at once.
           disputeTriggered = true;
           updateData.handoffDisputeTriggered = true;
           updateData.handoffDisputeAt = now;
@@ -10294,6 +10303,13 @@ Respond with ONLY the category name, nothing else.`
         updateData.borrowerDeniedHandoff = true;
         if (ownerAlreadyConfirmed) {
           // Case 5: Owner confirmed, borrower denies → dispute
+          disputeTriggered = true;
+          updateData.handoffDisputeTriggered = true;
+          updateData.handoffDisputeAt = now;
+          updateData.handoffProofDeadline = deadline24h;
+          updateData.status = "HANDOFF_DISPUTED";
+        } else if (!denyWaitOn) {
+          // The one-sided deny wait is off (HANDOFF_ONE_SIDED_DENY_WAIT): the report opens the dispute at once.
           disputeTriggered = true;
           updateData.handoffDisputeTriggered = true;
           updateData.handoffDisputeAt = now;
@@ -10487,7 +10503,7 @@ Respond with ONLY the category name, nothing else.`
         } else if (level === 1 && elapsedHrs >= 1) {
           reminderContent = `⚠️ It's been over an hour. ${waitingName} still needs to confirm the handoff — please check in with them.`;
           newLevel = 2;
-        } else if (level === 2 && elapsedHrs >= 24) {
+        } else if (level === 2 && elapsedHrs >= 24 && handoffAutoConfirmEnabled()) {
           reminderContent = `🚨 24 hours have passed with no response from ${waitingName}. The handoff will be auto-confirmed shortly.`;
           newLevel = 3;
         }

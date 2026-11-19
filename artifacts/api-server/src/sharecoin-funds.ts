@@ -44,7 +44,7 @@ export function calcBorrowShareCoinCost(
   return Math.max(1, Math.round((shareCoinPrice / 7) * borrowDays));
 }
 
-import { AUTO_CONFIRM_DISPUTE_WINDOW_HOURS } from "./handoff-confirm-copy";
+import { autoConfirmDisputeWindowHours } from "./handoff-flags";
 
 const TIER_SHARECOINS: Record<number, number> = { 1: 5, 2: 10, 3: 20, 4: 40 };
 /** What one item is worth in ShareCoins by tier (mirrors the apps' getTierShareCoins; an unset tier counts as tier 2). */
@@ -716,7 +716,8 @@ export async function ensureFundsHeld(
 export async function settleElapsedAutoConfirmedBorrows(options: { now?: Date; exec?: Executor; onlyRequestIds?: number[] } = {}): Promise<number> {
   const exec = options.exec ?? db;
   const now = options.now ?? new Date();
-  const closedBefore = new Date(now.getTime() - AUTO_CONFIRM_DISPUTE_WINDOW_HOURS * 3_600_000);
+  // With the post-auto-confirm dispute window switched off (HANDOFF_AUTO_CONFIRM_DISPUTE_WINDOW) there is no delay: the coins settle at once.
+  const closedBefore = new Date(now.getTime() - autoConfirmDisputeWindowHours() * 3_600_000);
   const due = await exec
     .select({ requestId: itemRequests.id, itemId: items.id, itemName: items.name, ownerId: items.ownerId })
     .from(shareCoinHolds)

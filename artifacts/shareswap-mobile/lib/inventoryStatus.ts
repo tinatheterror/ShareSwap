@@ -68,7 +68,7 @@ export function getInventoryStatus(item: MyItem): InventoryStatus {
     }
     if (s === "COMPLETED" || s === "COMPLETED_EARLY") {
       if (t === "GIFT") return { status: "gifted", label: "Gifted", canDelete: true, deleteLabel: "Remove from history" };
-      if (t === "SWAP") return { status: "swapped", label: "Swapped", canDelete: true, deleteLabel: "Remove from history" };
+      // A completed swap is not decided here: "Swapped" comes only from the item's own isSwapped flag (checked first).
     }
   }
   if (item.isAvailable && !isListingExpired(item)) {

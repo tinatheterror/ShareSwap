@@ -214,3 +214,18 @@ test("accepting counts a swapped or gifted item as gone even when it is listed a
   assert.equal(await goneItemFor(await row(s.plain)), null);
   assert.equal(ITEM_NO_LONGER_AVAILABLE_MESSAGE, "This item is no longer available.");
 });
+
+test("a swapped-away item whose flag was cleared behaves as a normal item, though a completed swap request remains", async () => {
+  const user = await newUser("cleared-flag");
+  const item = await newItem(user.id, { isAvailable: false, isSwapped: false });
+  await request(item, asker.id, "SWAP", { status: "COMPLETED", swapOfferedItemIds: [] });
+  const client = await new Client().signIn(user.username);
+  assert.equal((await client.post(`/api/items/${item}/relist`, {})).status, 200, "relist looks at the flag and gifts, not at completed swaps");
+  assert.equal(await availableOf(item), true);
+  const mine = (await client.get("/api/my-items")).json as { id: number; isSwapped: boolean; isGifted: boolean }[];
+  const row = mine.find((i) => i.id === item)!;
+  assert.equal(row.isSwapped, false);
+  assert.equal(row.isGifted, false);
+  const list = (await (await new Client().signIn(asker.username)).get(`/api/swap-eligible-items?partnerId=${user.id}`)).json as { id: number }[];
+  assert.ok(list.some((i) => i.id === item), "the pickers offer it");
+});

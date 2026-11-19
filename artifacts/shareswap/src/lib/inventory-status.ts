@@ -107,13 +107,7 @@ export function getInventoryStatus(item: any): InventoryStatus {
           canDelete: true,
           deleteLabel: "Remove from history",
         };
-      if (t === "SWAP")
-        return {
-          status: "swapped",
-          label: "Swapped",
-          canDelete: true,
-          deleteLabel: "Remove from history",
-        };
+      // A completed swap is not decided here: "Swapped" comes only from the item's own isSwapped flag (checked first).
     }
   }
 

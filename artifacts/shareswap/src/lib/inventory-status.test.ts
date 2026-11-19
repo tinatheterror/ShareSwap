@@ -19,3 +19,15 @@ describe("an item that was given away or swapped is never 'unavailable' (so neve
     expect(getInventoryStatus(base).status).toBe("unavailable");
   });
 });
+
+describe("'Swapped' comes from the item's isSwapped flag, not from a completed swap request", () => {
+  const doneSwap = { id: 3, requestType: "SWAP", status: "COMPLETED" };
+  it("an item whose flag was cleared is a normal item even though a completed swap request exists", () => {
+    expect(getInventoryStatus({ ...base, isAvailable: true, activeRequest: doneSwap }).status).toBe("available");
+    expect(getInventoryStatus({ ...base, isAvailable: false, activeRequest: doneSwap }).status).toBe("unavailable");
+  });
+  it("an item flagged swapped is Swapped whatever its request says", () => {
+    expect(getInventoryStatus({ ...base, isSwapped: true, isAvailable: true, activeRequest: doneSwap }).status).toBe("swapped");
+    expect(getInventoryStatus({ ...base, isSwapped: true, activeRequest: null }).status).toBe("swapped");
+  });
+});

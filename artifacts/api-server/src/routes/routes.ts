@@ -124,7 +124,7 @@ import { validateBorrowPeriod } from "../borrow-period";
 import { DUPLICATE_PENDING_REQUEST_CODE, DUPLICATE_PENDING_REQUEST_MESSAGE, ITEM_NO_LONGER_AVAILABLE_CODE, ITEM_NO_LONGER_AVAILABLE_MESSAGE, declineRequestsForGoneItems, goneItemFor } from "../item-availability";
 import { borrowLimitBody, monthlyAllowanceUsedUp, pendingBorrowCapReached, pendingBorrowLimitBody } from "../borrow-allowance";
 import { acceptFailureResponse, acceptWithFunds, applyFundsGate, ensureFundsHeld, gateRequestFunds, notifyUnblockedRequests, quoteRequest, quoteSwap, releaseHold, releaseHoldsOfEndedRequests, settleElapsedAutoConfirmedBorrows, settleRequestCoins } from "../sharecoin-funds";
-import { autoConfirmDisputeWindowHours, oneSidedDenyWaitEnabled, handoffAutoConfirmEnabled } from "../handoff-flags";
+import { autoConfirmDisputeWindowHours, oneSidedDenyWaitEnabled, handoffAutoConfirmEnabled, handoffReportProblemEnabled } from "../handoff-flags";
 import { DISPUTE_WINDOW_CLOSED_CODE, DISPUTE_WINDOW_CLOSED_MESSAGE, HANDOFF_CONFIRM_WINDOW_HOURS, SILENT_PERSON_NOTICE_TITLE, isConfirmNoticeType, silentPersonNotice } from "../handoff-confirm-copy";
 import {
   HANDOFF_SWEEP_INTERVAL_MS,
@@ -10362,6 +10362,65 @@ Respond with ONLY the category name, nothing else.`
     } catch (error: any) {
       console.error("Error denying handoff:", error);
       res.status(500).json({ error: "Failed to deny handoff" });
+    }
+  });
+
+  // Report a problem with the handoff (code-only handoff). Either person, from ACCEPTED or DEPOSIT_CONFIRMED, any time before
+  // the request expires: it goes straight to HANDOFF_DISPUTED with the 24-hour proof window. Behind HANDOFF_REPORT_PROBLEM.
+  app.post("/api/requests/:requestId/report-handoff-problem", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!handoffReportProblemEnabled()) return res.status(404).json({ error: "Reporting a problem is not available", code: "HANDOFF_REPORT_DISABLED" });
+    try {
+      const requestId = parseInt(req.params.requestId);
+      if (!Number.isInteger(requestId)) return res.status(400).json({ error: "Invalid request" });
+      if (await rejectIfHandoffWindowClosed(requestId, res, req.user.id)) return;
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+      if (!request) return res.status(404).json({ error: "Request not found" });
+
+      const isOwner = request.items.ownerId === req.user.id;
+      const isRequester = request.item_requests.requesterId === req.user.id;
+      if (!isOwner && !isRequester) return res.status(403).json({ error: "Unauthorized" });
+      if (!["ACCEPTED", "DEPOSIT_CONFIRMED"].includes(request.item_requests.status)) {
+        return res.status(400).json({ error: "A problem can only be reported before the handoff is confirmed" });
+      }
+
+      const description = typeof req.body?.description === "string" ? req.body.description.trim().slice(0, 1000) : "";
+      if (description && rejectDisallowedText(res, { description })) return;
+      const now = new Date();
+      const [claimed] = await db.update(itemRequests).set({
+        status: "HANDOFF_DISPUTED",
+        handoffDisputeTriggered: true,
+        handoffDisputeAt: now,
+        handoffProofDeadline: new Date(now.getTime() + 24 * 3_600_000),
+        ...(isOwner ? { ownerDeniedHandoff: true } : { borrowerDeniedHandoff: true }),
+        ...(description ? (isOwner ? { handoffProofOwner: description } : { handoffProofBorrower: description }) : {}),
+      } as any).where(and(
+        eq(itemRequests.id, requestId),
+        eq(itemRequests.status, request.item_requests.status),
+        isNull(itemRequests.depositOperationToken),
+      )).returning({ id: itemRequests.id });
+      if (!claimed) return res.status(409).json({ error: "This request changed before your report could be recorded. Please refresh and try again." });
+
+      const ownerId = request.items.ownerId!;
+      const requesterId = request.item_requests.requesterId;
+      const name = request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name;
+      await db.insert(messages).values({
+        content: `⚠️ A problem was reported with the handoff. We've paused this transaction while we review. Both parties have 24 hours to submit proof.`,
+        senderId: ownerId, receiverId: requesterId, messageType: "system", requestId,
+      });
+      await db.insert(notifications).values([ownerId, requesterId].map((userId) => ({
+        userId, type: "handoff_dispute", title: "Handoff Dispute Opened",
+        message: `Problem reported on "${name}". Submit proof within 24 hours.`, itemId: request.items.id, requestId,
+      })));
+      res.json({ success: true, disputeTriggered: true });
+    } catch (error: any) {
+      console.error("Error reporting a handoff problem:", error);
+      res.status(500).json({ error: "Failed to report the problem" });
     }
   });
 

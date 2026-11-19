@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 import type { ScheduledJobRunners } from "../routes/routes";
+import { heartbeatAfterRun } from "../heartbeat";
 import { REQUEST_EXPIRY_JOB, resolveJobSwitch, type SwitchDecision } from "../job-switches";
 import {
   EXPIRY_SWEEP_MAX_CUTOFF_AGE_MS,
@@ -36,6 +37,8 @@ export type { JobMode };
 //   SCHEDULED_JOBS_EXPIRY_MODE         off | dry-run (default) | live
 //   SCHEDULED_JOBS_EXPIRY_REMINDERS    on (default) | off      the 4h "hand off soon" reminder
 //   SCHEDULED_JOBS_HANDOFF_MODE        off | dry-run (default) | live
+//   HEARTBEAT_URL                      optional: requested once at the end of every real run that finished
+//                                      without a failed step (heartbeat.ts), for an external dead-man's-switch monitor
 // Anything unrecognised is a dry run, never a live one.
 //
 // Every step also honours a kill switch in the database: a job_switches row named after the step
@@ -632,6 +635,8 @@ export async function main(
     );
     const store = reportOnly ? createMemoryJobStore() : createPgJobStore(pool as unknown as PgPoolLike);
     const report = await runScheduledJobs({ steps, store });
+    // Optional dead-man's-switch ping (HEARTBEAT_URL, heartbeat.ts): only after a real, clean run.
+    await heartbeatAfterRun(report, { reportOnly, env });
     return report.exitCode;
   } finally {
     clearTimeout(watchdog);

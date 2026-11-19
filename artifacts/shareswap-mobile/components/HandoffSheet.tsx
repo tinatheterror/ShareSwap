@@ -322,9 +322,6 @@ export function HandoffSheet({
             <Text style={ss.keyIcon}>🔑</Text>
             <Text style={[ss.title, { color: colors.foreground }]}>Handoff code</Text>
           </View>
-          <Text style={[ss.sub, { color: colors.mutedForeground }]}>
-            This is the handoff code for {itemName}. It stays the same for the whole request.
-          </Text>
           <View style={[ss.ownerCodeBox, { backgroundColor: "#eef2ff", borderColor: "#c7d2fe" }]}>
             {ownerPinLoading ? (
               <ActivityIndicator color="#4f46e5" />

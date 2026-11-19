@@ -291,9 +291,6 @@ export function HandoffConfirmationModal({
               <KeyRound className="h-4 w-4 text-indigo-500" />
               Handoff code
             </DialogTitle>
-            <DialogDescription>
-              This is the handoff code for {itemName}. It stays the same for the whole request.
-            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             {ownerPinLoading ? (

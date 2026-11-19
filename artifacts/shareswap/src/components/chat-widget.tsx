@@ -355,6 +355,9 @@ export function ClaimEventCard({ eventType, metadata, content, viewerIsBorrower 
   );
 }
 
+// Requests whose review status was already asked this page load.
+const reviewPromptChecked = new Set<number>();
+
 export function ChatWidget() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -612,6 +615,28 @@ export function ChatWidget() {
     for (const req of requests) next[req.id] = req.status;
     prevReqStatusesRef.current = next;
   }, [requests]);
+
+  // A completed request opened later (the other person entered the handoff code while this person was away) has had no transition to
+  // notice: ask the server whether this person should still be asked to review, once per request per page load.
+  const openRequest = requests.find((r) => r.id === selectedRequestId) ?? null;
+  useEffect(() => {
+    if (!user || !openRequest) return;
+    if (openRequest.status !== "COMPLETED" && openRequest.status !== "COMPLETED_EARLY") return;
+    if (reviewPromptChecked.has(openRequest.id)) return;
+    reviewPromptChecked.add(openRequest.id);
+    let cancelled = false;
+    apiRequest("GET", `/api/requests/${openRequest.id}/review-status`)
+      .then((res) => res.json())
+      .then((status: { shouldPrompt?: boolean }) => {
+        if (cancelled || !status?.shouldPrompt) return;
+        setReviewForRequest(openRequest);
+        setShowReviewPrompt(true);
+      })
+      .catch(() => reviewPromptChecked.delete(openRequest.id));
+    return () => {
+      cancelled = true;
+    };
+  }, [openRequest?.id, openRequest?.status, user?.id]);
 
   // Fetch messages for selected conversation, scoped to the active request
   const { data: messages = [], isLoading: isLoadingMessages } = useQuery<

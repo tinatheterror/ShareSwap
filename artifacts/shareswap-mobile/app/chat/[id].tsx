@@ -200,6 +200,9 @@ interface ChatInboxThread {
   requestStatus: string;
 }
 
+// Requests whose review status was already asked this app session.
+const reviewPromptChecked = new Set<number>();
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getActiveStatus(lastActiveAt: string | null): { label: string; isNow: boolean } | null {
   if (!lastActiveAt) return null;
@@ -417,6 +420,24 @@ export default function ChatScreen() {
       setShowReviewSheet(true);
     }
   }, [request?.status]);
+
+  // A completed request opened later (the other person entered the handoff code while this person was away) has had no transition to
+  // notice: ask the server whether this person should still be asked to review, once per request per app session.
+  useEffect(() => {
+    if (!request || !user) return;
+    if (request.status !== "COMPLETED" && request.status !== "COMPLETED_EARLY") return;
+    if (reviewPromptChecked.has(request.id)) return;
+    reviewPromptChecked.add(request.id);
+    let cancelled = false;
+    apiGet<{ shouldPrompt: boolean }>(`/api/requests/${request.id}/review-status`)
+      .then((status) => {
+        if (!cancelled && status?.shouldPrompt) setShowReviewSheet(true);
+      })
+      .catch(() => reviewPromptChecked.delete(request.id));
+    return () => {
+      cancelled = true;
+    };
+  }, [request?.id, request?.status, user?.id]);
 
   const isOwner =
     lifecycle?.lifecycle.role === "owner" ||

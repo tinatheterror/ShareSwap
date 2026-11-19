@@ -76,7 +76,7 @@ import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChang
 import { fullVerificationRejection } from "../verification-gate";
 import { computeVerification, getIdVerificationSummary, getVerificationForUser } from "../verification";
 import { getDeletionEligibility } from "../account-deletion/eligibility";
-import { classifyRequestLane, deriveCompletedAt } from "../request-lanes";
+import { classifyRequestLane, deriveCompletedAt, REVIEW_WINDOW_DAYS } from "../request-lanes";
 import { pendingExtensionRequestIds, reviewedRequestIds } from "../request-lane-data";
 import {
   DeletionError,
@@ -10067,6 +10067,29 @@ Respond with ONLY the category name, nothing else.`
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to load the handoff state" });
+    }
+  });
+
+  // Should this person be asked to leave a review for a completed request they were not watching when it completed (for example the
+  // owner when the other person entered the handoff code)? Same rules as the chat's own prompt: a swap or gift asks both people, a
+  // borrow or rental asks the borrower or renter (the owner rates the condition when confirming the return). Not once they have
+  // reviewed, and only inside the review window that "Leave a review" in the inbox uses.
+  app.get("/api/requests/:requestId/review-status", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const [row] = await db.select().from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(eq(itemRequests.id, requestId)).limit(1);
+      if (!row) return res.status(404).json({ error: "Request not found" });
+      const isOwner = row.items.ownerId === req.user.id;
+      const isRequester = row.item_requests.requesterId === req.user.id;
+      if (!isOwner && !isRequester) return res.status(403).json({ error: "Unauthorized" });
+      const completedAt = ["COMPLETED", "COMPLETED_EARLY"].includes(row.item_requests.status) ? deriveCompletedAt(row.item_requests as any) : null;
+      const reviewed = (await reviewedRequestIds(req.user.id, [requestId])).has(requestId);
+      const bothSides = row.item_requests.requestType === "SWAP" || row.item_requests.requestType === "GIFT";
+      const inWindow = !!completedAt && Date.now() <= completedAt.getTime() + REVIEW_WINDOW_DAYS * 24 * 3_600_000;
+      res.json({ reviewed, shouldPrompt: inWindow && !reviewed && (bothSides ? true : isRequester) });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load the review status" });
     }
   });
 

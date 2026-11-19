@@ -465,8 +465,8 @@ export interface RequestExpirySweepOptions {
   /** Report what would expire but do not expire it. Reminders still go out unless `reminders` is false. */
   expireDryRun?: boolean;
   /**
-   * The owner-only warning 24 hours before the cutoff when the code has not been entered (borrows and rentals, not courier).
-   * Separate from `reminders`; defaults to the HANDOFF_OWNER_WARNING switch (on).
+   * The owner-only warning 24 hours before the cutoff when the code has not been entered (borrows and rentals, courier included).
+   * Sent only when expiry is live (not `dryRun`, not `expireDryRun`). Separate from `reminders`; defaults to the HANDOFF_OWNER_WARNING switch (on).
    */
   ownerWarning?: boolean;
   /** Send the "hand off soon" reminder. Default true. When false, reminder candidates are not even reported. */
@@ -544,7 +544,8 @@ export async function runRequestExpirySweep(
       continue;
     }
 
-    if (ownerWarningEnabled && !dryRun && nowMs >= cutoff.getTime() - copy.HANDOFF_CODE_WARNING_LEAD_MS) {
+    // Only when the expiry job is live: in dry-run (expireDryRun) nobody is warned.
+    if (ownerWarningEnabled && !expireDryRun && nowMs >= cutoff.getTime() - copy.HANDOFF_CODE_WARNING_LEAD_MS) {
       if (await sendOwnerCodeWarning(request, row.items, cutoff, deps)) result.warnedCount = (result.warnedCount ?? 0) + 1;
     }
 
@@ -576,6 +577,7 @@ export async function runRequestExpirySweep(
 /**
  * "[name] hasn't entered the handoff code. If you've handed it over, report a problem before [date, time]." To the owner only, once
  * per request and cutoff (the lifecycle event's idempotency key is the claim), and only while the code has not been used.
+ * Courier deliveries are included.
  */
 async function sendOwnerCodeWarning(
   request: ExpiryRequest,
@@ -584,7 +586,7 @@ async function sendOwnerCodeWarning(
   deps: RequestExpiryDeps,
 ): Promise<boolean> {
   if (!item.ownerId || !request.requesterId) return false;
-  if (request.pinUsed === true || request.deliveryMethod === "courier") return false;
+  if (request.pinUsed === true) return false;
   const claimed = await db.insert(requestLifecycleEvents).values({
     requestId: request.id, eventType: "HANDOFF_CODE_WARNING_SENT", idempotencyKey: `handoff-code-warning-${request.id}-${cutoff.getTime()}`,
     details: { cutoff: cutoff.toISOString() },

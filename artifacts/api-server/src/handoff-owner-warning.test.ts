@@ -173,10 +173,9 @@ test("a rental is warned too, and it needs no expiry reminders to be switched on
   assert.equal((await sweep(id, new Date(cutoff.getTime() - 2 * HOUR), { reminders: false })).warnedCount, 1);
 });
 
-test("no warning once the code has been entered, in a dispute, for a courier delivery, for a swap or after the cutoff", async () => {
+test("no warning once the code has been entered, in a dispute, for a swap or after the cutoff", async () => {
   const cases: [string, Partial<typeof itemRequests.$inferInsert>][] = [
     ["code entered", { pinUsed: true }],
-    ["courier", { deliveryMethod: "courier" }],
     ["disputed", { status: "HANDOFF_DISPUTED" }],
     ["in progress", { status: "IN_PROGRESS" }],
   ];
@@ -191,6 +190,22 @@ test("no warning once the code has been entered, in a dispute, for a courier del
   const swap = await seed({ requestType: "SWAP", status: "ACCEPTED" });
   await sweep(swap, new Date());
   assert.deepEqual(await warnings(swap), []);
+});
+
+test("a courier delivery is warned like any other", async () => {
+  const { id, cutoff } = await borrow({ deliveryMethod: "courier" });
+  assert.equal((await sweep(id, new Date(cutoff.getTime() - 2 * HOUR))).warnedCount, 1);
+  assert.equal((await warnings(id)).length, 1);
+});
+
+test("while expiry is in dry-run nobody is warned, and when it goes live the waiting request is", async () => {
+  const { id, cutoff } = await borrow();
+  const now = new Date(cutoff.getTime() - 3 * HOUR);
+  const dry = await sweep(id, now, { expireDryRun: true });
+  assert.equal(dry.warnedCount ?? 0, 0);
+  assert.deepEqual(await warnings(id), []);
+  const live = await sweep(id, now, { expireDryRun: false });
+  assert.equal(live.warnedCount, 1);
 });
 
 test("a dry run warns nobody, and HANDOFF_OWNER_WARNING=off turns the warning off without touching the reminders", async () => {

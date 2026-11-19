@@ -478,8 +478,8 @@ async function finishCompletedSwap(
 
     await awardSwapCompletionPoints(swap.ownerId, swap.requesterId, swap.requestId, swap.itemId, swap.itemId);
     await db.insert(notifications).values([
-      { userId: swap.ownerId, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: swap.itemId, requestId: swap.requestId, isRead: false },
-      { userId: swap.requesterId, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: swap.itemId, requestId: swap.requestId, isRead: false },
+      { userId: swap.ownerId, type: "trust_score_changed", title: "Trust Score", message: "Swap completed +20", itemId: swap.itemId, requestId: swap.requestId, isRead: false },
+      { userId: swap.requesterId, type: "trust_score_changed", title: "Trust Score", message: "Swap completed +20", itemId: swap.itemId, requestId: swap.requestId, isRead: false },
     ]);
     await checkAndAwardReferralBonus(swap.ownerId, swap.requestId, 'SWAP');
     await checkAndAwardReferralBonus(swap.requesterId, swap.requestId, 'SWAP');

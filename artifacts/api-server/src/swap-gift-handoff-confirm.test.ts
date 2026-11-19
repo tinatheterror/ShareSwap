@@ -277,11 +277,11 @@ test("a SWAP the sweep confirms settles coins exactly as one both people confirm
     assert.deepEqual(await ledger(a), await ledger(m), "the same ledger rows");
     assert.equal(await balance(a), await balance(m), "the same balance");
   }
-  // Both people are told "Trust Score +20", on the auto-confirm path as on the manual one.
+  // Both people are told "Trust Score" and "Swap completed +20", on the auto-confirm path as on the manual one.
   for (const [swapId, people] of [[swap.id, auto], [swap2.id, manual]] as const) {
     for (const personId of [people.ownerId, people.requesterId]) {
       const trust = (await notesFor(swapId, personId)).filter((n) => n.type === "trust_score_changed");
-      assert.deepEqual(trust.map((n) => `${n.title}|${n.message}`), ["Trust Score +20|Swap completed +20"], `swap ${swapId}, user ${personId}`);
+      assert.deepEqual(trust.map((n) => `${n.title}|${n.message}`), ["Trust Score|Swap completed +20"], `swap ${swapId}, user ${personId}`);
     }
   }
   // The offset is the tier difference (20 - 10): the side with the cheaper item pays it, once, and the other receives it.

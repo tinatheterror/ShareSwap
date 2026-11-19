@@ -9,6 +9,9 @@ import { timerRunName } from "./job-switches.js";
 import { registerRoutes } from "./routes/routes.js";
 import { ensureJobSwitchesTable, ensureScheduledJobRunsTable } from "./startup-migrations.js";
 
+// The one-sided extras are off by default (handoff-flags.ts); these tests report an overdue one-sided handoff, so auto-confirm is on.
+process.env.HANDOFF_AUTO_CONFIRM = "on";
+
 // The real timers, started by the real registerRoutes / startRateLimitCleanup, must read their own switch
 // row on every tick. Rows are set up for four jobs and the timers' own handlers are fired by hand:
 //   return-recovery   off      -> its work must not run (no timer:return-recovery record)

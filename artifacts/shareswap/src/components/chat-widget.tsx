@@ -206,6 +206,7 @@ interface ItemRequest {
   swapOfferedItems?: { id: number; name: string; photos: string[]; tier?: number | null }[];
   counterSwapOwnerItemIds: number[] | null;
   counterSwapRequesterItemIds: number[] | null;
+  swapRequestedItems?: { id: number; name: string; photos: string[]; tier?: number | null }[];
   counterSwapOwnerItems?: { id: number; name: string; photos: string[]; tier?: number | null }[];
   counterSwapRequesterItems?: { id: number; name: string; photos: string[]; tier?: number | null }[];
   counterNote: string | null;
@@ -1452,7 +1453,8 @@ export function ChatWidget() {
                   : (request.swapOfferedItems ?? []);
                 const rightItems: { id: number; name: string; photos: string[]; tier?: number | null }[] = hasCounter && request.counterSwapOwnerItems?.length
                   ? request.counterSwapOwnerItems
-                  : [{ id: request.item.id, name: request.item.name, photos: request.item.photos, tier: request.item.tier }];
+                  // The listing item, plus any other items of the owner's the requester also asked for.
+                  : [{ id: request.item.id, name: request.item.name, photos: request.item.photos, tier: request.item.tier }, ...(request.swapRequestedItems ?? [])];
 
                 if (leftItems.length === 0 && rightItems.length === 0) return null;
 

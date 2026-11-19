@@ -117,6 +117,8 @@ interface ItemRequest {
   counterRound: number | null;
   swapOfferedItemIds: number[] | null;
   swapOfferedItems?: { id: number; name: string; photos: string[] | null; tier?: number | null }[];
+  /** The owner's extra items the requester asked for on the first request (the listing item itself is request.item). */
+  swapRequestedItems?: SwapSummaryItem[];
   counterSwapOwnerItemIds: number[] | null;
   counterSwapRequesterItemIds: number[] | null;
   counterSwapOwnerItems?: SwapSummaryItem[];
@@ -854,7 +856,11 @@ export default function ChatScreen() {
             : (request.swapOfferedItems ?? []);
           const rightItems: SwapSummaryItem[] = hasCounter && request.counterSwapOwnerItems?.length
             ? request.counterSwapOwnerItems
-            : request.item ? [{ id: request.item.id, name: request.item.name ?? "Item", photos: request.item.photos ?? null, tier: (request.item as { tier?: number | null }).tier }] : [];
+            : [
+                ...(request.item ? [{ id: request.item.id, name: request.item.name ?? "Item", photos: request.item.photos ?? null, tier: (request.item as { tier?: number | null }).tier }] : []),
+                // The owner's other items the requester also asked for.
+                ...(request.swapRequestedItems ?? []),
+              ];
           if (leftItems.length === 0 && rightItems.length === 0) return null;
           const result = calcSwap(
             leftItems.reduce((sum, i) => sum + getTierSC(i.tier), 0),

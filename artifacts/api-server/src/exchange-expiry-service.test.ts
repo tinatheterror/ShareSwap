@@ -6,6 +6,7 @@ import { runRequestExpirySweep, type RequestExpiryDeps } from "./request-expiry-
 import { dueExchangeReminder, exchangeExpiryDeadline, runExchangeExpirySweep } from "./exchange-expiry-service.js";
 import { exchangeExpiredChat, exchangeExpiredNotice, exchangeExpiryReminder } from "./request-expiry-copy.js";
 import { compactNotificationCopy } from "./notification-copy.js";
+import { buildExpirySweepOptions, resolveRemindersEnabled } from "./scheduled-job-options.js";
 import { expiredExchangeCountsFor, expiredExchangeCountsForAll } from "./expired-exchange-counts.js";
 import { findReservationConflict, heldItemIdSet } from "./swap-reservation.js";
 
@@ -116,6 +117,27 @@ for (const type of ["SWAP", "GIFT"] as const) {
       assert.deepEqual(result.candidates, []);
     }
     assert.equal((await load(id)).status, "AWAITING_HANDOFF_CONFIRM");
+  });
+
+  test(`with the default settings (expiry reminders off) a ${word} gets no 72h or 24h reminder, but still gets its expiry notice`, async () => {
+    const { id } = await newExchange(type);
+    const run = (now: Date, raw?: string) =>
+      runRequestExpirySweep({} as RequestExpiryDeps, { ...buildExpirySweepOptions("live", resolveRemindersEnabled(raw), now), onlyRequestIds: [id] });
+    for (const hoursLeft of [71, 23]) {
+      const result = await run(new Date(DEADLINE.getTime() - hoursLeft * H));
+      assert.equal(result.remindedCount, 0);
+      assert.deepEqual(result.candidates, []);
+    }
+    assert.deepEqual((await notesFor(id)).filter((n) => n.type.includes("expiry_reminder")), []);
+
+    const expired = await run(new Date(DEADLINE.getTime() + 1_000));
+    assert.equal(expired.expiredCount, 1);
+    assert.equal((await notesFor(id)).filter((n) => n.type === "request_expired").length, 2, "both people still get the expiry notice");
+
+    // Switched on, the reminder code still works.
+    const other = await newExchange(type);
+    const on = await runRequestExpirySweep({} as RequestExpiryDeps, { ...buildExpirySweepOptions("live", resolveRemindersEnabled("on"), new Date(DEADLINE.getTime() - 71 * H)), onlyRequestIds: [other.id] });
+    assert.equal(on.remindedCount, 1);
   });
 
   test(`the 72h and 24h reminders for a ${word} each go to both people once, naming the other person`, async () => {

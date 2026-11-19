@@ -32,7 +32,7 @@ export interface ExpirySweepTimerDeps {
 
 /**
  * Optional in-process request-expiry sweep. Expiry is ALWAYS a dry run here (nothing expires); the
- * 4h "hand off soon" reminder follows SCHEDULED_JOBS_EXPIRY_REMINDERS (on by default), like the
+ * expiry reminders follow SCHEDULED_JOBS_EXPIRY_REMINDERS (off by default), like the
  * scheduled-jobs script, and a "request-expiry" switch set to off (or unreadable) skips the tick.
  * Returns null (and schedules nothing) unless EXPIRY_SWEEP_TIMER=on.
  */

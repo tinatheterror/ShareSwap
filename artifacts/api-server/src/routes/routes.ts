@@ -12677,7 +12677,7 @@ Respond with ONLY the category name, nothing else.`
       backgroundJobs.setInterval(() => void runSweepWatchdog(), SWEEP_WATCHDOG_EVERY_MS);
 
       // Optional request-expiry sweep, OFF unless EXPIRY_SWEEP_TIMER=on (see request-expiry-timer.ts):
-      // expiry is always a dry run; the 4h reminder follows SCHEDULED_JOBS_EXPIRY_REMINDERS.
+      // expiry is always a dry run; the expiry reminders follow SCHEDULED_JOBS_EXPIRY_REMINDERS (off by default).
       startRequestExpirySweepTimer({
         env: process.env,
         sweep: (options) => runRequestExpirySweep(requestExpiryDeps, options),

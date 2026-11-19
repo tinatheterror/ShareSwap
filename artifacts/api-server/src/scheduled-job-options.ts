@@ -17,9 +17,15 @@ export function resolveJobMode(raw: string | undefined): JobMode {
   return "dry-run";
 }
 
+/**
+ * The expiry reminders are OFF unless SCHEDULED_JOBS_EXPIRY_REMINDERS is explicitly on: the 4-hour "hand off soon" reminder for
+ * borrows and rentals and the 72-hour and 24-hour reminders for accepted swaps and gifts. Anything else (unset, empty, off,
+ * or a value that is not recognised) is off, so a typo never turns notifications on. The reminder code is intact; set
+ * SCHEDULED_JOBS_EXPIRY_REMINDERS=on to send them again. Expiry notices themselves are not reminders and are unaffected.
+ */
 export function resolveRemindersEnabled(raw: string | undefined): boolean {
   const value = raw?.trim().toLowerCase();
-  return !(value === "off" || value === "false" || value === "0" || value === "no");
+  return value === "on" || value === "true" || value === "1" || value === "yes";
 }
 
 /** Expiry stays a dry run unless explicitly live; reminders are controlled separately. */

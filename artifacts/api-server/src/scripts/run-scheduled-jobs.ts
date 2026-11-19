@@ -35,7 +35,7 @@ export type { JobMode };
 //
 // Switches (all read from the environment, so going live never needs a code change):
 //   SCHEDULED_JOBS_EXPIRY_MODE         off | dry-run (default) | live
-//   SCHEDULED_JOBS_EXPIRY_REMINDERS    on (default) | off      the 4h "hand off soon" reminder
+//   SCHEDULED_JOBS_EXPIRY_REMINDERS    off (default) | on     all expiry reminders: borrows/rentals 4h, swaps/gifts 72h and 24h
 //   SCHEDULED_JOBS_HANDOFF_MODE        off | dry-run (default) | live
 //   HEARTBEAT_URL                      optional: requested once at the end of every real run that finished
 //                                      without a failed step (heartbeat.ts), for an external dead-man's-switch monitor
@@ -128,7 +128,7 @@ export function liveWarning(env: NodeJS.ProcessEnv): string {
     "!! return-recovery:  LIVE (finishes approved returns; calls Stripe)",
     "!! overdue-reminders: LIVE every 6h (notifications, push, overdue stages, penalties)",
     "!! rate-limit-cleanup: LIVE (deletes expired rows)",
-    `!! request-expiry:   ${expiry.toUpperCase()}${expiry === "off" ? "" : `; 4h reminders ${reminders ? "ON (sends notifications + push)" : "off"}`}`,
+    `!! request-expiry:   ${expiry.toUpperCase()}${expiry === "off" ? "" : `; reminders ${reminders ? "ON (sends notifications + push)" : "off"}`}`,
     `!! handoff-deadlines: ${handoff.toUpperCase()}`,
     `!! Starting in ${LIVE_WARNING_DELAY_MS / 1000}s — press Ctrl+C now to abort. For a safe report use: pnpm jobs:run`,
     bar,

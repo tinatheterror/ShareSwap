@@ -93,11 +93,11 @@ test("switched on, it sweeps once right away and then every minute", async () =>
   h.scheduled[0].run();
   await settle();
   assert.equal(h.sweepCalls.length, 2, "each tick runs one more sweep");
-  assert.deepEqual(h.logs, ["[request-expiry] in-process sweep ON: expiry dry-run, reminders on"]);
+  assert.deepEqual(h.logs, ["[request-expiry] in-process sweep ON: expiry dry-run, reminders off"]);
 });
 
 test("expiry is always a dry run and reminders are not, whatever the other switches say", async () => {
-  const h = harness({ EXPIRY_SWEEP_TIMER: "on", SCHEDULED_JOBS_EXPIRY_MODE: "live" });
+  const h = harness({ EXPIRY_SWEEP_TIMER: "on", SCHEDULED_JOBS_EXPIRY_MODE: "live", SCHEDULED_JOBS_EXPIRY_REMINDERS: "on" });
   await settle();
   const options = h.sweepCalls[0];
   assert.equal(options.expireDryRun, true, "the timer never expires anything, even if the job is live");
@@ -105,6 +105,14 @@ test("expiry is always a dry run and reminders are not, whatever the other switc
   assert.equal(options.reminders, true);
   assert.equal(options.now?.getTime(), NOW.getTime());
   assert.equal(options.maxCutoffAgeMs, EXPIRY_SWEEP_MAX_CUTOFF_AGE_MS);
+});
+
+test("reminders are off unless SCHEDULED_JOBS_EXPIRY_REMINDERS is switched on", async () => {
+  for (const raw of [undefined, "", "off", "typo"]) {
+    const h = harness({ EXPIRY_SWEEP_TIMER: "on", ...(raw === undefined ? {} : { SCHEDULED_JOBS_EXPIRY_REMINDERS: raw }) });
+    await settle();
+    assert.equal(h.sweepCalls[0].reminders, false, JSON.stringify(raw));
+  }
 });
 
 test("reminders follow SCHEDULED_JOBS_EXPIRY_REMINDERS", async () => {

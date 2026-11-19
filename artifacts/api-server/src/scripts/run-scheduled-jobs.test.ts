@@ -111,14 +111,16 @@ test("modes default to dry-run and anything unrecognised is never live", () => {
   assert.equal(resolveJobMode("off"), "off");
 });
 
-test("reminders default on and are switched off separately from expiry", () => {
-  assert.equal(resolveRemindersEnabled(undefined), true);
-  assert.equal(resolveRemindersEnabled("on"), true);
-  assert.equal(resolveRemindersEnabled("off"), false);
-  assert.equal(resolveRemindersEnabled("0"), false);
+test("expiry reminders default OFF and are switched on separately from expiry", () => {
+  for (const off of [undefined, "", "  ", "off", "false", "0", "no", "ON-ish", "enabled", "maybe"]) {
+    assert.equal(resolveRemindersEnabled(off), false, `${JSON.stringify(off)} is off`);
+  }
+  for (const on of ["on", "ON", " on ", "true", "1", "yes"]) {
+    assert.equal(resolveRemindersEnabled(on), true, `${JSON.stringify(on)} is on`);
+  }
 });
 
-test("expiry dry-run keeps reminders on and applies the age cutoff", () => {
+test("expiry dry-run passes the reminders choice through and applies the age cutoff", () => {
   const now = new Date("2026-10-06T12:00:00Z");
   assert.deepEqual(buildExpirySweepOptions("dry-run", true, now), {
     now,
@@ -270,7 +272,7 @@ function fakeJobs(calls: { expiry?: any; handoffMode?: string }): ScheduledJobRu
   };
 }
 
-test("by default the expiry and handoff sweeps are dry runs and the 4h reminder is on", async () => {
+test("by default the expiry and handoff sweeps are dry runs and every expiry reminder is off", async () => {
   const calls: { expiry?: any; handoffMode?: string } = {};
   const steps = buildSteps(fakeJobs(calls), {} as NodeJS.ProcessEnv, async () => 0);
   assert.deepEqual(steps.map((s) => s.name), [
@@ -287,18 +289,18 @@ test("by default the expiry and handoff sweeps are dry runs and the 4h reminder 
 
   assert.equal(calls.handoffMode, "dry-run");
   assert.equal(calls.expiry.expireDryRun, true);
-  assert.equal(calls.expiry.reminders, true);
+  assert.equal(calls.expiry.reminders, false);
   assert.equal(calls.expiry.maxCutoffAgeMs, EXPIRY_SWEEP_MAX_CUTOFF_AGE_MS);
   assert.ok(logs.some((l) => l.includes("DRY-RUN would expire request 9")));
   assert.ok(!logs.some((l) => l.includes("request 10")), "reminder candidates are not reported as expiries");
-  assert.ok(logs.some((l) => l.includes("[scheduled-jobs] request-expiry: mode=dry-run reminders=on")));
+  assert.ok(logs.some((l) => l.includes("[scheduled-jobs] request-expiry: mode=dry-run reminders=off")));
 });
 
 test("switches take effect from the environment", async () => {
   const calls: { expiry?: any; handoffMode?: string } = {};
   const env = {
     SCHEDULED_JOBS_EXPIRY_MODE: "live",
-    SCHEDULED_JOBS_EXPIRY_REMINDERS: "off",
+    SCHEDULED_JOBS_EXPIRY_REMINDERS: "on",
     SCHEDULED_JOBS_HANDOFF_MODE: "off",
   } as NodeJS.ProcessEnv;
   const steps = buildSteps(fakeJobs(calls), env, async () => 0);
@@ -306,7 +308,7 @@ test("switches take effect from the environment", async () => {
   const { store } = fakeStore();
   await runScheduledJobs({ steps, store, log: () => {} });
   assert.equal(calls.expiry.expireDryRun, false);
-  assert.equal(calls.expiry.reminders, false);
+  assert.equal(calls.expiry.reminders, true, "reminders come back on with SCHEDULED_JOBS_EXPIRY_REMINDERS=on");
 });
 
 // ── jobs:run is a report by default ─────────────────────────────────────────────
@@ -331,7 +333,8 @@ test("the live warning names the database host and every live step, never creden
   assert.match(warning, /database host: prod-db\.example\.com/);
   assert.match(warning, /return-recovery:\s+LIVE/);
   assert.match(warning, /overdue-reminders: LIVE/);
-  assert.match(warning, /request-expiry:\s+LIVE; 4h reminders ON/);
+  assert.match(warning, /request-expiry:\s+LIVE; reminders off/, "reminders are off unless switched on");
+  assert.match(liveWarning({ ...env, SCHEDULED_JOBS_EXPIRY_REMINDERS: "on" } as NodeJS.ProcessEnv), /request-expiry:\s+LIVE; reminders ON/);
   assert.match(warning, /Ctrl\+C/);
   assert.ok(!/hunter2|app_user/.test(warning), "no credentials in the warning");
   assert.equal(databaseHost({ DATABASE_URL: "not a url" } as NodeJS.ProcessEnv), "(unparseable DATABASE_URL)");

@@ -19,7 +19,7 @@ import {
   runRequestExpirySweep,
   type RequestExpiryDeps,
 } from "./request-expiry-service.js";
-import { buildExpirySweepOptions } from "./scheduled-job-options";
+import { buildExpirySweepOptions, resolveRemindersEnabled } from "./scheduled-job-options";
 
 // Oct 2–5 (the agreed dates) → cutoff Oct 4 23:59:59 in Vancouver (PDT, UTC-7)
 // = 2026-10-05T06:59:59Z. Request dates never move; only the cutoff matters here.
@@ -1020,6 +1020,30 @@ test("sweep: reminders can be switched off without touching expiry", async () =>
   const dueRequest = await newRequest({ depositMethod: "in_person" });
   const expired = await runRequestExpirySweep(noStripe().deps, { now: ONE_SECOND_AFTER, reminders: false, onlyRequestIds: [dueRequest.id] });
   assert.equal(expired.expiredCount, 1);
+});
+
+test("sweep: with the default environment (reminders off) nothing is reminded, expiry notices still go out", async () => {
+  const defaults = (now: Date, id: number) => ({ ...buildExpirySweepOptions("live", resolveRemindersEnabled(undefined), now), onlyRequestIds: [id] });
+  const pushes: number[] = [];
+  const deps = { ...noStripe().deps, push: (userId: number) => void pushes.push(userId) };
+
+  const soon = await newRequest({ depositMethod: "in_person" });
+  const early = await runRequestExpirySweep(deps, defaults(THREE_HOURS_BEFORE, soon.id));
+  assert.equal(early.remindedCount, 0);
+  assert.deepEqual(early.candidates, []);
+  assert.equal((await notes(soon.id, "handoff_deadline_reminder")).length, 0);
+  assert.equal((await load(soon.id)).expiryReminderSentAt, null);
+  assert.deepEqual(pushes, []);
+
+  const expired = await runRequestExpirySweep(deps, defaults(ONE_SECOND_AFTER, soon.id));
+  assert.equal(expired.expiredCount, 1);
+  assert.equal((await load(soon.id)).status, "EXPIRED");
+  assert.ok((await notes(soon.id, "request_expired")).length > 0, "the expiry notice still goes out");
+
+  // Switched on, the same sweep reminds again: the reminder code is intact.
+  const another = await newRequest({ depositMethod: "in_person" });
+  const on = await runRequestExpirySweep(deps, { ...buildExpirySweepOptions("live", resolveRemindersEnabled("on"), THREE_HOURS_BEFORE), onlyRequestIds: [another.id] });
+  assert.equal(on.remindedCount, 1);
 });
 
 test("sweep: maxCutoffAgeMs leaves long-expired requests for the silent cleanup", async () => {

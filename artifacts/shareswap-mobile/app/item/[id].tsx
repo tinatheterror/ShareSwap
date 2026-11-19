@@ -793,6 +793,7 @@ export default function ItemDetailScreen() {
           imageUrl: item.imageUrl,
           tier: item.tier,
           ownerId: item.ownerId ?? item.owner?.id,
+          ownerName: item.owner?.displayName || item.owner?.username || undefined,
         }}
         isOpen={showSwapSelector}
         onClose={() => setShowSwapSelector(false)}

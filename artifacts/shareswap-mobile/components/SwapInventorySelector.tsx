@@ -55,6 +55,8 @@ export interface TargetItem {
   imageUrl?: string;
   tier?: number;
   ownerId?: number;
+  /** The owner's public name, for "[name] pays you N ShareCoins." */
+  ownerName?: string | null;
 }
 
 interface Props {
@@ -127,6 +129,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
   // 5 additional items shown by default (+ 1 locked target = 6 visible)
   const visibleOwnerItems = showAllOwner ? ownerExtraItems : ownerExtraItems.slice(0, 5);
 
+  const ownerName = targetItem.ownerName?.trim() || "The owner";
   const targetSC = getTierSC(targetItem.tier);
   const yourSC = selectedItemIds.reduce((sum, id) => {
     const item = swappableItems.find((i) => i.id === id);
@@ -478,7 +481,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
 
               {/* ── Fairness summary ── */}
               {anySelected && (
-                <SwapFairnessSummary yourSC={yourSC} theirSC={theirSC} valuation={valuation} maxOffset={MAX_SWAP_OFFSET} />
+                <SwapFairnessSummary yourSC={yourSC} theirSC={theirSC} valuation={valuation} maxOffset={MAX_SWAP_OFFSET} otherName={ownerName} />
               )}
 
               {/* ── Hint when nothing selected ── */}
@@ -635,8 +638,8 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
                         color: v2.offsetDirection === "you_pay" ? "#b45309" : "#16a34a",
                       }]}>
                         {v2.offsetDirection === "you_pay"
-                          ? `You pay ${v2.offset} ShareCoins to balance the swap`
-                          : `You receive ${v2.offset} ShareCoins`}
+                          ? `You pay ${ownerName} ${v2.offset} ShareCoins.`
+                          : `${ownerName} pays you ${v2.offset} ShareCoins.`}
                       </Text>
                     </View>
                   )}

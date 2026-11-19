@@ -15,7 +15,7 @@ interface Valuation {
  * propose-new-terms sheet so both read the same: green when fair, yellow when ShareCoins settle a difference,
  * red when the offset is over the maximum.
  */
-export function SwapFairnessSummary({ yourSC, theirSC, valuation, maxOffset }: { yourSC: number; theirSC: number; valuation: Valuation; maxOffset: number }) {
+export function SwapFairnessSummary({ yourSC, theirSC, valuation, maxOffset, otherName }: { yourSC: number; theirSC: number; valuation: Valuation; maxOffset: number; otherName?: string }) {
   let fc = { bg: "#fefce8", border: "#fcd34d", text: "#92400e" }; // yellow = offset
   if (valuation.exceedsMax) fc = { bg: "#fef2f2", border: "#fecaca", text: "#b91c1c" };
   else if (valuation.isFair) fc = { bg: "#f0fdf4", border: "#86efac", text: "#15803d" };
@@ -25,8 +25,8 @@ export function SwapFairnessSummary({ yourSC, theirSC, valuation, maxOffset }: {
     : valuation.exceedsMax
       ? `Offset is ${valuation.offset} ShareCoins — maximum allowed is ${maxOffset}`
       : valuation.offsetDirection === "you_pay"
-        ? `You pay ${valuation.offset} ShareCoins to balance`
-        : `You receive +${valuation.offset} ShareCoins to balance`;
+        ? (otherName ? `You pay ${otherName} ${valuation.offset} ShareCoins.` : `You pay ${valuation.offset} ShareCoins to balance`)
+        : (otherName ? `${otherName} pays you ${valuation.offset} ShareCoins.` : `You receive +${valuation.offset} ShareCoins to balance`);
 
   return (
     <View style={[s.fairness, { backgroundColor: fc.bg, borderColor: fc.border }]}>

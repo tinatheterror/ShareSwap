@@ -16,6 +16,7 @@
     "wallet:backfill": "tsx src/scripts/backfill-wallet-transactions.ts",
     "usd-test-data:clean": "tsx src/scripts/clean-usd-test-data.ts",
     "evidence:purge-public": "tsx src/scripts/purge-public-evidence.ts",
+    "requests:expire-stale": "tsx src/scripts/expire-stale-requests.ts",
     "condition-photos:fix": "tsx src/scripts/fix-condition-photos.ts",
     "persona:sandbox-check": "tsx src/scripts/persona-sandbox-check.ts",
     "demo:seed-reviewer": "tsx src/scripts/seed-reviewer-demo.ts",

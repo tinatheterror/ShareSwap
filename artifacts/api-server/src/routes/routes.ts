@@ -116,6 +116,7 @@ import {
   type RequestExpirySweepOptions,
   type RequestExpirySweepResult,
 } from "../request-expiry-service";
+import { SWEEP_WATCHDOG_EVERY_MS, SWEEP_WATCHDOG_JOB, checkSweepHeartbeats } from "../sweep-watchdog";
 import { giftedItemIds, isItemPassedOn, ITEM_PASSED_ON_CODE, ITEM_PASSED_ON_MESSAGE, notPassedOnItemSql } from "../passed-on-items";
 import { findReservationConflict, heldItemIdSet, ITEM_ALREADY_COMMITTED_CODE, ITEM_ALREADY_COMMITTED_MESSAGE } from "../swap-reservation";
 import { handoffDeadlineLabel, requestExpiredError, REQUEST_EXPIRED_CODE } from "../request-expiry-copy";
@@ -12634,6 +12635,17 @@ Respond with ONLY the category name, nothing else.`
       return `notified=${await notifyUnblockedRequests()} releasedHolds=${released} settledAutoConfirmed=${settled}`;
     },
   });
+  // Tells every admin when a sweep that is switched live has not run for 24 hours (sweep-watchdog.ts). It reads only, so
+  // there is no dry run; the kill switch (job_switches row "sweep-watchdog") can turn it off.
+  const runSweepWatchdog = guardedJob({
+    name: SWEEP_WATCHDOG_JOB,
+    envMode: "live",
+    supportsDryRun: false,
+    run: async () => {
+      const checks = await checkSweepHeartbeats({ env: process.env });
+      return checks.map((c) => `${c.job}=${c.health}${c.alerted ? "(alerted)" : ""}`).join(" ");
+    },
+  });
   options.onScheduledJobs?.({
     runReturnRecovery: async () => {
       const { checked, completed, pending } = await recoverPendingApprovedReturns({
@@ -12661,6 +12673,8 @@ Respond with ONLY the category name, nothing else.`
       backgroundJobs.setInterval(() => void runReturnRecoverySweep(), 60 * 1000);
       backgroundJobs.setInterval(() => void runAdminAlertSweep(), 60 * 1000);
       backgroundJobs.setInterval(() => void runFundsRecheckSweep(), 60 * 1000);
+      void runSweepWatchdog();
+      backgroundJobs.setInterval(() => void runSweepWatchdog(), SWEEP_WATCHDOG_EVERY_MS);
 
       // Optional request-expiry sweep, OFF unless EXPIRY_SWEEP_TIMER=on (see request-expiry-timer.ts):
       // expiry is always a dry run; the 4h reminder follows SCHEDULED_JOBS_EXPIRY_REMINDERS.

@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, itemRequests, items, notifications, pool, rentalPayouts, requestLifecycleEvents, users, walletTransactions } from "@workspace/db";
-import { sendBorrowerHandoffReminders } from "./handoff-reminders.js";
+import { handoff12HourReminderEnabled, sendBorrowerHandoffReminders } from "./handoff-reminders.js";
 import { freezeRentalEarnings, resolveFrozenRentalEarnings } from "./rental-earnings-freeze.js";
 import { recordWalletEntry, rentalEarningKey } from "./wallet-ledger.js";
+
+// The 12 hour reminder is off by default (HANDOFF_REMINDER_12H). The tests below that cover it run with it switched on, as an
+// operator would; the tests at the end of the file cover the default.
+process.env.HANDOFF_REMINDER_12H = "on";
 
 const unique = `handoff-protection-${Date.now()}`;
 const HOUR = 3_600_000;
@@ -216,4 +220,84 @@ test("the owner winning returns the frozen earnings; the borrower winning revers
   assert.equal(await payoutStatus(lost.payoutId), "reversed");
   assert.equal(await resolveFrozenRentalEarnings(lost.requestId, "borrower"), null);
   assert.equal(await resolveFrozenRentalEarnings(lost.requestId, "owner"), null);
+});
+
+// ── The 12 hour reminder is off by default ────────────────────────────────────────
+
+async function withTwelveHour<T>(value: string | undefined, run: () => Promise<T>): Promise<T> {
+  const before = process.env.HANDOFF_REMINDER_12H;
+  if (value === undefined) delete process.env.HANDOFF_REMINDER_12H;
+  else process.env.HANDOFF_REMINDER_12H = value;
+  try {
+    return await run();
+  } finally {
+    if (before === undefined) delete process.env.HANDOFF_REMINDER_12H;
+    else process.env.HANDOFF_REMINDER_12H = before;
+  }
+}
+
+test("HANDOFF_REMINDER_12H is off unless explicitly on", () => {
+  for (const raw of [undefined, "", "off", "false", "0", "maybe", "enabled"]) {
+    assert.equal(handoff12HourReminderEnabled({ HANDOFF_REMINDER_12H: raw } as NodeJS.ProcessEnv), false, JSON.stringify(raw));
+  }
+  for (const raw of ["on", "ON", " true ", "1", "yes"]) {
+    assert.equal(handoff12HourReminderEnabled({ HANDOFF_REMINDER_12H: raw } as NodeJS.ProcessEnv), true, JSON.stringify(raw));
+  }
+});
+
+test("by default nobody gets a 12 hour reminder, on any type or from either side, but everybody still gets the 2 hour one", async () => {
+  await withTwelveHour(undefined, async () => {
+    for (const type of ["BORROW", "RENT", "SWAP", "GIFT"]) {
+      const ownerFirst = await awaitingRequest(24, { requestType: type }); // the requester is the one waited on
+      const requesterFirst = await awaitingRequest(24, { requestType: type, ownerConfirmedHandoff: false, borrowerConfirmedHandoff: true }); // the owner is
+      const only = { onlyRequestIds: [ownerFirst, requesterFirst] };
+
+      for (const hoursLeft of [23, 12, 11, 5, 2.5]) {
+        assert.equal(await sendBorrowerHandoffReminders(at(hoursLeft, 24), only), 0, `${type}: nothing with ${hoursLeft} hours left`);
+      }
+      assert.deepEqual([...(await reminders(ownerFirst)), ...(await reminders(requesterFirst))], [], `${type}: no 12 hour reminder`);
+
+      assert.equal(await sendBorrowerHandoffReminders(at(2, 24), only), 2, `${type}: the 2 hour reminder goes to both people waited on`);
+      assert.equal(await sendBorrowerHandoffReminders(at(1, 24), only), 0, "once only");
+      const toRequester = await reminders(ownerFirst);
+      const toOwner = await reminders(requesterFirst);
+      assert.equal(toRequester.length, 1);
+      assert.equal(toOwner.length, 1);
+      assert.equal(toRequester[0].userId, borrowerId);
+      assert.equal(toOwner[0].userId, ownerId);
+      assert.match(toRequester[0].message, /within 2 hours/);
+      assert.match(toOwner[0].message, /within 2 hours/);
+      assert.ok(![...toRequester, ...toOwner].some((n) => /12 hours/.test(n.message)));
+    }
+  });
+});
+
+test("by default a request first seen with under 2 hours left still gets its 2 hour reminder", async () => {
+  await withTwelveHour(undefined, async () => {
+    const id = await awaitingRequest(1);
+    assert.equal(await sendBorrowerHandoffReminders(NOW, { onlyRequestIds: [id] }), 1);
+    assert.match((await reminders(id))[0].message, /within 2 hours/);
+  });
+});
+
+test("switching the 12 hour reminder on later reminds the requests still waiting, because nothing was claimed while it was off", async () => {
+  const id = await awaitingRequest(24);
+  const only = { onlyRequestIds: [id] };
+  await withTwelveHour(undefined, async () => {
+    assert.equal(await sendBorrowerHandoffReminders(at(8, 24), only), 0);
+  });
+  await withTwelveHour("on", async () => {
+    assert.equal(await sendBorrowerHandoffReminders(at(7, 24), only), 1);
+    assert.match((await reminders(id))[0].message, /within 12 hours/);
+  });
+});
+
+test("the explicit option overrides the switch both ways", async () => {
+  const id = await awaitingRequest(24);
+  await withTwelveHour("on", async () => {
+    assert.equal(await sendBorrowerHandoffReminders(at(8, 24), { onlyRequestIds: [id], include12Hour: false }), 0);
+  });
+  await withTwelveHour(undefined, async () => {
+    assert.equal(await sendBorrowerHandoffReminders(at(8, 24), { onlyRequestIds: [id], include12Hour: true }), 1);
+  });
 });

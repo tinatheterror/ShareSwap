@@ -3,6 +3,7 @@ import { db, itemRequests, items, notifications, requestLifecycleEvents, shareCo
 import type { SHARECOIN_HOLD_RELEASE_REASONS, SHARECOIN_HOLD_SETTLE_REASONS } from "@workspace/db";
 import { borrowLimitBody, BORROW_LIMIT_MESSAGE, monthlyBorrowSlotAvailable, takeMonthlyBorrowSlot } from "./borrow-allowance";
 import { sendPushToUser } from "./push-notifications";
+import { envFlagOn } from "./scheduled-job-options";
 
 // The one place that decides what a ShareCoin action costs, who pays it and whether they can. Every gate (sending a
 // request or counter, accepting one) goes through applyFundsGate; nothing else does its own balance arithmetic.
@@ -300,9 +301,16 @@ export async function recordFundsBlock(
  * Tells each blocked person, once, that the request can now be accepted: when the payer can afford it again, or when
  * the request no longer needs ShareCoins. The text carries no amount, no role and no reason. A block whose request is
  * no longer pending is closed without a notice. Returns how many notices were sent.
+ *
+ * The notice is OFF unless FUNDS_UNBLOCKED_NOTICE is explicitly on (on, true, 1 or yes). While it is off a block that has been
+ * resolved is still closed (recorded as not notified), so switching the notice on later tells people about future unblocks,
+ * never about old ones. The code for it is intact.
  */
-export async function notifyUnblockedRequests(options: { now?: Date; exec?: Executor } = {}): Promise<number> {
+export const fundsUnblockedNoticeEnabled = (env: NodeJS.ProcessEnv = process.env) => envFlagOn(env.FUNDS_UNBLOCKED_NOTICE);
+
+export async function notifyUnblockedRequests(options: { now?: Date; exec?: Executor; notify?: boolean } = {}): Promise<number> {
   const exec = options.exec ?? db;
+  const notify = options.notify ?? fundsUnblockedNoticeEnabled();
   const since = new Date((options.now ?? new Date()).getTime() - 14 * 24 * 3_600_000);
   const blocks = await exec
     .select()
@@ -342,7 +350,8 @@ export async function notifyUnblockedRequests(options: { now?: Date; exec?: Exec
     const gate = await evaluateFunds(block.actorId, quote, exec);
     // Still short, or the items are now too far apart (a different problem, not this notice's to announce): leave it open.
     if (gate.kind === "other_short" || gate.kind === "actor_short" || gate.kind === "offset_too_large") continue;
-    if (!(await close(true))) continue;
+    if (!(await close(notify))) continue;
+    if (!notify) continue;
 
     const title = "Ready to accept";
     const message = `You can now accept the request for "${short(row.items.name, 30)}".`;

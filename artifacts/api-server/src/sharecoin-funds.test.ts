@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db, itemRequests, items, messages, notifications, pool, requestLifecycleEvents, shareCoinHolds, users } from "@workspace/db";
 import app from "./app.js";
 import { hashPassword } from "./auth.js";
@@ -11,6 +11,7 @@ import {
   REQUEST_NOT_ACCEPTABLE_NOW_CODE,
   REQUEST_NOT_ACCEPTABLE_NOW_MESSAGE,
   notifyUnblockedRequests,
+  fundsUnblockedNoticeEnabled,
   quoteSwap,
 } from "./sharecoin-funds.js";
 
@@ -265,26 +266,59 @@ test("a swap the requester would pay for: the owner gets only the neutral answer
   await setCoins(requesterId, 100);
 });
 
-test("once the payer can afford it again, the blocked person is told it can be accepted, once, with no reason", async () => {
+test("once the payer can afford it again, the blocked person is told it can be accepted, once, with no reason (when the notice is switched on)", async () => {
   const swap = await pendingSwap(3, 2);
   await setCoins(requesterId, 3);
   assert.equal((await owner.patch(`/api/requests/${swap.id}`, { status: "ACCEPTED" })).status, 409);
 
-  await notifyUnblockedRequests();
+  await notifyUnblockedRequests({ notify: true });
   assert.deepEqual((await notesFor(ownerId, swap.id)).filter((n) => n.type === "request_acceptable"), [], "still short: nothing yet");
 
   await setCoins(requesterId, 50);
-  assert.ok((await notifyUnblockedRequests()) >= 1);
+  assert.ok((await notifyUnblockedRequests({ notify: true })) >= 1);
   const ready = (await notesFor(ownerId, swap.id)).filter((n) => n.type === "request_acceptable");
   assert.equal(ready.length, 1);
   assert.equal(ready[0].message, `You can now accept the request for "${swap.ownerItem.name}".`);
   assert.doesNotMatch(`${ready[0].title} ${ready[0].message}`.replace(swap.ownerItem.name, ""), /ShareCoin|requester|payer|short|balance|\d/i);
-  await notifyUnblockedRequests();
+  await notifyUnblockedRequests({ notify: true });
   assert.equal((await notesFor(ownerId, swap.id)).filter((n) => n.type === "request_acceptable").length, 1, "not repeated");
 
   const accepted = await owner.patch(`/api/requests/${swap.id}`, { status: "ACCEPTED" });
   assert.equal(accepted.status, 200, "and now it can be");
   await setCoins(requesterId, 100);
+});
+
+test("by default (FUNDS_UNBLOCKED_NOTICE off) no 'You can now accept' notice is sent, but the block is still closed and acceptance works", async () => {
+  assert.equal(fundsUnblockedNoticeEnabled({} as NodeJS.ProcessEnv), false);
+  for (const raw of ["", "off", "false", "0", "typo"]) assert.equal(fundsUnblockedNoticeEnabled({ FUNDS_UNBLOCKED_NOTICE: raw } as NodeJS.ProcessEnv), false, raw);
+  for (const raw of ["on", "ON", "true", "1", "yes"]) assert.equal(fundsUnblockedNoticeEnabled({ FUNDS_UNBLOCKED_NOTICE: raw } as NodeJS.ProcessEnv), true, raw);
+
+  const before = process.env.FUNDS_UNBLOCKED_NOTICE;
+  delete process.env.FUNDS_UNBLOCKED_NOTICE;
+  const clearCooldowns = () => pool.query("DELETE FROM swap_cooldowns WHERE user_id_1 = ANY($1) OR user_id_2 = ANY($1)", [userIds]);
+  try {
+    await clearCooldowns(); // the anti-farming cooldown from the swaps accepted above would answer 429
+    const swap = await pendingSwap(3, 2);
+    await setCoins(requesterId, 3);
+    assert.equal((await owner.patch(`/api/requests/${swap.id}`, { status: "ACCEPTED" })).status, 409);
+    const nudges = (await notesFor(requesterId, swap.id)).filter((n) => n.type === "sharecoin_needed");
+    assert.equal(nudges.length, 1, "the payer's 'more ShareCoins needed' nudge is not part of this switch");
+
+    await setCoins(requesterId, 50);
+    assert.equal(await notifyUnblockedRequests(), 0, "nothing sent");
+    assert.deepEqual((await notesFor(ownerId, swap.id)).filter((n) => n.type === "request_acceptable"), []);
+
+    const closed = await db.select().from(requestLifecycleEvents).where(and(eq(requestLifecycleEvents.requestId, swap.id), eq(requestLifecycleEvents.eventType, "FUNDS_UNBLOCKED")));
+    assert.equal(closed.length, 1, "the block is closed, so switching the notice on later never announces it");
+    assert.deepEqual((closed[0].details as { notified: boolean }).notified, false);
+    assert.equal(await notifyUnblockedRequests({ notify: true }), 0, "an old block is not announced after the notice is switched on");
+
+    await clearCooldowns();
+    assert.equal((await owner.patch(`/api/requests/${swap.id}`, { status: "ACCEPTED" })).status, 200, "and it can be accepted");
+  } finally {
+    if (before !== undefined) process.env.FUNDS_UNBLOCKED_NOTICE = before;
+    await setCoins(requesterId, 100);
+  }
 });
 
 test("a borrow the borrower cannot afford: the owner gets the neutral answer (not 'the borrower needs N'), the borrower the nudge", async () => {

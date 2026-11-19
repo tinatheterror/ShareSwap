@@ -24,6 +24,11 @@ export function resolveJobMode(raw: string | undefined): JobMode {
  * SCHEDULED_JOBS_EXPIRY_REMINDERS=on to send them again. Expiry notices themselves are not reminders and are unaffected.
  */
 export function resolveRemindersEnabled(raw: string | undefined): boolean {
+  return envFlagOn(raw);
+}
+
+/** An opt-in flag: on only for an explicit on, true, 1 or yes (any case). Unset, empty, off, or anything unrecognised is off. */
+export function envFlagOn(raw: string | undefined): boolean {
   const value = raw?.trim().toLowerCase();
   return value === "on" || value === "true" || value === "1" || value === "yes";
 }

@@ -3,6 +3,7 @@ import { db, itemRequests, items, notifications, requestLifecycleEvents, users }
 import { sendPushToUser } from "./push-notifications";
 import { isConfirmNoticeType, silentPersonReminder } from "./handoff-confirm-copy";
 import { publicName } from "./public-identity";
+import { envFlagOn } from "./scheduled-job-options";
 
 /**
  * Reminds the person who has not confirmed, before an auto-confirm, that the handoff will be confirmed for them when the
@@ -12,8 +13,15 @@ import { publicName } from "./public-identity";
  * once per deadline: the lifecycle event's idempotency key (reminder, request, deadline) is what claims it, so the route,
  * the server timer and several instances can all call this. A reminder that is already late for the 12 hour mark when the
  * sweep first sees the request (it is under 2 hours away) sends only the 2 hour one.
+ *
+ * The 12 hour reminder is OFF unless HANDOFF_REMINDER_12H is explicitly on (on, true, 1 or yes): everyone, whichever type
+ * of request and whichever side is waiting, then gets only the 2 hour reminder. Nothing is claimed for a 12 hour reminder
+ * that is not sent, so switching it on later reminds the requests still waiting. The code for it is intact.
  */
 export const HANDOFF_REMINDER_HOURS = [12, 2] as const;
+
+/** True when the 12 hour reminder is switched on (HANDOFF_REMINDER_12H). Off by default. */
+export const handoff12HourReminderEnabled = (env: NodeJS.ProcessEnv = process.env) => envFlagOn(env.HANDOFF_REMINDER_12H);
 const HOUR_MS = 3_600_000;
 
 export const handoffReminderKey = (hours: number, requestId: number, deadline: Date) => `handoff-reminder-${hours}h-${requestId}-${deadline.getTime()}`;
@@ -21,12 +29,16 @@ export const handoffReminderKey = (hours: number, requestId: number, deadline: D
 export interface HandoffReminderOptions {
   requestTypes?: readonly string[];
   onlyRequestIds?: number[];
+  /** The 12 hour reminder; defaults to the HANDOFF_REMINDER_12H switch (off). Tests and callers can say. */
+  include12Hour?: boolean;
 }
 
 /** Returns how many reminders were sent. Never throws: a failed reminder must not stop the sweep. */
 export async function sendBorrowerHandoffReminders(now: Date = new Date(), options: HandoffReminderOptions = {}): Promise<number> {
   try {
-    const horizon = new Date(now.getTime() + HANDOFF_REMINDER_HOURS[0] * HOUR_MS);
+    const include12Hour = options.include12Hour ?? handoff12HourReminderEnabled();
+    // Without the 12 hour reminder only requests inside the last 2 hours are looked at.
+    const horizon = new Date(now.getTime() + HANDOFF_REMINDER_HOURS[include12Hour ? 0 : 1] * HOUR_MS);
     const rows = await db
       .select({
         id: itemRequests.id, requesterId: itemRequests.requesterId, deadline: itemRequests.handoffConfirmDeadline,

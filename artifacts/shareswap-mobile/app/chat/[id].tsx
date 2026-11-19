@@ -313,6 +313,9 @@ export default function ChatScreen() {
   const [showReturnSheet, setShowReturnSheet] = useState(false);
   const [showConfirmReturnSheet, setShowConfirmReturnSheet] = useState(false);
   const [showReviewSheet, setShowReviewSheet] = useState(false);
+  // The review is wanted as soon as the request completes, but it is shown only once the handoff sheet that completed it has finished
+  // closing: iOS silently drops a modal presented while another is still dismissing, and nothing would present it again.
+  const [reviewWanted, setReviewWanted] = useState(false);
 
   // Counter-proposal sheet
   const [showCounterSheet, setShowCounterSheet] = useState(false);
@@ -419,7 +422,7 @@ export default function ChatScreen() {
       prev !== "COMPLETED_EARLY" &&
       (curr === "COMPLETED" || curr === "COMPLETED_EARLY")
     ) {
-      setShowReviewSheet(true);
+      setReviewWanted(true);
     }
   }, [request?.status]);
 
@@ -433,13 +436,22 @@ export default function ChatScreen() {
     let cancelled = false;
     apiGet<{ shouldPrompt: boolean }>(`/api/requests/${request.id}/review-status`)
       .then((status) => {
-        if (!cancelled && status?.shouldPrompt) setShowReviewSheet(true);
+        if (!cancelled && status?.shouldPrompt) setReviewWanted(true);
       })
       .catch(() => reviewPromptChecked.delete(request.id));
     return () => {
       cancelled = true;
     };
   }, [request?.id, request?.status, user?.id]);
+
+  useEffect(() => {
+    if (!reviewWanted || showHandoffSheetOwner || showHandoffSheetBorrower) return;
+    const timer = setTimeout(() => {
+      setShowReviewSheet(true);
+      setReviewWanted(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [reviewWanted, showHandoffSheetOwner, showHandoffSheetBorrower]);
 
   const isOwner =
     lifecycle?.lifecycle.role === "owner" ||

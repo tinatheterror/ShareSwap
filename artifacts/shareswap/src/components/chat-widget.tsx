@@ -2997,7 +2997,7 @@ export function ChatWidget() {
       {/* Swap received-items inventory prompt (both owner and requester) */}
       {swapOwnerReceivedItems.length > 0 && (
         <Dialog
-          open={showSwapInventoryPrompt}
+          open={showSwapInventoryPrompt && !showReviewPrompt}
           onOpenChange={(open) => { if (!open) setShowSwapInventoryPrompt(false); }}
         >
           <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[420px] p-0 overflow-hidden">

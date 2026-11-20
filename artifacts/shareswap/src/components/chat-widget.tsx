@@ -674,6 +674,7 @@ export function ChatWidget() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
       qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+      qc.invalidateQueries({ queryKey: ["/api/messages"] });
       setShowCelebration(true);
     },
     onError: (error: any) => {
@@ -741,8 +742,7 @@ export function ChatWidget() {
       qc.invalidateQueries({ queryKey: ["/api/inbox"] });
       qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation, activeConversationRequestId] });
       if (vars.accept && data.ownerAccepted) {
-        // Owner fully accepted via counter path — anchor selectedRequestId so
-        // handleScheduleClick can read the correct startDate for the auto-reply.
+        // Owner fully accepted via counter path — anchor selectedRequestId to the accepted request.
         setSelectedRequestId(vars.requestId);
         setShowCelebration(true);
       } else {
@@ -1212,35 +1212,12 @@ export function ChatWidget() {
     }
   };
 
-  const sendScheduleMessage = async (requestId: number, conversationUserId: number, convRequestId: number) => {
-    const acceptedRequest = requests.find((r) => r.id === requestId);
-    const isGiftRequest = acceptedRequest?.requestType === "GIFT";
-    const isSwapRequest = acceptedRequest?.requestType === "SWAP";
-    const startDateRaw = acceptedRequest?.startDate;
-    const dateText = startDateRaw
-      ? format(parseLocalDate(startDateRaw), "MMMM do")
-      : format(new Date(), "MMMM do");
-    const scheduleMsg = (isGiftRequest || isSwapRequest)
-      ? "When and where can you meet?"
-      : `When and where can you meet on ${dateText}?`;
-    try {
-      await apiRequest("POST", "/api/messages", {
-        receiverId: conversationUserId,
-        content: scheduleMsg,
-        requestId: convRequestId,
-      });
-      qc.invalidateQueries({ queryKey: ["/api/messages", conversationUserId, convRequestId] });
-      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
-    } catch (error) {
-      console.error("Failed to send schedule message:", error);
-    }
-  };
-
+  // The server posts "When and where can you meet?" itself when the owner accepts; this just closes the celebration and
+  // brings the message in so the owner can carry on typing.
   const handleScheduleClick = async () => {
     setShowCelebration(false);
-    if (selectedRequestId && selectedConversation && activeConversationRequestId) {
-      await sendScheduleMessage(selectedRequestId, selectedConversation, activeConversationRequestId);
-    }
+    qc.invalidateQueries({ queryKey: ["/api/messages"] });
+    qc.invalidateQueries({ queryKey: ["/api/inbox"] });
     setTimeout(() => messageInputRef.current?.focus(), 350);
   };
 

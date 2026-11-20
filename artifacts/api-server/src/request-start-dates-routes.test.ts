@@ -279,9 +279,9 @@ test("creation flips to rejecting at local midnight, not at UTC midnight", async
 
 // ── (b) counter-proposals ──────────────────────────────────────────────────────
 
-test("counter-proposals reject a past start date and accept today, for every type", async () => {
+test("counter-proposals reject a past start date and accept today, for every type that can be countered", async () => {
   clock = OCT_4_EVENING_PDT;
-  for (const requestType of ["BORROW", "RENT", "SWAP", "GIFT"]) {
+  for (const requestType of ["BORROW", "RENT", "SWAP"]) {
     const rejectedId = await createPendingRequest(requestType, "2026-10-10");
     const rejected = await owner.request(`/api/requests/${rejectedId}/counter-proposal`, {
       method: "POST",

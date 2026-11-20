@@ -333,7 +333,8 @@ test("RENT, SWAP, and GIFT initial requests keep accepting dates over 12 months"
 });
 
 test("non-BORROW negotiation routes keep accepting dates over 12 months", async () => {
-  for (const requestType of ["RENT", "SWAP", "GIFT"]) {
+  // A gift has no negotiation at all (see accept-meetup-message.test.ts).
+  for (const requestType of ["RENT", "SWAP"]) {
     const directId = await createRequestFixture(requestType);
     const directResponse = await owner.request(`/api/requests/${directId}/counter-proposal`, {
       method: "POST",

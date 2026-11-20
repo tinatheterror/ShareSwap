@@ -739,9 +739,9 @@ export default function ChatScreen() {
       !!handoffCompletedAt ||
       ["IN_PROGRESS", "RETURN_REQUESTED", "COMPLETED", "COMPLETED_EARLY"].includes(status);
 
-    // Swaps have no deposit. They are stored with the default "in_app" method, which must not make the card wait for one
-    // (the server lets a swap go to handoff straight from ACCEPTED).
-    const takesInAppDeposit = request.requestType !== "SWAP" && request.depositMethod === "in_app";
+    // Swaps and gifts have no deposit. They are stored with the default "in_app" method, which must not make the card wait for one
+    // (the server lets a swap or gift go to handoff straight from ACCEPTED).
+    const takesInAppDeposit = request.requestType !== "SWAP" && request.requestType !== "GIFT" && request.depositMethod === "in_app";
 
     const handoffStatuses = ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "ACCEPTED"];
     const showHandoffForOwner =
@@ -1044,7 +1044,7 @@ export default function ChatScreen() {
                       : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept</Text>
                     }
                   </Pressable>
-                  {(request.counterRound ?? 0) < 2 && (
+                  {(request.counterRound ?? 0) < 2 && request.requestType !== "GIFT" && (
                     <Pressable
                       style={[card.btn, { borderColor: "transparent", backgroundColor: "#fef3c7", flex: 1 }]}
                       onPress={() => setShowCounterSheet(true)}
@@ -1101,13 +1101,15 @@ export default function ChatScreen() {
                         }
                       </Pressable>
                     )}
-                    <Pressable
-                      style={[card.btn, { borderColor: "transparent", backgroundColor: "#fef3c7", flex: 1 }]}
-                      onPress={() => setShowCounterSheet(true)}
-                      disabled={anyMutating}
-                    >
-                      <Text style={[card.btnLabel, { color: "#b45309" }]}>Counter</Text>
-                    </Pressable>
+                    {request.requestType !== "GIFT" && (
+                      <Pressable
+                        style={[card.btn, { borderColor: "transparent", backgroundColor: "#fef3c7", flex: 1 }]}
+                        onPress={() => setShowCounterSheet(true)}
+                        disabled={anyMutating}
+                      >
+                        <Text style={[card.btnLabel, { color: "#b45309" }]}>Counter</Text>
+                      </Pressable>
+                    )}
                     <Pressable
                       style={[card.btn, { borderColor: colors.border, flex: 1 }]}
                       onPress={() =>

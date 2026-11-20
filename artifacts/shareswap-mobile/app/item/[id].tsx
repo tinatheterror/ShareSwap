@@ -413,21 +413,19 @@ export default function ItemDetailScreen() {
               : `Write a short note to the owner of "${item.title}"`}
           </Text>
 
-          {!isGift && (
-            <TextInput
-              style={[
-                styles.messageInput,
-                { backgroundColor: colors.muted, borderColor: colors.border, color: colors.foreground },
-              ]}
-              placeholder={`Hi! I'd love to ${typeLabel.toLowerCase()} this...`}
-              placeholderTextColor={colors.mutedForeground}
-              value={message}
-              onChangeText={setMessage}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          )}
+          <TextInput
+            style={[
+              styles.messageInput,
+              { backgroundColor: colors.muted, borderColor: colors.border, color: colors.foreground },
+            ]}
+            placeholder={isGift ? "Hi! I'd love to have this..." : `Hi! I'd love to ${typeLabel.toLowerCase()} this...`}
+            placeholderTextColor={colors.mutedForeground}
+            value={message}
+            onChangeText={setMessage}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
 
           <Pressable
             style={({ pressed }) => [

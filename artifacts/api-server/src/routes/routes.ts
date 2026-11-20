@@ -7402,6 +7402,12 @@ Respond with ONLY the category name, nothing else.`
         });
       } catch (_) {}
 
+      // The owner's "When and where can you meet?", before the early return below so every accepted request gets it.
+      await postAcceptedMeetupMessage(
+        request.items.ownerId!, request.item_requests.requesterId, requestId,
+        request.item_requests.requestType, request.item_requests.counterStartDate ?? request.item_requests.startDate,
+      );
+
       // For BORROW requests where the deposit is exchanged in person, no in-app payment is
       // needed — skip straight to DEPOSIT_CONFIRMED so the handoff PIN flow unlocks immediately.
       if (
@@ -7486,7 +7492,6 @@ Respond with ONLY the category name, nothing else.`
         );
       }
     } catch (_) {}
-
 
     // Handle commission for rental transactions
     // NOTE: Platform commission is FREE for the first 3 transactions per requester.
@@ -7610,6 +7615,30 @@ Respond with ONLY the category name, nothing else.`
     });
   }
 
+  // When an owner accepts a request, the chat opens with the owner asking where and when to meet, as a normal message from them.
+  // A borrow or rental names the day it starts; a gift or swap has no date to name. Never fails the accept.
+  async function postAcceptedMeetupMessage(
+    ownerId: number,
+    requesterId: number,
+    requestId: number,
+    requestType: string,
+    startDate: Date | string | null | undefined,
+  ) {
+    try {
+      const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const day = requestType === "BORROW" || requestType === "RENT" ? requestCalendarDay(startDate) : null;
+      let content = "When and where can you meet?";
+      if (day) {
+        const [, m, d] = day.split("-").map(Number);
+        const suffix = d % 100 >= 11 && d % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[d % 10] ?? "th";
+        content = `When and where can you meet on ${MONTHS[m - 1]} ${d}${suffix}?`;
+      }
+      await db.insert(messages).values({ senderId: ownerId, receiverId: requesterId, content, requestId });
+    } catch (error) {
+      console.error("[accept] could not post the meet-up message:", error);
+    }
+  }
+
   // Either owner OR requester may propose counter terms
   app.post("/api/requests/:requestId/counter-proposal", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -7644,6 +7673,10 @@ Respond with ONLY the category name, nothing else.`
 
     if (request.item_requests.status !== "PENDING") {
       return res.status(400).json({ error: "Can only propose changes to pending requests" });
+    }
+
+    if (request.item_requests.requestType === "GIFT") {
+      return res.status(400).json({ error: "A gift can't be countered. Accept it or decline it." });
     }
 
     const isRequester = req.user.id === request.item_requests.requesterId;
@@ -8075,6 +8108,10 @@ Respond with ONLY the category name, nothing else.`
 
       // The lifecycle event above is the canonical chat message. Do not add a
       // second system stamp for the same acceptance/terms action.
+
+      if (requestAccepted) {
+        await postAcceptedMeetupMessage(request.items.ownerId!, request.item_requests.requesterId, requestId, request.item_requests.requestType, updated.startDate);
+      }
 
       // Notification message: for in-person BORROW deposit, skip deposit step messaging
       const inPersonBorrowDeposit =

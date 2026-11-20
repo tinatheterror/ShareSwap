@@ -84,6 +84,11 @@ test("accepting a gift posts the plain meet-up question from the owner", async (
   assert.equal(sent[0].content, "When and where can you meet?");
   assert.equal(sent[0].senderId, ownerId);
   assert.equal(sent[0].receiverId, requesterId);
+  // It comes after the "Request accepted" stamp in the chat, not before it.
+  const all = (await db.select().from(messages).where(eq(messages.requestId, id))).sort((x, y) => x.id - y.id);
+  const stamp = all.findIndex((m) => m.messageType === "event" && m.content === "Request accepted");
+  const reply = all.findIndex((m) => m.content === "When and where can you meet?");
+  assert.ok(stamp >= 0 && reply > stamp, `stamp at ${stamp}, reply at ${reply}`);
 });
 
 test("accepting a borrow names the day it starts", async () => {

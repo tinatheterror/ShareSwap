@@ -7402,12 +7402,6 @@ Respond with ONLY the category name, nothing else.`
         });
       } catch (_) {}
 
-      // The owner's "When and where can you meet?", before the early return below so every accepted request gets it.
-      await postAcceptedMeetupMessage(
-        request.items.ownerId!, request.item_requests.requesterId, requestId,
-        request.item_requests.requestType, request.item_requests.counterStartDate ?? request.item_requests.startDate,
-      );
-
       // For BORROW requests where the deposit is exchanged in person, no in-app payment is
       // needed — skip straight to DEPOSIT_CONFIRMED so the handoff PIN flow unlocks immediately.
       if (
@@ -7419,7 +7413,14 @@ Respond with ONLY the category name, nothing else.`
           .set({ status: "DEPOSIT_CONFIRMED" })
           .where(eq(itemRequests.id, requestId))
           .returning();
-        if (advanced) return res.json(advanced);
+        if (advanced) {
+          // This path returns before the "Request accepted" stamp below, so the meet-up question goes out here.
+          await postAcceptedMeetupMessage(
+            request.items.ownerId!, request.item_requests.requesterId, requestId,
+            request.item_requests.requestType, request.item_requests.counterStartDate ?? request.item_requests.startDate,
+          );
+          return res.json(advanced);
+        }
       }
     }
 
@@ -7492,6 +7493,14 @@ Respond with ONLY the category name, nothing else.`
         );
       }
     } catch (_) {}
+
+    // The owner's "When and where can you meet?", after the "Request accepted" stamp so it reads as the first thing said.
+    if (status === "ACCEPTED") {
+      await postAcceptedMeetupMessage(
+        request.items.ownerId!, request.item_requests.requesterId, requestId,
+        request.item_requests.requestType, request.item_requests.counterStartDate ?? request.item_requests.startDate,
+      );
+    }
 
     // Handle commission for rental transactions
     // NOTE: Platform commission is FREE for the first 3 transactions per requester.

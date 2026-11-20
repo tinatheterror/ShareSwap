@@ -730,11 +730,6 @@ export default function BorrowPage() {
                             <span className="font-medium">Condition:</span>{" "}
                             {filteredGiftItems[giftCarouselIndex].conditionRating || 8}/10
                           </span>
-                          {filteredGiftItems[giftCarouselIndex].owner?.isVerified && (
-                            <span className="text-[10px] px-1 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
-                              Verified Owner
-                            </span>
-                          )}
                         </div>
                       </div>
                       <Button
@@ -830,11 +825,6 @@ export default function BorrowPage() {
                           <span className="font-medium">Condition:</span>{" "}
                           {item.conditionRating || 8}/10
                         </span>
-                        {item.owner?.isVerified && (
-                          <span className="text-[10px] md:text-xs px-1 md:px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
-                            Verified Owner
-                          </span>
-                        )}
                       </div>
                     </div>
                     <Button
@@ -1021,11 +1011,6 @@ export default function BorrowPage() {
                                     </span>{" "}
                                     {currentItem.conditionRating || 8}/10
                                   </span>
-                                  {currentItem.owner?.isVerified && (
-                                    <span className="text-[10px] px-1 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
-                                      Verified Owner
-                                    </span>
-                                  )}
                                 </div>
                                 {!currentItem.isGift && (currentItem.isLendable || currentItem.isRentable) && (
                                   <div className="flex items-center gap-1 text-xs text-slate-700">
@@ -1222,11 +1207,6 @@ export default function BorrowPage() {
                             <span className="font-medium">Condition:</span>{" "}
                             {item.conditionRating || 8}/10
                           </span>
-                          {item.owner?.isVerified && (
-                            <span className="text-[10px] md:text-xs px-1 md:px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
-                              Verified Owner
-                            </span>
-                          )}
                         </div>
 
                         {!item.isGift && (item.isLendable || item.isRentable) && (

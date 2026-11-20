@@ -411,11 +411,6 @@ function GiftCard({ item, colors, router }: { item: BrowseItem; colors: any; rou
             <Text style={{ fontFamily: "Inter_600SemiBold" }}>Condition:</Text>{" "}
             {item.conditionRating ?? 8}/10
           </Text>
-          {item.owner?.isVerified && (
-            <View style={gcard.verifiedPill}>
-              <Text style={gcard.verifiedText}>Verified Owner</Text>
-            </View>
-          )}
         </View>
         <Pressable
           style={gcard.btn}
@@ -443,8 +438,6 @@ const gcard = StyleSheet.create({
   title: { fontSize: 15, fontFamily: "Inter_700Bold" },
   row: { flexDirection: "row", alignItems: "center", gap: 6 },
   meta: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#374151" },
-  verifiedPill: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#0DCEA130", paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
-  verifiedText: { fontSize: 9, color: "#0DCEA1", fontFamily: "Inter_600SemiBold" },
   btn: { backgroundColor: "#ec4899", borderRadius: 8, paddingVertical: 8, alignItems: "center", marginTop: 4 },
 });
 

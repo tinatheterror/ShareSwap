@@ -16,6 +16,7 @@ import {
   cancelBorrowRentRequest,
   cancelPenaltyApplies,
   classifyDepositState,
+  requestCancelledNotice,
   type CancelDeps,
 } from "./cancel-service.js";
 import { ensureCancellationRecord } from "./startup-migrations.js";
@@ -152,7 +153,25 @@ test("the deposit state comes from the deposit fields, not the request status", 
   for (const state of ["authorized", "charged"] as const) assert.equal(cancelPenaltyApplies(state), true);
 });
 
+test("the cancellation notice names a gift, swap or rental by what it is, and a borrow by who cancelled it", () => {
+  assert.equal(requestCancelledNotice("GIFT", "Yeti water bottle", "The borrower"), '"Yeti water bottle" gift request cancelled');
+  assert.equal(requestCancelledNotice("SWAP", "Yeti water bottle", "The owner"), '"Yeti water bottle" swap request cancelled');
+  assert.equal(requestCancelledNotice("RENT", "Yeti water bottle", "The owner"), '"Yeti water bottle" rental request cancelled');
+  assert.equal(requestCancelledNotice("BORROW", "Yeti water bottle", "The borrower"), '"Yeti water bottle" — the borrower cancelled the request.');
+});
+
 // ── Free cancels ──────────────────────────────────────────────────────────────
+
+test("a cancelled rental request tells the other person in the rental's own words", async () => {
+  const owner = await newUser("owner");
+  const renter = await newUser("renter");
+  const { id, itemId } = await newRequest(owner, renter, { requestType: "RENT" });
+  const result = await cancelBorrowRentRequest({ requestId: id, actorId: renter }, deps(fakeStripe()), NOW);
+  assert.equal(result.status, 200);
+  const [item] = await db.select({ name: items.name }).from(items).where(eq(items.id, itemId));
+  const toOwner = (await notes(id)).filter((n) => n.userId === owner);
+  assert.equal(toOwner[0].message, `"${item.name}" rental request cancelled`);
+});
 
 test("PENDING: cancels free, with no Stripe call, no penalty and the other person told", async () => {
   const owner = await newUser("owner");

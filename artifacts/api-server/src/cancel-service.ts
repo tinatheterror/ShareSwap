@@ -36,6 +36,18 @@ import { releaseHold } from "./sharecoin-funds";
 //
 // SWAP and GIFT do not come through here; they keep the original handler in routes.ts.
 
+
+/**
+ * What the other person is told when a request is cancelled. A gift, swap or rental is named for what it is; a borrow says who
+ * cancelled it. `cancelledByLabel` is "The owner" or "The borrower".
+ */
+export function requestCancelledNotice(requestType: string | null | undefined, itemName: string, cancelledByLabel: string): string {
+  if (requestType === "GIFT") return `"${itemName}" gift request cancelled`;
+  if (requestType === "SWAP") return `"${itemName}" swap request cancelled`;
+  if (requestType === "RENT") return `"${itemName}" rental request cancelled`;
+  return `"${itemName}" — ${cancelledByLabel.toLowerCase()} cancelled the request.`;
+}
+
 export const CANCEL_PENALTY_POINTS = 5;
 export const PENALTY_ACK_REQUIRED_CODE = "PENALTY_ACK_REQUIRED";
 export const CANCEL_REASONS = ["user_requested", "changed_plans", "item_unavailable", "other"] as const;
@@ -236,6 +248,7 @@ export async function cancelBorrowRentRequest(
   const otherPartyId = isOwner ? request.requesterId! : item.ownerId!;
   const hadDeposit = Boolean(request.depositPaymentIntentId);
   const cancelledByLabel = isOwner ? "The owner" : "The borrower";
+  const cancelNotice = requestCancelledNotice(request.requestType, item.name, cancelledByLabel);
   const depositAmount = request.trustDepositAmount === null ? null : Number(request.trustDepositAmount);
 
   let finalized: {
@@ -325,7 +338,7 @@ export async function cancelBorrowRentRequest(
         userId: otherPartyId,
         type: "request_cancelled",
         title: "Request Cancelled",
-        message: `"${item.name}" — ${cancelledByLabel.toLowerCase()} cancelled the request.`,
+        message: cancelNotice,
         itemId: item.id,
         requestId,
         isRead: false,
@@ -375,7 +388,7 @@ export async function cancelBorrowRentRequest(
     await Promise.resolve(
       deps.push(otherPartyId, {
         title: "Request Cancelled",
-        body: `"${item.name}" — ${cancelledByLabel.toLowerCase()} cancelled the request.`,
+        body: cancelNotice,
         data: { screen: "chat", chatUserId: actorId, requestId, itemId: item.id },
       }),
     ).catch(() => {});

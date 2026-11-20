@@ -97,6 +97,15 @@ test("an owner can change their mind and cancel an accepted swap: never penalise
   assert.equal((await db.select().from(items).where(eq(items.id, itemId)))[0].isAvailable, true);
 });
 
+test("cancelling an accepted swap tells the other person in the swap's own words", async () => {
+  const swap = await acceptedSwap(1);
+  const res = await (await loggedIn(swap.owner.username)).post(`/api/requests/${swap.requestId}/cancel`, {});
+  assert.equal(res.status, 200);
+  const [note] = await db.select().from(notifications).where(and(eq(notifications.requestId, swap.requestId), eq(notifications.userId, swap.requester.id), eq(notifications.type, "request_cancelled")));
+  const [swapItem] = await db.select({ name: items.name }).from(items).where(eq(items.id, swap.itemId));
+  assert.equal(note.message, `"${swapItem.name}" swap request cancelled`);
+});
+
 test("a requester cancelling an accepted swap is not penalised either, first time or later", async () => {
   const first = await acceptedSwap(5);
   const res1 = await (await loggedIn(first.requester.username)).post(`/api/requests/${first.requestId}/cancel`, {});
@@ -131,6 +140,11 @@ test("a gift can be cancelled by either person while accepted, and never costs a
     assert.equal((await db.select().from(itemRequests).where(eq(itemRequests.id, gift.requestId)))[0].status, "CANCELLED", who);
     assert.deepEqual((await penaltyRows(person.id, gift.requestId)).filter((r) => r.points < 0 || r.activityType === "grace_pass_warning"), [], who);
     assert.equal(await trust(person.id), before, who);
+    // The other person is told in the gift's own words, not "the borrower cancelled the request".
+    const otherId = who === "owner" ? gift.requester.id : gift.owner.id;
+    const [note] = await db.select().from(notifications).where(and(eq(notifications.requestId, gift.requestId), eq(notifications.userId, otherId), eq(notifications.type, "request_cancelled")));
+    const [giftItem] = await db.select({ name: items.name }).from(items).where(eq(items.id, gift.itemId));
+    assert.equal(note.message, `"${giftItem.name}" gift request cancelled`, who);
   }
 });
 

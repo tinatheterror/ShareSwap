@@ -143,7 +143,7 @@ import { backgroundJobs } from "../background-jobs-registry";
 import { startRequestExpirySweepTimer } from "../request-expiry-timer";
 import { guardedJob } from "../guarded-job";
 import { ACCOUNT_DELETION_JOB, HANDOFF_DEADLINES_JOB, REQUEST_EXPIRY_JOB, resolveAccountDeletionEnvMode, createReadRunRecorder, resolveJobSwitch, resolveReadExpiryPolicy, timerRunRecorder } from "../job-switches";
-import { CANCELLABLE_REQUEST_TYPES, cancelBorrowRentRequest } from "../cancel-service";
+import { CANCELLABLE_REQUEST_TYPES, cancelBorrowRentRequest, requestCancelledNotice } from "../cancel-service";
 import { depositMethodRejection } from "../deposit-method-rules";
 import {
   REQUEST_DATES_PASSED_MESSAGE,
@@ -9526,18 +9526,19 @@ Respond with ONLY the category name, nothing else.`
       });
 
       const cancelledByLabel = isOwner ? "The owner" : "The borrower";
+      const cancelNotice = requestCancelledNotice(request.item_requests.requestType, request.items.name, cancelledByLabel);
       await db.insert(notifications).values({
         userId: otherPartyId,
         type: "request_cancelled",
         title: "Request Cancelled",
-        message: `"${request.items.name}" — ${cancelledByLabel.toLowerCase()} cancelled the request.`,
+        message: cancelNotice,
         itemId: request.items.id,
         requestId,
         isRead: false,
       });
       sendPushToUser(otherPartyId, {
         title: "Request Cancelled",
-        body: `"${request.items.name}" — ${cancelledByLabel.toLowerCase()} cancelled the request.`,
+        body: cancelNotice,
         data: { screen: "chat", chatUserId: req.user.id, requestId, itemId: request.items.id },
       }, "requests").catch(() => {});
 

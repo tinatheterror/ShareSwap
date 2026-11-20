@@ -87,7 +87,7 @@ test("accepting a gift posts the plain meet-up question from the owner", async (
 });
 
 test("accepting a borrow names the day it starts", async () => {
-  await db.update(users).set({ shareCoins: 1000 }).where(eq(users.id, requesterId));
+  await db.update(users).set({ shareCoins: "1000" }).where(eq(users.id, requesterId));
   const id = await seed("BORROW", { startDate: new Date("2031-03-22T12:00:00Z"), endDate: new Date("2031-03-25T12:00:00Z"), depositMethod: "in_person" });
   const res = await owner.patch(`/api/requests/${id}`, { status: "ACCEPTED" });
   assert.equal(res.status, 200, await res.clone().text());
@@ -97,7 +97,7 @@ test("accepting a borrow names the day it starts", async () => {
 });
 
 test("accepting after a counter and a counter-back names the day of the last counter", async () => {
-  await db.update(users).set({ shareCoins: 1000 }).where(eq(users.id, requesterId));
+  await db.update(users).set({ shareCoins: "1000" }).where(eq(users.id, requesterId));
   const id = await seed("BORROW", { startDate: new Date("2031-03-22T12:00:00Z"), endDate: new Date("2031-03-25T12:00:00Z"), depositMethod: "in_person" });
   // The owner counters with the 24th, the requester counters back with the 27th, and the owner accepts that.
   const first = await owner.post(`/api/requests/${id}/counter-proposal`, { startDate: "2031-03-24", endDate: "2031-03-26" });
@@ -113,7 +113,7 @@ test("accepting after a counter and a counter-back names the day of the last cou
 });
 
 test("a counter that leaves the date blank keeps the earlier counter's day", async () => {
-  await db.update(users).set({ shareCoins: 1000 }).where(eq(users.id, requesterId));
+  await db.update(users).set({ shareCoins: "1000" }).where(eq(users.id, requesterId));
   const id = await seed("BORROW", { startDate: new Date("2031-04-01T12:00:00Z"), endDate: new Date("2031-04-04T12:00:00Z"), depositMethod: "in_person" });
   const first = await owner.post(`/api/requests/${id}/counter-proposal`, { startDate: "2031-04-02", endDate: "2031-04-05" });
   assert.equal(first.status, 200, await first.clone().text());
